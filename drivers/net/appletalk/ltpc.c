@@ -652,9 +652,9 @@ static int do_write(struct net_device *dev, void *cbuf, int cbuflen,
 	int ret;
 
 	if(i) {
-		qels[i].cbuf = (unsigned char *) cbuf;
+		qels[i].cbuf = cbuf;
 		qels[i].cbuflen = cbuflen;
-		qels[i].dbuf = (unsigned char *) dbuf;
+		qels[i].dbuf = dbuf;
 		qels[i].dbuflen = dbuflen;
 		qels[i].QWrite = 1;
 		qels[i].mailbox = i;  /* this should be initted rather */
@@ -676,9 +676,9 @@ static int do_read(struct net_device *dev, void *cbuf, int cbuflen,
 	int ret;
 
 	if(i) {
-		qels[i].cbuf = (unsigned char *) cbuf;
+		qels[i].cbuf = cbuf;
 		qels[i].cbuflen = cbuflen;
-		qels[i].dbuf = (unsigned char *) dbuf;
+		qels[i].dbuf = dbuf;
 		qels[i].dbuflen = dbuflen;
 		qels[i].QWrite = 0;
 		qels[i].mailbox = i;  /* this should be initted rather */
@@ -727,7 +727,7 @@ static int sendup_buffer (struct net_device *dev)
 
 	if (ltc->command != LT_RCVLAP) {
 		printk("unknown command 0x%02x from ltpc card\n",ltc->command);
-		return(-1);
+		return -1;
 	}
 	dnode = ltc->dnode;
 	snode = ltc->snode;

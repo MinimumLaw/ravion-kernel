@@ -47,6 +47,16 @@ enum tpm_duration {
 #define TPM_MAX_PROTECTED_ORDINAL 12
 #define TPM_PROTECTED_ORDINAL_MASK 0xFF
 
+/*
+ * Bug workaround - some TPM's don't flush the most
+ * recently changed pcr on suspend, so force the flush
+ * with an extend to the selected _unused_ non-volatile pcr.
+ */
+static int tpm_suspend_pcr;
+module_param_named(suspend_pcr, tpm_suspend_pcr, uint, 0644);
+MODULE_PARM_DESC(suspend_pcr,
+		 "PCR to use for dummy writes to faciltate flush on suspend.");
+
 static LIST_HEAD(tpm_chip_list);
 static DEFINE_SPINLOCK(driver_lock);
 static DECLARE_BITMAP(dev_mask, TPM_NUM_DEVICES);
@@ -373,6 +383,9 @@ static ssize_t tpm_transmit(struct tpm_chip *chip, const char *buf,
 	u32 count, ordinal;
 	unsigned long stop;
 
+	if (bufsiz > TPM_BUFSIZE)
+		bufsiz = TPM_BUFSIZE;
+
 	count = be32_to_cpu(*((__be32 *) (buf + 2)));
 	ordinal = be32_to_cpu(*((__be32 *) (buf + 6)));
 	if (count == 0)
@@ -524,6 +537,7 @@ void tpm_get_timeouts(struct tpm_chip *chip)
 	struct duration_t *duration_cap;
 	ssize_t rc;
 	u32 timeout;
+	unsigned int scale = 1;
 
 	tpm_cmd.header.in = tpm_getcap_header;
 	tpm_cmd.params.getcap_in.cap = TPM_CAP_PROP;
@@ -535,24 +549,30 @@ void tpm_get_timeouts(struct tpm_chip *chip)
 	if (rc)
 		goto duration;
 
-	if (be32_to_cpu(tpm_cmd.header.out.length)
-	    != 4 * sizeof(u32))
-		goto duration;
+	if (be32_to_cpu(tpm_cmd.header.out.return_code) != 0 ||
+	    be32_to_cpu(tpm_cmd.header.out.length)
+	    != sizeof(tpm_cmd.header.out) + sizeof(u32) + 4 * sizeof(u32))
+		return;
 
 	timeout_cap = &tpm_cmd.params.getcap_out.cap.timeout;
 	/* Don't overwrite default if value is 0 */
 	timeout = be32_to_cpu(timeout_cap->a);
+	if (timeout && timeout < 1000) {
+		/* timeouts in msec rather usec */
+		scale = 1000;
+		chip->vendor.timeout_adjusted = true;
+	}
 	if (timeout)
-		chip->vendor.timeout_a = usecs_to_jiffies(timeout);
+		chip->vendor.timeout_a = usecs_to_jiffies(timeout * scale);
 	timeout = be32_to_cpu(timeout_cap->b);
 	if (timeout)
-		chip->vendor.timeout_b = usecs_to_jiffies(timeout);
+		chip->vendor.timeout_b = usecs_to_jiffies(timeout * scale);
 	timeout = be32_to_cpu(timeout_cap->c);
 	if (timeout)
-		chip->vendor.timeout_c = usecs_to_jiffies(timeout);
+		chip->vendor.timeout_c = usecs_to_jiffies(timeout * scale);
 	timeout = be32_to_cpu(timeout_cap->d);
 	if (timeout)
-		chip->vendor.timeout_d = usecs_to_jiffies(timeout);
+		chip->vendor.timeout_d = usecs_to_jiffies(timeout * scale);
 
 duration:
 	tpm_cmd.header.in = tpm_getcap_header;
@@ -565,23 +585,31 @@ duration:
 	if (rc)
 		return;
 
-	if (be32_to_cpu(tpm_cmd.header.out.return_code)
-	    != 3 * sizeof(u32))
+	if (be32_to_cpu(tpm_cmd.header.out.return_code) != 0 ||
+	    be32_to_cpu(tpm_cmd.header.out.length)
+	    != sizeof(tpm_cmd.header.out) + sizeof(u32) + 3 * sizeof(u32))
 		return;
+
 	duration_cap = &tpm_cmd.params.getcap_out.cap.duration;
 	chip->vendor.duration[TPM_SHORT] =
 	    usecs_to_jiffies(be32_to_cpu(duration_cap->tpm_short));
-	/* The Broadcom BCM0102 chipset in a Dell Latitude D820 gets the above
-	 * value wrong and apparently reports msecs rather than usecs. So we
-	 * fix up the resulting too-small TPM_SHORT value to make things work.
-	 */
-	if (chip->vendor.duration[TPM_SHORT] < (HZ/100))
-		chip->vendor.duration[TPM_SHORT] = HZ;
-
 	chip->vendor.duration[TPM_MEDIUM] =
 	    usecs_to_jiffies(be32_to_cpu(duration_cap->tpm_medium));
 	chip->vendor.duration[TPM_LONG] =
 	    usecs_to_jiffies(be32_to_cpu(duration_cap->tpm_long));
+
+	/* The Broadcom BCM0102 chipset in a Dell Latitude D820 gets the above
+	 * value wrong and apparently reports msecs rather than usecs. So we
+	 * fix up the resulting too-small TPM_SHORT value to make things work.
+	 * We also scale the TPM_MEDIUM and -_LONG values by 1000.
+	 */
+	if (chip->vendor.duration[TPM_SHORT] < (HZ / 100)) {
+		chip->vendor.duration[TPM_SHORT] = HZ;
+		chip->vendor.duration[TPM_MEDIUM] *= 1000;
+		chip->vendor.duration[TPM_LONG] *= 1000;
+		chip->vendor.duration_adjusted = true;
+		dev_info(chip->dev, "Adjusting TPM timeout parameters.");
+	}
 }
 EXPORT_SYMBOL_GPL(tpm_get_timeouts);
 
@@ -590,7 +618,7 @@ void tpm_continue_selftest(struct tpm_chip *chip)
 	u8 data[] = {
 		0, 193,			/* TPM_TAG_RQU_COMMAND */
 		0, 0, 0, 10,		/* length */
-		0, 0, 0, 83,		/* TPM_ORD_GetCapability */
+		0, 0, 0, 83,		/* TPM_ORD_ContinueSelfTest */
 	};
 
 	tpm_transmit(chip, data, sizeof(data));
@@ -726,7 +754,7 @@ int tpm_pcr_read(u32 chip_num, int pcr_idx, u8 *res_buf)
 	if (chip == NULL)
 		return -ENODEV;
 	rc = __tpm_pcr_read(chip, pcr_idx, res_buf);
-	module_put(chip->dev->driver->owner);
+	tpm_chip_put(chip);
 	return rc;
 }
 EXPORT_SYMBOL_GPL(tpm_pcr_read);
@@ -765,10 +793,26 @@ int tpm_pcr_extend(u32 chip_num, int pcr_idx, const u8 *hash)
 	rc = transmit_cmd(chip, &cmd, EXTEND_PCR_RESULT_SIZE,
 			  "attempting extend a PCR value");
 
-	module_put(chip->dev->driver->owner);
+	tpm_chip_put(chip);
 	return rc;
 }
 EXPORT_SYMBOL_GPL(tpm_pcr_extend);
+
+int tpm_send(u32 chip_num, void *cmd, size_t buflen)
+{
+	struct tpm_chip *chip;
+	int rc;
+
+	chip = tpm_chip_find_get(chip_num);
+	if (chip == NULL)
+		return -ENODEV;
+
+	rc = transmit_cmd(chip, cmd, buflen, "attempting tpm_cmd");
+
+	tpm_chip_put(chip);
+	return rc;
+}
+EXPORT_SYMBOL_GPL(tpm_send);
 
 ssize_t tpm_show_pcrs(struct device *dev, struct device_attribute *attr,
 		      char *buf)
@@ -837,18 +881,24 @@ ssize_t tpm_show_pubek(struct device *dev, struct device_attribute *attr,
 	data = tpm_cmd.params.readpubek_out_buffer;
 	str +=
 	    sprintf(str,
-		    "Algorithm: %02X %02X %02X %02X\nEncscheme: %02X %02X\n"
-		    "Sigscheme: %02X %02X\nParameters: %02X %02X %02X %02X"
-		    " %02X %02X %02X %02X %02X %02X %02X %02X\n"
-		    "Modulus length: %d\nModulus: \n",
-		    data[10], data[11], data[12], data[13], data[14],
-		    data[15], data[16], data[17], data[22], data[23],
-		    data[24], data[25], data[26], data[27], data[28],
-		    data[29], data[30], data[31], data[32], data[33],
-		    be32_to_cpu(*((__be32 *) (data + 34))));
+		    "Algorithm: %02X %02X %02X %02X\n"
+		    "Encscheme: %02X %02X\n"
+		    "Sigscheme: %02X %02X\n"
+		    "Parameters: %02X %02X %02X %02X "
+		    "%02X %02X %02X %02X "
+		    "%02X %02X %02X %02X\n"
+		    "Modulus length: %d\n"
+		    "Modulus:\n",
+		    data[0], data[1], data[2], data[3],
+		    data[4], data[5],
+		    data[6], data[7],
+		    data[12], data[13], data[14], data[15],
+		    data[16], data[17], data[18], data[19],
+		    data[20], data[21], data[22], data[23],
+		    be32_to_cpu(*((__be32 *) (data + 24))));
 
 	for (i = 0; i < 256; i++) {
-		str += sprintf(str, "%02X ", data[i + 38]);
+		str += sprintf(str, "%02X ", data[i + 28]);
 		if ((i + 1) % 16 == 0)
 			str += sprintf(str, "\n");
 	}
@@ -910,6 +960,35 @@ ssize_t tpm_show_caps_1_2(struct device * dev,
 	return str - buf;
 }
 EXPORT_SYMBOL_GPL(tpm_show_caps_1_2);
+
+ssize_t tpm_show_durations(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct tpm_chip *chip = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d %d %d [%s]\n",
+		       jiffies_to_usecs(chip->vendor.duration[TPM_SHORT]),
+		       jiffies_to_usecs(chip->vendor.duration[TPM_MEDIUM]),
+		       jiffies_to_usecs(chip->vendor.duration[TPM_LONG]),
+		       chip->vendor.duration_adjusted
+		       ? "adjusted" : "original");
+}
+EXPORT_SYMBOL_GPL(tpm_show_durations);
+
+ssize_t tpm_show_timeouts(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct tpm_chip *chip = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d %d %d %d [%s]\n",
+		       jiffies_to_usecs(chip->vendor.timeout_a),
+		       jiffies_to_usecs(chip->vendor.timeout_b),
+		       jiffies_to_usecs(chip->vendor.timeout_c),
+		       jiffies_to_usecs(chip->vendor.timeout_d),
+		       chip->vendor.timeout_adjusted
+		       ? "adjusted" : "original");
+}
+EXPORT_SYMBOL_GPL(tpm_show_timeouts);
 
 ssize_t tpm_store_cancel(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count)
@@ -976,7 +1055,7 @@ int tpm_release(struct inode *inode, struct file *file)
 	struct tpm_chip *chip = file->private_data;
 
 	del_singleshot_timer_sync(&chip->user_read_timer);
-	flush_scheduled_work();
+	flush_work_sync(&chip->work);
 	file->private_data = NULL;
 	atomic_set(&chip->data_pending, 0);
 	kfree(chip->data_buffer);
@@ -1026,9 +1105,10 @@ ssize_t tpm_read(struct file *file, char __user *buf,
 {
 	struct tpm_chip *chip = file->private_data;
 	ssize_t ret_size;
+	int rc;
 
 	del_singleshot_timer_sync(&chip->user_read_timer);
-	flush_scheduled_work();
+	flush_work_sync(&chip->work);
 	ret_size = atomic_read(&chip->data_pending);
 	atomic_set(&chip->data_pending, 0);
 	if (ret_size > 0) {	/* relay data */
@@ -1036,8 +1116,11 @@ ssize_t tpm_read(struct file *file, char __user *buf,
 			ret_size = size;
 
 		mutex_lock(&chip->buffer_mutex);
-		if (copy_to_user(buf, chip->data_buffer, ret_size))
+		rc = copy_to_user(buf, chip->data_buffer, ret_size);
+		memset(chip->data_buffer, 0, ret_size);
+		if (rc)
 			ret_size = -EFAULT;
+
 		mutex_unlock(&chip->buffer_mutex);
 	}
 
@@ -1076,18 +1159,6 @@ static struct tpm_input_header savestate_header = {
 	.length = cpu_to_be32(10),
 	.ordinal = TPM_ORD_SAVESTATE
 };
-
-/* Bug workaround - some TPM's don't flush the most
- * recently changed pcr on suspend, so force the flush
- * with an extend to the selected _unused_ non-volatile pcr.
- */
-static int tpm_suspend_pcr;
-static int __init tpm_suspend_setup(char *str)
-{
-	get_option(&str, &tpm_suspend_pcr);
-	return 1;
-}
-__setup("tpm_suspend_pcr=", tpm_suspend_setup);
 
 /*
  * We are about to suspend. Save the TPM state

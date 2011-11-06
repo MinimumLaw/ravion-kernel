@@ -33,6 +33,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/net.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -219,7 +220,7 @@ static int tsi108_read_mii(struct tsi108_prv_data *data, int reg)
 	if (i == 100)
 		return 0xffff;
 	else
-		return (TSI_READ_PHY(TSI108_MAC_MII_DATAIN));
+		return TSI_READ_PHY(TSI108_MAC_MII_DATAIN);
 }
 
 static void tsi108_write_mii(struct tsi108_prv_data *data,

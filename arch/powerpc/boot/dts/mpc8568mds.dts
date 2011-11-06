@@ -60,6 +60,8 @@
 		compatible = "fsl,mpc8568-localbus", "fsl,pq3-localbus",
 			     "simple-bus";
 		reg = <0xe0005000 0x1000>;
+		interrupt-parent = <&mpic>;
+		interrupts = <19 2>;
 
 		ranges = <0x0 0x0 0xfe000000 0x02000000
 			  0x1 0x0 0xf8000000 0x00008000
@@ -124,14 +126,14 @@
 		};
 
 		memory-controller@2000 {
-			compatible = "fsl,8568-memory-controller";
+			compatible = "fsl,mpc8568-memory-controller";
 			reg = <0x2000 0x1000>;
 			interrupt-parent = <&mpic>;
 			interrupts = <18 2>;
 		};
 
 		L2: l2-cache-controller@20000 {
-			compatible = "fsl,8568-l2-cache-controller";
+			compatible = "fsl,mpc8568-l2-cache-controller";
 			reg = <0x20000 0x1000>;
 			cache-line-size = <32>;	// 32 bytes
 			cache-size = <0x80000>;	// L2, 512K

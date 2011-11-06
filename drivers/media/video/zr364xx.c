@@ -29,7 +29,6 @@
 
 
 #include <linux/module.h>
-#include <linux/version.h>
 #include <linux/init.h>
 #include <linux/usb.h>
 #include <linux/vmalloc.h>
@@ -42,8 +41,7 @@
 
 
 /* Version Information */
-#define DRIVER_VERSION "v0.73"
-#define ZR364XX_VERSION_CODE KERNEL_VERSION(0, 7, 3)
+#define DRIVER_VERSION "0.7.4"
 #define DRIVER_AUTHOR "Antoine Jacquet, http://royale.zerezo.com/"
 #define DRIVER_DESC "Zoran 364xx"
 
@@ -572,7 +570,7 @@ static int zr364xx_got_frame(struct zr364xx_camera *cam, int jpgsize)
 	DBG("wakeup [buf/i] [%p/%d]\n", buf, buf->vb.i);
 unlock:
 	spin_unlock_irqrestore(&cam->slock, flags);
-	return 0;
+	return rc;
 }
 
 /* this function moves the usb stream read pipe data
@@ -744,7 +742,6 @@ static int zr364xx_vidioc_querycap(struct file *file, void *priv,
 	strlcpy(cap->card, cam->udev->product, sizeof(cap->card));
 	strlcpy(cap->bus_info, dev_name(&cam->udev->dev),
 		sizeof(cap->bus_info));
-	cap->version = ZR364XX_VERSION_CODE;
 	cap->capabilities = V4L2_CAP_VIDEO_CAPTURE |
 			    V4L2_CAP_READWRITE |
 			    V4L2_CAP_STREAMING;
@@ -1304,7 +1301,7 @@ static int zr364xx_open(struct file *file)
 				    NULL, &cam->slock,
 				    cam->type,
 				    V4L2_FIELD_NONE,
-				    sizeof(struct zr364xx_buffer), cam);
+				    sizeof(struct zr364xx_buffer), cam, NULL);
 
 	/* Added some delay here, since opening/closing the camera quickly,
 	 * like Ekiga does during its startup, can crash the webcam
@@ -1721,3 +1718,4 @@ module_exit(zr364xx_exit);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
+MODULE_VERSION(DRIVER_VERSION);

@@ -13,7 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/io.h>
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
 #include <asm/clock.h>
 #include <asm/freq.h>
 
@@ -81,8 +81,7 @@ static void shoc_clk_init(struct clk *clk)
 	for (i = 0; i < ARRAY_SIZE(frqcr3_divisors); i++) {
 		int divisor = frqcr3_divisors[i];
 
-		if (clk->ops->set_rate(clk, clk->parent->rate /
-						divisor, 0) == 0)
+		if (clk->ops->set_rate(clk, clk->parent->rate / divisor) == 0)
 			break;
 	}
 
@@ -110,7 +109,7 @@ static int shoc_clk_verify_rate(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-static int shoc_clk_set_rate(struct clk *clk, unsigned long rate, int algo_id)
+static int shoc_clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	unsigned long frqcr3;
 	unsigned int tmp;
@@ -147,8 +146,6 @@ static struct clk *sh4202_onchip_clocks[] = {
 	&sh4202_femi_clk,
 	&sh4202_shoc_clk,
 };
-
-#define CLKDEV_CON_ID(_id, _clk) { .con_id = _id, .clk = _clk }
 
 static struct clk_lookup lookups[] = {
 	/* main clocks */

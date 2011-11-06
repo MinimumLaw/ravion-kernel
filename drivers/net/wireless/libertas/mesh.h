@@ -1,6 +1,6 @@
-/**
-  * Contains all definitions needed for the Libertas' MESH implementation.
-  */
+/*
+ * Contains all definitions needed for the Libertas' MESH implementation.
+ */
 #ifndef _LBS_MESH_H_
 #define _LBS_MESH_H_
 
@@ -8,6 +8,7 @@
 #include <net/iw_handler.h>
 #include <net/lib80211.h>
 
+#include "host.h"
 
 #ifdef CONFIG_LIBERTAS_MESH
 
@@ -30,7 +31,6 @@ struct lbs_private;
 int lbs_init_mesh(struct lbs_private *priv);
 int lbs_deinit_mesh(struct lbs_private *priv);
 
-int lbs_add_mesh(struct lbs_private *priv);
 void lbs_remove_mesh(struct lbs_private *priv);
 
 
@@ -51,29 +51,6 @@ struct cmd_ds_command;
 struct cmd_ds_mesh_access;
 struct cmd_ds_mesh_config;
 
-int lbs_cmd_bt_access(struct cmd_ds_command *cmd,
-	u16 cmd_action, void *pdata_buf);
-int lbs_cmd_fwt_access(struct cmd_ds_command *cmd,
-	u16 cmd_action, void *pdata_buf);
-int lbs_mesh_access(struct lbs_private *priv, uint16_t cmd_action,
-		    struct cmd_ds_mesh_access *cmd);
-int lbs_mesh_config_send(struct lbs_private *priv,
-			 struct cmd_ds_mesh_config *cmd,
-			 uint16_t action, uint16_t type);
-int lbs_mesh_config(struct lbs_private *priv, uint16_t enable, uint16_t chan);
-
-
-
-/* Persistent configuration */
-
-void lbs_persist_config_init(struct net_device *net);
-void lbs_persist_config_remove(struct net_device *net);
-
-
-/* WEXT handler */
-
-extern struct iw_handler_def mesh_handler_def;
-
 
 /* Ethtool statistics */
 
@@ -86,11 +63,6 @@ void lbs_mesh_ethtool_get_strings(struct net_device *dev,
 	uint32_t stringset, uint8_t *s);
 
 
-/* Accessors */
-
-#define lbs_mesh_open(priv) (priv->mesh_open)
-#define lbs_mesh_connected(priv) (priv->mesh_connect_status == LBS_CONNECTED)
-
 #else
 
 #define lbs_init_mesh(priv)
@@ -100,8 +72,6 @@ void lbs_mesh_ethtool_get_strings(struct net_device *dev,
 #define lbs_mesh_set_dev(priv, dev, rxpd) (dev)
 #define lbs_mesh_set_txpd(priv, dev, txpd)
 #define lbs_mesh_config(priv, enable, chan)
-#define lbs_mesh_open(priv) (0)
-#define lbs_mesh_connected(priv) (0)
 
 #endif
 

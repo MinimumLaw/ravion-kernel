@@ -46,11 +46,13 @@ static struct resource musb_resources[] = {
 		.start	= IRQ_USB_INT0,
 		.end	= IRQ_USB_INT0,
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.name	= "mc"
 	},
 	[2] = {	/* DMA IRQ */
 		.start	= IRQ_USB_DMA,
 		.end	= IRQ_USB_DMA,
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.name	= "dma"
 	},
 };
 
@@ -66,6 +68,7 @@ static struct musb_hdrc_config musb_config = {
 	 * if it is the case.
 	 */
 	.gpio_vrsel_active	= 1,
+	.clkin          = 24,           /* musb CLKIN in MHZ */
 };
 
 static struct musb_hdrc_platform_data musb_plat = {
@@ -82,7 +85,7 @@ static struct musb_hdrc_platform_data musb_plat = {
 static u64 musb_dmamask = ~(u32)0;
 
 static struct platform_device musb_device = {
-	.name		= "musb_hdrc",
+	.name		= "musb-blackfin",
 	.id		= 0,
 	.dev = {
 		.dma_mask		= &musb_dmamask,
@@ -137,8 +140,12 @@ static struct platform_device ezbrd_flash_device = {
 #if defined(CONFIG_MTD_NAND_BF5XX) || defined(CONFIG_MTD_NAND_BF5XX_MODULE)
 static struct mtd_partition partition_info[] = {
 	{
-		.name = "linux kernel(nand)",
+		.name = "bootloader(nand)",
 		.offset = 0,
+		.size = 0x40000,
+	}, {
+		.name = "linux kernel(nand)",
+		.offset = MTDPART_OFS_APPEND,
 		.size = 4 * 1024 * 1024,
 	},
 	{
@@ -149,7 +156,6 @@ static struct mtd_partition partition_info[] = {
 };
 
 static struct bf5xx_nand_platform bf5xx_nand_platform = {
-	.page_size = NFC_PG_SIZE_256,
 	.data_width = NFC_NWIDTH_8,
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
@@ -190,13 +196,35 @@ static struct platform_device rtc_device = {
 
 
 #if defined(CONFIG_BFIN_MAC) || defined(CONFIG_BFIN_MAC_MODULE)
+#include <linux/bfin_mac.h>
+static const unsigned short bfin_mac_peripherals[] = P_RMII0;
+
+static struct bfin_phydev_platform_data bfin_phydev_data[] = {
+	{
+		.addr = 1,
+		.irq = IRQ_MAC_PHYINT,
+	},
+};
+
+static struct bfin_mii_bus_platform_data bfin_mii_bus_data = {
+	.phydev_number = 1,
+	.phydev_data = bfin_phydev_data,
+	.phy_mode = PHY_INTERFACE_MODE_RMII,
+	.mac_peripherals = bfin_mac_peripherals,
+};
+
 static struct platform_device bfin_mii_bus = {
 	.name = "bfin_mii_bus",
+	.dev = {
+		.platform_data = &bfin_mii_bus_data,
+	}
 };
 
 static struct platform_device bfin_mac_device = {
 	.name = "bfin_mac",
-	.dev.platform_data = &bfin_mii_bus,
+	.dev = {
+		.platform_data = &bfin_mii_bus,
+	}
 };
 #endif
 
@@ -225,32 +253,16 @@ static struct flash_platform_data bfin_spi_flash_data = {
 /* SPI flash chip (sst25wf040) */
 static struct bfin5xx_spi_chip spi_flash_chip_info = {
 	.enable_dma = 0,         /* use dma transfer with this chip*/
-	.bits_per_word = 8,
-};
-#endif
-
-#if defined(CONFIG_BFIN_SPI_ADC) \
-	|| defined(CONFIG_BFIN_SPI_ADC_MODULE)
-/* SPI ADC chip */
-static struct bfin5xx_spi_chip spi_adc_chip_info = {
-	.enable_dma = 1,         /* use dma transfer with this chip*/
-	.bits_per_word = 16,
 };
 #endif
 
 #if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
 static struct bfin5xx_spi_chip mmc_spi_chip_info = {
 	.enable_dma = 0,
-	.bits_per_word = 8,
 };
 #endif
 
 #if defined(CONFIG_TOUCHSCREEN_AD7877) || defined(CONFIG_TOUCHSCREEN_AD7877_MODULE)
-static struct bfin5xx_spi_chip spi_ad7877_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 16,
-};
-
 static const struct ad7877_platform_data bfin_ad7877_ts_info = {
 	.model			= 7877,
 	.vref_delay_usecs	= 50,	/* internal, no capacitor */
@@ -283,35 +295,6 @@ static const struct ad7879_platform_data bfin_ad7879_ts_info = {
 };
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_AD7879_SPI) || defined(CONFIG_TOUCHSCREEN_AD7879_SPI_MODULE)
-static struct bfin5xx_spi_chip spi_ad7879_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 16,
-};
-#endif
-
-#if defined(CONFIG_SND_SOC_WM8731) || defined(CONFIG_SND_SOC_WM8731_MODULE) \
-	 && defined(CONFIG_SND_SOC_WM8731_SPI)
-static struct bfin5xx_spi_chip spi_wm8731_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 16,
-};
-#endif
-
-#if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
-static struct bfin5xx_spi_chip spidev_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 8,
-};
-#endif
-
-#if defined(CONFIG_FB_BFIN_LQ035Q1) || defined(CONFIG_FB_BFIN_LQ035Q1_MODULE)
-static struct bfin5xx_spi_chip lq035q1_spi_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 8,
-};
-#endif
-
 static struct spi_board_info bfin_spi_board_info[] __initdata = {
 #if defined(CONFIG_MTD_M25P80) \
 	|| defined(CONFIG_MTD_M25P80_MODULE)
@@ -324,18 +307,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.platform_data = &bfin_spi_flash_data,
 		.controller_data = &spi_flash_chip_info,
 		.mode = SPI_MODE_3,
-	},
-#endif
-
-#if defined(CONFIG_BFIN_SPI_ADC) \
-	|| defined(CONFIG_BFIN_SPI_ADC_MODULE)
-	{
-		.modalias = "bfin_spi_adc", /* Name of spi_driver for this device */
-		.max_speed_hz = 6250000,     /* max spi clock (SCK) speed in HZ */
-		.bus_num = 0, /* Framework bus number */
-		.chip_select = 1, /* Framework chip select. */
-		.platform_data = NULL, /* No spi_driver specific config */
-		.controller_data = &spi_adc_chip_info,
 	},
 #endif
 
@@ -357,7 +328,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz	= 12500000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num	= 0,
 		.chip_select  = 2,
-		.controller_data = &spi_ad7877_chip_info,
 	},
 #endif
 #if defined(CONFIG_TOUCHSCREEN_AD7879_SPI) || defined(CONFIG_TOUCHSCREEN_AD7879_SPI_MODULE)
@@ -368,7 +338,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz = 5000000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num = 0,
 		.chip_select = 5,
-		.controller_data = &spi_ad7879_chip_info,
 		.mode = SPI_CPHA | SPI_CPOL,
 	},
 #endif
@@ -379,7 +348,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz	= 3125000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num	= 0,
 		.chip_select    = 5,
-		.controller_data = &spi_wm8731_chip_info,
 		.mode = SPI_MODE_0,
 	},
 #endif
@@ -389,7 +357,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz = 3125000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num = 0,
 		.chip_select = 1,
-		.controller_data = &spidev_chip_info,
 	},
 #endif
 #if defined(CONFIG_FB_BFIN_LQ035Q1) || defined(CONFIG_FB_BFIN_LQ035Q1_MODULE)
@@ -398,7 +365,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz = 20000000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num = 0,
 		.chip_select = 1,
-		.controller_data = &lq035q1_spi_chip_info,
 		.mode = SPI_CPHA | SPI_CPOL,
 	},
 #endif
@@ -472,7 +438,7 @@ static struct resource bfin_uart0_resources[] = {
 	},
 };
 
-unsigned short bfin_uart0_peripherals[] = {
+static unsigned short bfin_uart0_peripherals[] = {
 	P_UART0_TX, P_UART0_RX, 0
 };
 
@@ -527,7 +493,7 @@ static struct resource bfin_uart1_resources[] = {
 #endif
 };
 
-unsigned short bfin_uart1_peripherals[] = {
+static unsigned short bfin_uart1_peripherals[] = {
 	P_UART1_TX, P_UART1_RX, 0
 };
 
@@ -654,9 +620,9 @@ static struct resource bfin_sport0_uart_resources[] = {
 	},
 };
 
-unsigned short bfin_sport0_peripherals[] = {
+static unsigned short bfin_sport0_peripherals[] = {
 	P_SPORT0_TFS, P_SPORT0_DTPRI, P_SPORT0_TSCLK, P_SPORT0_RFS,
-	P_SPORT0_DRPRI, P_SPORT0_RSCLK, P_SPORT0_DRSEC, P_SPORT0_DTSEC, 0
+	P_SPORT0_DRPRI, P_SPORT0_RSCLK, 0
 };
 
 static struct platform_device bfin_sport0_uart_device = {
@@ -688,9 +654,9 @@ static struct resource bfin_sport1_uart_resources[] = {
 	},
 };
 
-unsigned short bfin_sport1_peripherals[] = {
+static unsigned short bfin_sport1_peripherals[] = {
 	P_SPORT1_TFS, P_SPORT1_DTPRI, P_SPORT1_TSCLK, P_SPORT1_RFS,
-	P_SPORT1_DRPRI, P_SPORT1_RSCLK, P_SPORT1_DRSEC, P_SPORT1_DTSEC, 0
+	P_SPORT1_DRPRI, P_SPORT1_RSCLK, 0
 };
 
 static struct platform_device bfin_sport1_uart_device = {

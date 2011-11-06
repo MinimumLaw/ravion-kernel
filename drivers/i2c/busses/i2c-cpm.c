@@ -105,7 +105,7 @@ struct i2c_reg {
 
 struct cpm_i2c {
 	char *base;
-	struct of_device *ofdev;
+	struct platform_device *ofdev;
 	struct i2c_adapter adap;
 	uint dp_addr;
 	int version; /* CPM1=1, CPM2=2 */
@@ -428,7 +428,7 @@ static const struct i2c_adapter cpm_ops = {
 
 static int __devinit cpm_i2c_setup(struct cpm_i2c *cpm)
 {
-	struct of_device *ofdev = cpm->ofdev;
+	struct platform_device *ofdev = cpm->ofdev;
 	const u32 *data;
 	int len, ret, i;
 	void __iomem *i2c_base;
@@ -634,8 +634,7 @@ static void cpm_i2c_shutdown(struct cpm_i2c *cpm)
 		cpm_muram_free(cpm->i2c_addr);
 }
 
-static int __devinit cpm_i2c_probe(struct of_device *ofdev,
-			 const struct of_device_id *match)
+static int __devinit cpm_i2c_probe(struct platform_device *ofdev)
 {
 	int result, len;
 	struct cpm_i2c *cpm;
@@ -652,6 +651,7 @@ static int __devinit cpm_i2c_probe(struct of_device *ofdev,
 	cpm->adap = cpm_ops;
 	i2c_set_adapdata(&cpm->adap, cpm);
 	cpm->adap.dev.parent = &ofdev->dev;
+	cpm->adap.dev.of_node = of_node_get(ofdev->dev.of_node);
 
 	result = cpm_i2c_setup(cpm);
 	if (result) {
@@ -662,11 +662,8 @@ static int __devinit cpm_i2c_probe(struct of_device *ofdev,
 	/* register new adapter to i2c module... */
 
 	data = of_get_property(ofdev->dev.of_node, "linux,i2c-index", &len);
-	if (data && len == 4) {
-		cpm->adap.nr = *data;
-		result = i2c_add_numbered_adapter(&cpm->adap);
-	} else
-		result = i2c_add_adapter(&cpm->adap);
+	cpm->adap.nr = (data && len == 4) ? be32_to_cpup(data) : -1;
+	result = i2c_add_numbered_adapter(&cpm->adap);
 
 	if (result < 0) {
 		dev_err(&ofdev->dev, "Unable to register with I2C\n");
@@ -679,7 +676,7 @@ static int __devinit cpm_i2c_probe(struct of_device *ofdev,
 	/*
 	 * register OF I2C devices
 	 */
-	of_register_i2c_devices(&cpm->adap, ofdev->dev.of_node);
+	of_i2c_register_devices(&cpm->adap);
 
 	return 0;
 out_shut:
@@ -691,7 +688,7 @@ out_free:
 	return result;
 }
 
-static int __devexit cpm_i2c_remove(struct of_device *ofdev)
+static int __devexit cpm_i2c_remove(struct platform_device *ofdev)
 {
 	struct cpm_i2c *cpm = dev_get_drvdata(&ofdev->dev);
 
@@ -717,7 +714,7 @@ static const struct of_device_id cpm_i2c_match[] = {
 
 MODULE_DEVICE_TABLE(of, cpm_i2c_match);
 
-static struct of_platform_driver cpm_i2c_driver = {
+static struct platform_driver cpm_i2c_driver = {
 	.probe		= cpm_i2c_probe,
 	.remove		= __devexit_p(cpm_i2c_remove),
 	.driver = {
@@ -729,12 +726,12 @@ static struct of_platform_driver cpm_i2c_driver = {
 
 static int __init cpm_i2c_init(void)
 {
-	return of_register_platform_driver(&cpm_i2c_driver);
+	return platform_driver_register(&cpm_i2c_driver);
 }
 
 static void __exit cpm_i2c_exit(void)
 {
-	of_unregister_platform_driver(&cpm_i2c_driver);
+	platform_driver_unregister(&cpm_i2c_driver);
 }
 
 module_init(cpm_i2c_init);

@@ -43,6 +43,7 @@ config TCG_NSC
 
 config TCG_ATMEL
 	tristate "Atmel TPM Interface"
+	depends on PPC64 || HAS_IOPORT
 	---help---
 	  If you have a TPM security chip from Atmel say Yes and it 
 	  will be accessible from within Linux.  To compile this driver 
@@ -58,6 +59,6 @@ config TCG_INFINEON
 	  To compile this driver as a module, choose M here; the module
 	  will be called tpm_infineon.
 	  Further information on this driver and the supported hardware
-	  can be found at http://www.prosec.rub.de/tpm
+	  can be found at http://www.trust.rub.de/projects/linux-device-driver-infineon-tpm/ 
 
 endif # TCG_TPM

@@ -826,7 +826,7 @@ static void bfin_dev_select(struct ata_port *ap, unsigned int device)
  *	@ctl: value to write
  */
 
-static u8 bfin_set_devctl(struct ata_port *ap, u8 ctl)
+static void bfin_set_devctl(struct ata_port *ap, u8 ctl)
 {
 	void __iomem *base = (void __iomem *)ap->ioaddr.ctl_addr;
 	write_atapi_register(base, ATA_REG_CTRL, ctl);
@@ -1046,7 +1046,7 @@ static void bfin_bus_post_reset(struct ata_port *ap, unsigned int devmask)
 			dev1 = 0;
 			break;
 		}
-		msleep(50);	/* give drive a breather */
+		ata_msleep(ap, 50);	/* give drive a breather */
 	}
 	if (dev1)
 		ata_sff_busy_sleep(ap, ATA_TMOUT_BOOT_QUICK, ATA_TMOUT_BOOT);
@@ -1087,7 +1087,7 @@ static unsigned int bfin_bus_softreset(struct ata_port *ap,
 	 *
 	 * Old drivers/ide uses the 2mS rule and then waits for ready
 	 */
-	msleep(150);
+	ata_msleep(ap, 150);
 
 	/* Before we perform post reset processing we want to see if
 	 * the bus shows 0xFF because the odd clown forgets the D7
@@ -1129,7 +1129,7 @@ static int bfin_softreset(struct ata_link *link, unsigned int *classes,
 	/* issue bus reset */
 	err_mask = bfin_bus_softreset(ap, devmask);
 	if (err_mask) {
-		ata_port_printk(ap, KERN_ERR, "SRST failed (err_mask=0x%x)\n",
+		ata_port_err(ap, "SRST failed (err_mask=0x%x)\n",
 				err_mask);
 		return -EIO;
 	}
@@ -1342,7 +1342,7 @@ static unsigned int bfin_ata_host_intr(struct ata_port *ap,
 			ap->ops->bmdma_stop(qc);
 
 			if (unlikely(host_stat & ATA_DMA_ERR)) {
-				/* error when transfering data to/from memory */
+				/* error when transferring data to/from memory */
 				qc->err_mask |= AC_ERR_HOST_BUS;
 				ap->hsm_task_state = HSM_ST_ERR;
 			}
@@ -1382,7 +1382,7 @@ idle_irq:
 #ifdef ATA_IRQ_TRAP
 	if ((ap->stats.idle_irq % 1000) == 0) {
 		ap->ops->irq_ack(ap, 0); /* debug trap */
-		ata_port_printk(ap, KERN_WARNING, "irq trap\n");
+		ata_port_warn(ap, "irq trap\n");
 		return 1;
 	}
 #endif
@@ -1454,9 +1454,7 @@ static struct ata_port_operations bfin_pata_ops = {
 
 static struct ata_port_info bfin_port_info[] = {
 	{
-		.flags		= ATA_FLAG_SLAVE_POSS
-				| ATA_FLAG_MMIO
-				| ATA_FLAG_NO_LEGACY,
+		.flags		= ATA_FLAG_SLAVE_POSS,
 		.pio_mask	= ATA_PIO4,
 		.mwdma_mask	= 0,
 		.udma_mask	= 0,
@@ -1588,7 +1586,7 @@ static int __devinit bfin_atapi_probe(struct platform_device *pdev)
 	host->ports[0]->ioaddr.ctl_addr = (void *)res->start;
 
 	if (peripheral_request_list(atapi_io_port, "atapi-io-port")) {
-		dev_err(&pdev->dev, "Requesting Peripherals faild\n");
+		dev_err(&pdev->dev, "Requesting Peripherals failed\n");
 		return -EFAULT;
 	}
 

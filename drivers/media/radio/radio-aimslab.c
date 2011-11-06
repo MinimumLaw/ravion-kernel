@@ -33,7 +33,6 @@
 #include <linux/ioport.h>	/* request_region		*/
 #include <linux/delay.h>	/* msleep			*/
 #include <linux/videodev2.h>	/* kernel radio structs		*/
-#include <linux/version.h>	/* for KERNEL_VERSION MACRO	*/
 #include <linux/io.h>		/* outb, outb_p			*/
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -41,6 +40,7 @@
 MODULE_AUTHOR("M.Kirkwood");
 MODULE_DESCRIPTION("A driver for the RadioTrack/RadioReveal radio card.");
 MODULE_LICENSE("GPL");
+MODULE_VERSION("0.0.3");
 
 #ifndef CONFIG_RADIO_RTRACK_PORT
 #define CONFIG_RADIO_RTRACK_PORT -1
@@ -52,8 +52,6 @@ static int radio_nr = -1;
 module_param(io, int, 0);
 MODULE_PARM_DESC(io, "I/O address of the RadioTrack card (0x20f or 0x30f)");
 module_param(radio_nr, int, 0);
-
-#define RADIO_VERSION KERNEL_VERSION(0, 0, 2)
 
 struct rtrack
 {
@@ -223,7 +221,6 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	strlcpy(v->driver, "radio-aimslab", sizeof(v->driver));
 	strlcpy(v->card, "RadioTrack", sizeof(v->card));
 	strlcpy(v->bus_info, "ISA", sizeof(v->bus_info));
-	v->version = RADIO_VERSION;
 	v->capabilities = V4L2_CAP_TUNER | V4L2_CAP_RADIO;
 	return 0;
 }
@@ -351,7 +348,7 @@ static int vidioc_s_audio(struct file *file, void *priv,
 
 static const struct v4l2_file_operations rtrack_fops = {
 	.owner		= THIS_MODULE,
-	.ioctl		= video_ioctl2,
+	.unlocked_ioctl	= video_ioctl2,
 };
 
 static const struct v4l2_ioctl_ops rtrack_ioctl_ops = {
@@ -402,13 +399,6 @@ static int __init rtrack_init(void)
 	rt->vdev.release = video_device_release_empty;
 	video_set_drvdata(&rt->vdev, rt);
 
-	if (video_register_device(&rt->vdev, VFL_TYPE_RADIO, radio_nr) < 0) {
-		v4l2_device_unregister(&rt->v4l2_dev);
-		release_region(rt->io, 2);
-		return -EINVAL;
-	}
-	v4l2_info(v4l2_dev, "AIMSlab RadioTrack/RadioReveal card driver.\n");
-
 	/* Set up the I/O locking */
 
 	mutex_init(&rt->lock);
@@ -419,6 +409,13 @@ static int __init rtrack_init(void)
 	outb(0x48, rt->io);		/* volume down but still "on"	*/
 	msleep(2000);	/* make sure it's totally down	*/
 	outb(0xc0, rt->io);		/* steady volume, mute card	*/
+
+	if (video_register_device(&rt->vdev, VFL_TYPE_RADIO, radio_nr) < 0) {
+		v4l2_device_unregister(&rt->v4l2_dev);
+		release_region(rt->io, 2);
+		return -EINVAL;
+	}
+	v4l2_info(v4l2_dev, "AIMSlab RadioTrack/RadioReveal card driver.\n");
 
 	return 0;
 }

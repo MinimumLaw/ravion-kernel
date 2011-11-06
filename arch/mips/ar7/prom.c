@@ -77,7 +77,7 @@ struct psp_env_chunk {
 	u16	csum;
 	u8	len;
 	char	data[11];
-} __attribute__ ((packed));
+} __packed;
 
 struct psp_var_map_entry {
 	u8	num;
@@ -246,6 +246,8 @@ void __init prom_init(void)
 	ar7_init_cmdline(fw_arg0, (char **)fw_arg1);
 	ar7_init_env((struct env_var *)fw_arg2);
 	console_config();
+
+	ar7_gpio_init();
 }
 
 #define PORT(offset) (KSEG1ADDR(AR7_REGS_UART0 + (offset * 4)))

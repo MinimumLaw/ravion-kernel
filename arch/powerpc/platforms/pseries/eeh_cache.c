@@ -25,7 +25,7 @@
 #include <linux/rbtree.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/pci-bridge.h>
 #include <asm/ppc-pci.h>
 
@@ -288,8 +288,7 @@ void __init pci_addr_cache_build(void)
 
 	spin_lock_init(&pci_io_addr_cache_root.piar_lock);
 
-	while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev)) != NULL) {
-
+	for_each_pci_dev(dev) {
 		pci_addr_cache_insert_device(dev);
 
 		dn = pci_device_to_OF_node(dev);

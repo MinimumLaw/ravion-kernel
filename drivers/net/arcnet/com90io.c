@@ -33,6 +33,7 @@
 #include <linux/netdevice.h>
 #include <linux/bootmem.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <asm/io.h>
 #include <linux/arcdevice.h>
 
@@ -213,7 +214,7 @@ static int __init com90io_probe(struct net_device *dev)
 		outb(0, _INTMASK);
 		dev->irq = probe_irq_off(airqmask);
 
-		if (dev->irq <= 0) {
+		if ((int)dev->irq <= 0) {
 			BUGMSG(D_INIT_REASONS, "Autoprobe IRQ failed\n");
 			goto err_out;
 		}

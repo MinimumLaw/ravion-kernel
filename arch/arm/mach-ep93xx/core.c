@@ -29,6 +29,7 @@
 #include <linux/termios.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/serial.h>
+#include <linux/mtd/physmap.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
 #include <linux/spi/spi.h>
@@ -173,14 +174,10 @@ struct sys_timer ep93xx_timer = {
 /*************************************************************************
  * EP93xx IRQ handling
  *************************************************************************/
-extern void ep93xx_gpio_init_irq(void);
-
 void __init ep93xx_init_irq(void)
 {
 	vic_init(EP93XX_VIC1_BASE, 0, EP93XX_VIC1_VALID_IRQ_MASK, 0);
 	vic_init(EP93XX_VIC2_BASE, 32, EP93XX_VIC2_VALID_IRQ_MASK, 0);
-
-	ep93xx_gpio_init_irq();
 }
 
 
@@ -215,8 +212,8 @@ void ep93xx_devcfg_set_clear(unsigned int set_bits, unsigned int clear_bits)
 	spin_lock_irqsave(&syscon_swlock, flags);
 
 	val = __raw_readl(EP93XX_SYSCON_DEVCFG);
-	val |= set_bits;
 	val &= ~clear_bits;
+	val |= set_bits;
 	__raw_writel(0xaa, EP93XX_SYSCON_SWLOCK);
 	__raw_writel(val, EP93XX_SYSCON_DEVCFG);
 
@@ -240,6 +237,24 @@ unsigned int ep93xx_chip_revision(void)
 }
 
 /*************************************************************************
+ * EP93xx GPIO
+ *************************************************************************/
+static struct resource ep93xx_gpio_resource[] = {
+	{
+		.start		= EP93XX_GPIO_PHYS_BASE,
+		.end		= EP93XX_GPIO_PHYS_BASE + 0xcc - 1,
+		.flags		= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device ep93xx_gpio_device = {
+	.name		= "gpio-ep93xx",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ep93xx_gpio_resource),
+	.resource	= ep93xx_gpio_resource,
+};
+
+/*************************************************************************
  * EP93xx peripheral handling
  *************************************************************************/
 #define EP93XX_UART_MCR_OFFSET		(0x0100)
@@ -250,9 +265,9 @@ static void ep93xx_uart_set_mctrl(struct amba_device *dev,
 	unsigned int mcr;
 
 	mcr = 0;
-	if (!(mctrl & TIOCM_RTS))
+	if (mctrl & TIOCM_RTS)
 		mcr |= 2;
-	if (!(mctrl & TIOCM_DTR))
+	if (mctrl & TIOCM_DTR)
 		mcr |= 1;
 
 	__raw_writel(mcr, base + EP93XX_UART_MCR_OFFSET);
@@ -348,6 +363,43 @@ static struct platform_device ep93xx_ohci_device = {
 
 
 /*************************************************************************
+ * EP93xx physmap'ed flash
+ *************************************************************************/
+static struct physmap_flash_data ep93xx_flash_data;
+
+static struct resource ep93xx_flash_resource = {
+	.flags		= IORESOURCE_MEM,
+};
+
+static struct platform_device ep93xx_flash = {
+	.name		= "physmap-flash",
+	.id		= 0,
+	.dev		= {
+		.platform_data	= &ep93xx_flash_data,
+	},
+	.num_resources	= 1,
+	.resource	= &ep93xx_flash_resource,
+};
+
+/**
+ * ep93xx_register_flash() - Register the external flash device.
+ * @width:	bank width in octets
+ * @start:	resource start address
+ * @size:	resource size
+ */
+void __init ep93xx_register_flash(unsigned int width,
+				  resource_size_t start, resource_size_t size)
+{
+	ep93xx_flash_data.width		= width;
+
+	ep93xx_flash_resource.start	= start;
+	ep93xx_flash_resource.end	= start + size - 1;
+
+	platform_device_register(&ep93xx_flash);
+}
+
+
+/*************************************************************************
  * EP93xx ethernet peripheral handling
  *************************************************************************/
 static struct ep93xx_eth_data ep93xx_eth_data;
@@ -364,11 +416,15 @@ static struct resource ep93xx_eth_resource[] = {
 	}
 };
 
+static u64 ep93xx_eth_dma_mask = DMA_BIT_MASK(32);
+
 static struct platform_device ep93xx_eth_device = {
 	.name		= "ep93xx-eth",
 	.id		= -1,
 	.dev		= {
-		.platform_data	= &ep93xx_eth_data,
+		.platform_data		= &ep93xx_eth_data,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
+		.dma_mask		= &ep93xx_eth_dma_mask,
 	},
 	.num_resources	= ARRAY_SIZE(ep93xx_eth_resource),
 	.resource	= ep93xx_eth_resource,
@@ -450,11 +506,15 @@ static struct resource ep93xx_spi_resources[] = {
 	},
 };
 
+static u64 ep93xx_spi_dma_mask = DMA_BIT_MASK(32);
+
 static struct platform_device ep93xx_spi_device = {
 	.name		= "ep93xx-spi",
 	.id		= 0,
 	.dev		= {
-		.platform_data = &ep93xx_spi_master_data,
+		.platform_data		= &ep93xx_spi_master_data,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
+		.dma_mask		= &ep93xx_spi_dma_mask,
 	},
 	.num_resources	= ARRAY_SIZE(ep93xx_spi_resources),
 	.resource	= ep93xx_spi_resources,
@@ -620,6 +680,11 @@ static struct platform_device ep93xx_fb_device = {
 	.resource		= ep93xx_fb_resource,
 };
 
+static struct platform_device ep93xx_bl_device = {
+	.name		= "ep93xx-bl",
+	.id		= -1,
+};
+
 /**
  * ep93xx_register_fb - Register the framebuffer platform device.
  * @data:	platform specific framebuffer configuration (__initdata)
@@ -628,6 +693,7 @@ void __init ep93xx_register_fb(struct ep93xxfb_mach_info *data)
 {
 	ep93xxfb_data = *data;
 	platform_device_register(&ep93xx_fb_device);
+	platform_device_register(&ep93xx_bl_device);
 }
 
 
@@ -714,15 +780,121 @@ void ep93xx_keypad_release_gpio(struct platform_device *pdev)
 }
 EXPORT_SYMBOL(ep93xx_keypad_release_gpio);
 
+/*************************************************************************
+ * EP93xx I2S audio peripheral handling
+ *************************************************************************/
+static struct resource ep93xx_i2s_resource[] = {
+	{
+		.start	= EP93XX_I2S_PHYS_BASE,
+		.end	= EP93XX_I2S_PHYS_BASE + 0x100 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
 
-extern void ep93xx_gpio_init(void);
+static struct platform_device ep93xx_i2s_device = {
+	.name		= "ep93xx-i2s",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ep93xx_i2s_resource),
+	.resource	= ep93xx_i2s_resource,
+};
+
+static struct platform_device ep93xx_pcm_device = {
+	.name		= "ep93xx-pcm-audio",
+	.id		= -1,
+};
+
+void __init ep93xx_register_i2s(void)
+{
+	platform_device_register(&ep93xx_i2s_device);
+	platform_device_register(&ep93xx_pcm_device);
+}
+
+#define EP93XX_SYSCON_DEVCFG_I2S_MASK	(EP93XX_SYSCON_DEVCFG_I2SONSSP | \
+					 EP93XX_SYSCON_DEVCFG_I2SONAC97)
+
+#define EP93XX_I2SCLKDIV_MASK		(EP93XX_SYSCON_I2SCLKDIV_ORIDE | \
+					 EP93XX_SYSCON_I2SCLKDIV_SPOL)
+
+int ep93xx_i2s_acquire(unsigned i2s_pins, unsigned i2s_config)
+{
+	unsigned val;
+
+	/* Sanity check */
+	if (i2s_pins & ~EP93XX_SYSCON_DEVCFG_I2S_MASK)
+		return -EINVAL;
+	if (i2s_config & ~EP93XX_I2SCLKDIV_MASK)
+		return -EINVAL;
+
+	/* Must have only one of I2SONSSP/I2SONAC97 set */
+	if ((i2s_pins & EP93XX_SYSCON_DEVCFG_I2SONSSP) ==
+	    (i2s_pins & EP93XX_SYSCON_DEVCFG_I2SONAC97))
+		return -EINVAL;
+
+	ep93xx_devcfg_clear_bits(EP93XX_SYSCON_DEVCFG_I2S_MASK);
+	ep93xx_devcfg_set_bits(i2s_pins);
+
+	/*
+	 * This is potentially racy with the clock api for i2s_mclk, sclk and 
+	 * lrclk. Since the i2s driver is the only user of those clocks we
+	 * rely on it to prevent parallel use of this function and the 
+	 * clock api for the i2s clocks.
+	 */
+	val = __raw_readl(EP93XX_SYSCON_I2SCLKDIV);
+	val &= ~EP93XX_I2SCLKDIV_MASK;
+	val |= i2s_config;
+	ep93xx_syscon_swlocked_write(val, EP93XX_SYSCON_I2SCLKDIV);
+
+	return 0;
+}
+EXPORT_SYMBOL(ep93xx_i2s_acquire);
+
+void ep93xx_i2s_release(void)
+{
+	ep93xx_devcfg_clear_bits(EP93XX_SYSCON_DEVCFG_I2S_MASK);
+}
+EXPORT_SYMBOL(ep93xx_i2s_release);
+
+/*************************************************************************
+ * EP93xx AC97 audio peripheral handling
+ *************************************************************************/
+static struct resource ep93xx_ac97_resources[] = {
+	{
+		.start	= EP93XX_AAC_PHYS_BASE,
+		.end	= EP93XX_AAC_PHYS_BASE + 0xac - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= IRQ_EP93XX_AACINTR,
+		.end	= IRQ_EP93XX_AACINTR,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device ep93xx_ac97_device = {
+	.name		= "ep93xx-ac97",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ep93xx_ac97_resources),
+	.resource	= ep93xx_ac97_resources,
+};
+
+void __init ep93xx_register_ac97(void)
+{
+	/*
+	 * Make sure that the AC97 pins are not used by I2S.
+	 */
+	ep93xx_devcfg_clear_bits(EP93XX_SYSCON_DEVCFG_I2SONAC97);
+
+	platform_device_register(&ep93xx_ac97_device);
+	platform_device_register(&ep93xx_pcm_device);
+}
 
 void __init ep93xx_init_devices(void)
 {
 	/* Disallow access to MaverickCrunch initially */
 	ep93xx_devcfg_clear_bits(EP93XX_SYSCON_DEVCFG_CPENA);
 
-	ep93xx_gpio_init();
+	/* Get the GPIO working early, other devices need it */
+	platform_device_register(&ep93xx_gpio_device);
 
 	amba_device_register(&uart1_device, &iomem_resource);
 	amba_device_register(&uart2_device, &iomem_resource);

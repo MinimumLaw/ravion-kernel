@@ -7,6 +7,7 @@
  * May 1999, Al Viro: proper release of /proc/net/bmac entry, switched to
  * dynamic procfs inode.
  */
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/netdevice.h>
@@ -1014,7 +1015,6 @@ static void bmac_set_multicast(struct net_device *dev)
 static void bmac_set_multicast(struct net_device *dev)
 {
 	struct netdev_hw_addr *ha;
-	char *addrs;
 	int i;
 	unsigned short rx_cfg;
 	u32 crc;
@@ -1038,12 +1038,7 @@ static void bmac_set_multicast(struct net_device *dev)
 		for(i = 0; i < 4; i++) hash_table[i] = 0;
 
 		netdev_for_each_mc_addr(ha, dev) {
-			addrs = ha->addr;
-
-			if(!(*addrs & 1))
-				continue;
-
-			crc = ether_crc_le(6, addrs);
+			crc = ether_crc_le(6, ha->addr);
 			crc >>= 26;
 			hash_table[crc >> 4] |= 1 << (crc & 0xf);
 		}
@@ -1233,15 +1228,8 @@ static void bmac_reset_and_enable(struct net_device *dev)
 	}
 	spin_unlock_irqrestore(&bp->lock, flags);
 }
-static void bmac_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
-{
-	struct bmac_data *bp = netdev_priv(dev);
-	strcpy(info->driver, "bmac");
-	strcpy(info->bus_info, dev_name(&bp->mdev->ofdev.dev));
-}
 
 static const struct ethtool_ops bmac_ethtool_ops = {
-	.get_drvinfo		= bmac_get_drvinfo,
 	.get_link		= ethtool_op_get_link,
 };
 
@@ -1588,7 +1576,7 @@ bmac_proc_info(char *buffer, char **start, off_t offset, int length)
 	int i;
 
 	if (bmac_devs == NULL)
-		return (-ENOSYS);
+		return -ENOSYS;
 
 	len += sprintf(buffer, "BMAC counters & registers\n");
 

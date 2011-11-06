@@ -537,7 +537,8 @@ static int do_chaninfo_ioctl(struct comedi_device *dev,
 
 			x = (dev->minor << 28) | (it.subdev << 24) | (i << 16) |
 			    (s->range_table_list[i]->length);
-			put_user(x, it.rangelist + i);
+			if (put_user(x, it.rangelist + i))
+				return -EFAULT;
 		}
 #if 0
 		if (copy_to_user(it.rangelist, s->range_type_list,
@@ -909,9 +910,28 @@ static int parse_insn(struct comedi_device *dev, struct comedi_insn *insn,
 		case INSN_BITS:
 			if (insn->n != 2) {
 				ret = -EINVAL;
-				break;
+			} else {
+				/* Most drivers ignore the base channel in
+				 * insn->chanspec.  Fix this here if
+				 * the subdevice has <= 32 channels.  */
+				unsigned int shift;
+				unsigned int orig_mask;
+
+				orig_mask = data[0];
+				if (s->n_chan <= 32) {
+					shift = CR_CHAN(insn->chanspec);
+					if (shift > 0) {
+						insn->chanspec = 0;
+						data[0] <<= shift;
+						data[1] <<= shift;
+					}
+				} else
+					shift = 0;
+				ret = s->insn_bits(dev, s, insn, data);
+				data[0] = orig_mask;
+				if (shift > 0)
+					data[1] >>= shift;
 			}
-			ret = s->insn_bits(dev, s, insn, data);
 			break;
 		case INSN_CONFIG:
 			ret = check_insn_config_length(insn, data);
@@ -1271,10 +1291,10 @@ static int do_lock_ioctl(struct comedi_device *dev, unsigned int arg,
 		s->lock = file;
 	spin_unlock_irqrestore(&s->spin_lock, flags);
 
+#if 0
 	if (ret < 0)
 		return ret;
 
-#if 0
 	if (s->lock_f)
 		ret = s->lock_f(dev, s);
 #endif
@@ -1845,8 +1865,15 @@ ok:
 		}
 	}
 
-	if (dev->attached && dev->use_count == 0 && dev->open)
-		dev->open(dev);
+	if (dev->attached && dev->use_count == 0 && dev->open) {
+		int rc = dev->open(dev);
+		if (rc < 0) {
+			module_put(dev->driver->module);
+			module_put(THIS_MODULE);
+			mutex_unlock(&dev->mutex);
+			return rc;
+		}
+	}
 
 	dev->use_count++;
 
@@ -1915,6 +1942,7 @@ const struct file_operations comedi_fops = {
 	.mmap = comedi_mmap,
 	.poll = comedi_poll,
 	.fasync = comedi_fasync,
+	.llseek = noop_llseek,
 };
 
 struct class *comedi_class;
@@ -2036,7 +2064,7 @@ void comedi_event(struct comedi_device *dev, struct comedi_subdevice *s)
 			     COMEDI_CB_OVERFLOW)) {
 		runflags_mask |= SRF_RUNNING;
 	}
-	/* remember if an error event has occured, so an error
+	/* remember if an error event has occurred, so an error
 	 * can be returned the next time the user does a read() */
 	if (s->async->events & (COMEDI_CB_ERROR | COMEDI_CB_OVERFLOW)) {
 		runflags_mask |= SRF_ERROR;
@@ -2147,9 +2175,8 @@ int comedi_alloc_board_minor(struct device *hardware_device)
 		return -EBUSY;
 	}
 	info->device->minor = i;
-	csdev = COMEDI_DEVICE_CREATE(comedi_class, NULL,
-				     MKDEV(COMEDI_MAJOR, i), NULL,
-				     hardware_device, "comedi%i", i);
+	csdev = device_create(comedi_class, hardware_device,
+			      MKDEV(COMEDI_MAJOR, i), NULL, "comedi%i", i);
 	if (!IS_ERR(csdev))
 		info->device->class_dev = csdev;
 	dev_set_drvdata(csdev, info);
@@ -2248,10 +2275,9 @@ int comedi_alloc_subdevice_minor(struct comedi_device *dev,
 		return -EBUSY;
 	}
 	s->minor = i;
-	csdev = COMEDI_DEVICE_CREATE(comedi_class, dev->class_dev,
-				     MKDEV(COMEDI_MAJOR, i), NULL, NULL,
-				     "comedi%i_subd%i", dev->minor,
-				     (int)(s - dev->subdevices));
+	csdev = device_create(comedi_class, dev->class_dev,
+			      MKDEV(COMEDI_MAJOR, i), NULL, "comedi%i_subd%i",
+			      dev->minor, (int)(s - dev->subdevices));
 	if (!IS_ERR(csdev))
 		s->class_dev = csdev;
 	dev_set_drvdata(csdev, info);

@@ -214,13 +214,12 @@ int netxen_alloc_sw_resources(struct netxen_adapter *adapter)
 	tx_ring->num_desc = adapter->num_txd;
 	tx_ring->txq = netdev_get_tx_queue(netdev, 0);
 
-	cmd_buf_arr = vmalloc(TX_BUFF_RINGSIZE(tx_ring));
+	cmd_buf_arr = vzalloc(TX_BUFF_RINGSIZE(tx_ring));
 	if (cmd_buf_arr == NULL) {
 		dev_err(&pdev->dev, "%s: failed to allocate cmd buffer ring\n",
 		       netdev->name);
 		goto err_out;
 	}
-	memset(cmd_buf_arr, 0, TX_BUFF_RINGSIZE(tx_ring));
 	tx_ring->cmd_buf_arr = cmd_buf_arr;
 
 	recv_ctx = &adapter->recv_ctx;
@@ -279,8 +278,7 @@ int netxen_alloc_sw_resources(struct netxen_adapter *adapter)
 			break;
 
 		}
-		rds_ring->rx_buf_arr = (struct netxen_rx_buffer *)
-			vmalloc(RCV_BUFF_RINGSIZE(rds_ring));
+		rds_ring->rx_buf_arr = vzalloc(RCV_BUFF_RINGSIZE(rds_ring));
 		if (rds_ring->rx_buf_arr == NULL) {
 			printk(KERN_ERR "%s: Failed to allocate "
 				"rx buffer ring %d\n",
@@ -288,7 +286,6 @@ int netxen_alloc_sw_resources(struct netxen_adapter *adapter)
 			/* free whatever was already allocated */
 			goto err_out;
 		}
-		memset(rds_ring->rx_buf_arr, 0, RCV_BUFF_RINGSIZE(rds_ring));
 		INIT_LIST_HEAD(&rds_ring->free_list);
 		/*
 		 * Now go through all of them, set reference handles
@@ -346,7 +343,7 @@ static u32 netxen_decode_crb_addr(u32 addr)
 	if (pci_base == NETXEN_ADDR_ERROR)
 		return pci_base;
 	else
-		return (pci_base + offset);
+		return pci_base + offset;
 }
 
 #define NETXEN_MAX_ROM_WAIT_USEC	100
@@ -967,10 +964,40 @@ netxen_need_fw_reset(struct netxen_adapter *adapter)
 	return 0;
 }
 
+#define NETXEN_MIN_P3_FW_SUPP	NETXEN_VERSION_CODE(4, 0, 505)
+
+int
+netxen_check_flash_fw_compatibility(struct netxen_adapter *adapter)
+{
+	u32 flash_fw_ver, min_fw_ver;
+
+	if (NX_IS_REVISION_P2(adapter->ahw.revision_id))
+		return 0;
+
+	if (netxen_rom_fast_read(adapter,
+			NX_FW_VERSION_OFFSET, (int *)&flash_fw_ver)) {
+		dev_err(&adapter->pdev->dev, "Unable to read flash fw"
+			"version\n");
+		return -EIO;
+	}
+
+	flash_fw_ver = NETXEN_DECODE_VERSION(flash_fw_ver);
+	min_fw_ver = NETXEN_MIN_P3_FW_SUPP;
+	if (flash_fw_ver >= min_fw_ver)
+		return 0;
+
+	dev_info(&adapter->pdev->dev, "Flash fw[%d.%d.%d] is < min fw supported"
+		"[4.0.505]. Please update firmware on flash\n",
+		_major(flash_fw_ver), _minor(flash_fw_ver),
+		_build(flash_fw_ver));
+	return -EINVAL;
+}
+
 static char *fw_name[] = {
 	NX_P2_MN_ROMIMAGE_NAME,
 	NX_P3_CT_ROMIMAGE_NAME,
 	NX_P3_MN_ROMIMAGE_NAME,
+	NX_UNIFIED_ROMIMAGE_NAME,
 	NX_FLASH_ROMIMAGE_NAME,
 };
 
@@ -1073,10 +1100,12 @@ static int
 netxen_validate_firmware(struct netxen_adapter *adapter)
 {
 	__le32 val;
-	u32 ver, min_ver, bios;
+	__le32 flash_fw_ver;
+	u32 file_fw_ver, min_ver, bios;
 	struct pci_dev *pdev = adapter->pdev;
 	const struct firmware *fw = adapter->fw;
 	u8 fw_type = adapter->fw_type;
+	u32 crbinit_fix_fw;
 
 	if (fw_type == NX_UNIFIED_ROMIMAGE) {
 		if (netxen_nic_validate_unified_romimage(adapter))
@@ -1093,16 +1122,18 @@ netxen_validate_firmware(struct netxen_adapter *adapter)
 	val = nx_get_fw_version(adapter);
 
 	if (NX_IS_REVISION_P3(adapter->ahw.revision_id))
-		min_ver = NETXEN_VERSION_CODE(4, 0, 216);
+		min_ver = NETXEN_MIN_P3_FW_SUPP;
 	else
 		min_ver = NETXEN_VERSION_CODE(3, 4, 216);
 
-	ver = NETXEN_DECODE_VERSION(val);
+	file_fw_ver = NETXEN_DECODE_VERSION(val);
 
-	if ((_major(ver) > _NETXEN_NIC_LINUX_MAJOR) || (ver < min_ver)) {
+	if ((_major(file_fw_ver) > _NETXEN_NIC_LINUX_MAJOR) ||
+	    (file_fw_ver < min_ver)) {
 		dev_err(&pdev->dev,
 				"%s: firmware version %d.%d.%d unsupported\n",
-		fw_name[fw_type], _major(ver), _minor(ver), _build(ver));
+		fw_name[fw_type], _major(file_fw_ver), _minor(file_fw_ver),
+		 _build(file_fw_ver));
 		return -EINVAL;
 	}
 
@@ -1114,15 +1145,32 @@ netxen_validate_firmware(struct netxen_adapter *adapter)
 		return -EINVAL;
 	}
 
-	/* check if flashed firmware is newer */
 	if (netxen_rom_fast_read(adapter,
-			NX_FW_VERSION_OFFSET, (int *)&val))
+			NX_FW_VERSION_OFFSET, (int *)&flash_fw_ver)) {
+		dev_err(&pdev->dev, "Unable to read flash fw version\n");
 		return -EIO;
-	val = NETXEN_DECODE_VERSION(val);
-	if (val > ver) {
-		dev_info(&pdev->dev, "%s: firmware is older than flash\n",
-				fw_name[fw_type]);
+	}
+	flash_fw_ver = NETXEN_DECODE_VERSION(flash_fw_ver);
+
+	/* New fw from file is not allowed, if fw on flash is < 4.0.554 */
+	crbinit_fix_fw = NETXEN_VERSION_CODE(4, 0, 554);
+	if (file_fw_ver >= crbinit_fix_fw && flash_fw_ver < crbinit_fix_fw &&
+	    NX_IS_REVISION_P3(adapter->ahw.revision_id)) {
+		dev_err(&pdev->dev, "Incompatibility detected between driver "
+			"and firmware version on flash. This configuration "
+			"is not recommended. Please update the firmware on "
+			"flash immediately\n");
 		return -EINVAL;
+	}
+
+	/* check if flashed firmware is newer only for no-mn and P2 case*/
+	if (!netxen_p3_has_mn(adapter) ||
+	    NX_IS_REVISION_P2(adapter->ahw.revision_id)) {
+		if (flash_fw_ver > file_fw_ver) {
+			dev_info(&pdev->dev, "%s: firmware is older than flash\n",
+				fw_name[fw_type]);
+			return -EINVAL;
+		}
 	}
 
 	NXWR32(adapter, NETXEN_CAM_RAM(0x1fc), NETXEN_BDINFO_MAGIC);
@@ -1281,7 +1329,7 @@ void netxen_free_dummy_dma(struct netxen_adapter *adapter)
 
 			if (--i == 0)
 				break;
-		};
+		}
 	}
 
 	if (i) {
@@ -1485,7 +1533,8 @@ static struct sk_buff *netxen_process_rxbuf(struct netxen_adapter *adapter,
 	if (!skb)
 		goto no_skb;
 
-	if (likely(adapter->rx_csum && cksum == STATUS_CKSUM_OK)) {
+	if (likely((adapter->netdev->features & NETIF_F_RXCSUM)
+	    && cksum == STATUS_CKSUM_OK)) {
 		adapter->stats.csummed++;
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 	} else
@@ -1762,14 +1811,10 @@ int netxen_process_cmd_ring(struct netxen_adapter *adapter)
 
 		smp_mb();
 
-		if (netif_queue_stopped(netdev) && netif_carrier_ok(netdev)) {
-			__netif_tx_lock(tx_ring->txq, smp_processor_id());
-			if (netxen_tx_avail(tx_ring) > TX_STOP_THRESH) {
+		if (netif_queue_stopped(netdev) && netif_carrier_ok(netdev))
+			if (netxen_tx_avail(tx_ring) > TX_STOP_THRESH)
 				netif_wake_queue(netdev);
-				adapter->tx_timeo_cnt = 0;
-			}
-			__netif_tx_unlock(tx_ring->txq);
-		}
+		adapter->tx_timeo_cnt = 0;
 	}
 	/*
 	 * If everything is freed up to consumer then check if the ring is full
@@ -1788,7 +1833,7 @@ int netxen_process_cmd_ring(struct netxen_adapter *adapter)
 	done = (sw_consumer == hw_consumer);
 	spin_unlock(&adapter->tx_clean_lock);
 
-	return (done);
+	return done;
 }
 
 void
@@ -1800,8 +1845,6 @@ netxen_post_rx_buffers(struct netxen_adapter *adapter, u32 ringid,
 	int producer, count = 0;
 	netxen_ctx_msg msg = 0;
 	struct list_head *head;
-
-	spin_lock(&rds_ring->lock);
 
 	producer = rds_ring->producer;
 
@@ -1849,8 +1892,6 @@ netxen_post_rx_buffers(struct netxen_adapter *adapter, u32 ringid,
 					NETXEN_RCV_PRODUCER_OFFSET), msg);
 		}
 	}
-
-	spin_unlock(&rds_ring->lock);
 }
 
 static void

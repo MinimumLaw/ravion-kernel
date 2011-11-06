@@ -21,6 +21,7 @@
  *
  */
 
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
@@ -1402,7 +1403,7 @@ w6692_remove_pci(struct pci_dev *pdev)
 		release_card(card);
 	else
 		if (debug)
-			pr_notice("%s: drvdata allready removed\n", __func__);
+			pr_notice("%s: drvdata already removed\n", __func__);
 }
 
 static struct pci_device_id w6692_ids[] = {

@@ -14,7 +14,7 @@
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/spi/spi.h>
-
+#include <linux/slab.h>
 #include <linux/sysfs.h>
 #include <linux/list.h>
 
@@ -39,7 +39,7 @@ static int adis16220_spi_write_reg_8(struct device *dev,
 {
 	int ret;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
+	struct adis16220_state *st = iio_priv(indio_dev);
 
 	mutex_lock(&st->buf_lock);
 	st->tx[0] = ADIS16220_WRITE_REG(reg_address);
@@ -65,20 +65,20 @@ static int adis16220_spi_write_reg_16(struct device *dev,
 	int ret;
 	struct spi_message msg;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
+	struct adis16220_state *st = iio_priv(indio_dev);
 	struct spi_transfer xfers[] = {
 		{
 			.tx_buf = st->tx,
 			.bits_per_word = 8,
 			.len = 2,
 			.cs_change = 1,
-			.delay_usecs = 25,
+			.delay_usecs = 35,
 		}, {
 			.tx_buf = st->tx + 2,
 			.bits_per_word = 8,
 			.len = 2,
 			.cs_change = 1,
-			.delay_usecs = 25,
+			.delay_usecs = 35,
 		},
 	};
 
@@ -110,7 +110,7 @@ static int adis16220_spi_read_reg_16(struct device *dev,
 {
 	struct spi_message msg;
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
+	struct adis16220_state *st = iio_priv(indio_dev);
 	int ret;
 	struct spi_transfer xfers[] = {
 		{
@@ -118,13 +118,13 @@ static int adis16220_spi_read_reg_16(struct device *dev,
 			.bits_per_word = 8,
 			.len = 2,
 			.cs_change = 1,
-			.delay_usecs = 25,
+			.delay_usecs = 35,
 		}, {
 			.rx_buf = st->rx,
 			.bits_per_word = 8,
 			.len = 2,
 			.cs_change = 1,
-			.delay_usecs = 25,
+			.delay_usecs = 35,
 		},
 	};
 
@@ -291,9 +291,9 @@ static int adis16220_check_status(struct device *dev)
 	if (status & ADIS16220_DIAG_STAT_FLASH_UPT)
 		dev_err(dev, "Flash update failed\n");
 	if (status & ADIS16220_DIAG_STAT_POWER_HIGH)
-		dev_err(dev, "Power supply above 5.25V\n");
+		dev_err(dev, "Power supply above 3.625V\n");
 	if (status & ADIS16220_DIAG_STAT_POWER_LOW)
-		dev_err(dev, "Power supply below 4.75V\n");
+		dev_err(dev, "Power supply below 3.15V\n");
 
 error_ret:
 	return ret;
@@ -316,10 +316,10 @@ err_ret:
 	return ret;
 }
 
-static int adis16220_initial_setup(struct adis16220_state *st)
+static int adis16220_initial_setup(struct iio_dev *indio_dev)
 {
 	int ret;
-	struct device *dev = &st->indio_dev->dev;
+	struct device *dev = &indio_dev->dev;
 
 	/* Do self test */
 	ret = adis16220_self_test(dev);
@@ -341,19 +341,17 @@ static int adis16220_initial_setup(struct adis16220_state *st)
 		}
 	}
 
-	printk(KERN_INFO DRIVER_NAME ": at CS%d (irq %d)\n",
-			st->us->chip_select, st->us->irq);
-
 err_ret:
 	return ret;
 }
 
-static ssize_t adis16220_capture_buffer_read(struct adis16220_state *st,
+static ssize_t adis16220_capture_buffer_read(struct iio_dev *indio_dev,
 					char *buf,
 					loff_t off,
 					size_t count,
 					int addr)
 {
+	struct adis16220_state *st = iio_priv(indio_dev);
 	struct spi_message msg;
 	struct spi_transfer xfers[] = {
 		{
@@ -383,7 +381,7 @@ static ssize_t adis16220_capture_buffer_read(struct adis16220_state *st,
 		count = ADIS16220_CAPTURE_SIZE - off;
 
 	/* write the begin position of capture buffer */
-	ret = adis16220_spi_write_reg_16(&st->indio_dev->dev,
+	ret = adis16220_spi_write_reg_16(&indio_dev->dev,
 					ADIS16220_CAPT_PNTR,
 					off > 1);
 	if (ret)
@@ -414,7 +412,7 @@ static ssize_t adis16220_capture_buffer_read(struct adis16220_state *st,
 	return count;
 }
 
-static ssize_t adis16220_accel_bin_read(struct kobject *kobj,
+static ssize_t adis16220_accel_bin_read(struct file *filp, struct kobject *kobj,
 					struct bin_attribute *attr,
 					char *buf,
 					loff_t off,
@@ -422,9 +420,8 @@ static ssize_t adis16220_accel_bin_read(struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
 
-	return adis16220_capture_buffer_read(st, buf,
+	return adis16220_capture_buffer_read(indio_dev, buf,
 					off, count,
 					ADIS16220_CAPT_BUFA);
 }
@@ -438,16 +435,15 @@ static struct bin_attribute accel_bin = {
 	.size = ADIS16220_CAPTURE_SIZE,
 };
 
-static ssize_t adis16220_adc1_bin_read(struct kobject *kobj,
+static ssize_t adis16220_adc1_bin_read(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t off,
 				size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
 
-	return adis16220_capture_buffer_read(st, buf,
+	return adis16220_capture_buffer_read(indio_dev, buf,
 					off, count,
 					ADIS16220_CAPT_BUF1);
 }
@@ -461,16 +457,15 @@ static struct bin_attribute adc1_bin = {
 	.size = ADIS16220_CAPTURE_SIZE,
 };
 
-static ssize_t adis16220_adc2_bin_read(struct kobject *kobj,
+static ssize_t adis16220_adc2_bin_read(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t off,
 				size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct adis16220_state *st = iio_dev_get_devdata(indio_dev);
 
-	return adis16220_capture_buffer_read(st, buf,
+	return adis16220_capture_buffer_read(indio_dev, buf,
 					off, count,
 					ADIS16220_CAPT_BUF2);
 }
@@ -485,9 +480,9 @@ static struct bin_attribute adc2_bin = {
 	.size = ADIS16220_CAPTURE_SIZE,
 };
 
-static IIO_DEV_ATTR_IN_NAMED_RAW(supply, adis16220_read_12bit_unsigned,
+static IIO_DEV_ATTR_IN_NAMED_RAW(0, supply, adis16220_read_12bit_unsigned,
 		ADIS16220_CAPT_SUPPLY);
-static IIO_CONST_ATTR(in_supply_scale, "0.0012207");
+static IIO_CONST_ATTR_IN_NAMED_SCALE(0, supply, "0.0012207");
 static IIO_DEV_ATTR_ACCEL(adis16220_read_16bit, ADIS16220_CAPT_BUFA);
 static IIO_DEVICE_ATTR(accel_peak_raw, S_IRUGO, adis16220_read_16bit,
 		NULL, ADIS16220_CAPT_PEAKA);
@@ -495,12 +490,13 @@ static IIO_DEV_ATTR_ACCEL_OFFSET(S_IWUSR | S_IRUGO,
 		adis16220_read_16bit,
 		adis16220_write_16bit,
 		ADIS16220_ACCL_NULL);
+static IIO_CONST_ATTR_ACCEL_SCALE("0.18704223545");
 static IIO_DEV_ATTR_TEMP_RAW(adis16220_read_12bit_unsigned);
-static IIO_CONST_ATTR(temp_offset, "25");
-static IIO_CONST_ATTR(temp_scale, "-0.47");
+static IIO_CONST_ATTR_TEMP_OFFSET("25");
+static IIO_CONST_ATTR_TEMP_SCALE("-0.47");
 
-static IIO_DEV_ATTR_IN_RAW(0, adis16220_read_16bit, ADIS16220_CAPT_BUF1);
-static IIO_DEV_ATTR_IN_RAW(1, adis16220_read_16bit, ADIS16220_CAPT_BUF2);
+static IIO_DEV_ATTR_IN_RAW(1, adis16220_read_16bit, ADIS16220_CAPT_BUF1);
+static IIO_DEV_ATTR_IN_RAW(2, adis16220_read_16bit, ADIS16220_CAPT_BUF2);
 
 static IIO_DEVICE_ATTR(reset, S_IWUSR, NULL,
 		adis16220_write_reset, 0);
@@ -518,26 +514,24 @@ static IIO_DEV_ATTR_CAPTURE_COUNT(S_IWUSR | S_IRUGO,
 		adis16220_write_16bit,
 		ADIS16220_CAPT_PNTR);
 
-static IIO_CONST_ATTR_AVAIL_SAMP_FREQ("100200");
-
-static IIO_CONST_ATTR(name, "adis16220");
+static IIO_CONST_ATTR_SAMP_FREQ_AVAIL("100200");
 
 static struct attribute *adis16220_attributes[] = {
-	&iio_dev_attr_in_supply_raw.dev_attr.attr,
-	&iio_const_attr_in_supply_scale.dev_attr.attr,
+	&iio_dev_attr_in0_supply_raw.dev_attr.attr,
+	&iio_const_attr_in0_supply_scale.dev_attr.attr,
 	&iio_dev_attr_accel_raw.dev_attr.attr,
 	&iio_dev_attr_accel_offset.dev_attr.attr,
 	&iio_dev_attr_accel_peak_raw.dev_attr.attr,
+	&iio_const_attr_accel_scale.dev_attr.attr,
 	&iio_dev_attr_temp_raw.dev_attr.attr,
-	&iio_dev_attr_in0_raw.dev_attr.attr,
 	&iio_dev_attr_in1_raw.dev_attr.attr,
+	&iio_dev_attr_in2_raw.dev_attr.attr,
 	&iio_const_attr_temp_offset.dev_attr.attr,
 	&iio_const_attr_temp_scale.dev_attr.attr,
-	&iio_const_attr_available_sampling_frequency.dev_attr.attr,
+	&iio_const_attr_sampling_frequency_available.dev_attr.attr,
 	&iio_dev_attr_reset.dev_attr.attr,
 	&iio_dev_attr_capture.dev_attr.attr,
 	&iio_dev_attr_capture_count.dev_attr.attr,
-	&iio_const_attr_name.dev_attr.attr,
 	NULL
 };
 
@@ -545,101 +539,83 @@ static const struct attribute_group adis16220_attribute_group = {
 	.attrs = adis16220_attributes,
 };
 
+static const struct iio_info adis16220_info = {
+	.attrs = &adis16220_attribute_group,
+	.driver_module = THIS_MODULE,
+};
 static int __devinit adis16220_probe(struct spi_device *spi)
 {
 	int ret, regdone = 0;
-	struct adis16220_state *st = kzalloc(sizeof *st, GFP_KERNEL);
-	if (!st) {
-		ret =  -ENOMEM;
+	struct adis16220_state *st;
+	struct iio_dev *indio_dev;
+
+	/* setup the industrialio driver allocated elements */
+	indio_dev = iio_allocate_device(sizeof(*st));
+	if (indio_dev == NULL) {
+		ret = -ENOMEM;
 		goto error_ret;
 	}
-	/* this is only used for removal purposes */
-	spi_set_drvdata(spi, st);
 
-	/* Allocate the comms buffers */
-	st->rx = kzalloc(sizeof(*st->rx)*ADIS16220_MAX_RX, GFP_KERNEL);
-	if (st->rx == NULL) {
-		ret = -ENOMEM;
-		goto error_free_st;
-	}
-	st->tx = kzalloc(sizeof(*st->tx)*ADIS16220_MAX_TX, GFP_KERNEL);
-	if (st->tx == NULL) {
-		ret = -ENOMEM;
-		goto error_free_rx;
-	}
+	st = iio_priv(indio_dev);
+	/* this is only used for removal purposes */
+	spi_set_drvdata(spi, indio_dev);
+
 	st->us = spi;
 	mutex_init(&st->buf_lock);
-	/* setup the industrialio driver allocated elements */
-	st->indio_dev = iio_allocate_device();
-	if (st->indio_dev == NULL) {
-		ret = -ENOMEM;
-		goto error_free_tx;
-	}
 
-	st->indio_dev->dev.parent = &spi->dev;
-	st->indio_dev->attrs = &adis16220_attribute_group;
-	st->indio_dev->dev_data = (void *)(st);
-	st->indio_dev->driver_module = THIS_MODULE;
-	st->indio_dev->modes = INDIO_DIRECT_MODE;
+	indio_dev->name = spi->dev.driver->name;
+	indio_dev->dev.parent = &spi->dev;
+	indio_dev->info = &adis16220_info;
+	indio_dev->modes = INDIO_DIRECT_MODE;
 
-	ret = iio_device_register(st->indio_dev);
+	ret = iio_device_register(indio_dev);
 	if (ret)
 		goto error_free_dev;
 	regdone = 1;
 
-	ret = sysfs_create_bin_file(&st->indio_dev->dev.kobj, &accel_bin);
+	ret = sysfs_create_bin_file(&indio_dev->dev.kobj, &accel_bin);
 	if (ret)
 		goto error_free_dev;
 
-	ret = sysfs_create_bin_file(&st->indio_dev->dev.kobj, &adc1_bin);
+	ret = sysfs_create_bin_file(&indio_dev->dev.kobj, &adc1_bin);
 	if (ret)
 		goto error_rm_accel_bin;
 
-	ret = sysfs_create_bin_file(&st->indio_dev->dev.kobj, &adc2_bin);
+	ret = sysfs_create_bin_file(&indio_dev->dev.kobj, &adc2_bin);
 	if (ret)
 		goto error_rm_adc1_bin;
 
 	/* Get the device into a sane initial state */
-	ret = adis16220_initial_setup(st);
+	ret = adis16220_initial_setup(indio_dev);
 	if (ret)
 		goto error_rm_adc2_bin;
 	return 0;
 
 error_rm_adc2_bin:
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &adc2_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &adc2_bin);
 error_rm_adc1_bin:
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &adc1_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &adc1_bin);
 error_rm_accel_bin:
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &accel_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &accel_bin);
 error_free_dev:
 	if (regdone)
-		iio_device_unregister(st->indio_dev);
+		iio_device_unregister(indio_dev);
 	else
-		iio_free_device(st->indio_dev);
-error_free_tx:
-	kfree(st->tx);
-error_free_rx:
-	kfree(st->rx);
-error_free_st:
-	kfree(st);
+		iio_free_device(indio_dev);
 error_ret:
 	return ret;
 }
 
 static int adis16220_remove(struct spi_device *spi)
 {
-	struct adis16220_state *st = spi_get_drvdata(spi);
-	struct iio_dev *indio_dev = st->indio_dev;
+	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 
 	flush_scheduled_work();
 
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &adc2_bin);
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &adc1_bin);
-	sysfs_remove_bin_file(&st->indio_dev->dev.kobj, &accel_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &adc2_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &adc1_bin);
+	sysfs_remove_bin_file(&indio_dev->dev.kobj, &accel_bin);
 	iio_device_unregister(indio_dev);
-	kfree(st->tx);
-	kfree(st->rx);
-	kfree(st);
 
 	return 0;
 }

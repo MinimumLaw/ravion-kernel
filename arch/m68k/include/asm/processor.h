@@ -20,23 +20,26 @@
 
 static inline unsigned long rdusp(void)
 {
-#ifdef CONFIG_COLDFIRE
+#ifdef CONFIG_COLDFIRE_SW_A7
 	extern unsigned int sw_usp;
 	return sw_usp;
 #else
-	unsigned long usp;
-	__asm__ __volatile__("move %/usp,%0" : "=a" (usp));
+	register unsigned long usp __asm__("a0");
+	/* move %usp,%a0 */
+	__asm__ __volatile__(".word 0x4e68" : "=a" (usp));
 	return usp;
 #endif
 }
 
 static inline void wrusp(unsigned long usp)
 {
-#ifdef CONFIG_COLDFIRE
+#ifdef CONFIG_COLDFIRE_SW_A7
 	extern unsigned int sw_usp;
 	sw_usp = usp;
 #else
-	__asm__ __volatile__("move %0,%/usp" : : "a" (usp));
+	register unsigned long a0 __asm__("a0") = usp;
+	/* move %a0,%usp */
+	__asm__ __volatile__(".word 0x4e60" : : "a" (a0) );
 #endif
 }
 
@@ -102,13 +105,12 @@ struct thread_struct {
 static inline void start_thread(struct pt_regs * regs, unsigned long pc,
 				unsigned long usp)
 {
-	/* reads from user space */
-	set_fs(USER_DS);
-
 	regs->pc = pc;
 	regs->sr &= ~0x2000;
 	wrusp(usp);
 }
+
+extern int handle_kernel_fault(struct pt_regs *regs);
 
 #else
 
@@ -124,7 +126,6 @@ static inline void start_thread(struct pt_regs * regs, unsigned long pc,
 
 #define start_thread(_regs, _pc, _usp)                  \
 do {                                                    \
-	set_fs(USER_DS); /* reads from user space */    \
 	(_regs)->pc = (_pc);                            \
 	((struct switch_stack *)(_regs))[-1].a6 = 0;    \
 	reformat(_regs);                                \

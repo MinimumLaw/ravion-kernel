@@ -538,7 +538,7 @@ static void veth_handle_ack(struct veth_lpevent *event)
 	default:
 		veth_error("Unknown ack type %d from LPAR %d.\n",
 				event->base_event.xSubtype, rlp);
-	};
+	}
 }
 
 static void veth_handle_int(struct veth_lpevent *event)
@@ -584,7 +584,7 @@ static void veth_handle_int(struct veth_lpevent *event)
 	default:
 		veth_error("Unknown interrupt type %d from LPAR %d.\n",
 				event->base_event.xSubtype, rlp);
-	};
+	}
 }
 
 static void veth_handle_event(struct HvLpEvent *event)
@@ -885,17 +885,8 @@ static void veth_stop_connection(struct veth_lpar_connection *cnx)
 	veth_kick_statemachine(cnx);
 	spin_unlock_irq(&cnx->lock);
 
-	/* There's a slim chance the reset code has just queued the
-	 * statemachine to run in five seconds. If so we need to cancel
-	 * that and requeue the work to run now. */
-	if (cancel_delayed_work(&cnx->statemachine_wq)) {
-		spin_lock_irq(&cnx->lock);
-		veth_kick_statemachine(cnx);
-		spin_unlock_irq(&cnx->lock);
-	}
-
-	/* Wait for the state machine to run. */
-	flush_scheduled_work();
+	/* ensure the statemachine runs now and waits for its completion */
+	flush_delayed_work_sync(&cnx->statemachine_wq);
 }
 
 static void veth_destroy_connection(struct veth_lpar_connection *cnx)
@@ -973,11 +964,9 @@ static void veth_set_multicast_list(struct net_device *dev)
 			u8 *addr = ha->addr;
 			u64 xaddr = 0;
 
-			if (addr[0] & 0x01) {/* multicast address? */
-				memcpy(&xaddr, addr, ETH_ALEN);
-				port->mcast_addr[port->num_mcast] = xaddr;
-				port->num_mcast++;
-			}
+			memcpy(&xaddr, addr, ETH_ALEN);
+			port->mcast_addr[port->num_mcast] = xaddr;
+			port->num_mcast++;
 		}
 	}
 
@@ -1009,15 +998,10 @@ static int veth_get_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 	return 0;
 }
 
-static u32 veth_get_link(struct net_device *dev)
-{
-	return 1;
-}
-
 static const struct ethtool_ops ops = {
 	.get_drvinfo = veth_get_drvinfo,
 	.get_settings = veth_get_settings,
-	.get_link = veth_get_link,
+	.get_link = ethtool_op_get_link,
 };
 
 static const struct net_device_ops veth_netdev_ops = {
@@ -1198,7 +1182,7 @@ static int veth_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct veth_port *port = netdev_priv(dev);
 	HvLpIndexMap lpmask;
 
-	if (! (frame[0] & 0x01)) {
+	if (is_unicast_ether_addr(frame)) {
 		/* unicast packet */
 		HvLpIndex rlp = frame[5];
 
@@ -1524,7 +1508,7 @@ static void veth_receive(struct veth_lpar_connection *cnx,
 
 		skb_put(skb, length);
 		skb->protocol = eth_type_trans(skb, dev);
-		skb->ip_summed = CHECKSUM_NONE;
+		skb_checksum_none_assert(skb);
 		netif_rx(skb);	/* send it up */
 		dev->stats.rx_packets++;
 		dev->stats.rx_bytes += length;
@@ -1605,7 +1589,7 @@ static int veth_probe(struct vio_dev *vdev, const struct vio_device_id *id)
 	}
 	veth_dev[i] = dev;
 
-	port = (struct veth_port*)netdev_priv(dev);
+	port = netdev_priv(dev);
 
 	/* Start the state machine on each connection on this vlan. If we're
 	 * the first dev to do so this will commence link negotiation */
@@ -1658,15 +1642,14 @@ static void __exit veth_module_cleanup(void)
 	/* Disconnect our "irq" to stop events coming from the Hypervisor. */
 	HvLpEvent_unregisterHandler(HvLpEvent_Type_VirtualLan);
 
-	/* Make sure any work queued from Hypervisor callbacks is finished. */
-	flush_scheduled_work();
-
 	for (i = 0; i < HVMAXARCHITECTEDLPS; ++i) {
 		cnx = veth_cnx[i];
 
 		if (!cnx)
 			continue;
 
+		/* Cancel work queued from Hypervisor callbacks */
+		cancel_delayed_work_sync(&cnx->statemachine_wq);
 		/* Remove the connection from sysfs */
 		kobject_del(&cnx->kobject);
 		/* Drop the driver's reference to the connection */

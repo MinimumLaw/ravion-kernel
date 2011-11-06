@@ -23,6 +23,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/fs.h>
 #include <linux/module.h>
 #include <linux/cdev.h>
 #include <linux/list.h>
@@ -154,6 +155,7 @@ static const struct file_operations bsr_fops = {
 	.owner = THIS_MODULE,
 	.mmap  = bsr_mmap,
 	.open  = bsr_open,
+	.llseek = noop_llseek,
 };
 
 static void bsr_cleanup_devs(void)
@@ -210,7 +212,7 @@ static int bsr_add_node(struct device_node *bn)
 
 		cur->bsr_minor  = i + total_bsr_devs;
 		cur->bsr_addr   = res.start;
-		cur->bsr_len    = res.end - res.start + 1;
+		cur->bsr_len    = resource_size(&res);
 		cur->bsr_bytes  = bsr_bytes[i];
 		cur->bsr_stride = bsr_stride[i];
 		cur->bsr_dev    = MKDEV(bsr_major, i + total_bsr_devs);
@@ -293,7 +295,7 @@ static int bsr_create_devs(struct device_node *bn)
 static int __init bsr_init(void)
 {
 	struct device_node *np;
-	dev_t bsr_dev = MKDEV(bsr_major, 0);
+	dev_t bsr_dev;
 	int ret = -ENODEV;
 	int result;
 

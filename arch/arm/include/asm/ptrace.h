@@ -29,6 +29,8 @@
 #define PTRACE_SETCRUNCHREGS	26
 #define PTRACE_GETVFPREGS	27
 #define PTRACE_SETVFPREGS	28
+#define PTRACE_GETHBPREGS	29
+#define PTRACE_SETHBPREGS	30
 
 /*
  * PSR bits
@@ -67,8 +69,9 @@
 #define PSR_c		0x000000ff	/* Control		*/
 
 /*
- * ARMv7 groups of APSR bits
+ * ARMv7 groups of PSR bits
  */
+#define APSR_MASK	0xf80f0000	/* N, Z, C, V, Q and GE flags */
 #define PSR_ISET_MASK	0x01000010	/* ISA state (J, T) mask */
 #define PSR_IT_MASK	0x0600fc00	/* If-Then execution state mask */
 #define PSR_ENDIAN_MASK	0x00000200	/* Endianness state mask */
@@ -126,9 +129,13 @@ struct pt_regs {
 #define ARM_r0		uregs[0]
 #define ARM_ORIG_r0	uregs[17]
 
-#ifdef __KERNEL__
+/*
+ * The size of the user-visible VFP state as seen by PTRACE_GET/SETVFPREGS
+ * and core dumps.
+ */
+#define ARM_VFPREGS_SIZE ( 32 * 8 /*fpregs*/ + 4 /*fpscr*/ )
 
-#define arch_has_single_step()	(1)
+#ifdef __KERNEL__
 
 #define user_mode(regs)	\
 	(((regs)->ARM_cpsr & 0xf) == 0)
@@ -192,6 +199,50 @@ extern unsigned long profile_pc(struct pt_regs *regs);
 
 #define predicate(x)		((x) & 0xf0000000)
 #define PREDICATE_ALWAYS	0xe0000000
+
+/*
+ * True if instr is a 32-bit thumb instruction. This works if instr
+ * is the first or only half-word of a thumb instruction. It also works
+ * when instr holds all 32-bits of a wide thumb instruction if stored
+ * in the form (first_half<<16)|(second_half)
+ */
+#define is_wide_instruction(instr)	((unsigned)(instr) >= 0xe800)
+
+/*
+ * kprobe-based event tracer support
+ */
+#include <linux/stddef.h>
+#include <linux/types.h>
+#define MAX_REG_OFFSET (offsetof(struct pt_regs, ARM_ORIG_r0))
+
+extern int regs_query_register_offset(const char *name);
+extern const char *regs_query_register_name(unsigned int offset);
+extern bool regs_within_kernel_stack(struct pt_regs *regs, unsigned long addr);
+extern unsigned long regs_get_kernel_stack_nth(struct pt_regs *regs,
+					       unsigned int n);
+
+/**
+ * regs_get_register() - get register value from its offset
+ * @regs:	   pt_regs from which register value is gotten
+ * @offset:    offset number of the register.
+ *
+ * regs_get_register returns the value of a register whose offset from @regs.
+ * The @offset is the offset of the register in struct pt_regs.
+ * If @offset is bigger than MAX_REG_OFFSET, this returns 0.
+ */
+static inline unsigned long regs_get_register(struct pt_regs *regs,
+					      unsigned int offset)
+{
+	if (unlikely(offset > MAX_REG_OFFSET))
+		return 0;
+	return *(unsigned long *)((unsigned long)regs + offset);
+}
+
+/* Valid only for Kernel mode traps. */
+static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
+{
+	return regs->ARM_sp;
+}
 
 #endif /* __KERNEL__ */
 

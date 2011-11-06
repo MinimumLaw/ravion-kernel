@@ -31,13 +31,10 @@
 #include <asm/div64.h>
 #include <asm/sections.h>	/* for dereference_function_descriptor() */
 
-/* Works only for digits and letters, but small and fast */
-#define TOLOWER(x) ((x) | 0x20)
-
 static unsigned int simple_guess_base(const char *cp)
 {
 	if (cp[0] == '0') {
-		if (TOLOWER(cp[1]) == 'x' && isxdigit(cp[2]))
+		if (_tolower(cp[1]) == 'x' && isxdigit(cp[2]))
 			return 16;
 		else
 			return 8;
@@ -59,13 +56,13 @@ unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int bas
 	if (!base)
 		base = simple_guess_base(cp);
 
-	if (base == 16 && cp[0] == '0' && TOLOWER(cp[1]) == 'x')
+	if (base == 16 && cp[0] == '0' && _tolower(cp[1]) == 'x')
 		cp += 2;
 
 	while (isxdigit(*cp)) {
 		unsigned int value;
 
-		value = isdigit(*cp) ? *cp - '0' : TOLOWER(*cp) - 'a' + 10;
+		value = isdigit(*cp) ? *cp - '0' : _tolower(*cp) - 'a' + 10;
 		if (value >= base)
 			break;
 		result = result * base + value;
@@ -119,153 +116,6 @@ long long simple_strtoll(const char *cp, char **endp, unsigned int base)
 	return simple_strtoull(cp, endp, base);
 }
 EXPORT_SYMBOL(simple_strtoll);
-
-/**
- * strict_strtoul - convert a string to an unsigned long strictly
- * @cp: The string to be converted
- * @base: The number base to use
- * @res: The converted result value
- *
- * strict_strtoul converts a string to an unsigned long only if the
- * string is really an unsigned long string, any string containing
- * any invalid char at the tail will be rejected and -EINVAL is returned,
- * only a newline char at the tail is acceptible because people generally
- * change a module parameter in the following way:
- *
- * 	echo 1024 > /sys/module/e1000/parameters/copybreak
- *
- * echo will append a newline to the tail.
- *
- * It returns 0 if conversion is successful and *res is set to the converted
- * value, otherwise it returns -EINVAL and *res is set to 0.
- *
- * simple_strtoul just ignores the successive invalid characters and
- * return the converted value of prefix part of the string.
- */
-int strict_strtoul(const char *cp, unsigned int base, unsigned long *res)
-{
-	char *tail;
-	unsigned long val;
-	size_t len;
-
-	*res = 0;
-	len = strlen(cp);
-	if (len == 0)
-		return -EINVAL;
-
-	val = simple_strtoul(cp, &tail, base);
-	if (tail == cp)
-		return -EINVAL;
-
-	if ((*tail == '\0') ||
-		((len == (size_t)(tail - cp) + 1) && (*tail == '\n'))) {
-		*res = val;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL(strict_strtoul);
-
-/**
- * strict_strtol - convert a string to a long strictly
- * @cp: The string to be converted
- * @base: The number base to use
- * @res: The converted result value
- *
- * strict_strtol is similiar to strict_strtoul, but it allows the first
- * character of a string is '-'.
- *
- * It returns 0 if conversion is successful and *res is set to the converted
- * value, otherwise it returns -EINVAL and *res is set to 0.
- */
-int strict_strtol(const char *cp, unsigned int base, long *res)
-{
-	int ret;
-	if (*cp == '-') {
-		ret = strict_strtoul(cp + 1, base, (unsigned long *)res);
-		if (!ret)
-			*res = -(*res);
-	} else {
-		ret = strict_strtoul(cp, base, (unsigned long *)res);
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL(strict_strtol);
-
-/**
- * strict_strtoull - convert a string to an unsigned long long strictly
- * @cp: The string to be converted
- * @base: The number base to use
- * @res: The converted result value
- *
- * strict_strtoull converts a string to an unsigned long long only if the
- * string is really an unsigned long long string, any string containing
- * any invalid char at the tail will be rejected and -EINVAL is returned,
- * only a newline char at the tail is acceptible because people generally
- * change a module parameter in the following way:
- *
- * 	echo 1024 > /sys/module/e1000/parameters/copybreak
- *
- * echo will append a newline to the tail of the string.
- *
- * It returns 0 if conversion is successful and *res is set to the converted
- * value, otherwise it returns -EINVAL and *res is set to 0.
- *
- * simple_strtoull just ignores the successive invalid characters and
- * return the converted value of prefix part of the string.
- */
-int strict_strtoull(const char *cp, unsigned int base, unsigned long long *res)
-{
-	char *tail;
-	unsigned long long val;
-	size_t len;
-
-	*res = 0;
-	len = strlen(cp);
-	if (len == 0)
-		return -EINVAL;
-
-	val = simple_strtoull(cp, &tail, base);
-	if (tail == cp)
-		return -EINVAL;
-	if ((*tail == '\0') ||
-		((len == (size_t)(tail - cp) + 1) && (*tail == '\n'))) {
-		*res = val;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL(strict_strtoull);
-
-/**
- * strict_strtoll - convert a string to a long long strictly
- * @cp: The string to be converted
- * @base: The number base to use
- * @res: The converted result value
- *
- * strict_strtoll is similiar to strict_strtoull, but it allows the first
- * character of a string is '-'.
- *
- * It returns 0 if conversion is successful and *res is set to the converted
- * value, otherwise it returns -EINVAL and *res is set to 0.
- */
-int strict_strtoll(const char *cp, unsigned int base, long long *res)
-{
-	int ret;
-	if (*cp == '-') {
-		ret = strict_strtoull(cp + 1, base, (unsigned long long *)res);
-		if (!ret)
-			*res = -(*res);
-	} else {
-		ret = strict_strtoull(cp, base, (unsigned long long *)res);
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL(strict_strtoll);
 
 static noinline_for_stack
 int skip_atoi(const char **s)
@@ -580,7 +430,9 @@ char *symbol_string(char *buf, char *end, void *ptr,
 	unsigned long value = (unsigned long) ptr;
 #ifdef CONFIG_KALLSYMS
 	char sym[KSYM_SYMBOL_LEN];
-	if (ext != 'f' && ext != 's')
+	if (ext == 'B')
+		sprint_backtrace(sym, value);
+	else if (ext != 'f' && ext != 's')
 		sprint_symbol(sym, value);
 	else
 		kallsyms_lookup(value, NULL, NULL, NULL, sym);
@@ -811,6 +663,8 @@ char *ip6_compressed_string(char *p, const char *addr)
 			colonpos = i;
 		}
 	}
+	if (longest == 1)		/* don't compress a single 0 */
+		colonpos = -1;
 
 	/* emit address */
 	for (i = 0; i < range; i++) {
@@ -942,6 +796,8 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
 	return string(buf, end, uuid, spec);
 }
 
+int kptr_restrict __read_mostly;
+
 /*
  * Show a '%p' thing.  A kernel extension is that the '%p' is followed
  * by an extra set of alphanumeric characters that are extended format
@@ -953,6 +809,7 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
  * - 'f' For simple symbolic function names without offset
  * - 'S' For symbolic direct pointers with offset
  * - 's' For symbolic direct pointers without offset
+ * - 'B' For backtraced symbolic direct pointers with offset
  * - 'R' For decoded struct resource, e.g., [mem 0x0-0x1f 64bit pref]
  * - 'r' For raw struct resource, e.g., [mem 0x0-0x1f flags 0x201]
  * - 'M' For a 6-byte MAC address, it prints the address in the
@@ -968,7 +825,7 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
  *       IPv4 uses dot-separated decimal with leading 0's (010.123.045.006)
  * - '[Ii]4[hnbl]' IPv4 addresses in host, network, big or little endian order
  * - 'I6c' for IPv6 addresses printed as specified by
- *       http://tools.ietf.org/html/draft-ietf-6man-text-addr-representation-00
+ *       http://tools.ietf.org/html/rfc5952
  * - 'U' For a 16 byte UUID/GUID, it prints the UUID/GUID in the form
  *       "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
  *       Options for %pU are:
@@ -980,6 +837,12 @@ char *uuid_string(char *buf, char *end, const u8 *addr,
  *             [0][1][2][3]-[4][5]-[6][7]-[8][9]-[10][11][12][13][14][15]
  *           little endian output byte order is:
  *             [3][2][1][0]-[5][4]-[7][6]-[8][9]-[10][11][12][13][14][15]
+ * - 'V' For a struct va_format which contains a format string * and va_list *,
+ *       call vsnprintf(->format, *->va_list).
+ *       Implements a "recursive vsnprintf".
+ *       Do not use this feature without some mechanism to verify the
+ *       correctness of the format string and va_list arguments.
+ * - 'K' For a kernel pointer that should be hidden from unprivileged users
  *
  * Note: The difference between 'S' and 'F' is that on ia64 and ppc64
  * function pointers are really function descriptors, which contain a
@@ -989,8 +852,15 @@ static noinline_for_stack
 char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 	      struct printf_spec spec)
 {
-	if (!ptr)
+	if (!ptr && *fmt != 'K') {
+		/*
+		 * Print (null) with the same width as a pointer so it makes
+		 * tabular output look nice.
+		 */
+		if (spec.field_width == -1)
+			spec.field_width = 2 * sizeof(void *);
 		return string(buf, end, "(null)", spec);
+	}
 
 	switch (*fmt) {
 	case 'F':
@@ -999,6 +869,7 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 		/* Fallthrough */
 	case 'S':
 	case 's':
+	case 'B':
 		return symbol_string(buf, end, ptr, spec, *fmt);
 	case 'R':
 	case 'r':
@@ -1025,10 +896,29 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 		break;
 	case 'U':
 		return uuid_string(buf, end, ptr, spec, fmt);
+	case 'V':
+		return buf + vsnprintf(buf, end > buf ? end - buf : 0,
+				       ((struct va_format *)ptr)->fmt,
+				       *(((struct va_format *)ptr)->va));
+	case 'K':
+		/*
+		 * %pK cannot be used in IRQ context because its test
+		 * for CAP_SYSLOG would be meaningless.
+		 */
+		if (in_irq() || in_serving_softirq() || in_nmi()) {
+			if (spec.field_width == -1)
+				spec.field_width = 2 * sizeof(void *);
+			return string(buf, end, "pK-error", spec);
+		}
+		if (!((kptr_restrict == 0) ||
+		      (kptr_restrict == 1 &&
+		       has_capability_noaudit(current, CAP_SYSLOG))))
+			ptr = NULL;
+		break;
 	}
 	spec.flags |= SMALL;
 	if (spec.field_width == -1) {
-		spec.field_width = 2*sizeof(void *);
+		spec.field_width = 2 * sizeof(void *);
 		spec.flags |= ZEROPAD;
 	}
 	spec.base = 16;
@@ -1143,8 +1033,8 @@ precision:
 qualifier:
 	/* get the conversion qualifier */
 	spec->qualifier = -1;
-	if (*fmt == 'h' || TOLOWER(*fmt) == 'l' ||
-	    TOLOWER(*fmt) == 'z' || *fmt == 't') {
+	if (*fmt == 'h' || _tolower(*fmt) == 'l' ||
+	    _tolower(*fmt) == 'z' || *fmt == 't') {
 		spec->qualifier = *fmt++;
 		if (unlikely(spec->qualifier == *fmt)) {
 			if (spec->qualifier == 'l') {
@@ -1211,7 +1101,7 @@ qualifier:
 			spec->type = FORMAT_TYPE_LONG;
 		else
 			spec->type = FORMAT_TYPE_ULONG;
-	} else if (TOLOWER(spec->qualifier) == 'z') {
+	} else if (_tolower(spec->qualifier) == 'z') {
 		spec->type = FORMAT_TYPE_SIZE_T;
 	} else if (spec->qualifier == 't') {
 		spec->type = FORMAT_TYPE_PTRDIFF;
@@ -1247,6 +1137,7 @@ qualifier:
  * %ps output the name of a text symbol without offset
  * %pF output the name of a function pointer with its offset
  * %pf output the name of a function pointer without its offset
+ * %pB output the name of a backtrace symbol with its offset
  * %pR output the address range in a struct resource with decoded flags
  * %pr output the address range in a struct resource with raw flags
  * %pM output a 6-byte MAC address with colons
@@ -1255,8 +1146,7 @@ qualifier:
  * %pi4 print an IPv4 address with leading zeros
  * %pI6 print an IPv6 address with colons
  * %pi6 print an IPv6 address without colons
- * %pI6c print an IPv6 address as specified by
- *   http://tools.ietf.org/html/draft-ietf-6man-text-addr-representation-00
+ * %pI6c print an IPv6 address as specified by RFC 5952
  * %pU[bBlL] print a UUID/GUID in big or little endian using lower or upper
  *   case.
  * %n is ignored
@@ -1269,8 +1159,7 @@ qualifier:
  * return is greater than or equal to @size, the resulting
  * string is truncated.
  *
- * Call this function if you are already dealing with a va_list.
- * You probably want snprintf() instead.
+ * If you're not already dealing with a va_list consider using snprintf().
  */
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
@@ -1370,7 +1259,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 			if (qualifier == 'l') {
 				long *ip = va_arg(args, long *);
 				*ip = (str - buf);
-			} else if (TOLOWER(qualifier) == 'z') {
+			} else if (_tolower(qualifier) == 'z') {
 				size_t *ip = va_arg(args, size_t *);
 				*ip = (str - buf);
 			} else {
@@ -1441,11 +1330,10 @@ EXPORT_SYMBOL(vsnprintf);
  * @args: Arguments for the format string
  *
  * The return value is the number of characters which have been written into
- * the @buf not including the trailing '\0'. If @size is <= 0 the function
+ * the @buf not including the trailing '\0'. If @size is == 0 the function
  * returns 0.
  *
- * Call this function if you are already dealing with a va_list.
- * You probably want scnprintf() instead.
+ * If you're not already dealing with a va_list consider using scnprintf().
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
@@ -1455,7 +1343,11 @@ int vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 
 	i = vsnprintf(buf, size, fmt, args);
 
-	return (i >= size) ? (size - 1) : i;
+	if (likely(i < size))
+		return i;
+	if (size != 0)
+		return size - 1;
+	return 0;
 }
 EXPORT_SYMBOL(vscnprintf);
 
@@ -1494,7 +1386,7 @@ EXPORT_SYMBOL(snprintf);
  * @...: Arguments for the format string
  *
  * The return value is the number of characters written into @buf not including
- * the trailing '\0'. If @size is <= 0 the function returns 0.
+ * the trailing '\0'. If @size is == 0 the function returns 0.
  */
 
 int scnprintf(char *buf, size_t size, const char *fmt, ...)
@@ -1503,10 +1395,10 @@ int scnprintf(char *buf, size_t size, const char *fmt, ...)
 	int i;
 
 	va_start(args, fmt);
-	i = vsnprintf(buf, size, fmt, args);
+	i = vscnprintf(buf, size, fmt, args);
 	va_end(args);
 
-	return (i >= size) ? (size - 1) : i;
+	return i;
 }
 EXPORT_SYMBOL(scnprintf);
 
@@ -1520,8 +1412,7 @@ EXPORT_SYMBOL(scnprintf);
  * into @buf. Use vsnprintf() or vscnprintf() in order to avoid
  * buffer overflows.
  *
- * Call this function if you are already dealing with a va_list.
- * You probably want sprintf() instead.
+ * If you're not already dealing with a va_list consider using sprintf().
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
@@ -1655,7 +1546,7 @@ do {									\
 			void *skip_arg;
 			if (qualifier == 'l')
 				skip_arg = va_arg(args, long *);
-			else if (TOLOWER(qualifier) == 'z')
+			else if (_tolower(qualifier) == 'z')
 				skip_arg = va_arg(args, size_t *);
 			else
 				skip_arg = va_arg(args, int *);
@@ -1961,8 +1852,8 @@ int vsscanf(const char *buf, const char *fmt, va_list args)
 
 		/* get conversion qualifier */
 		qualifier = -1;
-		if (*fmt == 'h' || TOLOWER(*fmt) == 'l' ||
-		    TOLOWER(*fmt) == 'z') {
+		if (*fmt == 'h' || _tolower(*fmt) == 'l' ||
+		    _tolower(*fmt) == 'z') {
 			qualifier = *fmt++;
 			if (unlikely(qualifier == *fmt)) {
 				if (qualifier == 'h') {

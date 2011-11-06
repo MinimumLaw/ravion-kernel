@@ -38,7 +38,7 @@ struct macio_dev
 {
 	struct macio_bus	*bus;		/* macio bus this device is on */
 	struct macio_dev	*media_bay;	/* Device is part of a media bay */
-	struct of_device	ofdev;
+	struct platform_device	ofdev;
 	struct device_dma_parameters dma_parms; /* ide needs that */
 	int			n_resources;
 	struct resource		resource[MACIO_DEV_COUNT_RESOURCES];
@@ -76,7 +76,7 @@ static inline unsigned long macio_resource_len(struct macio_dev *dev, int resour
 	struct resource *res = &dev->resource[resource_no];
 	if (res->start == 0 || res->end == 0 || res->end < res->start)
 		return 0;
-	return res->end - res->start + 1;
+	return resource_size(res);
 }
 
 extern int macio_enable_devres(struct macio_dev *dev);

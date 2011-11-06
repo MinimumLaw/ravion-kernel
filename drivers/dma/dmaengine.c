@@ -45,6 +45,7 @@
  * See Documentation/dmaengine.txt for more details
  */
 
+#include <linux/dma-mapping.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/mm.h>
@@ -61,9 +62,9 @@
 #include <linux/slab.h>
 
 static DEFINE_MUTEX(dma_list_mutex);
+static DEFINE_IDR(dma_idr);
 static LIST_HEAD(dma_device_list);
 static long dmaengine_ref_count;
-static struct idr dma_idr;
 
 /* --- sysfs implementation --- */
 
@@ -509,8 +510,8 @@ struct dma_chan *__dma_request_channel(dma_cap_mask_t *mask, dma_filter_fn fn, v
 					 dma_chan_name(chan));
 				list_del_rcu(&device->global_node);
 			} else if (err)
-				pr_err("dmaengine: failed to get %s: (%d)\n",
-				       dma_chan_name(chan), err);
+				pr_debug("dmaengine: failed to get %s: (%d)\n",
+					 dma_chan_name(chan), err);
 			else
 				break;
 			if (--device->privatecnt == 0)
@@ -690,8 +691,12 @@ int dma_async_device_register(struct dma_device *device)
 		!device->device_prep_dma_memset);
 	BUG_ON(dma_has_cap(DMA_INTERRUPT, device->cap_mask) &&
 		!device->device_prep_dma_interrupt);
+	BUG_ON(dma_has_cap(DMA_SG, device->cap_mask) &&
+		!device->device_prep_dma_sg);
 	BUG_ON(dma_has_cap(DMA_SLAVE, device->cap_mask) &&
 		!device->device_prep_slave_sg);
+	BUG_ON(dma_has_cap(DMA_CYCLIC, device->cap_mask) &&
+		!device->device_prep_dma_cyclic);
 	BUG_ON(dma_has_cap(DMA_SLAVE, device->cap_mask) &&
 		!device->device_control);
 
@@ -702,7 +707,7 @@ int dma_async_device_register(struct dma_device *device)
 	BUG_ON(!device->dev);
 
 	/* note: this only matters in the
-	 * CONFIG_ASYNC_TX_DISABLE_CHANNEL_SWITCH=y case
+	 * CONFIG_ASYNC_TX_ENABLE_CHANNEL_SWITCH=n case
 	 */
 	if (device_has_all_tx_types(device))
 		dma_cap_set(DMA_ASYNC_TX, device->cap_mask);
@@ -976,7 +981,7 @@ void dma_async_tx_descriptor_init(struct dma_async_tx_descriptor *tx,
 	struct dma_chan *chan)
 {
 	tx->chan = chan;
-	#ifndef CONFIG_ASYNC_TX_DISABLE_CHANNEL_SWITCH
+	#ifdef CONFIG_ASYNC_TX_ENABLE_CHANNEL_SWITCH
 	spin_lock_init(&tx->lock);
 	#endif
 }
@@ -1045,8 +1050,6 @@ EXPORT_SYMBOL_GPL(dma_run_dependencies);
 
 static int __init dma_bus_init(void)
 {
-	idr_init(&dma_idr);
-	mutex_init(&dma_list_mutex);
 	return class_register(&dma_devclass);
 }
 arch_initcall(dma_bus_init);

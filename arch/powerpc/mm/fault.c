@@ -30,6 +30,8 @@
 #include <linux/kprobes.h>
 #include <linux/kdebug.h>
 #include <linux/perf_event.h>
+#include <linux/magic.h>
+#include <linux/ratelimit.h>
 
 #include <asm/firmware.h>
 #include <asm/page.h>
@@ -172,7 +174,7 @@ int __kprobes do_page_fault(struct pt_regs *regs, unsigned long address,
 		die("Weird page fault", regs, SIGSEGV);
 	}
 
-	perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS, 1, 0, regs, address);
+	perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS, 1, regs, address);
 
 	/* When running in the kernel we expect faults to occur only to
 	 * addresses in user space.  All other faults represent errors in the
@@ -318,7 +320,7 @@ good_area:
 	}
 	if (ret & VM_FAULT_MAJOR) {
 		current->maj_flt++;
-		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MAJ, 1, 0,
+		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MAJ, 1,
 				     regs, address);
 #ifdef CONFIG_PPC_SMLPAR
 		if (firmware_has_feature(FW_FEATURE_CMO)) {
@@ -329,7 +331,7 @@ good_area:
 #endif
 	} else {
 		current->min_flt++;
-		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MIN, 1, 0,
+		perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS_MIN, 1,
 				     regs, address);
 	}
 	up_read(&mm->mmap_sem);
@@ -345,11 +347,10 @@ bad_area_nosemaphore:
 		return 0;
 	}
 
-	if (is_exec && (error_code & DSISR_PROTFAULT)
-	    && printk_ratelimit())
-		printk(KERN_CRIT "kernel tried to execute NX-protected"
-		       " page (%lx) - exploit attempt? (uid: %d)\n",
-		       address, current_uid());
+	if (is_exec && (error_code & DSISR_PROTFAULT))
+		printk_ratelimited(KERN_CRIT "kernel tried to execute NX-protected"
+				   " page (%lx) - exploit attempt? (uid: %d)\n",
+				   address, current_uid());
 
 	return SIGSEGV;
 
@@ -385,6 +386,7 @@ do_sigbus:
 void bad_page_fault(struct pt_regs *regs, unsigned long address, int sig)
 {
 	const struct exception_table_entry *entry;
+	unsigned long *stackend;
 
 	/* Are we prepared to handle this fault?  */
 	if ((entry = search_exception_tables(regs->nip)) != NULL) {
@@ -412,6 +414,10 @@ void bad_page_fault(struct pt_regs *regs, unsigned long address, int sig)
 	}
 	printk(KERN_ALERT "Faulting instruction address: 0x%08lx\n",
 		regs->nip);
+
+	stackend = end_of_stack(current);
+	if (current != &init_task && *stackend != STACK_END_MAGIC)
+		printk(KERN_ALERT "Thread overran stack, or stack corrupted\n");
 
 	die("Kernel access of bad area", regs, sig);
 }

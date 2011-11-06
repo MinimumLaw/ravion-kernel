@@ -87,7 +87,7 @@ nomem:
 static struct iw_statistics *orinoco_get_wireless_stats(struct net_device *dev)
 {
 	struct orinoco_private *priv = ndev_priv(dev);
-	hermes_t *hw = &priv->hw;
+	struct hermes *hw = &priv->hw;
 	struct iw_statistics *wstats = &priv->wstats;
 	int err;
 	unsigned long flags;
@@ -128,7 +128,7 @@ static struct iw_statistics *orinoco_get_wireless_stats(struct net_device *dev)
 	} else {
 		struct {
 			__le16 qual, signal, noise, unused;
-		} __attribute__ ((packed)) cq;
+		} __packed cq;
 
 		err = HERMES_READ_RECORD(hw, USER_BAP,
 					 HERMES_RID_COMMSQUALITY, &cq);
@@ -448,7 +448,7 @@ static int orinoco_ioctl_setfreq(struct net_device *dev,
 	}
 
 	if ((chan < 1) || (chan > NUM_CHANNELS) ||
-	     !(priv->channel_mask & (1 << (chan-1))))
+	     !(priv->channel_mask & (1 << (chan - 1))))
 		return -EINVAL;
 
 	if (orinoco_lock(priv, &flags) != 0)
@@ -457,7 +457,7 @@ static int orinoco_ioctl_setfreq(struct net_device *dev,
 	priv->channel = chan;
 	if (priv->iw_mode == NL80211_IFTYPE_MONITOR) {
 		/* Fast channel change - no commit if successful */
-		hermes_t *hw = &priv->hw;
+		struct hermes *hw = &priv->hw;
 		err = hw->ops->cmd_wait(hw, HERMES_CMD_TEST |
 					    HERMES_TEST_SET_CHANNEL,
 					chan, NULL);
@@ -492,7 +492,7 @@ static int orinoco_ioctl_getsens(struct net_device *dev,
 				 char *extra)
 {
 	struct orinoco_private *priv = ndev_priv(dev);
-	hermes_t *hw = &priv->hw;
+	struct hermes *hw = &priv->hw;
 	u16 val;
 	int err;
 	unsigned long flags;
@@ -589,8 +589,15 @@ static int orinoco_ioctl_getrate(struct net_device *dev,
 
 	/* If the interface is running we try to find more about the
 	   current mode */
-	if (netif_running(dev))
-		err = orinoco_hw_get_act_bitrate(priv, &bitrate);
+	if (netif_running(dev)) {
+		int act_bitrate;
+		int lerr;
+
+		/* Ignore errors if we can't get the actual bitrate */
+		lerr = orinoco_hw_get_act_bitrate(priv, &act_bitrate);
+		if (!lerr)
+			bitrate = act_bitrate;
+	}
 
 	orinoco_unlock(priv, &flags);
 
@@ -661,7 +668,7 @@ static int orinoco_ioctl_getpower(struct net_device *dev,
 				  char *extra)
 {
 	struct orinoco_private *priv = ndev_priv(dev);
-	hermes_t *hw = &priv->hw;
+	struct hermes *hw = &priv->hw;
 	int err = 0;
 	u16 enable, period, timeout, mcast;
 	unsigned long flags;
@@ -866,7 +873,7 @@ static int orinoco_ioctl_set_auth(struct net_device *dev,
 				  union iwreq_data *wrqu, char *extra)
 {
 	struct orinoco_private *priv = ndev_priv(dev);
-	hermes_t *hw = &priv->hw;
+	struct hermes *hw = &priv->hw;
 	struct iw_param *param = &wrqu->param;
 	unsigned long flags;
 	int ret = -EINPROGRESS;
@@ -884,6 +891,14 @@ static int orinoco_ioctl_set_auth(struct net_device *dev,
 		/*
 		 * orinoco does not use these parameters
 		 */
+		break;
+
+	case IW_AUTH_MFP:
+		/* Management Frame Protection not supported.
+		 * Only fail if set to required.
+		 */
+		if (param->value == IW_AUTH_MFP_REQUIRED)
+			ret = -EINVAL;
 		break;
 
 	case IW_AUTH_KEY_MGMT:
@@ -993,11 +1008,9 @@ static int orinoco_ioctl_set_genie(struct net_device *dev,
 		return -EINVAL;
 
 	if (wrqu->data.length) {
-		buf = kmalloc(wrqu->data.length, GFP_KERNEL);
+		buf = kmemdup(extra, wrqu->data.length, GFP_KERNEL);
 		if (buf == NULL)
 			return -ENOMEM;
-
-		memcpy(buf, extra, wrqu->data.length);
 	} else
 		buf = NULL;
 
@@ -1256,7 +1269,7 @@ static int orinoco_ioctl_getrid(struct net_device *dev,
 				char *extra)
 {
 	struct orinoco_private *priv = ndev_priv(dev);
-	hermes_t *hw = &priv->hw;
+	struct hermes *hw = &priv->hw;
 	int rid = data->flags;
 	u16 length;
 	int err;

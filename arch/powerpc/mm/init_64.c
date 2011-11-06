@@ -79,37 +79,9 @@
 #endif /* CONFIG_PPC_STD_MMU_64 */
 
 phys_addr_t memstart_addr = ~0;
+EXPORT_SYMBOL_GPL(memstart_addr);
 phys_addr_t kernstart_addr;
-
-void free_initmem(void)
-{
-	unsigned long addr;
-
-	addr = (unsigned long)__init_begin;
-	for (; addr < (unsigned long)__init_end; addr += PAGE_SIZE) {
-		memset((void *)addr, POISON_FREE_INITMEM, PAGE_SIZE);
-		ClearPageReserved(virt_to_page(addr));
-		init_page_count(virt_to_page(addr));
-		free_page(addr);
-		totalram_pages++;
-	}
-	printk ("Freeing unused kernel memory: %luk freed\n",
-		((unsigned long)__init_end - (unsigned long)__init_begin) >> 10);
-}
-
-#ifdef CONFIG_BLK_DEV_INITRD
-void free_initrd_mem(unsigned long start, unsigned long end)
-{
-	if (start < end)
-		printk ("Freeing initrd memory: %ldk freed\n", (end - start) >> 10);
-	for (; start < end; start += PAGE_SIZE) {
-		ClearPageReserved(virt_to_page(start));
-		init_page_count(virt_to_page(start));
-		free_page(start);
-		totalram_pages++;
-	}
-}
-#endif
+EXPORT_SYMBOL_GPL(kernstart_addr);
 
 static void pgd_ctor(void *addr)
 {
@@ -328,3 +300,4 @@ int __meminit vmemmap_populate(struct page *start_page,
 	return 0;
 }
 #endif /* CONFIG_SPARSEMEM_VMEMMAP */
+

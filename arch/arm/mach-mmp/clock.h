@@ -6,12 +6,13 @@
  *  published by the Free Software Foundation.
  */
 
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
 
 struct clkops {
 	void			(*enable)(struct clk *);
 	void			(*disable)(struct clk *);
 	unsigned long		(*getrate)(struct clk *);
+	int			(*setrate)(struct clk *, unsigned long);
 };
 
 struct clk {

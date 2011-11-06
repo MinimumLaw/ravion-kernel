@@ -114,7 +114,7 @@ static void tx4939ide_set_pio_mode(ide_hwif_t *hwif, ide_drive_t *drive)
 
 	pair = ide_get_pair_dev(drive);
 	if (pair)
-		safe = min(safe, pair->pio_mode - XFER_PIO_0);
+		safe = min_t(u8, safe, pair->pio_mode - XFER_PIO_0);
 	/*
 	 * Update Command Transfer Mode for master/slave and Data
 	 * Transfer Mode for this drive.
@@ -551,10 +551,10 @@ static int __init tx4939ide_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	if (!devm_request_mem_region(&pdev->dev, res->start,
-				     res->end - res->start + 1, "tx4938ide"))
+				     resource_size(res), "tx4938ide"))
 		return -EBUSY;
 	mapbase = (unsigned long)devm_ioremap(&pdev->dev, res->start,
-					      res->end - res->start + 1);
+					      resource_size(res));
 	if (!mapbase)
 		return -EBUSY;
 	memset(&hw, 0, sizeof(hw));

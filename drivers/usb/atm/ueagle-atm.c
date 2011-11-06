@@ -67,6 +67,7 @@
 #include <linux/mutex.h>
 #include <linux/freezer.h>
 #include <linux/slab.h>
+#include <linux/kernel.h>
 
 #include <asm/unaligned.h>
 
@@ -115,14 +116,14 @@ struct uea_cmvs_v1 {
 	u32 address;
 	u16 offset;
 	u32 data;
-} __attribute__ ((packed));
+} __packed;
 
 struct uea_cmvs_v2 {
 	u32 group;
 	u32 address;
 	u32 offset;
 	u32 data;
-} __attribute__ ((packed));
+} __packed;
 
 /* information about currently processed cmv */
 struct cmv_dsc_e1 {
@@ -167,7 +168,6 @@ struct uea_softc {
 	union cmv_dsc cmv_dsc;
 
 	struct work_struct task;
-	struct workqueue_struct *work_q;
 	u16 pageno;
 	u16 ovl;
 
@@ -352,7 +352,7 @@ struct block_index {
 	__le32 PageAddress;
 	__le16 dummy1;
 	__le16 PageNumber;
-} __attribute__ ((packed));
+} __packed;
 
 #define E4_IS_BOOT_PAGE(PageSize) ((le32_to_cpu(PageSize)) & 0x80000000)
 #define E4_PAGE_BYTES(PageSize) ((le32_to_cpu(PageSize) & 0x7fffffff) * 4)
@@ -367,7 +367,7 @@ struct l1_code {
 	u8 page_number_to_block_index[E4_MAX_PAGE_NUMBER];
 	struct block_index page_header[E4_NO_SWAPPAGE_HEADERS];
 	u8 code[0];
-} __attribute__ ((packed));
+} __packed;
 
 /* structures describing a block within a DSP page */
 struct block_info_e1 {
@@ -377,7 +377,7 @@ struct block_info_e1 {
 	__le16 wOvlOffset;
 	__le16 wOvl;		/* overlay */
 	__le16 wLast;
-} __attribute__ ((packed));
+} __packed;
 #define E1_BLOCK_INFO_SIZE 12
 
 struct block_info_e4 {
@@ -387,7 +387,7 @@ struct block_info_e4 {
 	__be32 dwSize;
 	__be32 dwAddress;
 	__be16 wReserved;
-} __attribute__ ((packed));
+} __packed;
 #define E4_BLOCK_INFO_SIZE 14
 
 #define UEA_BIHDR 0xabcd
@@ -467,7 +467,7 @@ struct cmv_e1 {
 	__le32 dwSymbolicAddress;
 	__le16 wOffsetAddress;
 	__le32 dwData;
-} __attribute__ ((packed));
+} __packed;
 
 struct cmv_e4 {
 	__be16 wGroup;
@@ -475,17 +475,17 @@ struct cmv_e4 {
 	__be16 wOffset;
 	__be16 wAddress;
 	__be32 dwData[6];
-} __attribute__ ((packed));
+} __packed;
 
 /* structures representing swap information */
 struct swap_info_e1 {
 	__u8 bSwapPageNo;
 	__u8 bOvl;		/* overlay */
-} __attribute__ ((packed));
+} __packed;
 
 struct swap_info_e4 {
 	__u8 bSwapPageNo;
-} __attribute__ ((packed));
+} __packed;
 
 /* structures representing interrupt data */
 #define e1_bSwapPageNo	u.e1.s1.swapinfo.bSwapPageNo
@@ -499,23 +499,23 @@ union intr_data_e1 {
 	struct {
 		struct swap_info_e1 swapinfo;
 		__le16 wDataSize;
-	} __attribute__ ((packed)) s1;
+	} __packed s1;
 	struct {
 		struct cmv_e1 cmv;
 		__le16 wDataSize;
-	} __attribute__ ((packed)) s2;
-} __attribute__ ((packed));
+	} __packed s2;
+} __packed;
 
 union intr_data_e4 {
 	struct {
 		struct swap_info_e4 swapinfo;
 		__le16 wDataSize;
-	} __attribute__ ((packed)) s1;
+	} __packed s1;
 	struct {
 		struct cmv_e4 cmv;
 		__le16 wDataSize;
-	} __attribute__ ((packed)) s2;
-} __attribute__ ((packed));
+	} __packed s2;
+} __packed;
 
 struct intr_pkt {
 	__u8 bType;
@@ -528,15 +528,15 @@ struct intr_pkt {
 		union intr_data_e1 e1;
 		union intr_data_e4 e4;
 	} u;
-} __attribute__ ((packed));
+} __packed;
 
 #define E1_INTR_PKT_SIZE 28
 #define E4_INTR_PKT_SIZE 64
 
 static struct usb_driver uea_driver;
 static DEFINE_MUTEX(uea_mutex);
-static const char *chip_name[] = {"ADI930", "Eagle I", "Eagle II", "Eagle III",
-								"Eagle IV"};
+static const char * const chip_name[] = {
+	"ADI930", "Eagle I", "Eagle II", "Eagle III", "Eagle IV"};
 
 static int modem_index;
 static unsigned int debug;
@@ -574,6 +574,13 @@ MODULE_PARM_DESC(annex,
 		if (sc->usbatm->atm_dev) \
 			sc->usbatm->atm_dev->type = val; \
 	} while (0)
+
+#define UPDATE_ATM_SIGNAL(val) \
+	do { \
+		if (sc->usbatm->atm_dev) \
+			atm_dev_signal_change(sc->usbatm->atm_dev, val); \
+	} while (0)
+
 
 /* Firmware loading */
 #define LOAD_INTERNAL     0xA0
@@ -1276,7 +1283,7 @@ static void uea_set_bulk_timeout(struct uea_softc *sc, u32 dsrate)
 
 	/* in bulk mode the modem have problem with high rate
 	 * changing internal timing could improve things, but the
-	 * value is misterious.
+	 * value is mysterious.
 	 * ADI930 don't support it (-EPIPE error).
 	 */
 
@@ -1359,7 +1366,7 @@ static int uea_stat_e1(struct uea_softc *sc)
 	/* always update it as atm layer could not be init when we switch to
 	 * operational state
 	 */
-	UPDATE_ATM_STAT(signal, ATM_PHY_SIG_FOUND);
+	UPDATE_ATM_SIGNAL(ATM_PHY_SIG_FOUND);
 
 	/* wake up processes waiting for synchronization */
 	wake_up(&sc->sync_q);
@@ -1498,7 +1505,7 @@ static int uea_stat_e4(struct uea_softc *sc)
 	/* always update it as atm layer could not be init when we switch to
 	 * operational state
 	 */
-	UPDATE_ATM_STAT(signal, ATM_PHY_SIG_FOUND);
+	UPDATE_ATM_SIGNAL(ATM_PHY_SIG_FOUND);
 
 	/* wake up processes waiting for synchronization */
 	wake_up(&sc->sync_q);
@@ -1569,6 +1576,7 @@ static void cmvs_file_name(struct uea_softc *sc, char *const cmv_name, int ver)
 	char file_arr[] = "CMVxy.bin";
 	char *file;
 
+	kparam_block_sysfs_write(cmv_file);
 	/* set proper name corresponding modem version and line type */
 	if (cmv_file[sc->modem_index] == NULL) {
 		if (UEA_CHIP_VERSION(sc) == ADI930)
@@ -1587,6 +1595,7 @@ static void cmvs_file_name(struct uea_softc *sc, char *const cmv_name, int ver)
 	strlcat(cmv_name, file, UEA_FW_NAME_MAX);
 	if (ver == 2)
 		strlcat(cmv_name, ".v2", UEA_FW_NAME_MAX);
+	kparam_unblock_sysfs_write(cmv_file);
 }
 
 static int request_cmvs_old(struct uea_softc *sc,
@@ -1734,7 +1743,7 @@ static int uea_send_cmvs_e1(struct uea_softc *sc)
 				goto out;
 		}
 	} else {
-		/* This realy should not happen */
+		/* This really should not happen */
 		uea_err(INS_TO_USBDEV(sc), "bad cmvs version %d\n", ver);
 		goto out;
 	}
@@ -1789,7 +1798,7 @@ static int uea_send_cmvs_e4(struct uea_softc *sc)
 				goto out;
 		}
 	} else {
-		/* This realy should not happen */
+		/* This really should not happen */
 		uea_err(INS_TO_USBDEV(sc), "bad cmvs version %d\n", ver);
 		goto out;
 	}
@@ -1820,12 +1829,12 @@ static int uea_start_reset(struct uea_softc *sc)
 
 	/* mask interrupt */
 	sc->booting = 1;
-	/* We need to set this here because, a ack timeout could have occured,
+	/* We need to set this here because, a ack timeout could have occurred,
 	 * but before we start the reboot, the ack occurs and set this to 1.
 	 * So we will failed to wait Ready CMV.
 	 */
 	sc->cmv_ack = 0;
-	UPDATE_ATM_STAT(signal, ATM_PHY_SIG_LOST);
+	UPDATE_ATM_SIGNAL(ATM_PHY_SIG_LOST);
 
 	/* reset statistics */
 	memset(&sc->stats, 0, sizeof(struct uea_stats));
@@ -1869,7 +1878,7 @@ static int uea_start_reset(struct uea_softc *sc)
 	/* start loading DSP */
 	sc->pageno = 0;
 	sc->ovl = 0;
-	queue_work(sc->work_q, &sc->task);
+	schedule_work(&sc->task);
 
 	/* wait for modem ready CMV */
 	ret = wait_cmv_ack(sc);
@@ -2081,14 +2090,14 @@ static void uea_schedule_load_page_e1(struct uea_softc *sc,
 {
 	sc->pageno = intr->e1_bSwapPageNo;
 	sc->ovl = intr->e1_bOvl >> 4 | intr->e1_bOvl << 4;
-	queue_work(sc->work_q, &sc->task);
+	schedule_work(&sc->task);
 }
 
 static void uea_schedule_load_page_e4(struct uea_softc *sc,
 						struct intr_pkt *intr)
 {
 	sc->pageno = intr->e4_bSwapPageNo;
-	queue_work(sc->work_q, &sc->task);
+	schedule_work(&sc->task);
 }
 
 /*
@@ -2160,13 +2169,6 @@ static int uea_boot(struct uea_softc *sc)
 
 	init_waitqueue_head(&sc->sync_q);
 
-	sc->work_q = create_workqueue("ueagle-dsp");
-	if (!sc->work_q) {
-		uea_err(INS_TO_USBDEV(sc), "cannot allocate workqueue\n");
-		uea_leaves(INS_TO_USBDEV(sc));
-		return -ENOMEM;
-	}
-
 	if (UEA_CHIP_VERSION(sc) == ADI930)
 		load_XILINX_firmware(sc);
 
@@ -2196,8 +2198,11 @@ static int uea_boot(struct uea_softc *sc)
 		goto err1;
 	}
 
-	sc->kthread = kthread_run(uea_kthread, sc, "ueagle-atm");
-	if (sc->kthread == ERR_PTR(-ENOMEM)) {
+	/* Create worker thread, but don't start it here.  Start it after
+	 * all usbatm generic initialization is done.
+	 */
+	sc->kthread = kthread_create(uea_kthread, sc, "ueagle-atm");
+	if (IS_ERR(sc->kthread)) {
 		uea_err(INS_TO_USBDEV(sc), "failed to create thread\n");
 		goto err2;
 	}
@@ -2212,7 +2217,6 @@ err1:
 	sc->urb_int = NULL;
 	kfree(intr);
 err0:
-	destroy_workqueue(sc->work_q);
 	uea_leaves(INS_TO_USBDEV(sc));
 	return -ENOMEM;
 }
@@ -2233,8 +2237,8 @@ static void uea_stop(struct uea_softc *sc)
 	kfree(sc->urb_int->transfer_buffer);
 	usb_free_urb(sc->urb_int);
 
-	/* stop any pending boot process, when no one can schedule work */
-	destroy_workqueue(sc->work_q);
+	/* flush the work item, when no one can schedule it */
+	flush_work_sync(&sc->task);
 
 	if (sc->dsp_firm)
 		release_firmware(sc->dsp_firm);
@@ -2428,7 +2432,6 @@ UEA_ATTR(firmid, 0);
 
 /* Retrieve the device End System Identifier (MAC) */
 
-#define htoi(x) (isdigit(x) ? x-'0' : toupper(x)-'A'+10)
 static int uea_getesi(struct uea_softc *sc, u_char * esi)
 {
 	unsigned char mac_str[2 * ETH_ALEN + 1];
@@ -2439,7 +2442,8 @@ static int uea_getesi(struct uea_softc *sc, u_char * esi)
 		return 1;
 
 	for (i = 0; i < ETH_ALEN; i++)
-		esi[i] = htoi(mac_str[2 * i]) * 16 + htoi(mac_str[2 * i + 1]);
+		esi[i] = hex_to_bin(mac_str[2 * i]) * 16 +
+			 hex_to_bin(mac_str[2 * i + 1]);
 
 	return 0;
 }
@@ -2614,6 +2618,7 @@ static struct usbatm_driver uea_usbatm_driver = {
 static int uea_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {
 	struct usb_device *usb = interface_to_usbdev(intf);
+	int ret;
 
 	uea_enters(usb);
 	uea_info(usb, "ADSL device founded vid (%#X) pid (%#X) Rev (%#X): %s\n",
@@ -2627,7 +2632,19 @@ static int uea_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	if (UEA_IS_PREFIRM(id))
 		return uea_load_firmware(usb, UEA_CHIP_VERSION(id));
 
-	return usbatm_usb_probe(intf, id, &uea_usbatm_driver);
+	ret = usbatm_usb_probe(intf, id, &uea_usbatm_driver);
+	if (ret == 0) {
+		struct usbatm_data *usbatm = usb_get_intfdata(intf);
+		struct uea_softc *sc = usbatm->driver_data;
+
+		/* Ensure carrier is initialized to off as early as possible */
+		UPDATE_ATM_SIGNAL(ATM_PHY_SIG_LOST);
+
+		/* Only start the worker thread when all init is done */
+		wake_up_process(sc->kthread);
+	}
+
+	return ret;
 }
 
 static void uea_disconnect(struct usb_interface *intf)

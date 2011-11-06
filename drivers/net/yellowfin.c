@@ -442,19 +442,19 @@ static int __devinit yellowfin_init_one(struct pci_dev *pdev,
 	ring_space = pci_alloc_consistent(pdev, TX_TOTAL_SIZE, &ring_dma);
 	if (!ring_space)
 		goto err_out_cleardev;
-	np->tx_ring = (struct yellowfin_desc *)ring_space;
+	np->tx_ring = ring_space;
 	np->tx_ring_dma = ring_dma;
 
 	ring_space = pci_alloc_consistent(pdev, RX_TOTAL_SIZE, &ring_dma);
 	if (!ring_space)
 		goto err_out_unmap_tx;
-	np->rx_ring = (struct yellowfin_desc *)ring_space;
+	np->rx_ring = ring_space;
 	np->rx_ring_dma = ring_dma;
 
 	ring_space = pci_alloc_consistent(pdev, STATUS_TOTAL_SIZE, &ring_dma);
 	if (!ring_space)
 		goto err_out_unmap_rx;
-	np->tx_status = (struct tx_status_words *)ring_space;
+	np->tx_status = ring_space;
 	np->tx_status_dma = ring_dma;
 
 	if (dev->mem_start)
@@ -646,7 +646,7 @@ static int yellowfin_open(struct net_device *dev)
 	init_timer(&yp->timer);
 	yp->timer.expires = jiffies + 3*HZ;
 	yp->timer.data = (unsigned long)dev;
-	yp->timer.function = &yellowfin_timer;				/* timer handler */
+	yp->timer.function = yellowfin_timer;				/* timer handler */
 	add_timer(&yp->timer);
 
 	return 0;
@@ -744,7 +744,7 @@ static int yellowfin_init_ring(struct net_device *dev)
 	}
 
 	for (i = 0; i < RX_RING_SIZE; i++) {
-		struct sk_buff *skb = dev_alloc_skb(yp->rx_buf_sz);
+		struct sk_buff *skb = dev_alloc_skb(yp->rx_buf_sz + 2);
 		yp->rx_skbuff[i] = skb;
 		if (skb == NULL)
 			break;
@@ -1157,7 +1157,7 @@ static int yellowfin_rx(struct net_device *dev)
 	for (; yp->cur_rx - yp->dirty_rx > 0; yp->dirty_rx++) {
 		entry = yp->dirty_rx % RX_RING_SIZE;
 		if (yp->rx_skbuff[entry] == NULL) {
-			struct sk_buff *skb = dev_alloc_skb(yp->rx_buf_sz);
+			struct sk_buff *skb = dev_alloc_skb(yp->rx_buf_sz + 2);
 			if (skb == NULL)
 				break;				/* Better luck next round. */
 			yp->rx_skbuff[entry] = skb;

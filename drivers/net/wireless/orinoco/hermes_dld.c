@@ -65,10 +65,10 @@ struct dblock {
 	__le32 addr;		/* adapter address where to write the block */
 	__le16 len;		/* length of the data only, in bytes */
 	char data[0];		/* data to be written */
-} __attribute__ ((packed));
+} __packed;
 
 /*
- * Plug Data References are located in in the image after the last data
+ * Plug Data References are located in the image after the last data
  * block.  They refer to areas in the adapter memory where the plug data
  * items with matching ID should be written.
  */
@@ -77,7 +77,7 @@ struct pdr {
 	__le32 addr;		/* adapter address where to write the data */
 	__le32 len;		/* expected length of the data, in bytes */
 	char next[0];		/* next PDR starts here */
-} __attribute__ ((packed));
+} __packed;
 
 /*
  * Plug Data Items are located in the EEPROM read from the adapter by
@@ -88,7 +88,7 @@ struct pdi {
 	__le16 len;		/* length of ID and data, in words */
 	__le16 id;		/* record ID */
 	char data[0];		/* plug data */
-} __attribute__ ((packed));
+} __packed;
 
 /*** FW data block access functions ***/
 
@@ -193,7 +193,7 @@ hermes_find_pdi(const struct pdi *first_pdi, u32 record_id, const void *end)
 
 /* Process one Plug Data Item - find corresponding PDR and plug it */
 static int
-hermes_plug_pdi(hermes_t *hw, const struct pdr *first_pdr,
+hermes_plug_pdi(struct hermes *hw, const struct pdr *first_pdr,
 		const struct pdi *pdi, const void *pdr_end)
 {
 	const struct pdr *pdr;
@@ -220,7 +220,7 @@ hermes_plug_pdi(hermes_t *hw, const struct pdr *first_pdr,
  * Attempt to write every records that is in the specified pda
  * which also has a valid production data record for the firmware.
  */
-int hermes_apply_pda(hermes_t *hw,
+int hermes_apply_pda(struct hermes *hw,
 		     const char *first_pdr,
 		     const void *pdr_end,
 		     const __le16 *pda,
@@ -274,7 +274,7 @@ hermes_blocks_length(const char *first_block, const void *end)
 /*** Hermes programming ***/
 
 /* Program the data blocks */
-int hermes_program(hermes_t *hw, const char *first_block, const void *end)
+int hermes_program(struct hermes *hw, const char *first_block, const void *end)
 {
 	const struct dblock *blk;
 	u32 blkaddr;
@@ -317,7 +317,7 @@ static const struct {							\
 	__le16 len;							\
 	__le16 id;							\
 	u8 val[length];							\
-} __attribute__ ((packed)) default_pdr_data_##pid = {			\
+} __packed default_pdr_data_##pid = {			\
 	cpu_to_le16((sizeof(default_pdr_data_##pid)/			\
 				sizeof(__le16)) - 1),			\
 	cpu_to_le16(pid),						\
@@ -387,7 +387,7 @@ DEFINE_DEFAULT_PDR(0x0161, 256,
  *
  * For certain records, use defaults if they are not found in pda.
  */
-int hermes_apply_pda_with_defaults(hermes_t *hw,
+int hermes_apply_pda_with_defaults(struct hermes *hw,
 				   const char *first_pdr,
 				   const void *pdr_end,
 				   const __le16 *pda,

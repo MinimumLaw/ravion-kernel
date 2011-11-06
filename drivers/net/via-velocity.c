@@ -45,6 +45,7 @@
 
 #include <linux/module.h>
 #include <linux/types.h>
+#include <linux/bitops.h>
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/errno.h>
@@ -292,7 +293,7 @@ VELOCITY_PARAM(DMA_length, "DMA length");
 /* IP_byte_align[] is used for IP header DWORD byte aligned
    0: indicate the IP header won't be DWORD byte aligned.(Default) .
    1: indicate the IP header will be DWORD byte aligned.
-      In some enviroment, the IP header should be DWORD byte aligned,
+      In some environment, the IP header should be DWORD byte aligned,
       or the packet will be droped when we receive it. (eg: IPVS)
 */
 VELOCITY_PARAM(IP_byte_align, "Enable IP header dword aligned");
@@ -312,13 +313,14 @@ VELOCITY_PARAM(flow_control, "Enable flow control ability");
 
 #define MED_LNK_DEF 0
 #define MED_LNK_MIN 0
-#define MED_LNK_MAX 4
+#define MED_LNK_MAX 5
 /* speed_duplex[] is used for setting the speed and duplex mode of NIC.
    0: indicate autonegotiation for both speed and duplex mode
    1: indicate 100Mbps half duplex mode
    2: indicate 100Mbps full duplex mode
    3: indicate 10Mbps half duplex mode
    4: indicate 10Mbps full duplex mode
+   5: indicate 1000Mbps full duplex mode
 
    Note:
    if EEPROM have been set to the force mode, this option is ignored
@@ -500,6 +502,7 @@ static void __devinit velocity_get_options(struct velocity_opt *opts, int index,
 static void velocity_init_cam_filter(struct velocity_info *vptr)
 {
 	struct mac_regs __iomem *regs = vptr->mac_regs;
+	unsigned int vid, i = 0;
 
 	/* Turn on MCFG_PQEN, turn off MCFG_RTGOPT */
 	WORD_REG_BITS_SET(MCFG_PQEN, MCFG_RTGOPT, &regs->MCFG);
@@ -512,30 +515,13 @@ static void velocity_init_cam_filter(struct velocity_info *vptr)
 	mac_set_cam_mask(regs, vptr->mCAMmask);
 
 	/* Enable VCAMs */
-	if (vptr->vlgrp) {
-		unsigned int vid, i = 0;
-
-		if (!vlan_group_get_device(vptr->vlgrp, 0))
-			WORD_REG_BITS_ON(MCFG_RTGOPT, &regs->MCFG);
-
-		for (vid = 1; (vid < VLAN_VID_MASK); vid++) {
-			if (vlan_group_get_device(vptr->vlgrp, vid)) {
-				mac_set_vlan_cam(regs, i, (u8 *) &vid);
-				vptr->vCAMmask[i / 8] |= 0x1 << (i % 8);
-				if (++i >= VCAM_SIZE)
-					break;
-			}
-		}
-		mac_set_vlan_cam_mask(regs, vptr->vCAMmask);
+	for_each_set_bit(vid, vptr->active_vlans, VLAN_N_VID) {
+		mac_set_vlan_cam(regs, i, (u8 *) &vid);
+		vptr->vCAMmask[i / 8] |= 0x1 << (i % 8);
+		if (++i >= VCAM_SIZE)
+			break;
 	}
-}
-
-static void velocity_vlan_rx_register(struct net_device *dev,
-				      struct vlan_group *grp)
-{
-	struct velocity_info *vptr = netdev_priv(dev);
-
-	vptr->vlgrp = grp;
+	mac_set_vlan_cam_mask(regs, vptr->vCAMmask);
 }
 
 static void velocity_vlan_rx_add_vid(struct net_device *dev, unsigned short vid)
@@ -543,6 +529,7 @@ static void velocity_vlan_rx_add_vid(struct net_device *dev, unsigned short vid)
 	struct velocity_info *vptr = netdev_priv(dev);
 
 	spin_lock_irq(&vptr->lock);
+	set_bit(vid, vptr->active_vlans);
 	velocity_init_cam_filter(vptr);
 	spin_unlock_irq(&vptr->lock);
 }
@@ -552,7 +539,7 @@ static void velocity_vlan_rx_kill_vid(struct net_device *dev, unsigned short vid
 	struct velocity_info *vptr = netdev_priv(dev);
 
 	spin_lock_irq(&vptr->lock);
-	vlan_group_set_device(vptr->vlgrp, vid, NULL);
+	clear_bit(vid, vptr->active_vlans);
 	velocity_init_cam_filter(vptr);
 	spin_unlock_irq(&vptr->lock);
 }
@@ -616,6 +603,9 @@ static u32 velocity_get_opt_media_mode(struct velocity_info *vptr)
 		break;
 	case SPD_DPX_10_HALF:
 		status = VELOCITY_SPEED_10;
+		break;
+	case SPD_DPX_1000_FULL:
+		status = VELOCITY_SPEED_1000 | VELOCITY_DUPLEX_FULL;
 		break;
 	}
 	vptr->mii_status = status;
@@ -894,7 +884,7 @@ static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 	set_mii_flow_control(vptr);
 
 	/*
-	   Check if new status is consisent with current status
+	   Check if new status is consistent with current status
 	   if (((mii_status & curr_status) & VELOCITY_AUTONEG_ENABLE) ||
 	       (mii_status==curr_status)) {
 	   vptr->mii_status=mii_check_media_mode(vptr->mac_regs);
@@ -922,6 +912,7 @@ static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 		/* enable AUTO-NEGO mode */
 		mii_set_auto_on(vptr);
 	} else {
+		u16 CTRL1000;
 		u16 ANAR;
 		u8 CHIPGCR;
 
@@ -936,7 +927,11 @@ static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 		BYTE_REG_BITS_ON(CHIPGCR_FCMODE, &regs->CHIPGCR);
 
 		CHIPGCR = readb(&regs->CHIPGCR);
-		CHIPGCR &= ~CHIPGCR_FCGMII;
+
+		if (mii_status & VELOCITY_SPEED_1000)
+			CHIPGCR |= CHIPGCR_FCGMII;
+		else
+			CHIPGCR &= ~CHIPGCR_FCGMII;
 
 		if (mii_status & VELOCITY_DUPLEX_FULL) {
 			CHIPGCR |= CHIPGCR_FCFDX;
@@ -952,7 +947,13 @@ static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 				BYTE_REG_BITS_ON(TCR_TB2BDIS, &regs->TCR);
 		}
 
-		MII_REG_BITS_OFF(ADVERTISE_1000FULL | ADVERTISE_1000HALF, MII_CTRL1000, vptr->mac_regs);
+		velocity_mii_read(vptr->mac_regs, MII_CTRL1000, &CTRL1000);
+		CTRL1000 &= ~(ADVERTISE_1000FULL | ADVERTISE_1000HALF);
+		if ((mii_status & VELOCITY_SPEED_1000) &&
+		    (mii_status & VELOCITY_DUPLEX_FULL)) {
+			CTRL1000 |= ADVERTISE_1000FULL;
+		}
+		velocity_mii_write(vptr->mac_regs, MII_CTRL1000, CTRL1000);
 
 		if (!(mii_status & VELOCITY_DUPLEX_FULL) && (mii_status & VELOCITY_SPEED_10))
 			BYTE_REG_BITS_OFF(TESTCFG_HBDIS, &regs->TESTCFG);
@@ -967,7 +968,7 @@ static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 				ANAR |= ADVERTISE_100FULL;
 			else
 				ANAR |= ADVERTISE_100HALF;
-		} else {
+		} else if (mii_status & VELOCITY_SPEED_10) {
 			if (mii_status & VELOCITY_DUPLEX_FULL)
 				ANAR |= ADVERTISE_10FULL;
 			else
@@ -1013,6 +1014,9 @@ static void velocity_print_link_status(struct velocity_info *vptr)
 	} else {
 		VELOCITY_PRT(MSG_LEVEL_INFO, KERN_NOTICE "%s: Link forced", vptr->dev->name);
 		switch (vptr->options.spd_dpx) {
+		case SPD_DPX_1000_FULL:
+			VELOCITY_PRT(MSG_LEVEL_INFO, " speed 1000M bps full duplex\n");
+			break;
 		case SPD_DPX_100_HALF:
 			VELOCITY_PRT(MSG_LEVEL_INFO, " speed 100M bps half duplex\n");
 			break;
@@ -1869,7 +1873,7 @@ static void velocity_error(struct velocity_info *vptr, int status)
 		else
 			netif_wake_queue(vptr->dev);
 
-	};
+	}
 	if (status & ISR_MIBFI)
 		velocity_update_hw_mibs(vptr);
 	if (status & ISR_LSTEI)
@@ -1954,7 +1958,7 @@ static int velocity_tx_srv(struct velocity_info *vptr)
  */
 static inline void velocity_rx_csum(struct rx_desc *rd, struct sk_buff *skb)
 {
-	skb->ip_summed = CHECKSUM_NONE;
+	skb_checksum_none_assert(skb);
 
 	if (rd->rdesc1.CSM & CSM_IPKT) {
 		if (rd->rdesc1.CSM & CSM_IPOK) {
@@ -1976,7 +1980,7 @@ static inline void velocity_rx_csum(struct rx_desc *rd, struct sk_buff *skb)
  *	@dev: network device
  *
  *	Replace the current skb that is scheduled for Rx processing by a
- *	shorter, immediatly allocated skb, if the received packet is small
+ *	shorter, immediately allocated skb, if the received packet is small
  *	enough. This function returns a negative value if the received
  *	packet is too big or if memory is exhausted.
  */
@@ -2076,11 +2080,12 @@ static int velocity_receive_frame(struct velocity_info *vptr, int idx)
 	skb_put(skb, pkt_len - 4);
 	skb->protocol = eth_type_trans(skb, vptr->dev);
 
-	if (vptr->vlgrp && (rd->rdesc0.RSR & RSR_DETAG)) {
-		vlan_hwaccel_rx(skb, vptr->vlgrp,
-				swab16(le16_to_cpu(rd->rdesc1.PQTAG)));
-	} else
-		netif_rx(skb);
+	if (rd->rdesc0.RSR & RSR_DETAG) {
+		u16 vid = swab16(le16_to_cpu(rd->rdesc1.PQTAG));
+
+		__vlan_hwaccel_put_tag(skb, vid);
+	}
+	netif_rx(skb);
 
 	stats->rx_bytes += pkt_len;
 
@@ -2574,7 +2579,7 @@ static netdev_tx_t velocity_xmit(struct sk_buff *skb,
 
 	td_ptr->tdesc1.cmd = TCPLS_NORMAL + (tdinfo->nskb_dma + 1) * 16;
 
-	if (vptr->vlgrp && vlan_tx_tag_present(skb)) {
+	if (vlan_tx_tag_present(skb)) {
 		td_ptr->tdesc1.vlan = cpu_to_le16(vlan_tx_tag_get(skb));
 		td_ptr->tdesc1.TCR |= TCR0_VETAG;
 	}
@@ -2582,8 +2587,7 @@ static netdev_tx_t velocity_xmit(struct sk_buff *skb,
 	/*
 	 *	Handle hardware checksum
 	 */
-	if ((dev->features & NETIF_F_IP_CSUM) &&
-	    (skb->ip_summed == CHECKSUM_PARTIAL)) {
+	if (skb->ip_summed == CHECKSUM_PARTIAL) {
 		const struct iphdr *ip = ip_hdr(skb);
 		if (ip->protocol == IPPROTO_TCP)
 			td_ptr->tdesc1.TCR |= TCR0_TCPCK;
@@ -2624,7 +2628,6 @@ static const struct net_device_ops velocity_netdev_ops = {
 	.ndo_do_ioctl		= velocity_ioctl,
 	.ndo_vlan_rx_add_vid	= velocity_vlan_rx_add_vid,
 	.ndo_vlan_rx_kill_vid	= velocity_vlan_rx_kill_vid,
-	.ndo_vlan_rx_register	= velocity_vlan_rx_register,
 };
 
 /**
@@ -2763,11 +2766,11 @@ static int __devinit velocity_found1(struct pci_dev *pdev, const struct pci_devi
 
 	vptr->dev = dev;
 
-	dev->irq = pdev->irq;
-
 	ret = pci_enable_device(pdev);
 	if (ret < 0)
 		goto err_free_dev;
+
+	dev->irq = pdev->irq;
 
 	ret = velocity_get_pci_info(vptr, pdev);
 	if (ret < 0) {
@@ -2823,8 +2826,9 @@ static int __devinit velocity_found1(struct pci_dev *pdev, const struct pci_devi
 	dev->ethtool_ops = &velocity_ethtool_ops;
 	netif_napi_add(dev, &vptr->napi, velocity_poll, VELOCITY_NAPI_WEIGHT);
 
+	dev->hw_features = NETIF_F_IP_CSUM | NETIF_F_SG | NETIF_F_HW_VLAN_TX;
 	dev->features |= NETIF_F_HW_VLAN_TX | NETIF_F_HW_VLAN_FILTER |
-		NETIF_F_HW_VLAN_RX | NETIF_F_IP_CSUM | NETIF_F_SG;
+		NETIF_F_HW_VLAN_RX | NETIF_F_IP_CSUM;
 
 	ret = register_netdev(dev);
 	if (ret < 0)
@@ -2905,6 +2909,7 @@ static u16 wol_calc_crc(int size, u8 *pattern, u8 *mask_pattern)
 static int velocity_set_wol(struct velocity_info *vptr)
 {
 	struct mac_regs __iomem *regs = vptr->mac_regs;
+	enum speed_opt spd_dpx = vptr->options.spd_dpx;
 	static u8 buf[256];
 	int i;
 
@@ -2950,6 +2955,12 @@ static int velocity_set_wol(struct velocity_info *vptr)
 
 	writew(0x0FFF, &regs->WOLSRClr);
 
+	if (spd_dpx == SPD_DPX_1000_FULL)
+		goto mac_done;
+
+	if (spd_dpx != SPD_DPX_AUTO)
+		goto advertise_done;
+
 	if (vptr->mii_status & VELOCITY_AUTONEG_ENABLE) {
 		if (PHYID_GET_PHY_ID(vptr->phy_id) == PHYID_CICADA_CS8201)
 			MII_REG_BITS_ON(AUXCR_MDPPS, MII_NCONFIG, vptr->mac_regs);
@@ -2960,6 +2971,7 @@ static int velocity_set_wol(struct velocity_info *vptr)
 	if (vptr->mii_status & VELOCITY_SPEED_1000)
 		MII_REG_BITS_ON(BMCR_ANRESTART, MII_BMCR, vptr->mac_regs);
 
+advertise_done:
 	BYTE_REG_BITS_ON(CHIPGCR_FCMODE, &regs->CHIPGCR);
 
 	{
@@ -2969,6 +2981,7 @@ static int velocity_set_wol(struct velocity_info *vptr)
 		writeb(GCR, &regs->CHIPGCR);
 	}
 
+mac_done:
 	BYTE_REG_BITS_OFF(ISR_PWEI, &regs->ISR);
 	/* Turn on SWPTAG just before entering power mode */
 	BYTE_REG_BITS_ON(STICKHW_SWPTAG, &regs->STICKHW);
@@ -3155,7 +3168,8 @@ static void velocity_ethtool_down(struct net_device *dev)
 		pci_set_power_state(vptr->pdev, PCI_D3hot);
 }
 
-static int velocity_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+static int velocity_get_settings(struct net_device *dev,
+				 struct ethtool_cmd *cmd)
 {
 	struct velocity_info *vptr = netdev_priv(dev);
 	struct mac_regs __iomem *regs = vptr->mac_regs;
@@ -3170,12 +3184,45 @@ static int velocity_get_settings(struct net_device *dev, struct ethtool_cmd *cmd
 			SUPPORTED_100baseT_Full |
 			SUPPORTED_1000baseT_Half |
 			SUPPORTED_1000baseT_Full;
+
+	cmd->advertising = ADVERTISED_TP | ADVERTISED_Autoneg;
+	if (vptr->options.spd_dpx == SPD_DPX_AUTO) {
+		cmd->advertising |=
+			ADVERTISED_10baseT_Half |
+			ADVERTISED_10baseT_Full |
+			ADVERTISED_100baseT_Half |
+			ADVERTISED_100baseT_Full |
+			ADVERTISED_1000baseT_Half |
+			ADVERTISED_1000baseT_Full;
+	} else {
+		switch (vptr->options.spd_dpx) {
+		case SPD_DPX_1000_FULL:
+			cmd->advertising |= ADVERTISED_1000baseT_Full;
+			break;
+		case SPD_DPX_100_HALF:
+			cmd->advertising |= ADVERTISED_100baseT_Half;
+			break;
+		case SPD_DPX_100_FULL:
+			cmd->advertising |= ADVERTISED_100baseT_Full;
+			break;
+		case SPD_DPX_10_HALF:
+			cmd->advertising |= ADVERTISED_10baseT_Half;
+			break;
+		case SPD_DPX_10_FULL:
+			cmd->advertising |= ADVERTISED_10baseT_Full;
+			break;
+		default:
+			break;
+		}
+	}
+
 	if (status & VELOCITY_SPEED_1000)
-		cmd->speed = SPEED_1000;
+		ethtool_cmd_speed_set(cmd, SPEED_1000);
 	else if (status & VELOCITY_SPEED_100)
-		cmd->speed = SPEED_100;
+		ethtool_cmd_speed_set(cmd, SPEED_100);
 	else
-		cmd->speed = SPEED_10;
+		ethtool_cmd_speed_set(cmd, SPEED_10);
+
 	cmd->autoneg = (status & VELOCITY_AUTONEG_ENABLE) ? AUTONEG_ENABLE : AUTONEG_DISABLE;
 	cmd->port = PORT_TP;
 	cmd->transceiver = XCVR_INTERNAL;
@@ -3189,9 +3236,11 @@ static int velocity_get_settings(struct net_device *dev, struct ethtool_cmd *cmd
 	return 0;
 }
 
-static int velocity_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+static int velocity_set_settings(struct net_device *dev,
+				 struct ethtool_cmd *cmd)
 {
 	struct velocity_info *vptr = netdev_priv(dev);
+	u32 speed = ethtool_cmd_speed(cmd);
 	u32 curr_status;
 	u32 new_status = 0;
 	int ret = 0;
@@ -3200,14 +3249,35 @@ static int velocity_set_settings(struct net_device *dev, struct ethtool_cmd *cmd
 	curr_status &= (~VELOCITY_LINK_FAIL);
 
 	new_status |= ((cmd->autoneg) ? VELOCITY_AUTONEG_ENABLE : 0);
-	new_status |= ((cmd->speed == SPEED_100) ? VELOCITY_SPEED_100 : 0);
-	new_status |= ((cmd->speed == SPEED_10) ? VELOCITY_SPEED_10 : 0);
+	new_status |= ((speed == SPEED_1000) ? VELOCITY_SPEED_1000 : 0);
+	new_status |= ((speed == SPEED_100) ? VELOCITY_SPEED_100 : 0);
+	new_status |= ((speed == SPEED_10) ? VELOCITY_SPEED_10 : 0);
 	new_status |= ((cmd->duplex == DUPLEX_FULL) ? VELOCITY_DUPLEX_FULL : 0);
 
-	if ((new_status & VELOCITY_AUTONEG_ENABLE) && (new_status != (curr_status | VELOCITY_AUTONEG_ENABLE)))
+	if ((new_status & VELOCITY_AUTONEG_ENABLE) &&
+	    (new_status != (curr_status | VELOCITY_AUTONEG_ENABLE))) {
 		ret = -EINVAL;
-	else
+	} else {
+		enum speed_opt spd_dpx;
+
+		if (new_status & VELOCITY_AUTONEG_ENABLE)
+			spd_dpx = SPD_DPX_AUTO;
+		else if ((new_status & VELOCITY_SPEED_1000) &&
+			 (new_status & VELOCITY_DUPLEX_FULL)) {
+			spd_dpx = SPD_DPX_1000_FULL;
+		} else if (new_status & VELOCITY_SPEED_100)
+			spd_dpx = (new_status & VELOCITY_DUPLEX_FULL) ?
+				SPD_DPX_100_FULL : SPD_DPX_100_HALF;
+		else if (new_status & VELOCITY_SPEED_10)
+			spd_dpx = (new_status & VELOCITY_DUPLEX_FULL) ?
+				SPD_DPX_10_FULL : SPD_DPX_10_HALF;
+		else
+			return -EOPNOTSUPP;
+
+		vptr->options.spd_dpx = spd_dpx;
+
 		velocity_set_media_mode(vptr, new_status);
+	}
 
 	return ret;
 }
@@ -3378,13 +3448,10 @@ static const struct ethtool_ops velocity_ethtool_ops = {
 	.get_settings	=	velocity_get_settings,
 	.set_settings	=	velocity_set_settings,
 	.get_drvinfo	=	velocity_get_drvinfo,
-	.set_tx_csum	=	ethtool_op_set_tx_csum,
-	.get_tx_csum	=	ethtool_op_get_tx_csum,
 	.get_wol	=	velocity_ethtool_get_wol,
 	.set_wol	=	velocity_ethtool_set_wol,
 	.get_msglevel	=	velocity_get_msglevel,
 	.set_msglevel	=	velocity_set_msglevel,
-	.set_sg 	=	ethtool_op_set_sg,
 	.get_link	=	velocity_get_link,
 	.get_coalesce	=	velocity_get_coalesce,
 	.set_coalesce	=	velocity_set_coalesce,

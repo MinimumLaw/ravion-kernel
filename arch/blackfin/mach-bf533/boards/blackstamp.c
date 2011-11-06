@@ -102,21 +102,12 @@ static struct flash_platform_data bfin_spi_flash_data = {
 /* SPI flash chip (m25p64) */
 static struct bfin5xx_spi_chip spi_flash_chip_info = {
 	.enable_dma = 0,         /* use dma transfer with this chip*/
-	.bits_per_word = 8,
 };
 #endif
 
 #if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
 static struct bfin5xx_spi_chip mmc_spi_chip_info = {
 	.enable_dma = 0,
-	.bits_per_word = 8,
-};
-#endif
-
-#if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
-static struct bfin5xx_spi_chip spidev_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 8,
 };
 #endif
 
@@ -151,7 +142,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 		.max_speed_hz = 3125000,     /* max spi clock (SCK) speed in HZ */
 		.bus_num = 0,
 		.chip_select = 7,
-		.controller_data = &spidev_chip_info,
 	},
 #endif
 };
@@ -224,7 +214,7 @@ static struct resource bfin_uart0_resources[] = {
 	},
 };
 
-unsigned short bfin_uart0_peripherals[] = {
+static unsigned short bfin_uart0_peripherals[] = {
 	P_UART0_TX, P_UART0_RX, 0
 };
 
@@ -289,9 +279,9 @@ static struct resource bfin_sport0_uart_resources[] = {
 	},
 };
 
-unsigned short bfin_sport0_peripherals[] = {
+static unsigned short bfin_sport0_peripherals[] = {
 	P_SPORT0_TFS, P_SPORT0_DTPRI, P_SPORT0_TSCLK, P_SPORT0_RFS,
-	P_SPORT0_DRPRI, P_SPORT0_RSCLK, P_SPORT0_DRSEC, P_SPORT0_DTSEC, 0
+	P_SPORT0_DRPRI, P_SPORT0_RSCLK, 0
 };
 
 static struct platform_device bfin_sport0_uart_device = {
@@ -323,9 +313,9 @@ static struct resource bfin_sport1_uart_resources[] = {
 	},
 };
 
-unsigned short bfin_sport1_peripherals[] = {
+static unsigned short bfin_sport1_peripherals[] = {
 	P_SPORT1_TFS, P_SPORT1_DTPRI, P_SPORT1_TSCLK, P_SPORT1_RFS,
-	P_SPORT1_DRPRI, P_SPORT1_RSCLK, P_SPORT1_DRSEC, P_SPORT1_DTSEC, 0
+	P_SPORT1_DRPRI, P_SPORT1_RSCLK, 0
 };
 
 static struct platform_device bfin_sport1_uart_device = {
@@ -367,8 +357,8 @@ static struct platform_device bfin_device_gpiokeys = {
 #include <linux/i2c-gpio.h>
 
 static struct i2c_gpio_platform_data i2c_gpio_data = {
-	.sda_pin		= 8,
-	.scl_pin		= 9,
+	.sda_pin		= GPIO_PF8,
+	.scl_pin		= GPIO_PF9,
 	.sda_is_open_drain	= 0,
 	.scl_is_open_drain	= 0,
 	.udelay			= 40,
@@ -475,10 +465,16 @@ static int __init blackstamp_init(void)
 		return ret;
 
 #if defined(CONFIG_SMC91X) || defined(CONFIG_SMC91X_MODULE)
-	/* setup BF533_STAMP CPLD to route AMS3 to Ethernet MAC */
-	bfin_write_FIO_DIR(bfin_read_FIO_DIR() | PF0);
-	bfin_write_FIO_FLAG_S(PF0);
-	SSYNC();
+	/*
+	 * setup BF533_STAMP CPLD to route AMS3 to Ethernet MAC.
+	 * the bfin-async-map driver takes care of flipping between
+	 * flash and ethernet when necessary.
+	 */
+	ret = gpio_request(GPIO_PF0, "enet_cpld");
+	if (!ret) {
+		gpio_direction_output(GPIO_PF0, 1);
+		gpio_free(GPIO_PF0);
+	}
 #endif
 
 	spi_register_board_info(bfin_spi_board_info, ARRAY_SIZE(bfin_spi_board_info));

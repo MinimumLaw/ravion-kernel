@@ -502,13 +502,16 @@ void __init pci_v3_preinit(void)
 	unsigned int temp;
 	int ret;
 
+	pcibios_min_io = 0x6000;
+	pcibios_min_mem = 0x00100000;
+
 	/*
 	 * Hook in our fault handler for PCI errors
 	 */
-	hook_fault_code(4, v3_pci_fault, SIGBUS, "external abort on linefetch");
-	hook_fault_code(6, v3_pci_fault, SIGBUS, "external abort on linefetch");
-	hook_fault_code(8, v3_pci_fault, SIGBUS, "external abort on non-linefetch");
-	hook_fault_code(10, v3_pci_fault, SIGBUS, "external abort on non-linefetch");
+	hook_fault_code(4, v3_pci_fault, SIGBUS, 0, "external abort on linefetch");
+	hook_fault_code(6, v3_pci_fault, SIGBUS, 0, "external abort on linefetch");
+	hook_fault_code(8, v3_pci_fault, SIGBUS, 0, "external abort on non-linefetch");
+	hook_fault_code(10, v3_pci_fault, SIGBUS, 0, "external abort on non-linefetch");
 
 	spin_lock_irqsave(&v3_lock, flags);
 

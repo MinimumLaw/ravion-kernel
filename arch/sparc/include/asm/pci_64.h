@@ -38,7 +38,7 @@ static inline void pcibios_penalize_isa_irq(int irq, int active)
  * types on sparc64.  However, it requires that the device
  * can drive enough of the 64 bits.
  */
-#define PCI64_REQUIRED_MASK	(~(dma64_addr_t)0)
+#define PCI64_REQUIRED_MASK	(~(u64)0)
 #define PCI64_ADDR_BASE		0xfffc000000000000UL
 
 #ifdef CONFIG_PCI
@@ -90,9 +90,6 @@ static inline int pci_get_legacy_ide_irq(struct pci_dev *dev, int channel)
 {
 	return PCI_IRQ_NONE;
 }
-
-struct device_node;
-extern struct device_node *pci_device_to_OF_node(struct pci_dev *pdev);
 
 #define HAVE_ARCH_PCI_RESOURCE_TO_USER
 extern void pci_resource_to_user(const struct pci_dev *dev, int bar,

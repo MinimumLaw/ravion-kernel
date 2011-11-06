@@ -66,6 +66,13 @@ static unsigned int ipv4_conntrack_defrag(unsigned int hooknum,
 					  const struct net_device *out,
 					  int (*okfn)(struct sk_buff *))
 {
+	struct sock *sk = skb->sk;
+	struct inet_sock *inet = inet_sk(skb->sk);
+
+	if (sk && (sk->sk_family == PF_INET) &&
+	    inet->nodefrag)
+		return NF_ACCEPT;
+
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 #if !defined(CONFIG_NF_NAT) && !defined(CONFIG_NF_NAT_MODULE)
 	/* Previously seen (loopback)?  Ignore.  Do this before
@@ -75,7 +82,7 @@ static unsigned int ipv4_conntrack_defrag(unsigned int hooknum,
 #endif
 #endif
 	/* Gather fragments. */
-	if (ip_hdr(skb)->frag_off & htons(IP_MF | IP_OFFSET)) {
+	if (ip_is_fragment(ip_hdr(skb))) {
 		enum ip_defrag_users user = nf_ct_defrag_user(hooknum, skb);
 		if (nf_ct_ipv4_gather_frags(skb, user))
 			return NF_STOLEN;

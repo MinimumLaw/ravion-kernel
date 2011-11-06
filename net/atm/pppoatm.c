@@ -37,6 +37,7 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/interrupt.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/atm.h>
@@ -260,7 +261,7 @@ static int pppoatm_devppp_ioctl(struct ppp_channel *chan, unsigned int cmd,
 	return -ENOTTY;
 }
 
-static /*const*/ struct ppp_channel_ops pppoatm_ops = {
+static const struct ppp_channel_ops pppoatm_ops = {
 	.start_xmit = pppoatm_send,
 	.ioctl = pppoatm_devppp_ioctl,
 };

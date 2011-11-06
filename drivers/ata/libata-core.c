@@ -68,7 +68,7 @@
 #include <linux/ratelimit.h>
 
 #include "libata.h"
-
+#include "libata-transport.h"
 
 /* debounce timing parameters in msecs { interval, duration, timeout } */
 const unsigned long sata_deb_timing_normal[]		= {   5,  100, 2000 };
@@ -91,14 +91,10 @@ const struct ata_port_operations sata_port_ops = {
 static unsigned int ata_dev_init_params(struct ata_device *dev,
 					u16 heads, u16 sectors);
 static unsigned int ata_dev_set_xfermode(struct ata_device *dev);
-static unsigned int ata_dev_set_feature(struct ata_device *dev,
-					u8 enable, u8 feature);
 static void ata_dev_xfermask(struct ata_device *dev);
 static unsigned long ata_dev_blacklisted(const struct ata_device *dev);
 
 unsigned int ata_print_id = 1;
-
-struct workqueue_struct *ata_aux_wq;
 
 struct ata_force_param {
 	const char	*name;
@@ -339,8 +335,7 @@ void ata_force_cbl(struct ata_port *ap)
 			continue;
 
 		ap->cbl = fe->param.cbl;
-		ata_port_printk(ap, KERN_NOTICE,
-				"FORCE: cable set to %s\n", fe->param.name);
+		ata_port_notice(ap, "FORCE: cable set to %s\n", fe->param.name);
 		return;
 	}
 }
@@ -382,8 +377,7 @@ static void ata_force_link_limits(struct ata_link *link)
 		/* only honor the first spd limit */
 		if (!did_spd && fe->param.spd_limit) {
 			link->hw_sata_spd_limit = (1 << fe->param.spd_limit) - 1;
-			ata_link_printk(link, KERN_NOTICE,
-					"FORCE: PHY spd limit set to %s\n",
+			ata_link_notice(link, "FORCE: PHY spd limit set to %s\n",
 					fe->param.name);
 			did_spd = true;
 		}
@@ -391,7 +385,7 @@ static void ata_force_link_limits(struct ata_link *link)
 		/* let lflags stack */
 		if (fe->param.lflags) {
 			link->flags |= fe->param.lflags;
-			ata_link_printk(link, KERN_NOTICE,
+			ata_link_notice(link,
 					"FORCE: link flag 0x%x forced -> 0x%x\n",
 					fe->param.lflags, link->flags);
 		}
@@ -446,8 +440,8 @@ static void ata_force_xfermask(struct ata_device *dev)
 			dev->pio_mask = pio_mask;
 		}
 
-		ata_dev_printk(dev, KERN_NOTICE,
-			"FORCE: xfer_mask set to %s\n", fe->param.name);
+		ata_dev_notice(dev, "FORCE: xfer_mask set to %s\n",
+			       fe->param.name);
 		return;
 	}
 }
@@ -490,8 +484,8 @@ static void ata_force_horkage(struct ata_device *dev)
 		dev->horkage |= fe->param.horkage_on;
 		dev->horkage &= ~fe->param.horkage_off;
 
-		ata_dev_printk(dev, KERN_NOTICE,
-			"FORCE: horkage modified (%s)\n", fe->param.name);
+		ata_dev_notice(dev, "FORCE: horkage modified (%s)\n",
+			       fe->param.name);
 	}
 }
 
@@ -715,8 +709,8 @@ u64 ata_tf_read_block(struct ata_taskfile *tf, struct ata_device *dev)
 		sect = tf->lbal;
 
 		if (!sect) {
-			ata_dev_printk(dev, KERN_WARNING, "device reported "
-				       "invalid CHS sector 0\n");
+			ata_dev_warn(dev,
+				     "device reported invalid CHS sector 0\n");
 			sect = 1; /* oh well */
 		}
 
@@ -1019,7 +1013,7 @@ const char *ata_mode_string(unsigned long xfer_mask)
 	return "<n/a>";
 }
 
-static const char *sata_spd_string(unsigned int spd)
+const char *sata_spd_string(unsigned int spd)
 {
 	static const char * const spd_str[] = {
 		"1.5 Gbps",
@@ -1031,182 +1025,6 @@ static const char *sata_spd_string(unsigned int spd)
 		return "<unknown>";
 	return spd_str[spd - 1];
 }
-
-static int ata_dev_set_dipm(struct ata_device *dev, enum link_pm policy)
-{
-	struct ata_link *link = dev->link;
-	struct ata_port *ap = link->ap;
-	u32 scontrol;
-	unsigned int err_mask;
-	int rc;
-
-	/*
-	 * disallow DIPM for drivers which haven't set
-	 * ATA_FLAG_IPM.  This is because when DIPM is enabled,
-	 * phy ready will be set in the interrupt status on
-	 * state changes, which will cause some drivers to
-	 * think there are errors - additionally drivers will
-	 * need to disable hot plug.
-	 */
-	if (!(ap->flags & ATA_FLAG_IPM) || !ata_dev_enabled(dev)) {
-		ap->pm_policy = NOT_AVAILABLE;
-		return -EINVAL;
-	}
-
-	/*
-	 * For DIPM, we will only enable it for the
-	 * min_power setting.
-	 *
-	 * Why?  Because Disks are too stupid to know that
-	 * If the host rejects a request to go to SLUMBER
-	 * they should retry at PARTIAL, and instead it
-	 * just would give up.  So, for medium_power to
-	 * work at all, we need to only allow HIPM.
-	 */
-	rc = sata_scr_read(link, SCR_CONTROL, &scontrol);
-	if (rc)
-		return rc;
-
-	switch (policy) {
-	case MIN_POWER:
-		/* no restrictions on IPM transitions */
-		scontrol &= ~(0x3 << 8);
-		rc = sata_scr_write(link, SCR_CONTROL, scontrol);
-		if (rc)
-			return rc;
-
-		/* enable DIPM */
-		if (dev->flags & ATA_DFLAG_DIPM)
-			err_mask = ata_dev_set_feature(dev,
-					SETFEATURES_SATA_ENABLE, SATA_DIPM);
-		break;
-	case MEDIUM_POWER:
-		/* allow IPM to PARTIAL */
-		scontrol &= ~(0x1 << 8);
-		scontrol |= (0x2 << 8);
-		rc = sata_scr_write(link, SCR_CONTROL, scontrol);
-		if (rc)
-			return rc;
-
-		/*
-		 * we don't have to disable DIPM since IPM flags
-		 * disallow transitions to SLUMBER, which effectively
-		 * disable DIPM if it does not support PARTIAL
-		 */
-		break;
-	case NOT_AVAILABLE:
-	case MAX_PERFORMANCE:
-		/* disable all IPM transitions */
-		scontrol |= (0x3 << 8);
-		rc = sata_scr_write(link, SCR_CONTROL, scontrol);
-		if (rc)
-			return rc;
-
-		/*
-		 * we don't have to disable DIPM since IPM flags
-		 * disallow all transitions which effectively
-		 * disable DIPM anyway.
-		 */
-		break;
-	}
-
-	/* FIXME: handle SET FEATURES failure */
-	(void) err_mask;
-
-	return 0;
-}
-
-/**
- *	ata_dev_enable_pm - enable SATA interface power management
- *	@dev:  device to enable power management
- *	@policy: the link power management policy
- *
- *	Enable SATA Interface power management.  This will enable
- *	Device Interface Power Management (DIPM) for min_power
- * 	policy, and then call driver specific callbacks for
- *	enabling Host Initiated Power management.
- *
- *	Locking: Caller.
- *	Returns: -EINVAL if IPM is not supported, 0 otherwise.
- */
-void ata_dev_enable_pm(struct ata_device *dev, enum link_pm policy)
-{
-	int rc = 0;
-	struct ata_port *ap = dev->link->ap;
-
-	/* set HIPM first, then DIPM */
-	if (ap->ops->enable_pm)
-		rc = ap->ops->enable_pm(ap, policy);
-	if (rc)
-		goto enable_pm_out;
-	rc = ata_dev_set_dipm(dev, policy);
-
-enable_pm_out:
-	if (rc)
-		ap->pm_policy = MAX_PERFORMANCE;
-	else
-		ap->pm_policy = policy;
-	return /* rc */;	/* hopefully we can use 'rc' eventually */
-}
-
-#ifdef CONFIG_PM
-/**
- *	ata_dev_disable_pm - disable SATA interface power management
- *	@dev: device to disable power management
- *
- *	Disable SATA Interface power management.  This will disable
- *	Device Interface Power Management (DIPM) without changing
- * 	policy,  call driver specific callbacks for disabling Host
- * 	Initiated Power management.
- *
- *	Locking: Caller.
- *	Returns: void
- */
-static void ata_dev_disable_pm(struct ata_device *dev)
-{
-	struct ata_port *ap = dev->link->ap;
-
-	ata_dev_set_dipm(dev, MAX_PERFORMANCE);
-	if (ap->ops->disable_pm)
-		ap->ops->disable_pm(ap);
-}
-#endif	/* CONFIG_PM */
-
-void ata_lpm_schedule(struct ata_port *ap, enum link_pm policy)
-{
-	ap->pm_policy = policy;
-	ap->link.eh_info.action |= ATA_EH_LPM;
-	ap->link.eh_info.flags |= ATA_EHI_NO_AUTOPSY;
-	ata_port_schedule_eh(ap);
-}
-
-#ifdef CONFIG_PM
-static void ata_lpm_enable(struct ata_host *host)
-{
-	struct ata_link *link;
-	struct ata_port *ap;
-	struct ata_device *dev;
-	int i;
-
-	for (i = 0; i < host->n_ports; i++) {
-		ap = host->ports[i];
-		ata_for_each_link(link, ap, EDGE) {
-			ata_for_each_dev(dev, link, ALL)
-				ata_dev_disable_pm(dev);
-		}
-	}
-}
-
-static void ata_lpm_disable(struct ata_host *host)
-{
-	int i;
-
-	for (i = 0; i < host->n_ports; i++) {
-		struct ata_port *ap = host->ports[i];
-		ata_lpm_schedule(ap, ap->pm_policy);
-	}
-}
-#endif	/* CONFIG_PM */
 
 /**
  *	ata_dev_classify - determine device type based on ATA-spec signature
@@ -1410,8 +1228,9 @@ static int ata_read_native_max_address(struct ata_device *dev, u64 *max_sectors)
 
 	err_mask = ata_exec_internal(dev, &tf, NULL, DMA_NONE, NULL, 0, 0);
 	if (err_mask) {
-		ata_dev_printk(dev, KERN_WARNING, "failed to read native "
-			       "max address (err_mask=0x%x)\n", err_mask);
+		ata_dev_warn(dev,
+			     "failed to read native max address (err_mask=0x%x)\n",
+			     err_mask);
 		if (err_mask == AC_ERR_DEV && (tf.feature & ATA_ABORTED))
 			return -EACCES;
 		return -EIO;
@@ -1472,8 +1291,9 @@ static int ata_set_max_sectors(struct ata_device *dev, u64 new_sectors)
 
 	err_mask = ata_exec_internal(dev, &tf, NULL, DMA_NONE, NULL, 0, 0);
 	if (err_mask) {
-		ata_dev_printk(dev, KERN_WARNING, "failed to set "
-			       "max address (err_mask=0x%x)\n", err_mask);
+		ata_dev_warn(dev,
+			     "failed to set max address (err_mask=0x%x)\n",
+			     err_mask);
 		if (err_mask == AC_ERR_DEV &&
 		    (tf.feature & (ATA_ABORTED | ATA_IDNF)))
 			return -EACCES;
@@ -1516,8 +1336,8 @@ static int ata_hpa_resize(struct ata_device *dev)
 		 * be unlocked, skip HPA resizing.
 		 */
 		if (rc == -EACCES || !unlock_hpa) {
-			ata_dev_printk(dev, KERN_WARNING, "HPA support seems "
-				       "broken, skipping HPA handling\n");
+			ata_dev_warn(dev,
+				     "HPA support seems broken, skipping HPA handling\n");
 			dev->horkage |= ATA_HORKAGE_BROKEN_HPA;
 
 			/* we can continue if device aborted the command */
@@ -1535,14 +1355,13 @@ static int ata_hpa_resize(struct ata_device *dev)
 			return 0;
 
 		if (native_sectors > sectors)
-			ata_dev_printk(dev, KERN_INFO,
+			ata_dev_info(dev,
 				"HPA detected: current %llu, native %llu\n",
 				(unsigned long long)sectors,
 				(unsigned long long)native_sectors);
 		else if (native_sectors < sectors)
-			ata_dev_printk(dev, KERN_WARNING,
-				"native sectors (%llu) is smaller than "
-				"sectors (%llu)\n",
+			ata_dev_warn(dev,
+				"native sectors (%llu) is smaller than sectors (%llu)\n",
 				(unsigned long long)native_sectors,
 				(unsigned long long)sectors);
 		return 0;
@@ -1552,10 +1371,10 @@ static int ata_hpa_resize(struct ata_device *dev)
 	rc = ata_set_max_sectors(dev, native_sectors);
 	if (rc == -EACCES) {
 		/* if device aborted the command, skip HPA resizing */
-		ata_dev_printk(dev, KERN_WARNING, "device aborted resize "
-			       "(%llu -> %llu), skipping HPA handling\n",
-			       (unsigned long long)sectors,
-			       (unsigned long long)native_sectors);
+		ata_dev_warn(dev,
+			     "device aborted resize (%llu -> %llu), skipping HPA handling\n",
+			     (unsigned long long)sectors,
+			     (unsigned long long)native_sectors);
 		dev->horkage |= ATA_HORKAGE_BROKEN_HPA;
 		return 0;
 	} else if (rc)
@@ -1564,14 +1383,14 @@ static int ata_hpa_resize(struct ata_device *dev)
 	/* re-read IDENTIFY data */
 	rc = ata_dev_reread_id(dev, 0);
 	if (rc) {
-		ata_dev_printk(dev, KERN_ERR, "failed to re-read IDENTIFY "
-			       "data after HPA resizing\n");
+		ata_dev_err(dev,
+			    "failed to re-read IDENTIFY data after HPA resizing\n");
 		return rc;
 	}
 
 	if (print_info) {
 		u64 new_sectors = ata_id_n_sectors(dev->id);
-		ata_dev_printk(dev, KERN_INFO,
+		ata_dev_info(dev,
 			"HPA unlocked: %llu -> %llu, native %llu\n",
 			(unsigned long long)sectors,
 			(unsigned long long)new_sectors,
@@ -1808,7 +1627,13 @@ unsigned ata_exec_internal_sg(struct ata_device *dev,
 		}
 	}
 
+	if (ap->ops->error_handler)
+		ata_eh_release(ap);
+
 	rc = wait_for_completion_timeout(&wait, msecs_to_jiffies(timeout));
+
+	if (ap->ops->error_handler)
+		ata_eh_acquire(ap);
 
 	ata_sff_flush_pio_task(ap);
 
@@ -1829,8 +1654,8 @@ unsigned ata_exec_internal_sg(struct ata_device *dev,
 				ata_qc_complete(qc);
 
 			if (ata_msg_warn(ap))
-				ata_dev_printk(dev, KERN_WARNING,
-					"qc timeout (cmd 0x%x)\n", command);
+				ata_dev_warn(dev, "qc timeout (cmd 0x%x)\n",
+					     command);
 		}
 
 		spin_unlock_irqrestore(ap->lock, flags);
@@ -2044,7 +1869,7 @@ int ata_dev_read_id(struct ata_device *dev, unsigned int *p_class,
 	int rc;
 
 	if (ata_msg_ctl(ap))
-		ata_dev_printk(dev, KERN_DEBUG, "%s: ENTER\n", __func__);
+		ata_dev_dbg(dev, "%s: ENTER\n", __func__);
 
 retry:
 	ata_tf_init(dev, &tf);
@@ -2083,14 +1908,13 @@ retry:
 
 	if (err_mask) {
 		if (err_mask & AC_ERR_NODEV_HINT) {
-			ata_dev_printk(dev, KERN_DEBUG,
-				       "NODEV after polling detection\n");
+			ata_dev_dbg(dev, "NODEV after polling detection\n");
 			return -ENOENT;
 		}
 
 		if (is_semb) {
-			ata_dev_printk(dev, KERN_INFO, "IDENTIFY failed on "
-				       "device w/ SEMB sig, disabled\n");
+			ata_dev_info(dev,
+		     "IDENTIFY failed on device w/ SEMB sig, disabled\n");
 			/* SEMB is not supported yet */
 			*p_class = ATA_DEV_SEMB_UNSUP;
 			return 0;
@@ -2116,8 +1940,8 @@ retry:
 			 * both flavors of IDENTIFYs which happens
 			 * sometimes with phantom devices.
 			 */
-			ata_dev_printk(dev, KERN_DEBUG,
-				       "both IDENTIFYs aborted, assuming NODEV\n");
+			ata_dev_dbg(dev,
+				    "both IDENTIFYs aborted, assuming NODEV\n");
 			return -ENOENT;
 		}
 
@@ -2127,9 +1951,9 @@ retry:
 	}
 
 	if (dev->horkage & ATA_HORKAGE_DUMP_ID) {
-		ata_dev_printk(dev, KERN_DEBUG, "dumping IDENTIFY data, "
-			       "class=%d may_fallback=%d tried_spinup=%d\n",
-			       class, may_fallback, tried_spinup);
+		ata_dev_dbg(dev, "dumping IDENTIFY data, "
+			    "class=%d may_fallback=%d tried_spinup=%d\n",
+			    class, may_fallback, tried_spinup);
 		print_hex_dump(KERN_DEBUG, "", DUMP_PREFIX_OFFSET,
 			       16, 2, id, ATA_ID_WORDS * sizeof(*id), true);
 	}
@@ -2208,8 +2032,8 @@ retry:
 
  err_out:
 	if (ata_msg_warn(ap))
-		ata_dev_printk(dev, KERN_WARNING, "failed to IDENTIFY "
-			       "(%s, err_mask=0x%x)\n", reason, err_mask);
+		ata_dev_warn(dev, "failed to IDENTIFY (%s, err_mask=0x%x)\n",
+			     reason, err_mask);
 	return rc;
 }
 
@@ -2239,9 +2063,8 @@ static int ata_do_link_spd_horkage(struct ata_device *dev)
 	 * guaranteed by setting sata_spd_limit to target_limit above.
 	 */
 	if (plink->sata_spd > target) {
-		ata_dev_printk(dev, KERN_INFO,
-			       "applying link speed limit horkage to %s\n",
-			       sata_spd_string(target));
+		ata_dev_info(dev, "applying link speed limit horkage to %s\n",
+			     sata_spd_string(target));
 		return -EAGAIN;
 	}
 	return 0;
@@ -2284,8 +2107,9 @@ static int ata_dev_config_ncq(struct ata_device *dev,
 		err_mask = ata_dev_set_feature(dev, SETFEATURES_SATA_ENABLE,
 			SATA_FPDMA_AA);
 		if (err_mask) {
-			ata_dev_printk(dev, KERN_ERR, "failed to enable AA"
-				"(error_mask=0x%x)\n", err_mask);
+			ata_dev_err(dev,
+				    "failed to enable AA (error_mask=0x%x)\n",
+				    err_mask);
 			if (err_mask != AC_ERR_DEV) {
 				dev->horkage |= ATA_HORKAGE_BROKEN_FPDMA_AA;
 				return -EIO;
@@ -2328,31 +2152,28 @@ int ata_dev_configure(struct ata_device *dev)
 	int rc;
 
 	if (!ata_dev_enabled(dev) && ata_msg_info(ap)) {
-		ata_dev_printk(dev, KERN_INFO, "%s: ENTER/EXIT -- nodev\n",
-			       __func__);
+		ata_dev_info(dev, "%s: ENTER/EXIT -- nodev\n", __func__);
 		return 0;
 	}
 
 	if (ata_msg_probe(ap))
-		ata_dev_printk(dev, KERN_DEBUG, "%s: ENTER\n", __func__);
+		ata_dev_dbg(dev, "%s: ENTER\n", __func__);
 
 	/* set horkage */
 	dev->horkage |= ata_dev_blacklisted(dev);
 	ata_force_horkage(dev);
 
 	if (dev->horkage & ATA_HORKAGE_DISABLE) {
-		ata_dev_printk(dev, KERN_INFO,
-			       "unsupported device, disabling\n");
+		ata_dev_info(dev, "unsupported device, disabling\n");
 		ata_dev_disable(dev);
 		return 0;
 	}
 
 	if ((!atapi_enabled || (ap->flags & ATA_FLAG_NO_ATAPI)) &&
 	    dev->class == ATA_DEV_ATAPI) {
-		ata_dev_printk(dev, KERN_WARNING,
-			"WARNING: ATAPI is %s, device ignored.\n",
-			atapi_enabled ? "not supported with this driver"
-				      : "disabled");
+		ata_dev_warn(dev, "WARNING: ATAPI is %s, device ignored\n",
+			     atapi_enabled ? "not supported with this driver"
+			     : "disabled");
 		ata_dev_disable(dev);
 		return 0;
 	}
@@ -2373,12 +2194,12 @@ int ata_dev_configure(struct ata_device *dev)
 
 	/* print device capabilities */
 	if (ata_msg_probe(ap))
-		ata_dev_printk(dev, KERN_DEBUG,
-			       "%s: cfg 49:%04x 82:%04x 83:%04x 84:%04x "
-			       "85:%04x 86:%04x 87:%04x 88:%04x\n",
-			       __func__,
-			       id[49], id[82], id[83], id[84],
-			       id[85], id[86], id[87], id[88]);
+		ata_dev_dbg(dev,
+			    "%s: cfg 49:%04x 82:%04x 83:%04x 84:%04x "
+			    "85:%04x 86:%04x 87:%04x 88:%04x\n",
+			    __func__,
+			    id[49], id[82], id[83], id[84],
+			    id[85], id[86], id[87], id[88]);
 
 	/* initialize to-be-configured parameters */
 	dev->flags &= ~ATA_DFLAG_CFG_MASK;
@@ -2412,17 +2233,15 @@ int ata_dev_configure(struct ata_device *dev)
 		if (ata_id_is_cfa(id)) {
 			/* CPRM may make this media unusable */
 			if (id[ATA_ID_CFA_KEY_MGMT] & 1)
-				ata_dev_printk(dev, KERN_WARNING,
-					       "supports DRM functions and may "
-					       "not be fully accessable.\n");
+				ata_dev_warn(dev,
+	"supports DRM functions and may not be fully accessible\n");
 			snprintf(revbuf, 7, "CFA");
 		} else {
 			snprintf(revbuf, 7, "ATA-%d", ata_id_major_version(id));
 			/* Warn the user if the device has TPM extensions */
 			if (ata_id_has_tpm(id))
-				ata_dev_printk(dev, KERN_WARNING,
-					       "supports DRM functions and may "
-					       "not be fully accessable.\n");
+				ata_dev_warn(dev,
+	"supports DRM functions and may not be fully accessible\n");
 		}
 
 		dev->n_sectors = ata_id_n_sectors(id);
@@ -2459,12 +2278,11 @@ int ata_dev_configure(struct ata_device *dev)
 
 			/* print device info to dmesg */
 			if (ata_msg_drv(ap) && print_info) {
-				ata_dev_printk(dev, KERN_INFO,
-					"%s: %s, %s, max %s\n",
-					revbuf, modelbuf, fwrevbuf,
-					ata_mode_string(xfer_mask));
-				ata_dev_printk(dev, KERN_INFO,
-					"%Lu sectors, multi %u: %s %s\n",
+				ata_dev_info(dev, "%s: %s, %s, max %s\n",
+					     revbuf, modelbuf, fwrevbuf,
+					     ata_mode_string(xfer_mask));
+				ata_dev_info(dev,
+					     "%llu sectors, multi %u: %s %s\n",
 					(unsigned long long)dev->n_sectors,
 					dev->multi_count, lba_desc, ncq_desc);
 			}
@@ -2485,15 +2303,14 @@ int ata_dev_configure(struct ata_device *dev)
 
 			/* print device info to dmesg */
 			if (ata_msg_drv(ap) && print_info) {
-				ata_dev_printk(dev, KERN_INFO,
-					"%s: %s, %s, max %s\n",
-					revbuf,	modelbuf, fwrevbuf,
-					ata_mode_string(xfer_mask));
-				ata_dev_printk(dev, KERN_INFO,
-					"%Lu sectors, multi %u, CHS %u/%u/%u\n",
-					(unsigned long long)dev->n_sectors,
-					dev->multi_count, dev->cylinders,
-					dev->heads, dev->sectors);
+				ata_dev_info(dev, "%s: %s, %s, max %s\n",
+					     revbuf,	modelbuf, fwrevbuf,
+					     ata_mode_string(xfer_mask));
+				ata_dev_info(dev,
+					     "%llu sectors, multi %u, CHS %u/%u/%u\n",
+					     (unsigned long long)dev->n_sectors,
+					     dev->multi_count, dev->cylinders,
+					     dev->heads, dev->sectors);
 			}
 		}
 
@@ -2510,8 +2327,7 @@ int ata_dev_configure(struct ata_device *dev)
 		rc = atapi_cdb_len(id);
 		if ((rc < 12) || (rc > ATAPI_CDB_LEN)) {
 			if (ata_msg_warn(ap))
-				ata_dev_printk(dev, KERN_WARNING,
-					       "unsupported CDB len\n");
+				ata_dev_warn(dev, "unsupported CDB len\n");
 			rc = -EINVAL;
 			goto err_out_nosup;
 		}
@@ -2532,9 +2348,9 @@ int ata_dev_configure(struct ata_device *dev)
 			err_mask = ata_dev_set_feature(dev,
 					SETFEATURES_SATA_ENABLE, SATA_AN);
 			if (err_mask)
-				ata_dev_printk(dev, KERN_ERR,
-					"failed to enable ATAPI AN "
-					"(err_mask=0x%x)\n", err_mask);
+				ata_dev_err(dev,
+					    "failed to enable ATAPI AN (err_mask=0x%x)\n",
+					    err_mask);
 			else {
 				dev->flags |= ATA_DFLAG_AN;
 				atapi_an_string = ", ATAPI AN";
@@ -2553,12 +2369,12 @@ int ata_dev_configure(struct ata_device *dev)
 
 		/* print device info to dmesg */
 		if (ata_msg_drv(ap) && print_info)
-			ata_dev_printk(dev, KERN_INFO,
-				       "ATAPI: %s, %s, max %s%s%s%s\n",
-				       modelbuf, fwrevbuf,
-				       ata_mode_string(xfer_mask),
-				       cdb_intr_string, atapi_an_string,
-				       dma_dir_string);
+			ata_dev_info(dev,
+				     "ATAPI: %s, %s, max %s%s%s%s\n",
+				     modelbuf, fwrevbuf,
+				     ata_mode_string(xfer_mask),
+				     cdb_intr_string, atapi_an_string,
+				     dma_dir_string);
 	}
 
 	/* determine max_sectors */
@@ -2566,19 +2382,11 @@ int ata_dev_configure(struct ata_device *dev)
 	if (dev->flags & ATA_DFLAG_LBA48)
 		dev->max_sectors = ATA_MAX_SECTORS_LBA48;
 
-	if (!(dev->horkage & ATA_HORKAGE_IPM)) {
-		if (ata_id_has_hipm(dev->id))
-			dev->flags |= ATA_DFLAG_HIPM;
-		if (ata_id_has_dipm(dev->id))
-			dev->flags |= ATA_DFLAG_DIPM;
-	}
-
 	/* Limit PATA drive on SATA cable bridge transfers to udma5,
 	   200 sectors */
 	if (ata_dev_knobble(dev)) {
 		if (ata_msg_drv(ap) && print_info)
-			ata_dev_printk(dev, KERN_INFO,
-				       "applying bridge limits\n");
+			ata_dev_info(dev, "applying bridge limits\n");
 		dev->udma_mask &= ATA_UDMA5;
 		dev->max_sectors = ATA_MAX_SECTORS;
 	}
@@ -2593,13 +2401,6 @@ int ata_dev_configure(struct ata_device *dev)
 		dev->max_sectors = min_t(unsigned int, ATA_MAX_SECTORS_128,
 					 dev->max_sectors);
 
-	if (ata_dev_blacklisted(dev) & ATA_HORKAGE_IPM) {
-		dev->horkage |= ATA_HORKAGE_IPM;
-
-		/* reset link pm_policy for this port to no pm */
-		ap->pm_policy = MAX_PERFORMANCE;
-	}
-
 	if (ap->ops->dev_config)
 		ap->ops->dev_config(dev);
 
@@ -2611,26 +2412,23 @@ int ata_dev_configure(struct ata_device *dev)
 		   bugs */
 
 		if (print_info) {
-			ata_dev_printk(dev, KERN_WARNING,
+			ata_dev_warn(dev,
 "Drive reports diagnostics failure. This may indicate a drive\n");
-			ata_dev_printk(dev, KERN_WARNING,
+			ata_dev_warn(dev,
 "fault or invalid emulation. Contact drive vendor for information.\n");
 		}
 	}
 
 	if ((dev->horkage & ATA_HORKAGE_FIRMWARE_WARN) && print_info) {
-		ata_dev_printk(dev, KERN_WARNING, "WARNING: device requires "
-			       "firmware update to be fully functional.\n");
-		ata_dev_printk(dev, KERN_WARNING, "         contact the vendor "
-			       "or visit http://ata.wiki.kernel.org.\n");
+		ata_dev_warn(dev, "WARNING: device requires firmware update to be fully functional\n");
+		ata_dev_warn(dev, "         contact the vendor or visit http://ata.wiki.kernel.org\n");
 	}
 
 	return 0;
 
 err_out_nosup:
 	if (ata_msg_probe(ap))
-		ata_dev_printk(dev, KERN_DEBUG,
-			       "%s: EXIT, err\n", __func__);
+		ata_dev_dbg(dev, "%s: EXIT, err\n", __func__);
 	return rc;
 }
 
@@ -2851,13 +2649,11 @@ static void sata_print_link_status(struct ata_link *link)
 
 	if (ata_phys_link_online(link)) {
 		tmp = (sstatus >> 4) & 0xf;
-		ata_link_printk(link, KERN_INFO,
-				"SATA link up %s (SStatus %X SControl %X)\n",
-				sata_spd_string(tmp), sstatus, scontrol);
+		ata_link_info(link, "SATA link up %s (SStatus %X SControl %X)\n",
+			      sata_spd_string(tmp), sstatus, scontrol);
 	} else {
-		ata_link_printk(link, KERN_INFO,
-				"SATA link down (SStatus %X SControl %X)\n",
-				sstatus, scontrol);
+		ata_link_info(link, "SATA link down (SStatus %X SControl %X)\n",
+			      sstatus, scontrol);
 	}
 }
 
@@ -2946,8 +2742,8 @@ int sata_down_spd_limit(struct ata_link *link, u32 spd_limit)
 
 	link->sata_spd_limit = mask;
 
-	ata_link_printk(link, KERN_WARNING, "limiting SATA link speed to %s\n",
-			sata_spd_string(fls(mask)));
+	ata_link_warn(link, "limiting SATA link speed to %s\n",
+		      sata_spd_string(fls(mask)));
 
 	return 0;
 }
@@ -3324,8 +3120,7 @@ int ata_down_xfermask_limit(struct ata_device *dev, unsigned int sel)
 			snprintf(buf, sizeof(buf), "%s",
 				 ata_mode_string(xfer_mask));
 
-		ata_dev_printk(dev, KERN_WARNING,
-			       "limiting speed to %s\n", buf);
+		ata_dev_warn(dev, "limiting speed to %s\n", buf);
 	}
 
 	ata_unpack_xfermask(xfer_mask, &dev->pio_mask, &dev->mwdma_mask,
@@ -3352,9 +3147,9 @@ static int ata_dev_set_mode(struct ata_device *dev)
 		dev_err_whine = " (SET_XFERMODE skipped)";
 	else {
 		if (nosetxfer)
-			ata_dev_printk(dev, KERN_WARNING,
-				       "NOSETXFER but PATA detected - can't "
-				       "skip SETXFER, might malfunction\n");
+			ata_dev_warn(dev,
+				     "NOSETXFER but PATA detected - can't "
+				     "skip SETXFER, might malfunction\n");
 		err_mask = ata_dev_set_xfermode(dev);
 	}
 
@@ -3404,15 +3199,14 @@ static int ata_dev_set_mode(struct ata_device *dev)
 	DPRINTK("xfer_shift=%u, xfer_mode=0x%x\n",
 		dev->xfer_shift, (int)dev->xfer_mode);
 
-	ata_dev_printk(dev, KERN_INFO, "configured for %s%s\n",
-		       ata_mode_string(ata_xfer_mode2mask(dev->xfer_mode)),
-		       dev_err_whine);
+	ata_dev_info(dev, "configured for %s%s\n",
+		     ata_mode_string(ata_xfer_mode2mask(dev->xfer_mode)),
+		     dev_err_whine);
 
 	return 0;
 
  fail:
-	ata_dev_printk(dev, KERN_ERR, "failed to set xfermode "
-		       "(err_mask=0x%x)\n", err_mask);
+	ata_dev_err(dev, "failed to set xfermode (err_mask=0x%x)\n", err_mask);
 	return -EIO;
 }
 
@@ -3474,7 +3268,7 @@ int ata_do_set_mode(struct ata_link *link, struct ata_device **r_failed_dev)
 	/* step 2: always set host PIO timings */
 	ata_for_each_dev(dev, link, ENABLED) {
 		if (dev->pio_mode == 0xff) {
-			ata_dev_printk(dev, KERN_WARNING, "no PIO support\n");
+			ata_dev_warn(dev, "no PIO support\n");
 			rc = -EINVAL;
 			goto out;
 		}
@@ -3592,13 +3386,13 @@ int ata_wait_ready(struct ata_link *link, unsigned long deadline,
 
 		if (!warned && time_after(now, start + 5 * HZ) &&
 		    (deadline - now > 3 * HZ)) {
-			ata_link_printk(link, KERN_WARNING,
+			ata_link_warn(link,
 				"link is slow to respond, please be patient "
 				"(ready=%d)\n", tmp);
 			warned = 1;
 		}
 
-		msleep(50);
+		ata_msleep(link->ap, 50);
 	}
 }
 
@@ -3619,7 +3413,7 @@ int ata_wait_ready(struct ata_link *link, unsigned long deadline,
 int ata_wait_after_reset(struct ata_link *link, unsigned long deadline,
 				int (*check_ready)(struct ata_link *link))
 {
-	msleep(ATA_WAIT_AFTER_RESET);
+	ata_msleep(link->ap, ATA_WAIT_AFTER_RESET);
 
 	return ata_wait_ready(link, deadline, check_ready);
 }
@@ -3630,7 +3424,7 @@ int ata_wait_after_reset(struct ata_link *link, unsigned long deadline,
  *	@params: timing parameters { interval, duratinon, timeout } in msec
  *	@deadline: deadline jiffies for the operation
  *
-*	Make sure SStatus of @link reaches stable state, determined by
+ *	Make sure SStatus of @link reaches stable state, determined by
  *	holding the same value where DET is not 1 for @duration polled
  *	every @interval, before @timeout.  Timeout constraints the
  *	beginning of the stable state.  Because DET gets stuck at 1 on
@@ -3667,7 +3461,7 @@ int sata_link_debounce(struct ata_link *link, const unsigned long *params,
 	last_jiffies = jiffies;
 
 	while (1) {
-		msleep(interval);
+		ata_msleep(link->ap, interval);
 		if ((rc = sata_scr_read(link, SCR_STATUS, &cur)))
 			return rc;
 		cur &= 0xf;
@@ -3732,7 +3526,7 @@ int sata_link_resume(struct ata_link *link, const unsigned long *params,
 		 * immediately after resuming.  Delay 200ms before
 		 * debouncing.
 		 */
-		msleep(200);
+		ata_msleep(link->ap, 200);
 
 		/* is SControl restored correctly? */
 		if ((rc = sata_scr_read(link, SCR_CONTROL, &scontrol)))
@@ -3740,16 +3534,14 @@ int sata_link_resume(struct ata_link *link, const unsigned long *params,
 	} while ((scontrol & 0xf0f) != 0x300 && --tries);
 
 	if ((scontrol & 0xf0f) != 0x300) {
-		ata_link_printk(link, KERN_ERR,
-				"failed to resume link (SControl %X)\n",
-				scontrol);
+		ata_link_warn(link, "failed to resume link (SControl %X)\n",
+			     scontrol);
 		return 0;
 	}
 
 	if (tries < ATA_LINK_RESUME_TRIES)
-		ata_link_printk(link, KERN_WARNING,
-				"link resume succeeded after %d retries\n",
-				ATA_LINK_RESUME_TRIES - tries);
+		ata_link_warn(link, "link resume succeeded after %d retries\n",
+			      ATA_LINK_RESUME_TRIES - tries);
 
 	if ((rc = sata_link_debounce(link, params, deadline)))
 		return rc;
@@ -3759,6 +3551,78 @@ int sata_link_resume(struct ata_link *link, const unsigned long *params,
 		rc = sata_scr_write(link, SCR_ERROR, serror);
 
 	return rc != -EINVAL ? rc : 0;
+}
+
+/**
+ *	sata_link_scr_lpm - manipulate SControl IPM and SPM fields
+ *	@link: ATA link to manipulate SControl for
+ *	@policy: LPM policy to configure
+ *	@spm_wakeup: initiate LPM transition to active state
+ *
+ *	Manipulate the IPM field of the SControl register of @link
+ *	according to @policy.  If @policy is ATA_LPM_MAX_POWER and
+ *	@spm_wakeup is %true, the SPM field is manipulated to wake up
+ *	the link.  This function also clears PHYRDY_CHG before
+ *	returning.
+ *
+ *	LOCKING:
+ *	EH context.
+ *
+ *	RETURNS:
+ *	0 on succes, -errno otherwise.
+ */
+int sata_link_scr_lpm(struct ata_link *link, enum ata_lpm_policy policy,
+		      bool spm_wakeup)
+{
+	struct ata_eh_context *ehc = &link->eh_context;
+	bool woken_up = false;
+	u32 scontrol;
+	int rc;
+
+	rc = sata_scr_read(link, SCR_CONTROL, &scontrol);
+	if (rc)
+		return rc;
+
+	switch (policy) {
+	case ATA_LPM_MAX_POWER:
+		/* disable all LPM transitions */
+		scontrol |= (0x3 << 8);
+		/* initiate transition to active state */
+		if (spm_wakeup) {
+			scontrol |= (0x4 << 12);
+			woken_up = true;
+		}
+		break;
+	case ATA_LPM_MED_POWER:
+		/* allow LPM to PARTIAL */
+		scontrol &= ~(0x1 << 8);
+		scontrol |= (0x2 << 8);
+		break;
+	case ATA_LPM_MIN_POWER:
+		if (ata_link_nr_enabled(link) > 0)
+			/* no restrictions on LPM transitions */
+			scontrol &= ~(0x3 << 8);
+		else {
+			/* empty port, power off */
+			scontrol &= ~0xf;
+			scontrol |= (0x1 << 2);
+		}
+		break;
+	default:
+		WARN_ON(1);
+	}
+
+	rc = sata_scr_write(link, SCR_CONTROL, scontrol);
+	if (rc)
+		return rc;
+
+	/* give the link time to transit out of LPM state */
+	if (woken_up)
+		msleep(10);
+
+	/* clear PHYRDY_CHG from SError */
+	ehc->i.serror &= ~SERR_PHYRDY_CHG;
+	return sata_scr_write(link, SCR_ERROR, SERR_PHYRDY_CHG);
 }
 
 /**
@@ -3794,8 +3658,9 @@ int ata_std_prereset(struct ata_link *link, unsigned long deadline)
 		rc = sata_link_resume(link, timing, deadline);
 		/* whine about phy resume failure but proceed */
 		if (rc && rc != -EOPNOTSUPP)
-			ata_link_printk(link, KERN_WARNING, "failed to resume "
-					"link for reset (errno=%d)\n", rc);
+			ata_link_warn(link,
+				      "failed to resume link for reset (errno=%d)\n",
+				      rc);
 	}
 
 	/* no point in trying softreset on offline link */
@@ -3870,7 +3735,7 @@ int sata_link_hardreset(struct ata_link *link, const unsigned long *timing,
 	/* Couldn't find anything in SATA I/II specs, but AHCI-1.1
 	 * 10.4.2 says at least 1 ms.
 	 */
-	msleep(1);
+	ata_msleep(link->ap, 1);
 
 	/* bring link back */
 	rc = sata_link_resume(link, timing, deadline);
@@ -3911,8 +3776,7 @@ int sata_link_hardreset(struct ata_link *link, const unsigned long *timing,
 		/* online is set iff link is online && reset succeeded */
 		if (online)
 			*online = false;
-		ata_link_printk(link, KERN_ERR,
-				"COMRESET failed (errno=%d)\n", rc);
+		ata_link_err(link, "COMRESET failed (errno=%d)\n", rc);
 	}
 	DPRINTK("EXIT, rc=%d\n", rc);
 	return rc;
@@ -3996,8 +3860,8 @@ static int ata_dev_same_device(struct ata_device *dev, unsigned int new_class,
 	unsigned char serial[2][ATA_ID_SERNO_LEN + 1];
 
 	if (dev->class != new_class) {
-		ata_dev_printk(dev, KERN_INFO, "class mismatch %d != %d\n",
-			       dev->class, new_class);
+		ata_dev_info(dev, "class mismatch %d != %d\n",
+			     dev->class, new_class);
 		return 0;
 	}
 
@@ -4007,14 +3871,14 @@ static int ata_dev_same_device(struct ata_device *dev, unsigned int new_class,
 	ata_id_c_string(new_id, serial[1], ATA_ID_SERNO, sizeof(serial[1]));
 
 	if (strcmp(model[0], model[1])) {
-		ata_dev_printk(dev, KERN_INFO, "model number mismatch "
-			       "'%s' != '%s'\n", model[0], model[1]);
+		ata_dev_info(dev, "model number mismatch '%s' != '%s'\n",
+			     model[0], model[1]);
 		return 0;
 	}
 
 	if (strcmp(serial[0], serial[1])) {
-		ata_dev_printk(dev, KERN_INFO, "serial number mismatch "
-			       "'%s' != '%s'\n", serial[0], serial[1]);
+		ata_dev_info(dev, "serial number mismatch '%s' != '%s'\n",
+			     serial[0], serial[1]);
 		return 0;
 	}
 
@@ -4084,8 +3948,8 @@ int ata_dev_revalidate(struct ata_device *dev, unsigned int new_class,
 	    new_class != ATA_DEV_ATA &&
 	    new_class != ATA_DEV_ATAPI &&
 	    new_class != ATA_DEV_SEMB) {
-		ata_dev_printk(dev, KERN_INFO, "class mismatch %u != %u\n",
-			       dev->class, new_class);
+		ata_dev_info(dev, "class mismatch %u != %u\n",
+			     dev->class, new_class);
 		rc = -ENODEV;
 		goto fail;
 	}
@@ -4106,9 +3970,9 @@ int ata_dev_revalidate(struct ata_device *dev, unsigned int new_class,
 		return 0;
 
 	/* n_sectors has changed */
-	ata_dev_printk(dev, KERN_WARNING, "n_sectors mismatch %llu != %llu\n",
-		       (unsigned long long)n_sectors,
-		       (unsigned long long)dev->n_sectors);
+	ata_dev_warn(dev, "n_sectors mismatch %llu != %llu\n",
+		     (unsigned long long)n_sectors,
+		     (unsigned long long)dev->n_sectors);
 
 	/*
 	 * Something could have caused HPA to be unlocked
@@ -4117,9 +3981,9 @@ int ata_dev_revalidate(struct ata_device *dev, unsigned int new_class,
 	 */
 	if (dev->n_native_sectors == n_native_sectors &&
 	    dev->n_sectors > n_sectors && dev->n_sectors == n_native_sectors) {
-		ata_dev_printk(dev, KERN_WARNING,
-			       "new n_sectors matches native, probably "
-			       "late HPA unlock, n_sectors updated\n");
+		ata_dev_warn(dev,
+			     "new n_sectors matches native, probably "
+			     "late HPA unlock, n_sectors updated\n");
 		/* use the larger n_sectors */
 		return 0;
 	}
@@ -4133,9 +3997,9 @@ int ata_dev_revalidate(struct ata_device *dev, unsigned int new_class,
 	if (dev->n_native_sectors == n_native_sectors &&
 	    dev->n_sectors < n_sectors && n_sectors == n_native_sectors &&
 	    !(dev->horkage & ATA_HORKAGE_BROKEN_HPA)) {
-		ata_dev_printk(dev, KERN_WARNING,
-			       "old n_sectors matches native, probably "
-			       "late HPA lock, will try to unlock HPA\n");
+		ata_dev_warn(dev,
+			     "old n_sectors matches native, probably "
+			     "late HPA lock, will try to unlock HPA\n");
 		/* try unlocking HPA */
 		dev->flags |= ATA_DFLAG_UNLOCK_HPA;
 		rc = -EIO;
@@ -4146,7 +4010,7 @@ int ata_dev_revalidate(struct ata_device *dev, unsigned int new_class,
 	dev->n_native_sectors = n_native_sectors;
 	dev->n_sectors = n_sectors;
  fail:
-	ata_dev_printk(dev, KERN_ERR, "revalidation failed (errno=%d)\n", rc);
+	ata_dev_err(dev, "revalidation failed (errno=%d)\n", rc);
 	return rc;
 }
 
@@ -4167,15 +4031,13 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	{ "WDC AC23200L",	"21.10N21",	ATA_HORKAGE_NODMA },
 	{ "Compaq CRD-8241B", 	NULL,		ATA_HORKAGE_NODMA },
 	{ "CRD-8400B",		NULL, 		ATA_HORKAGE_NODMA },
-	{ "CRD-8480B",		NULL,		ATA_HORKAGE_NODMA },
-	{ "CRD-8482B",		NULL,		ATA_HORKAGE_NODMA },
+	{ "CRD-848[02]B",	NULL,		ATA_HORKAGE_NODMA },
 	{ "CRD-84",		NULL,		ATA_HORKAGE_NODMA },
 	{ "SanDisk SDP3B",	NULL,		ATA_HORKAGE_NODMA },
 	{ "SanDisk SDP3B-64",	NULL,		ATA_HORKAGE_NODMA },
 	{ "SANYO CD-ROM CRD",	NULL,		ATA_HORKAGE_NODMA },
 	{ "HITACHI CDR-8",	NULL,		ATA_HORKAGE_NODMA },
-	{ "HITACHI CDR-8335",	NULL,		ATA_HORKAGE_NODMA },
-	{ "HITACHI CDR-8435",	NULL,		ATA_HORKAGE_NODMA },
+	{ "HITACHI CDR-8[34]35",NULL,		ATA_HORKAGE_NODMA },
 	{ "Toshiba CD-ROM XM-6202B", NULL,	ATA_HORKAGE_NODMA },
 	{ "TOSHIBA CD-ROM XM-1702BC", NULL,	ATA_HORKAGE_NODMA },
 	{ "CD-532E-A", 		NULL,		ATA_HORKAGE_NODMA },
@@ -4211,70 +4073,16 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	{ "OCZ CORE_SSD",	"02.10104",	ATA_HORKAGE_NONCQ },
 
 	/* Seagate NCQ + FLUSH CACHE firmware bug */
-	{ "ST31500341AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31500341AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31500341AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31500341AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31500341AS",	"SD19",		ATA_HORKAGE_NONCQ |
+	{ "ST31500341AS",	"SD1[5-9]",	ATA_HORKAGE_NONCQ |
 						ATA_HORKAGE_FIRMWARE_WARN },
 
-	{ "ST31000333AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31000333AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31000333AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31000333AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST31000333AS",	"SD19",		ATA_HORKAGE_NONCQ |
+	{ "ST31000333AS",	"SD1[5-9]",	ATA_HORKAGE_NONCQ |
 						ATA_HORKAGE_FIRMWARE_WARN },
 
-	{ "ST3640623AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640623AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640623AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640623AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640623AS",	"SD19",		ATA_HORKAGE_NONCQ |
+	{ "ST3640[36]23AS",	"SD1[5-9]",	ATA_HORKAGE_NONCQ |
 						ATA_HORKAGE_FIRMWARE_WARN },
 
-	{ "ST3640323AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640323AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640323AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640323AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3640323AS",	"SD19",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-
-	{ "ST3320813AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320813AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320813AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320813AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320813AS",	"SD19",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-
-	{ "ST3320613AS",	"SD15",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320613AS",	"SD16",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320613AS",	"SD17",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320613AS",	"SD18",		ATA_HORKAGE_NONCQ |
-						ATA_HORKAGE_FIRMWARE_WARN },
-	{ "ST3320613AS",	"SD19",		ATA_HORKAGE_NONCQ |
+	{ "ST3320[68]13AS",	"SD1[5-9]",	ATA_HORKAGE_NONCQ |
 						ATA_HORKAGE_FIRMWARE_WARN },
 
 	/* Blacklist entries taken from Silicon Image 3124/3132
@@ -4303,12 +4111,7 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	/* Devices which get the IVB wrong */
 	{ "QUANTUM FIREBALLlct10 05", "A03.0900", ATA_HORKAGE_IVB, },
 	/* Maybe we should just blacklist TSSTcorp... */
-	{ "TSSTcorp CDDVDW SH-S202H", "SB00",	  ATA_HORKAGE_IVB, },
-	{ "TSSTcorp CDDVDW SH-S202H", "SB01",	  ATA_HORKAGE_IVB, },
-	{ "TSSTcorp CDDVDW SH-S202J", "SB00",	  ATA_HORKAGE_IVB, },
-	{ "TSSTcorp CDDVDW SH-S202J", "SB01",	  ATA_HORKAGE_IVB, },
-	{ "TSSTcorp CDDVDW SH-S202N", "SB00",	  ATA_HORKAGE_IVB, },
-	{ "TSSTcorp CDDVDW SH-S202N", "SB01",	  ATA_HORKAGE_IVB, },
+	{ "TSSTcorp CDDVDW SH-S202[HJN]", "SB0[01]",  ATA_HORKAGE_IVB, },
 
 	/* Devices that do not need bridging limits applied */
 	{ "MTRON MSP-SATA*",		NULL,	ATA_HORKAGE_BRIDGE_OK, },
@@ -4320,33 +4123,79 @@ static const struct ata_blacklist_entry ata_device_blacklist [] = {
 	 * Devices which choke on SETXFER.  Applies only if both the
 	 * device and controller are SATA.
 	 */
-	{ "PIONEER DVD-RW  DVRTD08",	"1.00",	ATA_HORKAGE_NOSETXFER },
+	{ "PIONEER DVD-RW  DVRTD08",	NULL,	ATA_HORKAGE_NOSETXFER },
+	{ "PIONEER DVD-RW  DVR-212D",	NULL,	ATA_HORKAGE_NOSETXFER },
+	{ "PIONEER DVD-RW  DVR-216D",	NULL,	ATA_HORKAGE_NOSETXFER },
 
 	/* End Marker */
 	{ }
 };
 
-static int strn_pattern_cmp(const char *patt, const char *name, int wildchar)
+/**
+ *	glob_match - match a text string against a glob-style pattern
+ *	@text: the string to be examined
+ *	@pattern: the glob-style pattern to be matched against
+ *
+ *	Either/both of text and pattern can be empty strings.
+ *
+ *	Match text against a glob-style pattern, with wildcards and simple sets:
+ *
+ *		?	matches any single character.
+ *		*	matches any run of characters.
+ *		[xyz]	matches a single character from the set: x, y, or z.
+ *		[a-d]	matches a single character from the range: a, b, c, or d.
+ *		[a-d0-9] matches a single character from either range.
+ *
+ *	The special characters ?, [, -, or *, can be matched using a set, eg. [*]
+ *	Behaviour with malformed patterns is undefined, though generally reasonable.
+ *
+ *	Sample patterns:  "SD1?",  "SD1[0-5]",  "*R0",  "SD*1?[012]*xx"
+ *
+ *	This function uses one level of recursion per '*' in pattern.
+ *	Since it calls _nothing_ else, and has _no_ explicit local variables,
+ *	this will not cause stack problems for any reasonable use here.
+ *
+ *	RETURNS:
+ *	0 on match, 1 otherwise.
+ */
+static int glob_match (const char *text, const char *pattern)
 {
-	const char *p;
-	int len;
+	do {
+		/* Match single character or a '?' wildcard */
+		if (*text == *pattern || *pattern == '?') {
+			if (!*pattern++)
+				return 0;  /* End of both strings: match */
+		} else {
+			/* Match single char against a '[' bracketed ']' pattern set */
+			if (!*text || *pattern != '[')
+				break;  /* Not a pattern set */
+			while (*++pattern && *pattern != ']' && *text != *pattern) {
+				if (*pattern == '-' && *(pattern - 1) != '[')
+					if (*text > *(pattern - 1) && *text < *(pattern + 1)) {
+						++pattern;
+						break;
+					}
+			}
+			if (!*pattern || *pattern == ']')
+				return 1;  /* No match */
+			while (*pattern && *pattern++ != ']');
+		}
+	} while (*++text && *pattern);
 
-	/*
-	 * check for trailing wildcard: *\0
-	 */
-	p = strchr(patt, wildchar);
-	if (p && ((*(p + 1)) == 0))
-		len = p - patt;
-	else {
-		len = strlen(name);
-		if (!len) {
-			if (!*patt)
-				return 0;
-			return -1;
+	/* Match any run of chars against a '*' wildcard */
+	if (*pattern == '*') {
+		if (!*++pattern)
+			return 0;  /* Match: avoid recursion at end of pattern */
+		/* Loop to handle additional pattern chars after the wildcard */
+		while (*text) {
+			if (glob_match(text, pattern) == 0)
+				return 0;  /* Remainder matched */
+			++text;  /* Absorb (match) this char and try again */
 		}
 	}
-
-	return strncmp(patt, name, len);
+	if (!*text && !*pattern)
+		return 0;  /* End of both strings: match */
+	return 1;  /* No match */
 }
 
 static unsigned long ata_dev_blacklisted(const struct ata_device *dev)
@@ -4359,10 +4208,10 @@ static unsigned long ata_dev_blacklisted(const struct ata_device *dev)
 	ata_id_c_string(dev->id, model_rev, ATA_ID_FW_REV, sizeof(model_rev));
 
 	while (ad->model_num) {
-		if (!strn_pattern_cmp(ad->model_num, model_num, '*')) {
+		if (!glob_match(model_num, ad->model_num)) {
 			if (ad->model_rev == NULL)
 				return ad->horkage;
-			if (!strn_pattern_cmp(ad->model_rev, model_rev, '*'))
+			if (!glob_match(model_rev, ad->model_rev))
 				return ad->horkage;
 		}
 		ad++;
@@ -4489,15 +4338,15 @@ static void ata_dev_xfermask(struct ata_device *dev)
 
 	if (ata_dma_blacklisted(dev)) {
 		xfer_mask &= ~(ATA_MASK_MWDMA | ATA_MASK_UDMA);
-		ata_dev_printk(dev, KERN_WARNING,
-			       "device is on DMA blacklist, disabling DMA\n");
+		ata_dev_warn(dev,
+			     "device is on DMA blacklist, disabling DMA\n");
 	}
 
 	if ((host->flags & ATA_HOST_SIMPLEX) &&
 	    host->simplex_claimed && host->simplex_claimed != ap) {
 		xfer_mask &= ~(ATA_MASK_MWDMA | ATA_MASK_UDMA);
-		ata_dev_printk(dev, KERN_WARNING, "simplex DMA is claimed by "
-			       "other device, disabling DMA\n");
+		ata_dev_warn(dev,
+			     "simplex DMA is claimed by other device, disabling DMA\n");
 	}
 
 	if (ap->flags & ATA_FLAG_NO_IORDY)
@@ -4517,8 +4366,8 @@ static void ata_dev_xfermask(struct ata_device *dev)
 	if (xfer_mask & (0xF8 << ATA_SHIFT_UDMA))
 		/* UDMA/44 or higher would be available */
 		if (cable_is_40wire(ap)) {
-			ata_dev_printk(dev, KERN_WARNING,
-				 "limited to UDMA/33 due to 40-wire cable\n");
+			ata_dev_warn(dev,
+				     "limited to UDMA/33 due to 40-wire cable\n");
 			xfer_mask &= ~(0xF8 << ATA_SHIFT_UDMA);
 		}
 
@@ -4570,6 +4419,7 @@ static unsigned int ata_dev_set_xfermode(struct ata_device *dev)
 	DPRINTK("EXIT, err_mask=%x\n", err_mask);
 	return err_mask;
 }
+
 /**
  *	ata_dev_set_feature - Issue SET FEATURES - SATA FEATURES
  *	@dev: Device to which command will be sent
@@ -4585,8 +4435,7 @@ static unsigned int ata_dev_set_xfermode(struct ata_device *dev)
  *	RETURNS:
  *	0 on success, AC_ERR_* mask otherwise.
  */
-static unsigned int ata_dev_set_feature(struct ata_device *dev, u8 enable,
-					u8 feature)
+unsigned int ata_dev_set_feature(struct ata_device *dev, u8 enable, u8 feature)
 {
 	struct ata_taskfile tf;
 	unsigned int err_mask;
@@ -4959,8 +4808,13 @@ static void ata_verify_xfer(struct ata_queued_cmd *qc)
  *	ata_qc_complete - Complete an active ATA command
  *	@qc: Command to complete
  *
- *	Indicate to the mid and upper layers that an ATA
- *	command has completed, with either an ok or not-ok status.
+ *	Indicate to the mid and upper layers that an ATA command has
+ *	completed, with either an ok or not-ok status.
+ *
+ *	Refrain from calling this function multiple times when
+ *	successfully completing multiple NCQ commands.
+ *	ata_qc_complete_multiple() should be used instead, which will
+ *	properly update IRQ expect state.
  *
  *	LOCKING:
  *	spin_lock_irqsave(host lock)
@@ -5062,6 +4916,10 @@ void ata_qc_complete(struct ata_queued_cmd *qc)
  *	requests normally.  ap->qc_active and @qc_active is compared
  *	and commands are completed accordingly.
  *
+ *	Always use this function when completing multiple NCQ commands
+ *	from IRQ handlers instead of calling ata_qc_complete()
+ *	multiple times to keep IRQ expect status properly in sync.
+ *
  *	LOCKING:
  *	spin_lock_irqsave(host lock)
  *
@@ -5076,8 +4934,8 @@ int ata_qc_complete_multiple(struct ata_port *ap, u32 qc_active)
 	done_mask = ap->qc_active ^ qc_active;
 
 	if (unlikely(done_mask & qc_active)) {
-		ata_port_printk(ap, KERN_ERR, "illegal qc_active transition "
-				"(%08x->%08x)\n", ap->qc_active, qc_active);
+		ata_port_err(ap, "illegal qc_active transition (%08x->%08x)\n",
+			     ap->qc_active, qc_active);
 		return -EINVAL;
 	}
 
@@ -5136,15 +4994,18 @@ void ata_qc_issue(struct ata_queued_cmd *qc)
 	qc->flags |= ATA_QCFLAG_ACTIVE;
 	ap->qc_active |= 1 << qc->tag;
 
-	/* We guarantee to LLDs that they will have at least one
+	/*
+	 * We guarantee to LLDs that they will have at least one
 	 * non-zero sg if the command is a data command.
 	 */
-	BUG_ON(ata_is_data(prot) && (!qc->sg || !qc->n_elem || !qc->nbytes));
+	if (WARN_ON_ONCE(ata_is_data(prot) &&
+			 (!qc->sg || !qc->n_elem || !qc->nbytes)))
+		goto sys_err;
 
 	if (ata_is_dma(prot) || (ata_is_pio(prot) &&
 				 (ap->flags & ATA_FLAG_PIO_DMA)))
 		if (ata_sg_setup(qc))
-			goto sg_err;
+			goto sys_err;
 
 	/* if device is sleeping, schedule reset and abort the link */
 	if (unlikely(qc->dev->flags & ATA_DFLAG_SLEEPING)) {
@@ -5161,7 +5022,7 @@ void ata_qc_issue(struct ata_queued_cmd *qc)
 		goto err;
 	return;
 
-sg_err:
+sys_err:
 	qc->err_mask |= AC_ERR_SYSTEM;
 err:
 	ata_qc_complete(qc);
@@ -5444,12 +5305,6 @@ int ata_host_suspend(struct ata_host *host, pm_message_t mesg)
 	int rc;
 
 	/*
-	 * disable link pm on all ports before requesting
-	 * any pm activity
-	 */
-	ata_lpm_enable(host);
-
-	/*
 	 * On some hardware, device fails to respond after spun down
 	 * for suspend.  As the device won't be used before being
 	 * resumed, we don't need to touch the device.  Ask EH to skip
@@ -5472,7 +5327,7 @@ int ata_host_suspend(struct ata_host *host, pm_message_t mesg)
  *
  *	Resume @host.  Actual operation is performed by EH.  This
  *	function requests EH to perform PM operations and returns.
- *	Note that all resume operations are performed parallely.
+ *	Note that all resume operations are performed parallelly.
  *
  *	LOCKING:
  *	Kernel thread context (may sleep).
@@ -5482,9 +5337,6 @@ void ata_host_resume(struct ata_host *host)
 	ata_host_request_pm(host, PMSG_ON, ATA_EH_RESET,
 			    ATA_EHI_NO_AUTOPSY | ATA_EHI_QUIET, 0);
 	host->dev->power.power_state = PMSG_ON;
-
-	/* reenable link pm */
-	ata_lpm_disable(host);
 }
 #endif
 
@@ -5539,7 +5391,8 @@ void ata_link_init(struct ata_port *ap, struct ata_link *link, int pmp)
 	int i;
 
 	/* clear everything except for devices */
-	memset(link, 0, offsetof(struct ata_link, device[0]));
+	memset((void *)link + ATA_LINK_CLEAR_BEGIN, 0,
+	       ATA_LINK_CLEAR_END - ATA_LINK_CLEAR_BEGIN);
 
 	link->ap = ap;
 	link->pmp = pmp;
@@ -5614,7 +5467,7 @@ struct ata_port *ata_port_alloc(struct ata_host *host)
 	if (!ap)
 		return NULL;
 
-	ap->pflags |= ATA_PFLAG_INITIALIZING;
+	ap->pflags |= ATA_PFLAG_INITIALIZING | ATA_PFLAG_FROZEN;
 	ap->lock = &host->lock;
 	ap->print_id = -1;
 	ap->host = host;
@@ -5629,6 +5482,7 @@ struct ata_port *ata_port_alloc(struct ata_host *host)
 	ap->msg_enable = ATA_MSG_DRV | ATA_MSG_ERR | ATA_MSG_WARN;
 #endif
 
+	mutex_init(&ap->scsi_scan_mutex);
 	INIT_DELAYED_WORK(&ap->hotplug_task, ata_scsi_hotplug);
 	INIT_WORK(&ap->scsi_rescan_task, ata_scsi_dev_rescan);
 	INIT_LIST_HEAD(&ap->eh_done_q);
@@ -5716,6 +5570,7 @@ struct ata_host *ata_host_alloc(struct device *dev, int max_ports)
 	dev_set_drvdata(dev, host);
 
 	spin_lock_init(&host->lock);
+	mutex_init(&host->eh_mutex);
 	host->dev = dev;
 	host->n_ports = max_ports;
 
@@ -5972,9 +5827,9 @@ int ata_host_start(struct ata_host *host)
 			rc = ap->ops->port_start(ap);
 			if (rc) {
 				if (rc != -ENODEV)
-					dev_printk(KERN_ERR, host->dev,
-						"failed to start port %d "
-						"(errno=%d)\n", i, rc);
+					dev_err(host->dev,
+						"failed to start port %d (errno=%d)\n",
+						i, rc);
 				goto err_out;
 			}
 		}
@@ -6013,26 +5868,15 @@ void ata_host_init(struct ata_host *host, struct device *dev,
 		   unsigned long flags, struct ata_port_operations *ops)
 {
 	spin_lock_init(&host->lock);
+	mutex_init(&host->eh_mutex);
 	host->dev = dev;
 	host->flags = flags;
 	host->ops = ops;
 }
 
-
-static void async_port_probe(void *data, async_cookie_t cookie)
+int ata_port_probe(struct ata_port *ap)
 {
-	int rc;
-	struct ata_port *ap = data;
-
-	/*
-	 * If we're not allowed to scan this host in parallel,
-	 * we need to wait until all previous scans have completed
-	 * before going further.
-	 * Jeff Garzik says this is only within a controller, so we
-	 * don't need to wait for port 0, only for later ports.
-	 */
-	if (!(ap->host->flags & ATA_HOST_PARALLEL_SCAN) && ap->port_no != 0)
-		async_synchronize_cookie(cookie);
+	int rc = 0;
 
 	/* probe */
 	if (ap->ops->error_handler) {
@@ -6043,7 +5887,7 @@ static void async_port_probe(void *data, async_cookie_t cookie)
 		spin_lock_irqsave(ap->lock, flags);
 
 		ehi->probe_mask |= ATA_ALL_DEVICES;
-		ehi->action |= ATA_EH_RESET | ATA_EH_LPM;
+		ehi->action |= ATA_EH_RESET;
 		ehi->flags |= ATA_EHI_NO_AUTOPSY | ATA_EHI_QUIET;
 
 		ap->pflags &= ~ATA_PFLAG_INITIALIZING;
@@ -6058,23 +5902,33 @@ static void async_port_probe(void *data, async_cookie_t cookie)
 		DPRINTK("ata%u: bus probe begin\n", ap->print_id);
 		rc = ata_bus_probe(ap);
 		DPRINTK("ata%u: bus probe end\n", ap->print_id);
-
-		if (rc) {
-			/* FIXME: do something useful here?
-			 * Current libata behavior will
-			 * tear down everything when
-			 * the module is removed
-			 * or the h/w is unplugged.
-			 */
-		}
 	}
+	return rc;
+}
+
+
+static void async_port_probe(void *data, async_cookie_t cookie)
+{
+	struct ata_port *ap = data;
+
+	/*
+	 * If we're not allowed to scan this host in parallel,
+	 * we need to wait until all previous scans have completed
+	 * before going further.
+	 * Jeff Garzik says this is only within a controller, so we
+	 * don't need to wait for port 0, only for later ports.
+	 */
+	if (!(ap->host->flags & ATA_HOST_PARALLEL_SCAN) && ap->port_no != 0)
+		async_synchronize_cookie(cookie);
+
+	(void)ata_port_probe(ap);
 
 	/* in order to keep device order, we need to synchronize at this point */
 	async_synchronize_cookie(cookie);
 
 	ata_scsi_scan_host(ap, 1);
-
 }
+
 /**
  *	ata_host_register - register initialized ATA host
  *	@host: ATA host to register
@@ -6097,8 +5951,7 @@ int ata_host_register(struct ata_host *host, struct scsi_host_template *sht)
 
 	/* host must have been started */
 	if (!(host->flags & ATA_HOST_STARTED)) {
-		dev_printk(KERN_ERR, host->dev,
-			   "BUG: trying to register unstarted host\n");
+		dev_err(host->dev, "BUG: trying to register unstarted host\n");
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -6114,9 +5967,18 @@ int ata_host_register(struct ata_host *host, struct scsi_host_template *sht)
 	for (i = 0; i < host->n_ports; i++)
 		host->ports[i]->print_id = ata_print_id++;
 
+
+	/* Create associated sysfs transport objects  */
+	for (i = 0; i < host->n_ports; i++) {
+		rc = ata_tport_add(host->dev,host->ports[i]);
+		if (rc) {
+			goto err_tadd;
+		}
+	}
+
 	rc = ata_scsi_add_hosts(host, sht);
 	if (rc)
-		return rc;
+		goto err_tadd;
 
 	/* associate with ACPI nodes */
 	ata_acpi_associate(host);
@@ -6140,14 +6002,13 @@ int ata_host_register(struct ata_host *host, struct scsi_host_template *sht)
 					      ap->udma_mask);
 
 		if (!ata_port_is_dummy(ap)) {
-			ata_port_printk(ap, KERN_INFO,
-					"%cATA max %s %s\n",
-					(ap->flags & ATA_FLAG_SATA) ? 'S' : 'P',
-					ata_mode_string(xfer_mask),
-					ap->link.eh_info.desc);
+			ata_port_info(ap, "%cATA max %s %s\n",
+				      (ap->flags & ATA_FLAG_SATA) ? 'S' : 'P',
+				      ata_mode_string(xfer_mask),
+				      ap->link.eh_info.desc);
 			ata_ehi_clear_desc(&ap->link.eh_info);
 		} else
-			ata_port_printk(ap, KERN_INFO, "DUMMY\n");
+			ata_port_info(ap, "DUMMY\n");
 	}
 
 	/* perform each probe asynchronously */
@@ -6157,6 +6018,13 @@ int ata_host_register(struct ata_host *host, struct scsi_host_template *sht)
 	}
 
 	return 0;
+
+ err_tadd:
+	while (--i >= 0) {
+		ata_tport_delete(host->ports[i]);
+	}
+	return rc;
+
 }
 
 /**
@@ -6244,9 +6112,16 @@ static void ata_port_detach(struct ata_port *ap)
 	/* it better be dead now */
 	WARN_ON(!(ap->pflags & ATA_PFLAG_UNLOADED));
 
-	cancel_rearming_delayed_work(&ap->hotplug_task);
+	cancel_delayed_work_sync(&ap->hotplug_task);
 
  skip_eh:
+	if (ap->pmp_link) {
+		int i;
+		for (i = 0; i < SATA_PMP_MAX_PORTS; i++)
+			ata_tlink_delete(&ap->pmp_link[i]);
+	}
+	ata_tport_delete(ap);
+
 	/* remove the associated SCSI host */
 	scsi_remove_host(ap->scsi_host);
 }
@@ -6345,8 +6220,8 @@ int ata_pci_device_do_resume(struct pci_dev *pdev)
 
 	rc = pcim_enable_device(pdev);
 	if (rc) {
-		dev_printk(KERN_ERR, &pdev->dev,
-			   "failed to enable device after resume (%d)\n", rc);
+		dev_err(&pdev->dev,
+			"failed to enable device after resume (%d)\n", rc);
 		return rc;
 	}
 
@@ -6563,33 +6438,37 @@ static void __init ata_parse_force_param(void)
 
 static int __init ata_init(void)
 {
-	int rc = -ENOMEM;
+	int rc;
 
 	ata_parse_force_param();
 
-	ata_aux_wq = create_singlethread_workqueue("ata_aux");
-	if (!ata_aux_wq)
-		goto fail;
-
 	rc = ata_sff_init();
-	if (rc)
-		goto fail;
+	if (rc) {
+		kfree(ata_force_tbl);
+		return rc;
+	}
+
+	libata_transport_init();
+	ata_scsi_transport_template = ata_attach_transport();
+	if (!ata_scsi_transport_template) {
+		ata_sff_exit();
+		rc = -ENOMEM;
+		goto err_out;
+	}
 
 	printk(KERN_DEBUG "libata version " DRV_VERSION " loaded.\n");
 	return 0;
 
-fail:
-	kfree(ata_force_tbl);
-	if (ata_aux_wq)
-		destroy_workqueue(ata_aux_wq);
+err_out:
 	return rc;
 }
 
 static void __exit ata_exit(void)
 {
+	ata_release_transport(ata_scsi_transport_template);
+	libata_transport_exit();
 	ata_sff_exit();
 	kfree(ata_force_tbl);
-	destroy_workqueue(ata_aux_wq);
 }
 
 subsys_initcall(ata_init);
@@ -6603,7 +6482,35 @@ int ata_ratelimit(void)
 }
 
 /**
+ *	ata_msleep - ATA EH owner aware msleep
+ *	@ap: ATA port to attribute the sleep to
+ *	@msecs: duration to sleep in milliseconds
+ *
+ *	Sleeps @msecs.  If the current task is owner of @ap's EH, the
+ *	ownership is released before going to sleep and reacquired
+ *	after the sleep is complete.  IOW, other ports sharing the
+ *	@ap->host will be allowed to own the EH while this task is
+ *	sleeping.
+ *
+ *	LOCKING:
+ *	Might sleep.
+ */
+void ata_msleep(struct ata_port *ap, unsigned int msecs)
+{
+	bool owns_eh = ap && ap->host->eh_owner == current;
+
+	if (owns_eh)
+		ata_eh_release(ap);
+
+	msleep(msecs);
+
+	if (owns_eh)
+		ata_eh_acquire(ap);
+}
+
+/**
  *	ata_wait_register - wait until register value changes
+ *	@ap: ATA port to wait register for, can be NULL
  *	@reg: IO-mapped register
  *	@mask: Mask to apply to read register value
  *	@val: Wait condition
@@ -6625,7 +6532,7 @@ int ata_ratelimit(void)
  *	RETURNS:
  *	The final register value.
  */
-u32 ata_wait_register(void __iomem *reg, u32 mask, u32 val,
+u32 ata_wait_register(struct ata_port *ap, void __iomem *reg, u32 mask, u32 val,
 		      unsigned long interval, unsigned long timeout)
 {
 	unsigned long deadline;
@@ -6640,7 +6547,7 @@ u32 ata_wait_register(void __iomem *reg, u32 mask, u32 val,
 	deadline = ata_deadline(jiffies, timeout);
 
 	while ((tmp & mask) == val && time_before(jiffies, deadline)) {
-		msleep(interval);
+		ata_msleep(ap, interval);
 		tmp = ioread32(reg);
 	}
 
@@ -6669,6 +6576,82 @@ struct ata_port_operations ata_dummy_port_ops = {
 const struct ata_port_info ata_dummy_port_info = {
 	.port_ops		= &ata_dummy_port_ops,
 };
+
+/*
+ * Utility print functions
+ */
+int ata_port_printk(const struct ata_port *ap, const char *level,
+		    const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+	int r;
+
+	va_start(args, fmt);
+
+	vaf.fmt = fmt;
+	vaf.va = &args;
+
+	r = printk("%sata%u: %pV", level, ap->print_id, &vaf);
+
+	va_end(args);
+
+	return r;
+}
+EXPORT_SYMBOL(ata_port_printk);
+
+int ata_link_printk(const struct ata_link *link, const char *level,
+		    const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+	int r;
+
+	va_start(args, fmt);
+
+	vaf.fmt = fmt;
+	vaf.va = &args;
+
+	if (sata_pmp_attached(link->ap) || link->ap->slave_link)
+		r = printk("%sata%u.%02u: %pV",
+			   level, link->ap->print_id, link->pmp, &vaf);
+	else
+		r = printk("%sata%u: %pV",
+			   level, link->ap->print_id, &vaf);
+
+	va_end(args);
+
+	return r;
+}
+EXPORT_SYMBOL(ata_link_printk);
+
+int ata_dev_printk(const struct ata_device *dev, const char *level,
+		    const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+	int r;
+
+	va_start(args, fmt);
+
+	vaf.fmt = fmt;
+	vaf.va = &args;
+
+	r = printk("%sata%u.%02u: %pV",
+		   level, dev->link->ap->print_id, dev->link->pmp + dev->devno,
+		   &vaf);
+
+	va_end(args);
+
+	return r;
+}
+EXPORT_SYMBOL(ata_dev_printk);
+
+void ata_print_version(const struct device *dev, const char *version)
+{
+	dev_printk(KERN_DEBUG, dev, "version %s\n", version);
+}
+EXPORT_SYMBOL(ata_print_version);
 
 /*
  * libata is essentially a library of internal helper functions for
@@ -6716,6 +6699,7 @@ EXPORT_SYMBOL_GPL(sata_set_spd);
 EXPORT_SYMBOL_GPL(ata_wait_after_reset);
 EXPORT_SYMBOL_GPL(sata_link_debounce);
 EXPORT_SYMBOL_GPL(sata_link_resume);
+EXPORT_SYMBOL_GPL(sata_link_scr_lpm);
 EXPORT_SYMBOL_GPL(ata_std_prereset);
 EXPORT_SYMBOL_GPL(sata_link_hardreset);
 EXPORT_SYMBOL_GPL(sata_std_hardreset);
@@ -6723,6 +6707,7 @@ EXPORT_SYMBOL_GPL(ata_std_postreset);
 EXPORT_SYMBOL_GPL(ata_dev_classify);
 EXPORT_SYMBOL_GPL(ata_dev_pair);
 EXPORT_SYMBOL_GPL(ata_ratelimit);
+EXPORT_SYMBOL_GPL(ata_msleep);
 EXPORT_SYMBOL_GPL(ata_wait_register);
 EXPORT_SYMBOL_GPL(ata_scsi_queuecmd);
 EXPORT_SYMBOL_GPL(ata_scsi_slave_config);

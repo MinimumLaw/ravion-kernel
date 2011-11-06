@@ -26,8 +26,6 @@
 #include <asm/x86_init.h>
 #include <asm/reboot.h>
 
-#define KVM_SCALE 22
-
 static int kvmclock = 1;
 static int msr_kvm_system_time = MSR_KVM_SYSTEM_TIME;
 static int msr_kvm_wall_clock = MSR_KVM_WALL_CLOCK;
@@ -120,21 +118,21 @@ static struct clocksource kvm_clock = {
 	.read = kvm_clock_get_cycles,
 	.rating = 400,
 	.mask = CLOCKSOURCE_MASK(64),
-	.mult = 1 << KVM_SCALE,
-	.shift = KVM_SCALE,
 	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
-static int kvm_register_clock(char *txt)
+int kvm_register_clock(char *txt)
 {
 	int cpu = smp_processor_id();
-	int low, high;
+	int low, high, ret;
+
 	low = (int)__pa(&per_cpu(hv_clock, cpu)) | 1;
 	high = ((u64)__pa(&per_cpu(hv_clock, cpu)) >> 32);
+	ret = native_write_msr_safe(msr_kvm_system_time, low, high);
 	printk(KERN_INFO "kvm-clock: cpu %d, msr %x:%x, %s\n",
 	       cpu, high, low, txt);
 
-	return native_write_msr_safe(msr_kvm_system_time, low, high);
+	return ret;
 }
 
 #ifdef CONFIG_X86_LOCAL_APIC
@@ -150,14 +148,6 @@ static void __cpuinit kvm_setup_secondary_clock(void)
 }
 #endif
 
-#ifdef CONFIG_SMP
-static void __init kvm_smp_prepare_boot_cpu(void)
-{
-	WARN_ON(kvm_register_clock("primary cpu clock"));
-	native_smp_prepare_boot_cpu();
-}
-#endif
-
 /*
  * After the clock is registered, the host will keep writing to the
  * registered memory location. If the guest happens to shutdown, this memory
@@ -170,6 +160,7 @@ static void __init kvm_smp_prepare_boot_cpu(void)
 static void kvm_crash_shutdown(struct pt_regs *regs)
 {
 	native_write_msr(msr_kvm_system_time, 0, 0);
+	kvm_disable_steal_time();
 	native_machine_crash_shutdown(regs);
 }
 #endif
@@ -177,6 +168,7 @@ static void kvm_crash_shutdown(struct pt_regs *regs)
 static void kvm_shutdown(void)
 {
 	native_write_msr(msr_kvm_system_time, 0, 0);
+	kvm_disable_steal_time();
 	native_machine_shutdown();
 }
 
@@ -204,15 +196,12 @@ void __init kvmclock_init(void)
 	x86_cpuinit.setup_percpu_clockev =
 		kvm_setup_secondary_clock;
 #endif
-#ifdef CONFIG_SMP
-	smp_ops.smp_prepare_boot_cpu = kvm_smp_prepare_boot_cpu;
-#endif
 	machine_ops.shutdown  = kvm_shutdown;
 #ifdef CONFIG_KEXEC
 	machine_ops.crash_shutdown  = kvm_crash_shutdown;
 #endif
 	kvm_get_preset_lpj();
-	clocksource_register(&kvm_clock);
+	clocksource_register_hz(&kvm_clock, NSEC_PER_SEC);
 	pv_info.paravirt_enabled = 1;
 	pv_info.name = "KVM";
 

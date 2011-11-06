@@ -67,10 +67,7 @@
 /*******************************************************************************
  *  include files
  ******************************************************************************/
-#include <linux/version.h>
 #ifdef BUS_PCMCIA
-#include <pcmcia/cs_types.h>
-#include <pcmcia/cs.h>
 #include <pcmcia/cistpl.h>
 #include <pcmcia/cisreg.h>
 #include <pcmcia/ciscode.h>
@@ -992,14 +989,7 @@ struct wl_private
 #endif // USE_WDS
 }; // wl_private
 
-#ifdef HAVE_NETDEV_PRIV
 #define wl_priv(dev) ((struct wl_private *) netdev_priv(dev))
-#else
-extern inline struct wl_private *wl_priv(struct net_device *dev)
-{
-    return dev->priv;
-}
-#endif
 
 /********************************************************************/
 /* Locking and synchronization functions                            */

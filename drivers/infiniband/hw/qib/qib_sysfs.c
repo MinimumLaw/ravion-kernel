@@ -347,7 +347,7 @@ static struct kobj_type qib_sl2vl_ktype = {
 
 #define QIB_DIAGC_ATTR(N) \
 	static struct qib_diagc_attr qib_diagc_attr_##N = { \
-		.attr = { .name = __stringify(N), .mode = 0444 }, \
+		.attr = { .name = __stringify(N), .mode = 0664 }, \
 		.counter = offsetof(struct qib_ibport, n_##N) \
 	}
 
@@ -403,8 +403,27 @@ static ssize_t diagc_attr_show(struct kobject *kobj, struct attribute *attr,
 	return sprintf(buf, "%u\n", *(u32 *)((char *)qibp + dattr->counter));
 }
 
+static ssize_t diagc_attr_store(struct kobject *kobj, struct attribute *attr,
+				const char *buf, size_t size)
+{
+	struct qib_diagc_attr *dattr =
+		container_of(attr, struct qib_diagc_attr, attr);
+	struct qib_pportdata *ppd =
+		container_of(kobj, struct qib_pportdata, diagc_kobj);
+	struct qib_ibport *qibp = &ppd->ibport_data;
+	char *endp;
+	long val = simple_strtol(buf, &endp, 0);
+
+	if (val < 0 || endp == buf)
+		return -EINVAL;
+
+	*(u32 *)((char *) qibp + dattr->counter) = val;
+	return size;
+}
+
 static const struct sysfs_ops qib_diagc_ops = {
 	.show = diagc_attr_show,
+	.store = diagc_attr_store,
 };
 
 static struct kobj_type qib_diagc_ktype = {
@@ -486,6 +505,18 @@ static ssize_t show_nctxts(struct device *device,
 	/* Return the number of user ports (contexts) available. */
 	return scnprintf(buf, PAGE_SIZE, "%u\n", dd->cfgctxts -
 		dd->first_user_ctxt);
+}
+
+static ssize_t show_nfreectxts(struct device *device,
+			   struct device_attribute *attr, char *buf)
+{
+	struct qib_ibdev *dev =
+		container_of(device, struct qib_ibdev, ibdev.dev);
+	struct qib_devdata *dd = dd_from_dev(dev);
+
+	/* Return the number of free user ports (contexts) available. */
+	return scnprintf(buf, PAGE_SIZE, "%u\n", dd->cfgctxts -
+		dd->first_user_ctxt - (u32)qib_stats.sps_ctxts);
 }
 
 static ssize_t show_serial(struct device *device,
@@ -585,6 +616,7 @@ static DEVICE_ATTR(hca_type, S_IRUGO, show_hca, NULL);
 static DEVICE_ATTR(board_id, S_IRUGO, show_hca, NULL);
 static DEVICE_ATTR(version, S_IRUGO, show_version, NULL);
 static DEVICE_ATTR(nctxts, S_IRUGO, show_nctxts, NULL);
+static DEVICE_ATTR(nfreectxts, S_IRUGO, show_nfreectxts, NULL);
 static DEVICE_ATTR(serial, S_IRUGO, show_serial, NULL);
 static DEVICE_ATTR(boardversion, S_IRUGO, show_boardversion, NULL);
 static DEVICE_ATTR(logged_errors, S_IRUGO, show_logged_errs, NULL);
@@ -598,6 +630,7 @@ static struct device_attribute *qib_attributes[] = {
 	&dev_attr_board_id,
 	&dev_attr_version,
 	&dev_attr_nctxts,
+	&dev_attr_nfreectxts,
 	&dev_attr_serial,
 	&dev_attr_boardversion,
 	&dev_attr_logged_errors,

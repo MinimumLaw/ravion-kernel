@@ -763,9 +763,9 @@ static void snd_als4000_configure(struct snd_sb *chip)
 	/* SPECS_PAGE: 39 */
 	for (i = ALS4K_GCR91_DMA0_ADDR; i <= ALS4K_GCR96_DMA3_MODE_COUNT; ++i)
 		snd_als4k_gcr_write(chip, i, 0);
-	
+	/* enable burst mode to prevent dropouts during high PCI bus usage */
 	snd_als4k_gcr_write(chip, ALS4K_GCR99_DMA_EMULATION_CTRL,
-		snd_als4k_gcr_read(chip, ALS4K_GCR99_DMA_EMULATION_CTRL));
+		(snd_als4k_gcr_read(chip, ALS4K_GCR99_DMA_EMULATION_CTRL) & ~0x07) | 0x04);
 	spin_unlock_irq(&chip->reg_lock);
 }
 
@@ -1036,7 +1036,7 @@ static int snd_als4000_resume(struct pci_dev *pci)
 
 
 static struct pci_driver driver = {
-	.name = "ALS4000",
+	.name = KBUILD_MODNAME,
 	.id_table = snd_als4000_ids,
 	.probe = snd_card_als4000_probe,
 	.remove = __devexit_p(snd_card_als4000_remove),

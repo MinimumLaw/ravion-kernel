@@ -75,7 +75,8 @@ extern unsigned long it8152_base_address;
   IT8152_PD_IRQ(1)  USB (USBR)
   IT8152_PD_IRQ(0)  Audio controller (ACR)
  */
-#define IT8152_IRQ(x)   (IRQ_BOARD_END + (x))
+#define IT8152_IRQ(x)   (IRQ_BOARD_START + (x))
+#define IT8152_LAST_IRQ	(IRQ_BOARD_START + 40)
 
 /* IRQ-sources in 3 groups - local devices, LPC (serial), and external PCI */
 #define IT8152_LD_IRQ_COUNT     9
@@ -104,7 +105,7 @@ struct pci_sys_data;
 
 extern void it8152_irq_demux(unsigned int irq, struct irq_desc *desc);
 extern void it8152_init_irq(void);
-extern int it8152_pci_map_irq(struct pci_dev *dev, u8 slot, u8 pin);
+extern int it8152_pci_map_irq(const struct pci_dev *dev, u8 slot, u8 pin);
 extern int it8152_pci_setup(int nr, struct pci_sys_data *sys);
 extern struct pci_bus *it8152_pci_scan_bus(int nr, struct pci_sys_data *sys);
 

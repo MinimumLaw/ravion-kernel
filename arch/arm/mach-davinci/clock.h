@@ -68,7 +68,10 @@
 #ifndef __ASSEMBLER__
 
 #include <linux/list.h>
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
+
+#define PLLSTAT_GOSTAT	BIT(0)
+#define PLLCMD_GOSET	BIT(0)
 
 struct pll_data {
 	u32 phys_base;
@@ -86,6 +89,7 @@ struct clk {
 	struct module		*owner;
 	const char		*name;
 	unsigned long		rate;
+	unsigned long		maxrate;	/* H/W supported max rate */
 	u8			usecount;
 	u8			lpsc;
 	u8			gpsc;
@@ -107,6 +111,7 @@ struct clk {
 #define CLK_PLL			BIT(4) /* PLL-derived clock */
 #define PRE_PLL			BIT(5) /* source is before PLL mult/div */
 #define PSC_SWRSTDISABLE	BIT(6) /* Disable state is SwRstDisable */
+#define PSC_FORCE		BIT(7) /* Force module state transtition */
 
 #define CLK(dev, con, ck) 	\
 	{			\
@@ -118,6 +123,9 @@ struct clk {
 int davinci_clk_init(struct clk_lookup *clocks);
 int davinci_set_pllrate(struct pll_data *pll, unsigned int prediv,
 				unsigned int mult, unsigned int postdiv);
+int davinci_set_sysclk_rate(struct clk *clk, unsigned long rate);
+int davinci_set_refclk_rate(unsigned long rate);
+int davinci_simple_set_rate(struct clk *clk, unsigned long rate);
 
 extern struct platform_device davinci_wdt_device;
 extern void davinci_watchdog_reset(struct platform_device *);

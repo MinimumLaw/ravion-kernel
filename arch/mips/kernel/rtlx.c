@@ -36,7 +36,7 @@
 #include <asm/mipsmtregs.h>
 #include <asm/mips_mt.h>
 #include <asm/cacheflush.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/cpu.h>
 #include <asm/processor.h>
 #include <asm/system.h>
@@ -468,7 +468,8 @@ static const struct file_operations rtlx_fops = {
 	.release = file_release,
 	.write =   file_write,
 	.read =    file_read,
-	.poll =    file_poll
+	.poll =    file_poll,
+	.llseek =  noop_llseek,
 };
 
 static struct irqaction rtlx_irq = {

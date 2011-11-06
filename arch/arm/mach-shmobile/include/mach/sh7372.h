@@ -11,6 +11,9 @@
 #ifndef __ASM_SH7372_H__
 #define __ASM_SH7372_H__
 
+#include <linux/sh_clk.h>
+#include <linux/pm_domain.h>
+
 /*
  * Pin Function Controller:
  *	GPIO_FN_xx - GPIO used to select pin function
@@ -430,5 +433,74 @@ enum {
 	GPIO_FN_SDENC_CPG,
 	GPIO_FN_SDENC_DV_CLKI,
 };
+
+/* DMA slave IDs */
+enum {
+	SHDMA_SLAVE_INVALID,
+	SHDMA_SLAVE_SCIF0_TX,
+	SHDMA_SLAVE_SCIF0_RX,
+	SHDMA_SLAVE_SCIF1_TX,
+	SHDMA_SLAVE_SCIF1_RX,
+	SHDMA_SLAVE_SCIF2_TX,
+	SHDMA_SLAVE_SCIF2_RX,
+	SHDMA_SLAVE_SCIF3_TX,
+	SHDMA_SLAVE_SCIF3_RX,
+	SHDMA_SLAVE_SCIF4_TX,
+	SHDMA_SLAVE_SCIF4_RX,
+	SHDMA_SLAVE_SCIF5_TX,
+	SHDMA_SLAVE_SCIF5_RX,
+	SHDMA_SLAVE_SCIF6_TX,
+	SHDMA_SLAVE_SCIF6_RX,
+	SHDMA_SLAVE_SDHI0_RX,
+	SHDMA_SLAVE_SDHI0_TX,
+	SHDMA_SLAVE_SDHI1_RX,
+	SHDMA_SLAVE_SDHI1_TX,
+	SHDMA_SLAVE_SDHI2_RX,
+	SHDMA_SLAVE_SDHI2_TX,
+	SHDMA_SLAVE_MMCIF_RX,
+	SHDMA_SLAVE_MMCIF_TX,
+	SHDMA_SLAVE_USB0_TX,
+	SHDMA_SLAVE_USB0_RX,
+	SHDMA_SLAVE_USB1_TX,
+	SHDMA_SLAVE_USB1_RX,
+};
+
+extern struct clk sh7372_extal1_clk;
+extern struct clk sh7372_extal2_clk;
+extern struct clk sh7372_dv_clki_clk;
+extern struct clk sh7372_dv_clki_div2_clk;
+extern struct clk sh7372_pllc2_clk;
+extern struct clk sh7372_fsiack_clk;
+extern struct clk sh7372_fsibck_clk;
+extern struct clk sh7372_fsidiva_clk;
+extern struct clk sh7372_fsidivb_clk;
+
+struct platform_device;
+
+struct sh7372_pm_domain {
+	struct generic_pm_domain genpd;
+	unsigned int bit_shift;
+};
+
+static inline struct sh7372_pm_domain *to_sh7372_pd(struct generic_pm_domain *d)
+{
+	return container_of(d, struct sh7372_pm_domain, genpd);
+}
+
+#ifdef CONFIG_PM
+extern struct sh7372_pm_domain sh7372_a4lc;
+extern struct sh7372_pm_domain sh7372_a4mp;
+extern struct sh7372_pm_domain sh7372_d4;
+extern struct sh7372_pm_domain sh7372_a3rv;
+extern struct sh7372_pm_domain sh7372_a3ri;
+extern struct sh7372_pm_domain sh7372_a3sg;
+
+extern void sh7372_init_pm_domain(struct sh7372_pm_domain *sh7372_pd);
+extern void sh7372_add_device_to_domain(struct sh7372_pm_domain *sh7372_pd,
+					struct platform_device *pdev);
+#else
+#define sh7372_init_pm_domain(pd) do { } while(0)
+#define sh7372_add_device_to_domain(pd, pdev) do { } while(0)
+#endif /* CONFIG_PM */
 
 #endif /* __ASM_SH7372_H__ */

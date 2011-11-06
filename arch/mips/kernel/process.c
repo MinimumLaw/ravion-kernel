@@ -103,7 +103,6 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long sp)
 		__init_dsp();
 	regs->cp0_epc = pc;
 	regs->regs[29] = sp;
-	current_thread_info()->addr_limit = USER_DS;
 }
 
 void exit_thread(void)
@@ -142,7 +141,6 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 	childregs->regs[7] = 0;	/* Clear error flag */
 
 	childregs->regs[2] = 0;	/* Child gets zero as return value */
-	regs->regs[2] = p->pid;
 
 	if (childregs->cp0_status & ST0_CU0) {
 		childregs->regs[28] = (unsigned long) ti;
@@ -374,18 +372,18 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 
 
 #ifdef CONFIG_KALLSYMS
-/* used by show_backtrace() */
-unsigned long unwind_stack(struct task_struct *task, unsigned long *sp,
-			   unsigned long pc, unsigned long *ra)
+/* generic stack unwinding function */
+unsigned long notrace unwind_stack_by_address(unsigned long stack_page,
+					      unsigned long *sp,
+					      unsigned long pc,
+					      unsigned long *ra)
 {
-	unsigned long stack_page;
 	struct mips_frame_info info;
 	unsigned long size, ofs;
 	int leaf;
 	extern void ret_from_irq(void);
 	extern void ret_from_exception(void);
 
-	stack_page = (unsigned long)task_stack_page(task);
 	if (!stack_page)
 		return 0;
 
@@ -411,7 +409,7 @@ unsigned long unwind_stack(struct task_struct *task, unsigned long *sp,
 	if (!kallsyms_lookup_size_offset(pc, &size, &ofs))
 		return 0;
 	/*
-	 * Return ra if an exception occured at the first instruction
+	 * Return ra if an exception occurred at the first instruction
 	 */
 	if (unlikely(ofs == 0)) {
 		pc = *ra;
@@ -443,6 +441,15 @@ unsigned long unwind_stack(struct task_struct *task, unsigned long *sp,
 	*sp += info.frame_size;
 	*ra = 0;
 	return __kernel_text_address(pc) ? pc : 0;
+}
+EXPORT_SYMBOL(unwind_stack_by_address);
+
+/* used by show_backtrace() */
+unsigned long unwind_stack(struct task_struct *task, unsigned long *sp,
+			   unsigned long pc, unsigned long *ra)
+{
+	unsigned long stack_page = (unsigned long)task_stack_page(task);
+	return unwind_stack_by_address(stack_page, sp, pc, ra);
 }
 #endif
 

@@ -44,12 +44,12 @@ void reset_scoop(struct device *dev)
 {
 	struct scoop_dev *sdev = dev_get_drvdata(dev);
 
-	iowrite16(0x0100, sdev->base + SCOOP_MCR);  // 00
-	iowrite16(0x0000, sdev->base + SCOOP_CDR);  // 04
-	iowrite16(0x0000, sdev->base + SCOOP_CCR);  // 10
-	iowrite16(0x0000, sdev->base + SCOOP_IMR);  // 18
-	iowrite16(0x00FF, sdev->base + SCOOP_IRM);  // 14
-	iowrite16(0x0000, sdev->base + SCOOP_ISR);  // 1C
+	iowrite16(0x0100, sdev->base + SCOOP_MCR);  /* 00 */
+	iowrite16(0x0000, sdev->base + SCOOP_CDR);  /* 04 */
+	iowrite16(0x0000, sdev->base + SCOOP_CCR);  /* 10 */
+	iowrite16(0x0000, sdev->base + SCOOP_IMR);  /* 18 */
+	iowrite16(0x00FF, sdev->base + SCOOP_IRM);  /* 14 */
+	iowrite16(0x0000, sdev->base + SCOOP_ISR);  /* 1C */
 	iowrite16(0x0000, sdev->base + SCOOP_IRM);
 }
 
@@ -193,7 +193,7 @@ static int __devinit scoop_probe(struct platform_device *pdev)
 	spin_lock_init(&devptr->scoop_lock);
 
 	inf = pdev->dev.platform_data;
-	devptr->base = ioremap(mem->start, mem->end - mem->start + 1);
+	devptr->base = ioremap(mem->start, resource_size(mem));
 
 	if (!devptr->base) {
 		ret = -ENOMEM;

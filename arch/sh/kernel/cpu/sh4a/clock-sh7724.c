@@ -22,7 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/clk.h>
-#include <asm/clkdev.h>
+#include <linux/clkdev.h>
 #include <asm/clock.h>
 #include <asm/hwblk.h>
 #include <cpu/sh7724.h>
@@ -48,7 +48,7 @@ static struct clk r_clk = {
  * Default rate for the root input clock, reset this with clk_set_rate()
  * from the platform code.
  */
-struct clk extal_clk = {
+static struct clk extal_clk = {
 	.rate		= 33333333,
 };
 
@@ -111,12 +111,21 @@ static struct clk div3_clk = {
 	.parent		= &pll_clk,
 };
 
-struct clk *main_clks[] = {
+/* External input clock (pin name: FSIMCKA/FSIMCKB ) */
+struct clk sh7724_fsimcka_clk = {
+};
+
+struct clk sh7724_fsimckb_clk = {
+};
+
+static struct clk *main_clks[] = {
 	&r_clk,
 	&extal_clk,
 	&fll_clk,
 	&pll_clk,
 	&div3_clk,
+	&sh7724_fsimcka_clk,
+	&sh7724_fsimckb_clk,
 };
 
 static void div4_kick(struct clk *clk)
@@ -154,14 +163,36 @@ struct clk div4_clks[DIV4_NR] = {
 	[DIV4_M1] = DIV4(FRQCRB, 4, 0x2f7c, CLK_ENABLE_ON_INIT),
 };
 
-enum { DIV6_V, DIV6_FA, DIV6_FB, DIV6_I, DIV6_S, DIV6_NR };
+enum { DIV6_V, DIV6_I, DIV6_S, DIV6_NR };
 
-struct clk div6_clks[DIV6_NR] = {
+static struct clk div6_clks[DIV6_NR] = {
 	[DIV6_V] = SH_CLK_DIV6(&div3_clk, VCLKCR, 0),
-	[DIV6_FA] = SH_CLK_DIV6(&div3_clk, FCLKACR, 0),
-	[DIV6_FB] = SH_CLK_DIV6(&div3_clk, FCLKBCR, 0),
 	[DIV6_I] = SH_CLK_DIV6(&div3_clk, IRDACLKCR, 0),
 	[DIV6_S] = SH_CLK_DIV6(&div3_clk, SPUCLKCR, CLK_ENABLE_ON_INIT),
+};
+
+enum { DIV6_FA, DIV6_FB, DIV6_REPARENT_NR };
+
+/* Indices are important - they are the actual src selecting values */
+static struct clk *fclkacr_parent[] = {
+	[0] = &div3_clk,
+	[1] = NULL,
+	[2] = &sh7724_fsimcka_clk,
+	[3] = NULL,
+};
+
+static struct clk *fclkbcr_parent[] = {
+	[0] = &div3_clk,
+	[1] = NULL,
+	[2] = &sh7724_fsimckb_clk,
+	[3] = NULL,
+};
+
+static struct clk div6_reparent_clks[DIV6_REPARENT_NR] = {
+	[DIV6_FA] = SH_CLK_DIV6_EXT(&div3_clk, FCLKACR, 0,
+				      fclkacr_parent, ARRAY_SIZE(fclkacr_parent), 6, 2),
+	[DIV6_FB] = SH_CLK_DIV6_EXT(&div3_clk, FCLKBCR, 0,
+				      fclkbcr_parent, ARRAY_SIZE(fclkbcr_parent), 6, 2),
 };
 
 static struct clk mstp_clks[HWBLK_NR] = {
@@ -221,8 +252,6 @@ static struct clk mstp_clks[HWBLK_NR] = {
 	SH_HWBLK_CLK(HWBLK_LCDC, &div4_clks[DIV4_B], 0),
 };
 
-#define CLKDEV_CON_ID(_id, _clk) { .con_id = _id, .clk = _clk }
-
 static struct clk_lookup lookups[] = {
 	/* main clocks */
 	CLKDEV_CON_ID("rclk", &r_clk),
@@ -240,8 +269,8 @@ static struct clk_lookup lookups[] = {
 
 	/* DIV6 clocks */
 	CLKDEV_CON_ID("video_clk", &div6_clks[DIV6_V]),
-	CLKDEV_CON_ID("fsia_clk", &div6_clks[DIV6_FA]),
-	CLKDEV_CON_ID("fsib_clk", &div6_clks[DIV6_FB]),
+	CLKDEV_CON_ID("fsia_clk", &div6_reparent_clks[DIV6_FA]),
+	CLKDEV_CON_ID("fsib_clk", &div6_reparent_clks[DIV6_FB]),
 	CLKDEV_CON_ID("irda_clk", &div6_clks[DIV6_I]),
 	CLKDEV_CON_ID("spu_clk", &div6_clks[DIV6_S]),
 
@@ -258,77 +287,31 @@ static struct clk_lookup lookups[] = {
 	CLKDEV_CON_ID("sh0", &mstp_clks[HWBLK_SHYWAY]),
 	CLKDEV_CON_ID("hudi0", &mstp_clks[HWBLK_HUDI]),
 	CLKDEV_CON_ID("ubc0", &mstp_clks[HWBLK_UBC]),
-	{
-		/* TMU0 */
-		.dev_id		= "sh_tmu.0",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU0],
-	}, {
-		/* TMU1 */
-		.dev_id		= "sh_tmu.1",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU0],
-	}, {
-		/* TMU2 */
-		.dev_id		= "sh_tmu.2",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU0],
-	}, {
-		/* TMU3 */
-		.dev_id		= "sh_tmu.3",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU1],
-	},
+
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.0", &mstp_clks[HWBLK_TMU0]),
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.1", &mstp_clks[HWBLK_TMU0]),
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.2", &mstp_clks[HWBLK_TMU0]),
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.3", &mstp_clks[HWBLK_TMU1]),
+
 	CLKDEV_CON_ID("cmt_fck", &mstp_clks[HWBLK_CMT]),
 	CLKDEV_CON_ID("rwdt0", &mstp_clks[HWBLK_RWDT]),
 	CLKDEV_CON_ID("dmac1", &mstp_clks[HWBLK_DMAC1]),
-	{
-		/* TMU4 */
-		.dev_id		= "sh_tmu.4",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU1],
-	}, {
-		/* TMU5 */
-		.dev_id		= "sh_tmu.5",
-		.con_id		= "tmu_fck",
-		.clk		= &mstp_clks[HWBLK_TMU1],
-	}, {
-		/* SCIF0 */
-		.dev_id		= "sh-sci.0",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF0],
-	}, {
-		/* SCIF1 */
-		.dev_id		= "sh-sci.1",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF1],
-	}, {
-		/* SCIF2 */
-		.dev_id		= "sh-sci.2",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF2],
-	}, {
-		/* SCIF3 */
-		.dev_id		= "sh-sci.3",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF3],
-	}, {
-		/* SCIF4 */
-		.dev_id		= "sh-sci.4",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF4],
-	}, {
-		/* SCIF5 */
-		.dev_id		= "sh-sci.5",
-		.con_id		= "sci_fck",
-		.clk		= &mstp_clks[HWBLK_SCIF5],
-	},
+
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.4", &mstp_clks[HWBLK_TMU1]),
+	CLKDEV_ICK_ID("tmu_fck", "sh_tmu.5", &mstp_clks[HWBLK_TMU1]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.0", &mstp_clks[HWBLK_SCIF0]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.1", &mstp_clks[HWBLK_SCIF1]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.2", &mstp_clks[HWBLK_SCIF2]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.3", &mstp_clks[HWBLK_SCIF3]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.4", &mstp_clks[HWBLK_SCIF4]),
+	CLKDEV_ICK_ID("sci_fck", "sh-sci.5", &mstp_clks[HWBLK_SCIF5]),
+
 	CLKDEV_CON_ID("msiof0", &mstp_clks[HWBLK_MSIOF0]),
 	CLKDEV_CON_ID("msiof1", &mstp_clks[HWBLK_MSIOF1]),
 	CLKDEV_CON_ID("keysc0", &mstp_clks[HWBLK_KEYSC]),
 	CLKDEV_CON_ID("rtc0", &mstp_clks[HWBLK_RTC]),
-	CLKDEV_CON_ID("i2c0", &mstp_clks[HWBLK_IIC0]),
-	CLKDEV_CON_ID("i2c1", &mstp_clks[HWBLK_IIC1]),
+	CLKDEV_DEV_ID("i2c-sh_mobile.0", &mstp_clks[HWBLK_IIC0]),
+	CLKDEV_DEV_ID("i2c-sh_mobile.1", &mstp_clks[HWBLK_IIC1]),
 	CLKDEV_CON_ID("mmc0", &mstp_clks[HWBLK_MMC]),
 	CLKDEV_CON_ID("eth0", &mstp_clks[HWBLK_ETHER]),
 	CLKDEV_CON_ID("atapi0", &mstp_clks[HWBLK_ATAPI]),
@@ -374,6 +357,9 @@ int __init arch_clk_init(void)
 
 	if (!ret)
 		ret = sh_clk_div6_register(div6_clks, DIV6_NR);
+
+	if (!ret)
+		ret = sh_clk_div6_reparent_register(div6_reparent_clks, DIV6_REPARENT_NR);
 
 	if (!ret)
 		ret = sh_hwblk_clk_register(mstp_clks, HWBLK_NR);

@@ -35,7 +35,7 @@ struct cfg80211_conn {
 	bool auto_auth, prev_bssid_valid;
 };
 
-bool cfg80211_is_all_idle(void)
+static bool cfg80211_is_all_idle(void)
 {
 	struct cfg80211_registered_device *rdev;
 	struct wireless_dev *wdev;
@@ -118,6 +118,8 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 			     i++, j++)
 				request->channels[i] =
 					&wdev->wiphy->bands[band]->channels[j];
+			request->rates[band] =
+				(1 << wdev->wiphy->bands[band]->n_bitrates) - 1;
 		}
 	}
 	request->n_channels = n_channels;
@@ -250,7 +252,8 @@ static struct cfg80211_bss *cfg80211_get_conn_bss(struct wireless_dev *wdev)
 	if (wdev->conn->params.privacy)
 		capa |= WLAN_CAPABILITY_PRIVACY;
 
-	bss = cfg80211_get_bss(wdev->wiphy, NULL, wdev->conn->params.bssid,
+	bss = cfg80211_get_bss(wdev->wiphy, wdev->conn->params.channel,
+			       wdev->conn->params.bssid,
 			       wdev->conn->params.ssid,
 			       wdev->conn->params.ssid_len,
 			       WLAN_CAPABILITY_ESS | WLAN_CAPABILITY_PRIVACY,
@@ -411,7 +414,8 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 
 	ASSERT_WDEV_LOCK(wdev);
 
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION))
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
 	if (wdev->sme_state != CFG80211_SME_CONNECTING)
@@ -469,7 +473,10 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 	}
 
 	if (!bss)
-		bss = cfg80211_get_bss(wdev->wiphy, NULL, bssid,
+		bss = cfg80211_get_bss(wdev->wiphy,
+				       wdev->conn ? wdev->conn->params.channel :
+				       NULL,
+				       bssid,
 				       wdev->ssid, wdev->ssid_len,
 				       WLAN_CAPABILITY_ESS,
 				       WLAN_CAPABILITY_ESS);
@@ -537,7 +544,9 @@ void cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 }
 EXPORT_SYMBOL(cfg80211_connect_result);
 
-void __cfg80211_roamed(struct wireless_dev *wdev, const u8 *bssid,
+void __cfg80211_roamed(struct wireless_dev *wdev,
+		       struct ieee80211_channel *channel,
+		       const u8 *bssid,
 		       const u8 *req_ie, size_t req_ie_len,
 		       const u8 *resp_ie, size_t resp_ie_len)
 {
@@ -548,7 +557,8 @@ void __cfg80211_roamed(struct wireless_dev *wdev, const u8 *bssid,
 
 	ASSERT_WDEV_LOCK(wdev);
 
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION))
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
 	if (wdev->sme_state != CFG80211_SME_CONNECTED)
@@ -563,7 +573,7 @@ void __cfg80211_roamed(struct wireless_dev *wdev, const u8 *bssid,
 	cfg80211_put_bss(&wdev->current_bss->pub);
 	wdev->current_bss = NULL;
 
-	bss = cfg80211_get_bss(wdev->wiphy, NULL, bssid,
+	bss = cfg80211_get_bss(wdev->wiphy, channel, bssid,
 			       wdev->ssid, wdev->ssid_len,
 			       WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
 
@@ -601,7 +611,9 @@ void __cfg80211_roamed(struct wireless_dev *wdev, const u8 *bssid,
 #endif
 }
 
-void cfg80211_roamed(struct net_device *dev, const u8 *bssid,
+void cfg80211_roamed(struct net_device *dev,
+		     struct ieee80211_channel *channel,
+		     const u8 *bssid,
 		     const u8 *req_ie, size_t req_ie_len,
 		     const u8 *resp_ie, size_t resp_ie_len, gfp_t gfp)
 {
@@ -617,6 +629,7 @@ void cfg80211_roamed(struct net_device *dev, const u8 *bssid,
 		return;
 
 	ev->type = EVENT_ROAMED;
+	ev->rm.channel = channel;
 	memcpy(ev->rm.bssid, bssid, ETH_ALEN);
 	ev->rm.req_ie = ((u8 *)ev) + sizeof(*ev);
 	ev->rm.req_ie_len = req_ie_len;
@@ -644,7 +657,8 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 
 	ASSERT_WDEV_LOCK(wdev);
 
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION))
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
 	if (wdev->sme_state != CFG80211_SME_CONNECTED)
@@ -695,7 +709,7 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 	 */
 	if (rdev->ops->del_key)
 		for (i = 0; i < 6; i++)
-			rdev->ops->del_key(wdev->wiphy, dev, i, NULL);
+			rdev->ops->del_key(wdev->wiphy, dev, i, false, NULL);
 
 #ifdef CONFIG_CFG80211_WEXT
 	memset(&wrqu, 0, sizeof(wrqu));
