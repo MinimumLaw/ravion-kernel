@@ -212,7 +212,7 @@ config PCMCIA_SA1111
 config PCMCIA_PXA2XX
 	tristate "PXA2xx support"
 	depends on ARM && ARCH_PXA && PCMCIA
-	depends on (ARCH_LUBBOCK || MACH_MAINSTONE || PXA_SHARPSL \
+	depends on (ARCH_LUBBOCK || MACH_MAINSTONE || PXA_SHARPSL || MACH_COLIBRI \
 		    || MACH_ARMCORE || ARCH_PXA_PALM || TRIZEPS_PCMCIA \
 		    || ARCOM_PCMCIA || ARCH_PXA_ESERIES || MACH_STARGATE2 \
 		    || MACH_VPAC270)
@@ -220,9 +220,18 @@ config PCMCIA_PXA2XX
 	help
 	  Say Y here to include support for the PXA2xx PCMCIA controller
 
+config PCMCIA_PXA32X
+	tristate "PXA32x support"
+	depends on ARM && ARCH_PXA && PCMCIA
+	depends on (MACH_COLIBRI320)
+	select PCMCIA_SOC_COMMON
+	help
+	  Say Y here to include support for the PXA32x PCMCIA controller
+
+
 config PCMCIA_DEBUG
 	bool "Enable debugging"
-	depends on (PCMCIA_SA1111 || PCMCIA_SA1100 || PCMCIA_PXA2XX)
+	depends on (PCMCIA_SA1111 || PCMCIA_SA1100 || PCMCIA_PXA2XX || PCMCIA_PXA32X)
 	help
 	  Say Y here to enable debugging for the SoC PCMCIA layer.
 	  You will need to choose the debugging level either via the
