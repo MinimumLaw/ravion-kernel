@@ -309,9 +309,13 @@ static int parse_cmdline_partitions(struct mtd_info *master,
 	struct cmdline_mtd_partition *part;
 	const char *mtd_id = master->name;
 
+	printk(KERN_INFO "=> %s : enter...\n",__func__);
+
 	/* parse command line */
 	if (!cmdline_parsed)
 		mtdpart_setup_real(cmdline);
+
+	printk(KERN_INFO "=> %s : mtd_id = %s\n", __func__, mtd_id);
 
 	for(part = partitions; part; part = part->next)
 	{

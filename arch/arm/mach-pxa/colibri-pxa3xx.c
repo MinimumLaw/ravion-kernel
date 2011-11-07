@@ -39,6 +39,7 @@ void __init colibri_pxa3xx_init_eth(struct ax_plat_data *plat_data)
 	int i;
 	u64 serial = ((u64) system_serial_high << 32) | system_serial_low;
 
+	printk(KERN_INFO ">>> Serial number: hi - 0x%04X, low - 0x%04X\n",system_serial_high, system_serial_low);
 	/*
 	 * If the bootloader passed in a serial boot tag, which contains a
 	 * valid ethernet MAC, pass it to the interface. Toradex ships the

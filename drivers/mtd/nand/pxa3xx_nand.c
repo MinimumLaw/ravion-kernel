@@ -1320,14 +1320,20 @@ static int pxa3xx_nand_probe(struct platform_device *pdev)
 		goto fail_free_irq;
 	}
 
+	printk(KERN_INFO " => Test cmdlinepart ...\n");
+
 	if (mtd_has_cmdlinepart()) {
 		static const char *probes[] = { "cmdlinepart", NULL };
 		struct mtd_partition *parts;
 		int nr_parts;
+		
+		printk(KERN_INFO " => Enter cmdlinepart ...\n");
 
+		mtd->name = "pxa3xx-nand"; // FixMe: is this correct? Why not?
 		nr_parts = parse_mtd_partitions(mtd, probes, &parts, 0);
+		printk(KERN_INFO " => Found %d cmdline mtdparts ...\n", nr_parts);    
 
-		if (nr_parts)
+		if (nr_parts) 
 			return add_mtd_partitions(mtd, parts, nr_parts);
 	}
 

@@ -30,6 +30,7 @@
 
 static struct ieee80211_rate p54_bgrates[] = {
 	{ .bitrate = 10, .hw_value = 0, },
+/*******************************************************************************
 	{ .bitrate = 20, .hw_value = 1, .flags = IEEE80211_RATE_SHORT_PREAMBLE },
 	{ .bitrate = 55, .hw_value = 2, .flags = IEEE80211_RATE_SHORT_PREAMBLE },
 	{ .bitrate = 110, .hw_value = 3, .flags = IEEE80211_RATE_SHORT_PREAMBLE },
@@ -41,6 +42,7 @@ static struct ieee80211_rate p54_bgrates[] = {
 	{ .bitrate = 360, .hw_value = 9, },
 	{ .bitrate = 480, .hw_value = 10, },
 	{ .bitrate = 540, .hw_value = 11, },
+*******************************************************************************/	
 };
 
 static struct ieee80211_rate p54_arates[] = {

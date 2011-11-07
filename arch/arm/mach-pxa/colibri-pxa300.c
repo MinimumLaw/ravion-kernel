@@ -88,7 +88,7 @@ static mfp_cfg_t colibri_pxa300_usb_pin_config[] __initdata = {
 
 static struct pxaohci_platform_data colibri_pxa300_ohci_info = {
 	.port_mode	= PMM_GLOBAL_MODE,
-	.flags		= ENABLE_PORT1 | POWER_CONTROL_LOW | POWER_SENSE_LOW,
+	.flags		= ENABLE_PORT_ALL | POWER_CONTROL_LOW | POWER_SENSE_LOW,
 };
 
 void __init colibri_pxa300_init_ohci(void)
