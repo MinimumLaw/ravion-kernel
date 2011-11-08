@@ -25,7 +25,16 @@
 #include <asm/gpio.h>
 
 #include <mach/board.h>
+
+/*
+ * Boad (and arch) specific include
+ */
+#if defined(CONFIG_ARCH_AT91RM9200)
 #include <mach/at91rm9200_mc.h>
+#elif defined(CONFIG_ARCH_AT91SAM9G45)
+#include <mach/at91sam9_smc.h>
+#endif
+
 
 
 /*
@@ -156,7 +165,11 @@ static int at91_cf_set_io_map(struct pcmcia_socket *s, struct pccard_io_map *io)
 	/*
 	 * Use 16 bit accesses unless/until we need 8-bit i/o space.
 	 */
+#if defined(CONFIG_ARCH_AT91RM9200)
 	csr = at91_sys_read(AT91_SMC_CSR(cf->board->chipselect)) & ~AT91_SMC_DBW;
+#elif defined(CONFIG_ARCH_AT91SAM9G45)
+	csr = at91_sys_read(AT91_SMC_MODE(cf->board->chipselect)) & ~AT91_SMC_DBW;
+#endif
 
 	/*
 	 * NOTE: this CF controller ignores IOIS16, so we can't really do
@@ -175,8 +188,11 @@ static int at91_cf_set_io_map(struct pcmcia_socket *s, struct pccard_io_map *io)
 		csr |= AT91_SMC_DBW_16;
 		pr_debug("%s: 16bit i/o bus\n", driver_name);
 	}
+#if defined(CONFIG_ARCH_AT91RM9200)
 	at91_sys_write(AT91_SMC_CSR(cf->board->chipselect), csr);
-
+#elif defined(CONFIG_ARCH_AT91SAM9G45)
+	at91_sys_write(AT91_SMC_MODE(cf->board->chipselect), csr);
+#endif
 	io->start = cf->socket.io_offset;
 	io->stop = io->start + SZ_2K - 1;
 

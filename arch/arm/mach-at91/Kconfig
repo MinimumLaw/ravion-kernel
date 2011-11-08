@@ -380,6 +380,12 @@ config MACH_AT91SAM9G45EKES
 	  "ES" at the end of the name means that this board is an
 	  Engineering Sample.
 
+config MACH_PM9G45
+       bool "Ronetix PM9G45 cpu module"
+       help
+         Select this if you are using Ronetix PM9G45 CPU module with
+         OAO Radioavionica crrier board.
+
 endif
 
 # ----------------------------------------------------------

@@ -68,6 +68,7 @@ obj-$(CONFIG_MACH_PORTUXG20)	+= board-stamp9g20.o
 
 # AT91SAM9G45 board-specific support
 obj-$(CONFIG_MACH_AT91SAM9G45EKES) += board-sam9m10g45ek.o
+obj-$(CONFIG_MACH_PM9G45)	+= board-pm9g45.o
 
 # AT91CAP9 board-specific support
 obj-$(CONFIG_MACH_AT91CAP9ADK)	+= board-cap9adk.o
