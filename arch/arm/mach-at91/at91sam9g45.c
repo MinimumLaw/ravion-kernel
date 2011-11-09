@@ -86,7 +86,7 @@ static struct clk usart3_clk = {
 	.type		= CLK_TYPE_PERIPHERAL,
 };
 static struct clk mmc0_clk = {
-	.name		= "mci0_clk",
+	.name		= "mci_clk", // FixMe: Bad idea, but this work!
 	.pmc_mask	= 1 << AT91SAM9G45_ID_MCI0,
 	.type		= CLK_TYPE_PERIPHERAL,
 };
