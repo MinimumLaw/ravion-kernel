@@ -136,6 +136,16 @@ config SND_SOC_RAUMFELD
 	help
 	  Say Y if you want to add support for SoC audio on Raumfeld devices
 
+config SND_SOC_COLIBRI
+	tristate "SoC Audio support for Toradex Colibri"
+	depends on SND_PXA2XX_SOC && (MACH_COLIBRI || MACH_COLIBRI320)
+	select SND_PXA2XX_SOC_AC97
+	select SND_SOC_WM9712
+	help
+	  Say Y if you want to add support for SoC audio on the
+	  Toradex Colibri hardware.
+
+
 config SND_PXA2XX_SOC_MAGICIAN
 	tristate "SoC Audio support for HTC Magician"
 	depends on SND_PXA2XX_SOC && MACH_MAGICIAN
