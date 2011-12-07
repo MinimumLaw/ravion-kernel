@@ -622,7 +622,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 
 static struct gpio_keys_platform_data colibri_pxa320_gpio_keys = {
         .buttons        = gpio_keys_button,
-        .nbuttons       = 2,
+        .nbuttons       = ARRAY_SIZE(gpio_keys_button),
 };
 
 static struct platform_device colibri_pxa320_gpio_keys_device = {
