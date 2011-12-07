@@ -141,6 +141,12 @@ static int __init colibri_init(void)
 	if (!(machine_is_colibri() || machine_is_colibri320()))
 		return -ENODEV;
 
+	if ( system_rev < 0x20a ) {
+		printk("[I] For sound on module revision before 2.0a use CONFIG_SND_PXA2XX_AC97\n"
+		"[I] and disable ASoC code or try modprobe snd-pxa2xx-ac97 on next reboot\n");
+		return -ENODEV;
+	}
+
 	colibri_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!colibri_snd_device)
 		return -ENOMEM;
