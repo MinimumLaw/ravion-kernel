@@ -30,7 +30,11 @@
 #include "generic.h"
 #include "devices.h"
 
-#if defined(CONFIG_AX88796)
+#if defined(CONFIG_AX88796) || \
+    defined(CONFIG_AX88796C) || \
+    defined(CONFIG_AX88796_MODULE) || \
+    defined(CONFIG_AX88796C_MODULE)
+
 #define ETHER_ADDR_LEN 6
 static u8 ether_mac_addr[ETHER_ADDR_LEN];
 

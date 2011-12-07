@@ -39,6 +39,7 @@
 #include <mach/pxa2xx_spi.h>
 
 #include <linux/regulator/max8660.h>
+#include <linux/regulator/lp3972.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/consumer.h>
@@ -49,21 +50,33 @@
 #include "generic.h"
 #include "devices.h"
 
-#if defined(CONFIG_AX88796)
+#if defined(CONFIG_AX88796) || \
+    defined(CONFIG_AX88796C) || \
+    defined(CONFIG_AX88796_MODULE) || \
+    defined(CONFIG_AX88796C_MODULE)
 #define COLIBRI_ETH_IRQ_GPIO	mfp_to_gpio(GPIO36_GPIO)
 
 /*
- * Asix AX88796 Ethernet
+ * Asix AX88796 and AX88796C Ethernet common
  */
-static u8 ax88796_mac_addr[] = { 0x00,0x14,0x2D,0x20,0x05,0xDB };
+static u8 ax88796_mac_addr[] = { 0x00,0x14,0x2D,0x00,0x00,0x00 };
  
 static struct ax_plat_data colibri_asix_platdata = {
 	.flags		= 0, //AXFLG_MAC_FROMPLATFORM, //| AXFLG_MAC_FROMDEV,
 	.wordlength	= 2,
-//	.mac_addr	= ax88796_mac_addr,
+	.mac_addr	= ax88796_mac_addr,
 };
 
-static struct resource colibri_asix_resource[] = {
+static mfp_cfg_t colibri_pxa320_eth_pin_config[] __initdata = {
+	GPIO0_DRQ | MFP_PULL_HIGH | MFP_DS10X,
+	GPIO3_nCS2 | MFP_DS10X,		/* AX88796 chip select */
+	GPIO36_GPIO | MFP_PULL_HIGH	/* AX88796 IRQ */
+};
+
+/*
+ * Asix AX88976 resource for colibri rev < 2.0a
+ */
+static struct resource colibri_ax88796_resource[] = {
 	[0] = {
 		.start = PXA3xx_CS2_PHYS,
 		.end   = PXA3xx_CS2_PHYS + (0x20 * 2) - 1,
@@ -76,27 +89,50 @@ static struct resource colibri_asix_resource[] = {
 	}
 };
 
-static struct platform_device asix_device = {
+static struct platform_device ax88796_device = {
 	.name		= "ax88796",
 	.id		= 0,
-	.num_resources 	= ARRAY_SIZE(colibri_asix_resource),
-	.resource	= colibri_asix_resource,
+	.num_resources 	= ARRAY_SIZE(colibri_ax88976_resource),
+	.resource	= colibri_ax88796_resource,
 	.dev		= {
 		.platform_data = &colibri_asix_platdata
 	}
 };
 
-static mfp_cfg_t colibri_pxa320_eth_pin_config[] __initdata = {
-	GPIO0_DRQ | MFP_PULL_HIGH | MFP_DS10X,
-	GPIO3_nCS2 | MFP_DS10X,		/* AX88796 chip select */
-	GPIO36_GPIO | MFP_PULL_HIGH	/* AX88796 IRQ */
+/*
+ * Asix AX88976C resource for colibri rev >= 2.0a
+ */
+static struct resource colibri_ax99796c_resource[] = {
+	[0] = {
+		.start = PXA3xx_CS2_PHYS,
+		.end   = PXA3xx_CS2_PHYS + 0xFFFF,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = gpio_to_irq(COLIBRI_ETH_IRQ_GPIO),
+		.end   = gpio_to_irq(COLIBRI_ETH_IRQ_GPIO),
+		.flags = IORESOURCE_IRQ | IRQF_TRIGGER_FALLING,
+	}
+};
+
+static struct platform_device ax88796c_device = {
+       .name           = "ax88796c",
+       .id             = 0,
+       .num_resources  = ARRAY_SIZE(colibri_ax88796c_resource),
+       .resource       = colibri_ax88796c_resource,
+       .dev            = {
+               .platform_data = &colibri_asix_platdata
+       }
 };
 
 static void __init colibri_pxa320_init_eth(void)
 {
 	colibri_pxa3xx_init_eth(&colibri_asix_platdata);
 	pxa3xx_mfp_config(ARRAY_AND_SIZE(colibri_pxa320_eth_pin_config));
-	platform_device_register(&asix_device);
+	if ( system_rev < 0x20a )
+	    platform_device_register(&ax88796_device);
+	else
+	    platform_device_register(&ax88796c_device);
 }
 #else
 static inline void __init colibri_pxa320_init_eth(void) {}
@@ -158,9 +194,9 @@ static void __init colibri_pxa320_init_udc(void) {
        };
        pxa_set_udc_info( &colibri_udc_info );                    // add USB Device interface
 }
-#else    
+#else
 static inline void colibri_pxa320_init_udc(void) {}
-#endif  
+#endif
 
 
 static mfp_cfg_t colibri_pxa320_mmc_pin_config[] __initdata = {
@@ -209,8 +245,8 @@ static void __init colibri_pxa320_init_lcd(void)
 static inline void colibri_pxa320_init_lcd(void) {}
 #endif
 
-#if	defined(CONFIG_SND_AC97_CODEC) || \
-	defined(CONFIG_SND_AC97_CODEC_MODULE)
+#if	defined(CONFIG_AC97_BUS) || \
+	defined(CONFIG_AC97_BUS_MODULE)
 static mfp_cfg_t colibri_pxa320_ac97_pin_config[] __initdata = {
 	GPIO34_AC97_SYSCLK,
 	GPIO35_AC97_SDATA_IN_0,
@@ -406,57 +442,30 @@ static struct i2c_board_info __initdata colibri320_i2c_devices[] = {
 /*
  * Voltage regulator chip on Power-I2C interface
  */
-#if 0
-// Attention!!!
-// ~~~~~~~~~~~~
-// Power V6 only for sample!!! I need contact Toradex for support =)
-static struct regulator_consumer_supply vcc_card1_supply =
-        REGULATOR_SUPPLY("vmmc", "pxa2xx-mci.0");
-
-static struct regulator_init_data vcc_card1_init_data = {
-        .constraints = {
-                .min_uV                 = 3300000,
-                .max_uV                 = 3300000,
-                .valid_modes_mask       = REGULATOR_MODE_NORMAL,
-                .valid_ops_mask         = REGULATOR_CHANGE_STATUS |
-                                          REGULATOR_CHANGE_VOLTAGE |
-                                          REGULATOR_CHANGE_MODE,
-        },
-        .consumer_supplies = &vcc_card1_supply,
-        .num_consumer_supplies = 1,
-};
-	
-// PIN programmed (no I2C controlled):
-//	V1 - 3.3V/3.0V/2.85V AT 1.2A (VCC_IO) - 
-//	V2 - 1.8V/2.5V/3.3V AT 0.9A (VCC_MEM) - used by Toradex at ???
-// I2C can support next regulators:
-// 	V3 - 0.725 TO 1.8V, DVM AT 1.6A (VCC_APPS) - used by toradex at ???
-//	V4 - 0.725 TO 1.8V, DVM AT 0.4A (VCC_SRAM) - used by Toradex at 1.8V ???
-//	V5 - 1.7V TO 2.0V AT 200mA (VCC_MVT)
-//	V6 - 1.8V TO 3.3V AT 500mA (VCC_CARD1)
-//	V7 - 1.8V TO 3.3V AT 500mA (VCC_CARD2)
-struct max8660_subdev_data max8661_v6_subdev_data = {
-        .id             = MAX8660_V6,
-        .name           = "vmmc",
-        .platform_data  = &vcc_card1_init_data,
-};
-
 static struct max8660_platform_data max8661_pdata = {
-        .subdevs = &max8661_v6_subdev_data,
-        .num_subdevs = 1,
+        .num_subdevs = 0, // Only stub at this moment
 };
 
-static struct i2c_board_info colibri320_power_i2c_devices[] __initdata = {
-    { // MAX8661 - Core voltage regulator
+static struct i2c_board_info max8661_power_i2c_devices[] __initdata = {
+    { // MAX8661 - Core voltage regulator on colibri rev < 2.0a
 	.type = "max8661",
 	.addr = 0x34,
 	.platform_data = &max8661_pdata,
     },
 };
-#else
-static struct i2c_board_info colibri320_power_i2c_devices[] __initdata = {
+
+static struct lp3972_platform_data lp3972_pdata = {
+    .gpio[0] = LP3972_GPIO_INPUT, // on chip gpio1,2 in kernel gpio[0,1]
+    .gpio[1] = LP3972_GPIO_OUTPUT_LOW, // on colibri v2 LP3972 GPIO2 used for multiplexe SoDIMM pin ...
+    .num_regulators = 0, // only stub in this moment
+
+static struct i2c_board_info lp3972_power_i2c_devices[] __initdata = {
+    { // LP3972 - Core voltage regulator on colibri rev >= 2.0a
+	.type = "lp3972",
+	.addr = 0x34,
+	.platform_data = &lp3972_pdata,
+    },
 };
-#endif
 
 static inline void colibri_pxa320_init_i2c(void) {
         pxa3xx_mfp_config(ARRAY_AND_SIZE(colibri320_i2c_pin_config));
@@ -465,49 +474,13 @@ static inline void colibri_pxa320_init_i2c(void) {
         i2c_register_board_info(0, ARRAY_AND_SIZE(colibri320_i2c_devices) );
 
         pxa3xx_set_i2c_power_info( NULL ); // ...and POWER_I2C as second interface
-        i2c_register_board_info(1, ARRAY_AND_SIZE(colibri320_power_i2c_devices) ); // for POWER i2c devices
+        if ( system_rev < 0x20a )
+	    i2c_register_board_info(1, ARRAY_AND_SIZE(max8661_power_i2c_devices) );
+	else
+	    i2c_register_board_info(1, ARRAY_AND_SIZE(lp3972_power_i2c_devices) );
 }
 #else
 static inline void colibri_pxa320_init_i2c(void) {}
-#endif
-
-/*
- * PDA Power class
- */
-#if 0
-static int colibri_pxa320_power_supply_init(struct device *dev)
-{
-        return 0;
-}
-
-static void colibri_pxa320_power_supply_exit(struct device *dev)
-{
-}
-
-static char *colibri_pxa320_supplicants[] = {
-        "ds2782-battery.0"
-};
-
-static struct pda_power_pdata colibri_pxa320_power_supply_info = {
-        .init            = colibri_pxa320_power_supply_init,
-        .exit            = colibri_pxa320_power_supply_exit,
-        .supplied_to     = colibri_pxa320_supplicants,
-        .num_supplicants = ARRAY_SIZE(colibri_pxa320_supplicants),
-};
-
-static struct platform_device colibri_pxa320_power_supply = {
-        .name = "pda-power",
-        .id   = -1,
-        .dev  = {
-                .platform_data = &colibri_pxa320_power_supply_info,
-        },
-};
-
-static inline void colibri_pxa320_init_pda_power(void) {
-	platform_device_register(&colibri_pxa320_power_supply);
-}
-#else
-static inline void colibri_pxa320_init_pda_power(void) {}
 #endif
 
 /*
@@ -633,6 +606,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
                 .gpio   = 13,
                 .wakeup = 1,
         },
+/* Used for specific tasks
         [1] = {
                 .desc   = "Ext. TNG",
                 .code   = KEY_PROG1,
@@ -642,6 +616,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
                 .gpio   = 73, // CRYPT_REQ, SoDIMM200 pin 105
                 .wakeup = 1,
         },
+*/
 };
 
 static struct gpio_keys_platform_data colibri_pxa320_gpio_keys = {
