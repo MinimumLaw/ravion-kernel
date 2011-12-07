@@ -92,7 +92,7 @@ static struct resource colibri_ax88796_resource[] = {
 static struct platform_device ax88796_device = {
 	.name		= "ax88796",
 	.id		= 0,
-	.num_resources 	= ARRAY_SIZE(colibri_ax88976_resource),
+	.num_resources 	= ARRAY_SIZE(colibri_ax88796_resource),
 	.resource	= colibri_ax88796_resource,
 	.dev		= {
 		.platform_data = &colibri_asix_platdata
@@ -102,7 +102,7 @@ static struct platform_device ax88796_device = {
 /*
  * Asix AX88976C resource for colibri rev >= 2.0a
  */
-static struct resource colibri_ax99796c_resource[] = {
+static struct resource colibri_ax88796c_resource[] = {
 	[0] = {
 		.start = PXA3xx_CS2_PHYS,
 		.end   = PXA3xx_CS2_PHYS + 0xFFFF,
@@ -458,6 +458,7 @@ static struct lp3972_platform_data lp3972_pdata = {
     .gpio[0] = LP3972_GPIO_INPUT, // on chip gpio1,2 in kernel gpio[0,1]
     .gpio[1] = LP3972_GPIO_OUTPUT_LOW, // on colibri v2 LP3972 GPIO2 used for multiplexe SoDIMM pin ...
     .num_regulators = 0, // only stub in this moment
+};
 
 static struct i2c_board_info lp3972_power_i2c_devices[] __initdata = {
     { // LP3972 - Core voltage regulator on colibri rev >= 2.0a
@@ -666,7 +667,6 @@ void __init colibri_pxa320_init(void)
 	colibri_pxa320_init_spi();
 	colibri_pxa320_init_pm();
 	colibri_pxa320_init_keyboard_gpio();
-	colibri_pxa320_init_pda_power();
 }
 
 /*
