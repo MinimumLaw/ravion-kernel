@@ -37,80 +37,12 @@
 #include "pxa2xx-pcm.h"
 #include "pxa2xx-ac97.h"
 
-static const struct snd_soc_dapm_widget colibri_dapm_widgets[] = {
-	SND_SOC_DAPM_HP("HEADPHONE", NULL),
-	SND_SOC_DAPM_LINE("LINEIN", NULL),
-	SND_SOC_DAPM_MIC("MIC_IN", NULL),
-};
-
-/* Currently supported audio map */
-static const struct snd_soc_dapm_route colibri_audio_map[] = {
-	/* Colibri SODIMM pin 1 (MIC_IN)
-	   Colibri Evaluation Board: Audio jack X26 bottom pink
-	   Orchid: Audio jack X11 bottom pink MIC in */
-	{ "MIC_IN", NULL, "MIC1" },
-
-	/* Colibri SODIMM pin 5 & 7 (LINEIN_L/R)
-	   Colibri Evaluation Board: Audio jack X26 top blue
-	   Orchid: Audio jack X11 top blue line in
-	   MECS Tellurium: Audio jack X11 pin 1 & 2 */
-	{ "LINEIN", NULL, "LINEINL" },
-	{ "LINEIN", NULL, "LINEINR" },
-
-	/* Colibri SODIMM pin 15 & 17 (HEADPHONE_L/R)
-	   Colibri Evaluation Board: Audio jack X26 middle green
-	   Orchid: Audio jack X11 middle green line out
-	   Protea: Audio jack X53 line out
-	   MECS Tellurium: Audio jack X11 pin 4 & 5 (HEADPHONE_LF/RF) */
-	{ "HEADPHONE", NULL, "LOUT2" },
-	{ "HEADPHONE", NULL, "ROUT2" },
-};
-
-static int colibri_wm9712l_init(struct snd_soc_codec *codec)
-{
-	int err;
-
-	/* add Colibri specific widgets */
-	err = snd_soc_dapm_new_controls(codec, colibri_dapm_widgets,
-					ARRAY_SIZE(colibri_dapm_widgets));
-	if (err)
-		return err;
-
-	/* set up Colibri specific audio path audio_map */
-	err = snd_soc_dapm_add_routes(codec, colibri_audio_map, ARRAY_SIZE(colibri_audio_map));
-	if (err)
-		return err;
-
-	/* connected pins */
-	snd_soc_dapm_enable_pin(codec, "MIC1");
-	snd_soc_dapm_enable_pin(codec, "LINEINL");
-	snd_soc_dapm_enable_pin(codec, "LINEINR");
-	snd_soc_dapm_enable_pin(codec, "LOUT2");
-	snd_soc_dapm_enable_pin(codec, "ROUT2");
-
-	/* not connected pins */
-	snd_soc_dapm_nc_pin(codec, "MIC2");
-	snd_soc_dapm_nc_pin(codec, "PHONE");
-	snd_soc_dapm_nc_pin(codec, "PCBEEP");
-	snd_soc_dapm_nc_pin(codec, "MONOOUT");
-	snd_soc_dapm_nc_pin(codec, "OUT3");
-	snd_soc_dapm_nc_pin(codec, "HPOUTL");
-	snd_soc_dapm_nc_pin(codec, "HPOUTR");
-
-	err = snd_soc_dapm_sync(codec);
-	if (err)
-		return err;
-
-	return 0;
-}
-
 static struct snd_soc_dai_link colibri_dai[] = {
 	{
 		.name = "AC97 HiFi",
 		.stream_name = "AC97 HiFi",
 		.cpu_dai = &pxa_ac97_dai[PXA2XX_DAI_AC97_HIFI],
 		.codec_dai = &wm9712_dai[WM9712_DAI_AC97_HIFI],
-		.init = colibri_wm9712l_init,
 	},
 	{
 		.name = "AC97 Aux",
@@ -121,7 +53,7 @@ static struct snd_soc_dai_link colibri_dai[] = {
 };
 
 static struct snd_soc_card colibri = {
-	.name = "Toradex Colibri",
+	.name = "WM9715G",
 	.platform = &pxa2xx_soc_platform,
 	.dai_link = colibri_dai,
 	.num_links = ARRAY_SIZE(colibri_dai),
