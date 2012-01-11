@@ -236,29 +236,33 @@ static int cw1200_detect_card(const struct cw1200_platform_data *pdata)
 static int cw1200_sdio_off(const struct cw1200_platform_data *pdata)
 {
 	const struct resource *reset = pdata->reset;
-	gpio_set_value(reset->start, 0);
-	cw1200_detect_card(pdata);
-	gpio_free(reset->start);
+	if (reset) {
+		gpio_set_value(reset->start, 0);
+		cw1200_detect_card(pdata);
+		gpio_free(reset->start);
+	};
 	return 0;
 }
 
 static int cw1200_sdio_on(const struct cw1200_platform_data *pdata)
 {
 	const struct resource *reset = pdata->reset;
-	gpio_request(reset->start, reset->name);
-	gpio_direction_output(reset->start, 1);
-	/* It is not stated in the datasheet, but at least some of devices
-	 * have problems with reset if this stage is omited. */
-	msleep(50);
-	gpio_direction_output(reset->start, 0);
-	/* A valid reset shall be obtained by maintaining WRESETN
-	 * active (low) for at least two cycles of LP_CLK after VDDIO
-	 * is stable within it operating range. */
-	msleep(1);
-	gpio_set_value(reset->start, 1);
-	/* The host should wait 32 ms after the WRESETN release
-	 * for the on-chip LDO to stabilize */
-	msleep(32);
+	if (reset) {
+		gpio_request(reset->start, reset->name);
+		gpio_direction_output(reset->start, 1);
+		/* It is not stated in the datasheet, but at least some of
+		* devices have problems with reset if this stage is omited. */
+		msleep(50);
+		gpio_direction_output(reset->start, 0);
+		/* A valid reset shall be obtained by maintaining WRESETN
+		* active (low) for at least two cycles of LP_CLK after VDDIO
+		* is stable within it operating range. */
+		msleep(1);
+		gpio_set_value(reset->start, 1);
+		/* The host should wait 32 ms after the WRESETN release
+		* for the on-chip LDO to stabilize */
+		msleep(32);
+	};
 	cw1200_detect_card(pdata);
 	return 0;
 }

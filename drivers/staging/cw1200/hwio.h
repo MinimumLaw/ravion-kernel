@@ -21,7 +21,8 @@
 
 /* DPLL initial values */
 #define DPLL_INIT_VAL_9000		(0x00000191)
-#define DPLL_INIT_VAL_CW1200		(0x0EC4F121)
+#define DPLL_INIT_VAL_CW1200		(0x100010C1)
+//#define DPLL_INIT_VAL_CW1200		(0x0EC4F121)
 
 /* Hardware Type Definitions */
 #define HIF_8601_VERSATILE		(0)

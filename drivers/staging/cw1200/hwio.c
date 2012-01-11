@@ -94,9 +94,11 @@ int cw1200_reg_read(struct cw1200_common *priv, u16 addr, void *buf,
 {
 	int ret;
 	BUG_ON(!priv->sbus_ops);
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 	ret = __cw1200_reg_read(priv, addr, buf, buf_len, 0);
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
 
@@ -105,9 +107,11 @@ int cw1200_reg_write(struct cw1200_common *priv, u16 addr, const void *buf,
 {
 	int ret;
 	BUG_ON(!priv->sbus_ops);
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 	ret = __cw1200_reg_write(priv, addr, buf, buf_len, 0);
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
 
@@ -115,7 +119,8 @@ int cw1200_data_read(struct cw1200_common *priv, void *buf, size_t buf_len)
 {
 	int ret;
 	BUG_ON(!priv->sbus_ops);
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 	{
 		int buf_id_rx = priv->buf_id_rx;
 		ret = __cw1200_reg_read(priv, ST90TDS_IN_OUT_QUEUE_REG_ID, buf,
@@ -125,7 +130,8 @@ int cw1200_data_read(struct cw1200_common *priv, void *buf, size_t buf_len)
 			priv->buf_id_rx = buf_id_rx;
 		}
 	}
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
 
@@ -134,7 +140,8 @@ int cw1200_data_write(struct cw1200_common *priv, const void *buf,
 {
 	int ret;
 	BUG_ON(!priv->sbus_ops);
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 	{
 		int buf_id_tx = priv->buf_id_tx;
 		ret = __cw1200_reg_write(priv, ST90TDS_IN_OUT_QUEUE_REG_ID, buf,
@@ -144,7 +151,8 @@ int cw1200_data_write(struct cw1200_common *priv, const void *buf,
 			priv->buf_id_tx = buf_id_tx;
 		}
 	}
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
 
@@ -163,7 +171,8 @@ int cw1200_indirect_read(struct cw1200_common *priv, u32 addr, void *buf,
 		goto out;
 	}
 
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 	/* Write address */
 	ret = __cw1200_reg_write_32(priv, ST90TDS_SRAM_BASE_ADDR_REG_ID, addr);
 	if (ret < 0) {
@@ -224,7 +233,8 @@ int cw1200_indirect_read(struct cw1200_common *priv, u32 addr, void *buf,
 	}
 
 out:
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
 
@@ -241,7 +251,8 @@ int cw1200_apb_write(struct cw1200_common *priv, u32 addr, const void *buf,
 		return -EINVAL;
 	}
 
-	priv->sbus_ops->lock(priv->sbus_priv);
+	if (priv->sbus_ops->lock)
+		priv->sbus_ops->lock(priv->sbus_priv);
 
 	/* Write address */
 	ret = __cw1200_reg_write_32(priv, ST90TDS_SRAM_BASE_ADDR_REG_ID, addr);
@@ -262,7 +273,7 @@ int cw1200_apb_write(struct cw1200_common *priv, u32 addr, const void *buf,
 	}
 
 out:
-	priv->sbus_ops->unlock(priv->sbus_priv);
+	if (priv->sbus_ops->unlock)
+		priv->sbus_ops->unlock(priv->sbus_priv);
 	return ret;
 }
-
