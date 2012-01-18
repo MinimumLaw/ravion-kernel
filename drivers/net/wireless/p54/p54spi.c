@@ -48,13 +48,22 @@ MODULE_FIRMWARE("3826.arm");
  * in include/linux, let's use module paramaters for now
  */
 
-static int p54spi_gpio_power = 97;
+static int p54spi_gpio_power = 95;
 module_param(p54spi_gpio_power, int, 0444);
 MODULE_PARM_DESC(p54spi_gpio_power, "gpio number for power line");
 
-static int p54spi_gpio_irq = 87;
+static int p54spi_gpio_irq = 94;
 module_param(p54spi_gpio_irq, int, 0444);
 MODULE_PARM_DESC(p54spi_gpio_irq, "gpio number for irq line");
+
+static long p54spi_max_rate = 13000000;
+module_param(p54spi_max_rate, long, 0444);
+MODULE_PARM_DESC(p54spi_max_rate, "maximum spi bus frequency");
+
+// Some platform have limited size for spi transfer (becource them use SPI DMA channel)
+static long p54spi_max_transfer_size = 8191;
+module_param(p54spi_max_transfer_size, long, 0444);
+MODULE_PARM_DESC(p54spi_max_transfer_size, "maximum spi bus DMA channel size (0 if unlimited)");
 
 static void p54spi_spi_read(struct p54s_priv *priv, u8 address,
 			      void *buf, size_t len)
@@ -80,10 +89,62 @@ static void p54spi_spi_read(struct p54s_priv *priv, u8 address,
 	spi_sync(priv->spi, &m);
 }
 
-
 static void p54spi_spi_write(struct p54s_priv *priv, u8 address,
-			     const void *buf, size_t len)
+			    const void *buf, size_t len)
 {
+    if ( p54spi_max_transfer_size ) {
+	// Platform have limited size for SPI transfer
+	struct spi_message m;
+	struct spi_transfer *t;
+	__le16 addr;
+	size_t max_len = p54spi_max_transfer_size & ~1; // Size is 16bit alligement
+	u8 num_transfers;
+	u8 i=0;
+
+	/* We first push the address */
+	addr = cpu_to_le16(address << 8);
+
+	spi_message_init(&m);
+
+	/* Calculate number off transfers and allocate memory */
+	num_transfers = ( len/max_len ) + 3; // addr, tail and last byte
+	t = (struct spi_transfer*)kmalloc(num_transfers * sizeof(struct spi_transfer), GFP_KERNEL);
+	if ( t == NULL ) {
+		dev_err(&priv->spi->dev,"Allocate memory for transfer failed (%d blocks by %d bytes)\n",
+			num_transfers,sizeof(struct spi_transfer));
+		return;
+	}
+	memset(t, 0, num_transfers * sizeof(struct spi_transfer));
+
+	t[i].tx_buf = &addr;
+	t[i].len = sizeof(addr);
+	spi_message_add_tail(&t[i++], &m);
+
+	while(len > p54spi_max_transfer_size) {
+		t[i].tx_buf = buf;
+		t[i].len = max_len;
+		spi_message_add_tail(&t[i++],&m);
+
+		len -= max_len;
+		buf += max_len;
+	};
+
+	t[i].tx_buf = buf;
+	t[i].len = len & ~1;
+	spi_message_add_tail(&t[i++],&m);
+
+	if (len % 2) {
+		__le16 last_word;
+		last_word = cpu_to_le16(((u8 *)buf)[len - 1]);
+
+		t[i].tx_buf = &last_word;
+		t[i].len = sizeof(last_word);
+		spi_message_add_tail(&t[i++], &m);
+	}
+
+	spi_sync(priv->spi, &m);
+	kfree(t);
+    } else {
 	struct spi_transfer t[3];
 	struct spi_message m;
 	__le16 addr;
@@ -112,6 +173,16 @@ static void p54spi_spi_write(struct p54s_priv *priv, u8 address,
 	}
 
 	spi_sync(priv->spi, &m);
+    }
+}
+
+static u16 p54spi_read16(struct p54s_priv *priv, u8 addr)
+{
+	__le16 val;
+
+	p54spi_spi_read(priv, addr, &val, sizeof(val));
+
+	return le16_to_cpu(val);
 }
 
 static u32 p54spi_read32(struct p54s_priv *priv, u8 addr)
@@ -282,14 +353,19 @@ static void p54spi_power_off(struct p54s_priv *priv)
 
 static void p54spi_power_on(struct p54s_priv *priv)
 {
+	u8 i;
+
 	gpio_set_value(p54spi_gpio_power, 1);
 	enable_irq(gpio_to_irq(p54spi_gpio_irq));
 
-	/*
-	 * need to wait a while before device can be accessed, the length
-	 * is just a guess
-	 */
-	msleep(10);
+	for (i=0;i<240;i++) { // Wait max 240 ms (Dataseet 4.10.2)
+		if ( p54spi_read16(priv,SPI_ADRS_DEV_CTRL_STAT) & 0x001 )
+			msleep(1); // Stay in sleep mode
+		else {
+			dev_info(&priv->spi->dev, "Reset success after %d ms.\n",i);
+			return;
+		};
+	};
 }
 
 static inline void p54spi_int_ack(struct p54s_priv *priv, u32 val)
@@ -555,7 +631,8 @@ static int p54spi_op_start(struct ieee80211_hw *dev)
 	timeout = wait_for_completion_interruptible_timeout(&priv->fw_comp,
 							    timeout);
 	if (!timeout) {
-		dev_err(&priv->spi->dev, "firmware boot failed");
+		dev_err(&priv->spi->dev, "firmware boot failed (HOST CTRL = 0x%04X)\n",
+			p54spi_read16(priv,SPI_ADRS_DEV_CTRL_STAT));
 		p54spi_power_off(priv);
 		ret = -1;
 		goto out;
@@ -617,7 +694,7 @@ static int __devinit p54spi_probe(struct spi_device *spi)
 	priv->spi = spi;
 
 	spi->bits_per_word = 16;
-	spi->max_speed_hz = 24000000;
+	spi->max_speed_hz = p54spi_max_rate;
 
 	ret = spi_setup(spi);
 	if (ret < 0) {
