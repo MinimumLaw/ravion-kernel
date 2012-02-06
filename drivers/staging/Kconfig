@@ -26,6 +26,8 @@ if STAGING
 
 source "drivers/staging/serial/Kconfig"
 
+source "drivers/staging/cw1200/Kconfig"
+
 source "drivers/staging/et131x/Kconfig"
 
 source "drivers/staging/slicoss/Kconfig"
