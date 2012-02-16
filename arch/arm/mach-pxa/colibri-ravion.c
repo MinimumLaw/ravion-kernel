@@ -174,15 +174,11 @@ static mfp_cfg_t colibri_pxa320_ssp_pin_config[] __initdata = {
     GPIO85_SSP1_TXD,
     GPIO86_SSP1_RXD,
     GPIO1_2_GPIO,// SPI_CS For internal Xilinx CPLD
-#if defined(CONFIG_P54_SPI) || defined (CONFIG_P54_SPI_MODULE)
     GPIO84_GPIO, // SPI CS For Sagrad SG901-1028
     GPIO94_GPIO | MFP_LPM_EDGE_RISE, // IRQ
     GPIO95_GPIO,                     // SLEEP
-#endif
-#if defined(CONFIG_CW1200_SPI) || defined(CONFIG_CW1200_SPI_MODULE)
-    GPIO73_GPIO, // IRQ
-    GPIO9_GPIO, // SPI chip-select
-#endif
+    GPIO73_GPIO, // addition gpio
+    GPIO9_GPIO, 
 };
 
 
@@ -192,23 +188,6 @@ static struct pxa2xx_spi_chip xilinx_spi_tuning = {
 
 static struct pxa2xx_spi_chip sg1028_spi_tuning = {
     .gpio_cs   = 84,
-};
-
-#define CW1200_SPI_IRQ_GPIO	mfp_to_gpio(GPIO73_GPIO)
-
-static struct resource cw1200spi_irq_resource = {
-    .start = gpio_to_irq(CW1200_SPI_IRQ_GPIO),
-    .end   = gpio_to_irq(CW1200_SPI_IRQ_GPIO),
-    .flags = IORESOURCE_IRQ,
-    .name  = "cw1200_irq",
-};
-
-static struct cw1200_platform_data sg1098_platform_data = {
-    .irq	= &cw1200spi_irq_resource,
-};
-
-static struct pxa2xx_spi_chip sg1098_spi_tuning = {
-    .gpio_cs   = 9,
 };
 
 static struct spi_board_info colibri_pxa320_spi_chips[] = {
@@ -227,15 +206,6 @@ static struct spi_board_info colibri_pxa320_spi_chips[] = {
         .bus_num        = 1,
         .chip_select    = 1,
         .controller_data = &sg1028_spi_tuning,
-    },
-    { // Sagrad SG901-1098 or SG901-1091 - module sw1200_spi
-        .modalias       = "cw1200_spi",
-        .max_speed_hz   = 13000000,
-        .mode           = SPI_MODE_3,
-        .bus_num        = 1,
-        .chip_select    = 2,
-        .platform_data	= &sg1098_platform_data,
-        .controller_data = &sg1098_spi_tuning,
     },
 };
 
@@ -399,37 +369,6 @@ static inline void colibri_pwr_init(void) {
 static inline void colibri_pwr_init(void) {}
 #endif
 
-/******************************************************************************
- * ST/Ericson CW1200 wlan module
- ******************************************************************************/
-#if defined(CONFIG_CW1200) || defined(CONFIG_CW1200_MODULE)
-static struct cw1200_platform_data cw1200_colibri_platform_data = { 0 };
-
-static struct platform_device cw1200_device = {
-        .name = "cw1200_wlan",
-        .dev = {
-                .platform_data = &cw1200_colibri_platform_data,
-                .init_name = "cw1200_wlan",
-        },
-};
-
-//  cw1200_get_platform_data used by stage driver for ST/Ericson u5500 platform
-const struct cw1200_platform_data *cw1200_get_platform_data(void)
-{
-        return &cw1200_colibri_platform_data;
-}
-EXPORT_SYMBOL_GPL(cw1200_get_platform_data);
-
-static inline void colibri_cw1200_init(void) {
-    cw1200_colibri_platform_data.mmc_id = "mmc0";
-
-    platform_device_register(&cw1200_device);
-}
-#else
-static inline void colibri_cw1200_init(void) {}
-#endif
-
-
 void __init colibri_evalboard_init(void)
 {
     printk(KERN_INFO "===> Add carrier board devices for RadioAvionica board begin <===\n");
@@ -448,8 +387,6 @@ void __init colibri_evalboard_init(void)
     printk(KERN_INFO "PM power off functiona\n"); colibri_pm_init();
     printk(KERN_INFO "KEYBOARD power key from POU\n"); colibri_kbd_init();
     printk(KERN_INFO "POWER monitoring infrastructure\n"); colibri_pwr_init();
-
-    printk(KERN_INFO "ST/Ericson CW1200 sdio module\n"); colibri_cw1200_init();
 
     printk(KERN_INFO "===>  Add carrier board devices for RadioAvionica board end  <===\n");
 }
