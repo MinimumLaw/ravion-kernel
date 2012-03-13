@@ -1325,7 +1325,7 @@ static int pxa3xx_nand_probe(struct platform_device *pdev)
 		struct mtd_partition *parts;
 		int nr_parts;
 
-		mtd->name = "pxa3xx-nand"; // FixMe: is this correct? Why not?
+		mtd->name = "pxa3xx_nand-0"; // FixMe: is this correct? Why not?
 		nr_parts = parse_mtd_partitions(mtd, probes, &parts, 0);
 
 		if (nr_parts)
