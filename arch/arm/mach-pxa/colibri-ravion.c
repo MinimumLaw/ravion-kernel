@@ -28,7 +28,6 @@
 #include <mach/mmc.h>
 #include <mach/ohci.h>
 #include <mach/pxa27x-udc.h>
-#include <mach/cw1200_plat.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/pxa2xx_spi.h>
