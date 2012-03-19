@@ -14,7 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/sysdev.h>
+#include <linux/reboot.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <asm/mach-types.h>
@@ -261,12 +261,7 @@ static void colibri_pxa320_power_off ( void ) {
     printk(KERN_INFO "Disable module power...");
     gpio_direction_output(MFP_PIN_GPIO11,0);
     printk(KERN_INFO "[DONE]\n");
-    arm_machine_restart('h', NULL);
-}
-
-static void colibri_pxa320_restart ( char mode, const char* cmd ) {
-    printk(KERN_INFO "Machine ready for physical restart now\n");
-    arm_machine_restart('h', cmd);
+    machine_power_off();
 }
 
 static inline void colibri_pm_init ( void ) {
@@ -279,7 +274,6 @@ static inline void colibri_pm_init ( void ) {
         gpio_direction_output(MFP_PIN_GPIO11, 1); // set to active power
     };
     pm_power_off        = colibri_pxa320_power_off;
-    arm_pm_restart      = colibri_pxa320_restart;
 }
 #else
 static inline void colibri_pm_init ( void ) {}

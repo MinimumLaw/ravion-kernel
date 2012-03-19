@@ -388,73 +388,6 @@ static void ax88796c_ethtool_setmsglevel (struct net_device *ndev, u32 level)
 	ax_local->msg_enable = level;
 }
 
-/*
- * ----------------------------------------------------------------------------
- * Function Name: ax88796c_get_rx_csum
- * Purpose: Exported for Ethtool to query receive checksum setting
- * ----------------------------------------------------------------------------
- */
-static u32 ax88796c_get_rx_csum (struct net_device *ndev)
-{
-	struct ax88796c_device *ax_local = netdev_priv (ndev);
-
-	return (ax_local->checksum & AX_RX_CHECKSUM);
-}
-
-/*
- * ----------------------------------------------------------------------------
- * Function Name: ax88796c_set_rx_csum
- * Purpose: Exported for Ethtool to set receive checksum setting
- * ----------------------------------------------------------------------------
- */
-static int ax88796c_set_rx_csum (struct net_device *ndev, u32 val)
-{
-	struct ax88796c_device *ax_local = netdev_priv (ndev);
-
-	if (val)
-		ax_local->checksum |= AX_RX_CHECKSUM;
-	else
-		ax_local->checksum &= ~AX_RX_CHECKSUM;
-
-	ax88796c_set_csums (ndev);
-
-	return 0;
-}
-
-/*
- * ----------------------------------------------------------------------------
- * Function Name: ax88796c_get_tx_csum
- * Purpose: Exported for Ethtool to query transmit checksum setting
- * ----------------------------------------------------------------------------
- */
-static u32 ax88796c_get_tx_csum (struct net_device *ndev)
-{
-	struct ax88796c_device *ax_local = netdev_priv (ndev);
-
-	return (ax_local->checksum & AX_TX_CHECKSUM);
-}
-
-/*
- * ----------------------------------------------------------------------------
- * Function Name: ax88796c_set_tx_csum
- * Purpose: Exported for Ethtool to set transmit checksum setting
- * ----------------------------------------------------------------------------
- */
-static int ax88796c_set_tx_csum (struct net_device *ndev, u32 val)
-{
-	struct ax88796c_device *ax_local = netdev_priv (ndev);
-
-	if (val)
-		ax_local->checksum |= AX_TX_CHECKSUM;
-	else
-		ax_local->checksum &= ~AX_TX_CHECKSUM;
-
-	ethtool_op_set_tx_hw_csum (ndev, val);
-	ax88796c_set_csums (ndev);
-
-	return 0;
-}
-
 struct ethtool_ops ax88796c_ethtool_ops = {
 	.get_drvinfo		= ax88796c_get_drvinfo,
 	.get_link		= ax88796c_get_link,
@@ -465,10 +398,6 @@ struct ethtool_ops ax88796c_ethtool_ops = {
 	.nway_reset		= ax88796c_nway_reset,
 	.get_msglevel		= ax88796c_ethtool_getmsglevel,
 	.set_msglevel		= ax88796c_ethtool_setmsglevel,
-	.get_tx_csum		= ax88796c_get_tx_csum,
-	.set_tx_csum		= ax88796c_set_tx_csum,
-	.get_rx_csum		= ax88796c_get_rx_csum,
-	.set_rx_csum		= ax88796c_set_rx_csum,
 };
 
 void ioctl_signature (struct ax88796c_device *ax_local, AX_IOCTL_COMMAND *info)
