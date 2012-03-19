@@ -265,6 +265,7 @@ static inline void ds_print_msg(unsigned char *buf, unsigned char *str, int off)
 
 static void ds_dump_status(struct ds_device *dev, unsigned char *buf, int count)
 {
+#if 0
 	int i;
 
 	printk(KERN_INFO "0x%x: count=%d, status: ", dev->ep[EP_STATUS], count);
@@ -314,6 +315,7 @@ static void ds_dump_status(struct ds_device *dev, unsigned char *buf, int count)
 		if (buf[i] & RR_EOS)
 			printk(KERN_INFO "EOS: end of search error\n");
 	}
+#endif
 }
 
 static void ds_reset_device(struct ds_device *dev)
