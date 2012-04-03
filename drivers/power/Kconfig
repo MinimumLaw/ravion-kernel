@@ -76,6 +76,14 @@ config BATTERY_DS2780
 	help
 	  Say Y here to enable support for batteries with ds2780 chip.
 
+config BATTERY_DS2781
+	tristate "DS2781 battery driver"
+	depends on HAS_IOMEM
+	select W1
+	select W1_SLAVE_DS2781
+	help
+	  Say Y here to enable support for batteries with ds2781 chip.
+
 config BATTERY_DS2782
 	tristate "DS2782/DS2786 standalone gas-gauge"
 	depends on I2C

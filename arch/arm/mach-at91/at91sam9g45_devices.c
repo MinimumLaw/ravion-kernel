@@ -1629,6 +1629,141 @@ void __init at91_set_serial_console(unsigned portnr) {}
 void __init at91_add_device_serial(void) {}
 #endif
 
+/* --------------------------------------------------------------------
+ *  Compact Flash (PCMCIA or IDE)
+ * -------------------------------------------------------------------- */
+
+#if defined(CONFIG_AT91_CF) || defined(CONFIG_AT91_CF_MODULE) || \
+    defined(CONFIG_BLK_DEV_IDE_AT91) || defined(CONFIG_BLK_DEV_IDE_AT91_MODULE)
+
+static struct at91_cf_data cf0_data;
+
+static struct resource cf0_resources[] = {
+        [0] = {
+                .start  = AT91_CHIPSELECT_4,
+                .end    = AT91_CHIPSELECT_4 + SZ_256M - 1,
+                .flags  = IORESOURCE_MEM | IORESOURCE_MEM_8AND16BIT,
+        }
+};
+
+static struct platform_device cf0_device = {
+        .id             = 0,
+        .dev            = {
+                                .platform_data  = &cf0_data,
+        },
+        .resource       = cf0_resources,
+        .num_resources  = ARRAY_SIZE(cf0_resources),
+};
+
+static struct at91_cf_data cf1_data;
+
+static struct resource cf1_resources[] = {
+        [0] = {
+                .start  = AT91_CHIPSELECT_5,
+                .end    = AT91_CHIPSELECT_5 + SZ_256M - 1,
+                .flags  = IORESOURCE_MEM | IORESOURCE_MEM_8AND16BIT,
+        }
+};
+
+static struct platform_device cf1_device = {
+        .id             = 1,
+        .dev            = {
+                                .platform_data  = &cf1_data,
+        },
+        .resource       = cf1_resources,
+        .num_resources  = ARRAY_SIZE(cf1_resources),
+};
+
+void __init at91_add_device_cf(struct at91_cf_data *data)
+{
+        unsigned long csa;
+        struct platform_device *pdev;
+
+        if (!data)
+                return;
+        /*
+         * assign CS4 or CS5 to SMC with Compact Flash logic support,
+         * we assume SMC timings are configured by board code,
+         * except True IDE where timings are controlled by driver
+         */
+        csa = at91_sys_read(AT91_MATRIX_EBICSA);
+        switch (data->chipselect) {
+        case 4:
+		/* Configure SMC CS4 */
+		at91_sys_write( AT91_SMC_SETUP(4), (AT91_SMC_NWESETUP_(9) |
+                        AT91_SMC_NCS_WRSETUP_(2) | AT91_SMC_NRDSETUP_(9) |
+                        AT91_SMC_NCS_RDSETUP_(2) ) );
+
+		at91_sys_write(AT91_SMC_PULSE(4), (AT91_SMC_NWEPULSE_(17) |
+                        AT91_SMC_NCS_WRPULSE_(27) | AT91_SMC_NRDPULSE_(17) |
+                        AT91_SMC_NCS_RDPULSE_(27) ) );
+		at91_sys_write(AT91_SMC_CYCLE(4), (AT91_SMC_NWECYCLE_(40) |
+			AT91_SMC_NRDCYCLE_(40) ) );
+		// 16 bit
+		at91_sys_write(AT91_SMC_MODE(4), (AT91_SMC_READMODE |
+                        AT91_SMC_WRITEMODE | AT91_SMC_EXNWMODE_DISABLE |
+                        AT91_SMC_DBW_16 | AT91_SMC_TDF_(1) ) );
+
+                at91_set_A_periph(AT91_PIN_PC10, 0);  /* EBI_NCS4/CFCS0 */
+                csa |= AT91_MATRIX_EBI_CS4A_SMC_CF0;
+                cf0_data = *data;
+                pdev = &cf0_device;
+                break;
+        case 5:
+		/* Configure SMC CS5 */
+		at91_sys_write( AT91_SMC_SETUP(5), (AT91_SMC_NWESETUP_(9) |
+                        AT91_SMC_NCS_WRSETUP_(2) | AT91_SMC_NRDSETUP_(9) |
+                        AT91_SMC_NCS_RDSETUP_(2) ) );
+
+		at91_sys_write(AT91_SMC_PULSE(5), (AT91_SMC_NWEPULSE_(17) |
+                        AT91_SMC_NCS_WRPULSE_(27) | AT91_SMC_NRDPULSE_(17) |
+                        AT91_SMC_NCS_RDPULSE_(27) ) );
+		at91_sys_write(AT91_SMC_CYCLE(5), (AT91_SMC_NWECYCLE_(40) |
+			AT91_SMC_NRDCYCLE_(40) ) );
+		// 16 bit
+		at91_sys_write(AT91_SMC_MODE(5), (AT91_SMC_READMODE |
+                        AT91_SMC_WRITEMODE | AT91_SMC_EXNWMODE_DISABLE |
+                        AT91_SMC_DBW_16 | AT91_SMC_TDF_(1) ) );
+
+                at91_set_A_periph(AT91_PIN_PC11, 0);  /* EBI_NCS5/CFCS1 */
+                csa |= AT91_MATRIX_EBI_CS5A_SMC_CF1;
+                cf1_data = *data;
+                pdev = &cf1_device;
+                break;
+        default:
+                printk(KERN_ERR "AT91 CF: bad chip-select requested (%u)\n",
+                       data->chipselect);
+                return;
+        }
+        at91_sys_write(AT91_MATRIX_EBICSA, csa);
+
+        if (data->det_pin) {
+                at91_set_gpio_input(data->det_pin, 1);
+                at91_set_deglitch(data->det_pin, 1);
+        }
+
+        if (data->irq_pin) {
+                at91_set_gpio_input(data->irq_pin, 1);
+                at91_set_deglitch(data->irq_pin, 1);
+        }
+
+        if (data->vcc_pin)
+                /* initially off */
+                at91_set_gpio_output(data->vcc_pin, 0);
+
+        /* enable EBI controlled pins */
+        at91_set_A_periph(AT91_PIN_PC15, 1);  /* NWAIT */
+        at91_set_A_periph(AT91_PIN_PC8, 0);  /* CFCE1 */
+        at91_set_A_periph(AT91_PIN_PC9, 0);  /* CFCE2 */
+        at91_set_A_periph(AT91_PIN_PC12, 0); /* CFNRW */
+
+        pdev->name = (data->flags & AT91_CF_TRUE_IDE) ? "at91_ide" : "at91_cf";
+        platform_device_register(pdev);
+}
+#else
+void __init at91_add_device_cf(struct at91_cf_data *data) {}
+#endif
+
 
 /* -------------------------------------------------------------------- */
 /*
