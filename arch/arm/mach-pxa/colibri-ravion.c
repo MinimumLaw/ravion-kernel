@@ -261,7 +261,7 @@ static void colibri_pxa320_power_off ( void ) {
     printk(KERN_INFO "Disable module power...");
     gpio_direction_output(MFP_PIN_GPIO11,0);
     printk(KERN_INFO "[DONE]\n");
-    machine_power_off();
+    pxa_restart('h',NULL);
 }
 
 static inline void colibri_pm_init ( void ) {
