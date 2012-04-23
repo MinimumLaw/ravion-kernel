@@ -436,6 +436,12 @@ if ARCH_AT91SAM9G45
 
 comment "AT91SAM9G45 Board Type"
 
+config MACH_PM9G45
+	bool "Ronetix PM9G45 cpu module"
+	select HAVE_NAND_ATMEL_BUSWIDTH_16
+	help
+	  Select this
+
 config MACH_AT91SAM9M10G45EK
 	bool "Atmel AT91SAM9M10G45-EK Evaluation Kits"
 	help
