@@ -177,4 +177,16 @@ source "drivers/net/ethernet/via/Kconfig"
 source "drivers/net/ethernet/xilinx/Kconfig"
 source "drivers/net/ethernet/xircom/Kconfig"
 
+config AX88796C
+	tristate "ASIX AX88796C SDRAM-like interface"
+	depends on ARM || MIPS || SUPERH
+	select PHYLIB
+	select MDIO_BITBANG
+	---help---
+	    AX8796C driver, using platform bus to provide
+	    chip detection and resources
+
+	    To compile this driver as a module, choose M here. The module
+	    will be called ax88796c.
+
 endif # ETHERNET
