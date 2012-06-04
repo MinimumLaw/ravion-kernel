@@ -7,6 +7,7 @@
 #include <sound/soc.h>
 
 #include <asm/mach-types.h>
+#include <asm/system_info.h>
 #include <mach/audio.h>
 
 #include "../codecs/wm9712.h"

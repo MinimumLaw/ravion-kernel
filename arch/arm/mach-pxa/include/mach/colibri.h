@@ -1,6 +1,8 @@
 #ifndef _COLIBRI_H_
 #define _COLIBRI_H_
 
+#include <asm/system_info.h>
+
 #include <net/ax88796.h>
 #include <mach/mfp.h>
 
