@@ -115,7 +115,7 @@ static struct mci_platform_data __initdata mci1_data = {
 /*
  * MACB Ethernet device
  */
-static struct at91_eth_data __initdata pm9g45_macb_data = {
+static struct macb_platform_data __initdata pm9g45_macb_data = {
 	.phy_irq_pin	= AT91_PIN_PD5,
 	.is_rmii	= 1,
 };
@@ -179,7 +179,7 @@ static void __init pm9g45_add_device_nand(void)
 		pm9g45_nand_smc_config.mode |= AT91_SMC_DBW_8;
 
 	/* configure chip-select 3 (NAND) */
-	sam9_smc_configure(3, &pm9g45_nand_smc_config);
+	sam9_smc_configure(0, 3, &pm9g45_nand_smc_config);
 
 	at91_add_device_nand(&pm9g45_nand_data);
 }
