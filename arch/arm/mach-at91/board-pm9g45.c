@@ -40,7 +40,7 @@
 #include <mach/gpio.h>
 #include <mach/at91sam9_smc.h>
 #include <mach/at91_shdwc.h>
-#include <mach/cw1200_plat.h>
+#include <mach/system_rev.h>
 
 #include "sam9_smc.h"
 #include "generic.h"
@@ -145,11 +145,6 @@ static struct atmel_nand_data __initdata pm9g45_nand_data = {
 	.enable_pin	= AT91_PIN_PC14,
 	.parts		= pm9g45_nand_partition,
 	.num_parts	= ARRAY_SIZE(pm9g45_nand_partition),
-#if defined(CONFIG_MTD_NAND_ATMEL_BUSWIDTH_16)
-	.bus_width_16	= 1,
-#else
-	.bus_width_16	= 0,
-#endif
 };
 
 static struct sam9_smc_config __initdata pm9g45_nand_smc_config = {
@@ -172,6 +167,7 @@ static struct sam9_smc_config __initdata pm9g45_nand_smc_config = {
 
 static void __init pm9g45_add_device_nand(void)
 {
+	pm9g45_nand_data.bus_width_16 = 1; // board_have_nand_16bit();
 	/* setup bus-width (8 or 16) */
 	if (pm9g45_nand_data.bus_width_16)
 		pm9g45_nand_smc_config.mode |= AT91_SMC_DBW_16;

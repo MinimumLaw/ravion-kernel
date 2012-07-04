@@ -1774,6 +1774,29 @@ void __init at91_add_device_serial(void) {}
 #if defined(CONFIG_PATA_AT91) || defined(CONFIG_PATA_AT91_MODULE) || \
 	defined(CONFIG_AT91_CF) || defined(CONFIG_AT91_CF_MODULE)
 
+static struct sam9_smc_config cf_smc_config = {
+	/* Setup register */
+	.ncs_read_setup	= 9,
+	.nrd_setup	= 2,
+	.ncs_write_setup= 2,
+	.nwe_setup	= 9,
+	/* Pulse register */
+	.ncs_read_pulse	= 27,
+	.nrd_pulse	= 17,
+	.ncs_write_pulse= 27,
+	.nwe_pulse	= 17,
+	/* Cycle register */
+	.read_cycle	= 40,
+	.write_cycle	= 40,
+	/* Mode register */
+	.mode		= ( AT91_SMC_READMODE |
+				AT91_SMC_WRITEMODE |
+				AT91_SMC_EXNWMODE_DISABLE |
+				AT91_SMC_DBW_16 ),
+	.tdf_cycles	= 4,
+};
+
+
 static struct at91_cf_data cf0_data;
 
 static struct resource cf0_resources[] = {
@@ -1828,12 +1851,14 @@ void __init at91_add_device_cf(struct at91_cf_data *data)
 	ebi_csa = at91_matrix_read(AT91_MATRIX_EBICSA);
 	switch (data->chipselect) {
 	case 4:
+		sam9_smc_configure(0, 4, &cf_smc_config);
 		at91_set_A_periph(AT91_PIN_PC10, 0);  /* EBI0_NCS4/CFCS0 */
 		ebi_csa |= AT91_MATRIX_EBI_CS4A_SMC_CF0;
 		cf0_data = *data;
 		pdev = &cf0_device;
 		break;
 	case 5:
+		sam9_smc_configure(0, 5, &cf_smc_config);
 		at91_set_A_periph(AT91_PIN_PC11, 0);  /* EBI0_NCS5/CFCS1 */
 		ebi_csa |= AT91_MATRIX_EBI_CS5A_SMC_CF1;
 		cf1_data = *data;
