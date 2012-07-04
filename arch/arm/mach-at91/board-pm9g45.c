@@ -143,6 +143,9 @@ static struct atmel_nand_data __initdata pm9g45_nand_data = {
 	.cle		= 22,
 	.rdy_pin	= AT91_PIN_PD3,
 	.enable_pin	= AT91_PIN_PC14,
+	.det_pin	= -EINVAL,
+	.ecc_mode	= NAND_ECC_SOFT,
+	.on_flash_bbt	= 1,
 	.parts		= pm9g45_nand_partition,
 	.num_parts	= ARRAY_SIZE(pm9g45_nand_partition),
 };
@@ -167,7 +170,7 @@ static struct sam9_smc_config __initdata pm9g45_nand_smc_config = {
 
 static void __init pm9g45_add_device_nand(void)
 {
-	pm9g45_nand_data.bus_width_16 = 1; // board_have_nand_16bit();
+	pm9g45_nand_data.bus_width_16 = board_have_nand_16bit();
 	/* setup bus-width (8 or 16) */
 	if (pm9g45_nand_data.bus_width_16)
 		pm9g45_nand_smc_config.mode |= AT91_SMC_DBW_16;
@@ -330,37 +333,6 @@ static void __init at91_add_device_w1(void)
 static void __init at91_add_device_w1(void) {}
 #endif
 
-/******************************************************************************
- * ST/Ericson CW1200 wlan module
- ******************************************************************************/
-#if defined(CONFIG_CW1200) || defined(CONFIG_CW1200_MODULE)
-static struct cw1200_platform_data cw1200_pm9g45_platform_data = { 0 };
-
-static struct platform_device cw1200_device = {
-        .name = "cw1200_wlan",
-        .dev = {
-                .platform_data = &cw1200_pm9g45_platform_data,
-                .init_name = "cw1200_wlan",
-        },
-};
-
-//  cw1200_get_platform_data used by stage driver for ST/Ericson u5500 platform
-const struct cw1200_platform_data *cw1200_get_platform_data(void)
-{
-        return &cw1200_pm9g45_platform_data;
-}
-EXPORT_SYMBOL_GPL(cw1200_get_platform_data);
-
-static inline void pm9g45_cw1200_init(void) {
-    cw1200_pm9g45_platform_data.mmc_id = "mmc0";
-
-    platform_device_register(&cw1200_device);
-}
-#else
-static inline void pm9g45_cw1200_init(void) {}
-#endif
-
-
 static void __init pm9g45_board_init(void)
 {
 	/* Serial */
@@ -374,7 +346,7 @@ static void __init pm9g45_board_init(void)
 	at91_add_device_spi(pm9g45_spi_devices, ARRAY_SIZE(pm9g45_spi_devices));
 	/* MMC */
 	at91_add_device_mci(0, &mci0_data);
-	/*at91_add_device_mci(1, &mci1_data);*/
+	/* at91_add_device_mci(1, &mci1_data);*/
 	/* Ethernet */
 	at91_add_device_eth(&pm9g45_macb_data);
 	/* NAND */
@@ -391,8 +363,6 @@ static void __init pm9g45_board_init(void)
 	at91_add_device_cf(&pm9g45_cf_data);
 	/* W1 */
 	at91_add_device_w1();
-	/* CW1200 WiFi */
-	pm9g45_cw1200_init();
 }
 
 MACHINE_START(PM9G45, "Ronetix PM9G45 cpu module")
