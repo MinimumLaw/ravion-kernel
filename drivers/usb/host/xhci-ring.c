@@ -885,6 +885,17 @@ static void update_ring_for_set_deq_completion(struct xhci_hcd *xhci,
 	num_trbs_free_temp = ep_ring->num_trbs_free;
 	dequeue_temp = ep_ring->dequeue;
 
+	/* If we get two back-to-back stalls, and the first stalled transfer
+	 * ends just before a link TRB, the dequeue pointer will be left on
+	 * the link TRB by the code in the while loop.  So we have to update
+	 * the dequeue pointer one segment further, or we'll jump off
+	 * the segment into la-la-land.
+	 */
+	if (last_trb(xhci, ep_ring, ep_ring->deq_seg, ep_ring->dequeue)) {
+		ep_ring->deq_seg = ep_ring->deq_seg->next;
+		ep_ring->dequeue = ep_ring->deq_seg->trbs;
+	}
+
 	while (ep_ring->dequeue != dev->eps[ep_index].queued_deq_ptr) {
 		/* We have more usable TRBs */
 		ep_ring->num_trbs_free++;
@@ -2286,7 +2297,7 @@ cleanup:
 					(status != 0 &&
 					 !usb_endpoint_xfer_isoc(&urb->ep->desc)))
 				xhci_dbg(xhci, "Giveback URB %p, len = %d, "
-						"expected = %x, status = %d\n",
+						"expected = %d, status = %d\n",
 						urb, urb->actual_length,
 						urb->transfer_buffer_length,
 						status);
@@ -3609,12 +3620,12 @@ int xhci_queue_configure_endpoint(struct xhci_hcd *xhci, dma_addr_t in_ctx_ptr,
 
 /* Queue an evaluate context command TRB */
 int xhci_queue_evaluate_context(struct xhci_hcd *xhci, dma_addr_t in_ctx_ptr,
-		u32 slot_id)
+		u32 slot_id, bool command_must_succeed)
 {
 	return queue_command(xhci, lower_32_bits(in_ctx_ptr),
 			upper_32_bits(in_ctx_ptr), 0,
 			TRB_TYPE(TRB_EVAL_CONTEXT) | SLOT_ID_FOR_TRB(slot_id),
-			false);
+			command_must_succeed);
 }
 
 /*
