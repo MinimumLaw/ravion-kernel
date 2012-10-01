@@ -63,6 +63,7 @@ obj-$(CONFIG_MACH_PCM027)		+= pcm027.o
 obj-$(CONFIG_MACH_PCM990_BASEBOARD)	+= pcm990-baseboard.o
 obj-$(CONFIG_MACH_COLIBRI)			+= colibri-pxa270.o
 obj-$(CONFIG_MACH_COLIBRI_EVALBOARD)	+= colibri-evalboard.o
+obj-$(CONFIG_MACH_COLIBRI_RAVIONBOARD)	+= colibri-ravion.o
 obj-$(CONFIG_MACH_COLIBRI_PXA270_INCOME)	+= colibri-pxa270-income.o
 obj-$(CONFIG_MACH_COLIBRI300)	+= colibri-pxa3xx.o colibri-pxa300.o
 obj-$(CONFIG_MACH_COLIBRI320)	+= colibri-pxa3xx.o colibri-pxa320.o
