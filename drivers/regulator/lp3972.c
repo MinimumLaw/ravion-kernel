@@ -494,6 +494,13 @@ static int __devinit setup_regulators(struct lp3972 *lp3972,
 		goto err_nomem;
 	}
 
+	/* regulator GPIO setup */
+	err = lp3972_set_bits( lp3972, LP3972_SCR2_REG,
+	    (u16)0xFFFFFF00, pdata->gpio[1]<<2 | pdata->gpio[0] );
+
+	if ( err )
+		dev_err(lp3972->dev, "regulator gpio init failed: %d\n", err);
+
 	/* Instantiate the regulators */
 	for (i = 0; i < pdata->num_regulators; i++) {
 		struct lp3972_regulator_subdev *reg = &pdata->regulators[i];
