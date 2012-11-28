@@ -1960,6 +1960,138 @@ static void __init at91_add_device_aes(void)
 static void __init at91_add_device_aes(void) {}
 #endif
 
+
+/************************************************************************
+ *  Compact Flash (PCMCIA or IDE)
+ * -------------------------------------------------------------------- */
+
+#if defined(CONFIG_PATA_AT91) || defined(CONFIG_PATA_AT91_MODULE) || \
+	defined(CONFIG_AT91_CF) || defined(CONFIG_AT91_CF_MODULE)
+
+static struct sam9_smc_config cf_smc_config = {
+	/* Setup register */
+	.ncs_read_setup	= 9,
+	.nrd_setup	= 2,
+	.ncs_write_setup= 2,
+	.nwe_setup	= 9,
+	/* Pulse register */
+	.ncs_read_pulse	= 27,
+	.nrd_pulse	= 17,
+	.ncs_write_pulse= 27,
+	.nwe_pulse	= 17,
+	/* Cycle register */
+	.read_cycle	= 40,
+	.write_cycle	= 40,
+	/* Mode register */
+	.mode		= ( AT91_SMC_READMODE |
+				AT91_SMC_WRITEMODE |
+				AT91_SMC_EXNWMODE_DISABLE |
+				AT91_SMC_DBW_16 ),
+	.tdf_cycles	= 4,
+};
+
+
+static struct at91_cf_data cf0_data;
+
+static struct resource cf0_resources[] = {
+	[0] = {
+		.start	= AT91_CHIPSELECT_4,
+		.end	= AT91_CHIPSELECT_4 + SZ_256M - 1,
+		.flags	= IORESOURCE_MEM | IORESOURCE_MEM_8AND16BIT,
+	}
+};
+
+static struct platform_device cf0_device = {
+	.id		= 0,
+	.dev		= {
+				.platform_data	= &cf0_data,
+	},
+	.resource	= cf0_resources,
+	.num_resources	= ARRAY_SIZE(cf0_resources),
+};
+
+static struct at91_cf_data cf1_data;
+
+static struct resource cf1_resources[] = {
+	[0] = {
+		.start	= AT91_CHIPSELECT_5,
+		.end	= AT91_CHIPSELECT_5 + SZ_256M - 1,
+		.flags	= IORESOURCE_MEM | IORESOURCE_MEM_8AND16BIT,
+	}
+};
+
+static struct platform_device cf1_device = {
+	.id		= 1,
+	.dev		= {
+				.platform_data	= &cf1_data,
+	},
+	.resource	= cf1_resources,
+	.num_resources	= ARRAY_SIZE(cf1_resources),
+};
+
+void __init at91_add_device_cf(struct at91_cf_data *data)
+{
+	unsigned long ebi_csa;
+	struct platform_device *pdev;
+
+	if (!data)
+		return;
+
+	/*
+	 * assign CS4 or CS5 to SMC with Compact Flash logic support,
+	 * we assume SMC timings are configured by board code,
+	 * except True IDE where timings are controlled by driver
+	 */
+	ebi_csa = at91_matrix_read(AT91_MATRIX_EBICSA);
+	switch (data->chipselect) {
+	case 4:
+		sam9_smc_configure(0, 4, &cf_smc_config);
+		at91_set_A_periph(AT91_PIN_PC10, 0);  /* EBI0_NCS4/CFCS0 */
+		ebi_csa |= AT91_MATRIX_EBI_CS4A_SMC_CF0;
+		cf0_data = *data;
+		pdev = &cf0_device;
+		break;
+	case 5:
+		sam9_smc_configure(0, 5, &cf_smc_config);
+		at91_set_A_periph(AT91_PIN_PC11, 0);  /* EBI0_NCS5/CFCS1 */
+		ebi_csa |= AT91_MATRIX_EBI_CS5A_SMC_CF1;
+		cf1_data = *data;
+		pdev = &cf1_device;
+		break;
+	default:
+		printk(KERN_ERR "AT91 CF: bad chip-select requested (%u)\n",
+		       data->chipselect);
+		return;
+	}
+	at91_matrix_write(AT91_MATRIX_EBICSA, ebi_csa);
+
+	if (gpio_is_valid(data->det_pin)) {
+		at91_set_gpio_input(data->det_pin, 1);
+		at91_set_deglitch(data->det_pin, 1);
+	}
+
+	if (gpio_is_valid(data->irq_pin)) {
+		at91_set_gpio_input(data->irq_pin, 1);
+		at91_set_deglitch(data->irq_pin, 1);
+	}
+
+	if (gpio_is_valid(data->vcc_pin))
+		/* initially off */
+		at91_set_gpio_output(data->vcc_pin, 0);
+
+	/* enable EBI controlled pins */
+	at91_set_A_periph(AT91_PIN_PC15, 1);  /* NWAIT */
+	at91_set_A_periph(AT91_PIN_PC8, 0);  /* CFCE1 */
+	at91_set_A_periph(AT91_PIN_PC9, 0);  /* CFCE2 */
+	at91_set_A_periph(AT91_PIN_PC12, 0); /* CFNRW */
+
+	pdev->name = (data->flags & AT91_CF_TRUE_IDE) ? "pata_at91" : "at91_cf";
+	platform_device_register(pdev);
+}
+#else
+void __init at91_add_device_cf(struct at91_cf_data *data) {}
+#endif
+
 /* -------------------------------------------------------------------- */
 /*
  * These devices are always present and don't need any board-specific
@@ -1983,3 +2115,4 @@ static int __init at91_add_standard_devices(void)
 }
 
 arch_initcall(at91_add_standard_devices);
+
