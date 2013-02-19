@@ -5212,6 +5212,7 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 	default_power2 = rt2x00_eeprom_addr(rt2x00dev, EEPROM_TXPOWER_BG2);
 
 	for (i = 0; i < 14; i++) {
+		info[i].max_power = MAX_G_TXPOWER;
 		info[i].default_power1 = default_power1[i];
 		info[i].default_power2 = default_power2[i];
 	}
@@ -5221,6 +5222,7 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 		default_power2 = rt2x00_eeprom_addr(rt2x00dev, EEPROM_TXPOWER_A2);
 
 		for (i = 14; i < spec->num_channels; i++) {
+			info[i].max_power = MAX_A_TXPOWER;
 			info[i].default_power1 = default_power1[i];
 			info[i].default_power2 = default_power2[i];
 		}
