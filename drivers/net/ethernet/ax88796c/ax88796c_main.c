@@ -1511,8 +1511,7 @@ const struct net_device_ops ax88796c_netdev_ops = {
  * Purpose: Device initialization.
  * ----------------------------------------------------------------------------
  */
-static int __devinit
-ax88796c_probe (struct ax88796c_device *ax_local)
+static int ax88796c_probe (struct ax88796c_device *ax_local)
 {
 	struct net_device *ndev = ax_local->ndev;
 	void __iomem *ax_base;
@@ -1914,7 +1913,7 @@ ax88796c_resume(struct platform_device *p_dev)
  * Purpose: Driver Driver clean and exit
  * ----------------------------------------------------------------------------
  */
-static int __devexit ax88796c_exit_module(struct platform_device *pdev)
+static int ax88796c_exit_module(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct ax88796c_device *ax_local = netdev_priv (ndev);
@@ -1944,7 +1943,7 @@ static struct platform_driver ax88796c_driver = {
 		.owner	 = THIS_MODULE,
 	},
 	.probe   = ax88796c_drv_probe,
-	.remove  = __devexit_p(ax88796c_exit_module),
+	.remove  = ax88796c_exit_module,
 	.suspend = ax88796c_suspend,
 	.resume  = ax88796c_resume,
 };
