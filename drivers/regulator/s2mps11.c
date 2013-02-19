@@ -174,9 +174,9 @@ static struct regulator_ops s2mps11_buck_ops = {
 	.min_uV		= S2MPS11_BUCK_MIN2,			\
 	.uV_step	= S2MPS11_BUCK_STEP2,			\
 	.n_voltages	= S2MPS11_BUCK_N_VOLTAGES,		\
-	.vsel_reg	= S2MPS11_REG_B9CTRL2,			\
+	.vsel_reg	= S2MPS11_REG_B10CTRL2,			\
 	.vsel_mask	= S2MPS11_BUCK_VSEL_MASK,		\
-	.enable_reg	= S2MPS11_REG_B9CTRL1,			\
+	.enable_reg	= S2MPS11_REG_B10CTRL1,			\
 	.enable_mask	= S2MPS11_ENABLE_MASK			\
 }
 
@@ -231,7 +231,7 @@ static struct regulator_desc regulators[] = {
 	regulator_desc_buck10,
 };
 
-static __devinit int s2mps11_pmic_probe(struct platform_device *pdev)
+static int s2mps11_pmic_probe(struct platform_device *pdev)
 {
 	struct sec_pmic_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct sec_platform_data *pdata = dev_get_platdata(iodev->dev);
@@ -307,7 +307,7 @@ err:
 	return ret;
 }
 
-static int __devexit s2mps11_pmic_remove(struct platform_device *pdev)
+static int s2mps11_pmic_remove(struct platform_device *pdev)
 {
 	struct s2mps11_info *s2mps11 = platform_get_drvdata(pdev);
 	int i;
@@ -330,7 +330,7 @@ static struct platform_driver s2mps11_pmic_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = s2mps11_pmic_probe,
-	.remove = __devexit_p(s2mps11_pmic_remove),
+	.remove = s2mps11_pmic_remove,
 	.id_table = s2mps11_pmic_id,
 };
 
