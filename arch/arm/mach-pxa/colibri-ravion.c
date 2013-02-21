@@ -176,8 +176,6 @@ static mfp_cfg_t colibri_pxa320_ssp_pin_config[] __initdata = {
     GPIO84_GPIO, // SPI CS For Sagrad SG901-1028
     GPIO94_GPIO | MFP_LPM_EDGE_RISE, // IRQ
     GPIO95_GPIO,                     // SLEEP
-    GPIO73_GPIO, // addition gpio
-    GPIO9_GPIO, 
 };
 
 
@@ -362,6 +360,34 @@ static inline void colibri_pwr_init(void) {
 static inline void colibri_pwr_init(void) {}
 #endif
 
+/*
+ * TiWi_R2 on sdio interface
+ */
+#if defined(CONFIG_WLCORE_SDIO) || defined(CONFIG_WLCORE_SDIO_MODULE)
+#include <linux/wl12xx.h>
+
+static mfp_cfg_t tiwi_pin_config[] __initdata = {
+    GPIO73_GPIO | MFP_LPM_EDGE_FALL, // addition gpio
+    GPIO9_GPIO  | MFP_LPM_EDGE_FALL, 
+};
+
+#define TIWI_IRQ_GPIO	mfp_to_gpio(GPIO73_GPIO) /* GPIO9_GPIO */
+
+static struct wl12xx_platform_data tiwi_mmc_pdata = {
+/*    .irq = PXA_GPIO_TO_IRQ(TIWI_IRQ_GPIO), */
+    .board_ref_clock = WL12XX_REFCLOCK_38_XTAL,
+    .board_tcxo_clock = WL12XX_TCXOCLOCK_26,
+    .platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ, /* no level irq */
+};
+
+static inline void colibri_wl1271_sdio_init(void) {
+    pxa3xx_mfp_config( ARRAY_AND_SIZE( tiwi_pin_config ) );
+    wl12xx_set_platform_data(&tiwi_mmc_pdata);
+};
+#else
+static inline void colibri_wl1271_sdio_init(void) {};
+#endif
+
 void __init colibri_evalboard_init(void)
 {
     printk(KERN_INFO "===> Add carrier board devices for RadioAvionica board begin <===\n");
@@ -380,6 +406,7 @@ void __init colibri_evalboard_init(void)
     printk(KERN_INFO "PM power off functiona\n"); colibri_pm_init();
     printk(KERN_INFO "KEYBOARD power key from POU\n"); colibri_kbd_init();
     printk(KERN_INFO "POWER monitoring infrastructure\n"); colibri_pwr_init();
+    printk(KERN_INFO "TiWi_R2 in sdio interface\n"); colibri_wl1271_sdio_init();
 
     printk(KERN_INFO "===>  Add carrier board devices for RadioAvionica board end  <===\n");
 }
