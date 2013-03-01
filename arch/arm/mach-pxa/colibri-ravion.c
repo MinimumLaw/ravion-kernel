@@ -173,9 +173,9 @@ static mfp_cfg_t colibri_pxa320_ssp_pin_config[] __initdata = {
     GPIO85_SSP1_TXD,
     GPIO86_SSP1_RXD,
     GPIO1_2_GPIO,// SPI_CS For internal Xilinx CPLD
-    GPIO84_GPIO, // SPI CS For Sagrad SG901-1028
-    GPIO94_GPIO | MFP_LPM_EDGE_RISE, // IRQ
-    GPIO95_GPIO,                     // SLEEP
+    GPIO84_GPIO | MFP_DS08X, // SPI CS For Sagrad SG901-1028
+    GPIO94_GPIO | MFP_DS08X | MFP_LPM_EDGE_RISE, // IRQ
+    GPIO95_GPIO | MFP_DS08X,                     // SLEEP
 };
 
 
@@ -366,15 +366,23 @@ static inline void colibri_pwr_init(void) {}
 #if defined(CONFIG_WLCORE_SDIO) || defined(CONFIG_WLCORE_SDIO_MODULE)
 #include <linux/wl12xx.h>
 
+/*
+    MFP_PULL_LOW | \
+    MFP_LPM_PULL_LOW | \
+*/
+#define IRQ_GPIO_CFG_FLAG (\
+    MFP_DS08X | \
+    MFP_LPM_EDGE_RISE )
+
 static mfp_cfg_t tiwi_pin_config[] __initdata = {
-    GPIO73_GPIO | MFP_LPM_EDGE_FALL, // addition gpio
-    GPIO9_GPIO  | MFP_LPM_EDGE_FALL, 
+    GPIO73_GPIO | IRQ_GPIO_CFG_FLAG,
+    GPIO9_GPIO  | IRQ_GPIO_CFG_FLAG,
 };
 
 #define TIWI_IRQ_GPIO	mfp_to_gpio(GPIO73_GPIO) /* GPIO9_GPIO */
 
 static struct wl12xx_platform_data tiwi_mmc_pdata = {
-/*    .irq = PXA_GPIO_TO_IRQ(TIWI_IRQ_GPIO), */
+    .irq = PXA_GPIO_TO_IRQ(TIWI_IRQ_GPIO),
     .board_ref_clock = WL12XX_REFCLOCK_38_XTAL,
     .board_tcxo_clock = WL12XX_TCXOCLOCK_26,
     .platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ, /* no level irq */

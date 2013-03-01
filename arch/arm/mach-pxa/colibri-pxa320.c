@@ -281,17 +281,24 @@ static mfp_cfg_t colibri_pxa320_ac97_pin_config[] __initdata = {
 };
 
 /* Rev > 2.0a use WM9715l codec with aSoC - 100% comp. with wm9712 */
-static struct platform_device wm9715l_device = {
-	.name	= "wm9712-codec",
+static struct platform_device colibri_asoc_device = {
+	.name	= "colibri-audio",
 	.id	= -1,
+};
+
+/* AC97 Sound Support */
+static struct platform_device colibri_ac97_device = {
+        .name = "pxa2xx-ac97"
 };
 
 static inline void __init colibri_pxa320_init_ac97(void)
 {
 	pxa3xx_mfp_config(ARRAY_AND_SIZE(colibri_pxa320_ac97_pin_config));
-	pxa_set_ac97_info(NULL);
-	if ( system_rev >= 0x20a )
-	    platform_device_register(&wm9715l_device);
+//	if ( system_rev >= 0x20a ) {
+//	    platform_device_register(&colibri_ac97_device);
+//	    platform_device_register(&colibri_asoc_device);
+//	} else
+	    pxa_set_ac97_info(NULL); // AC97 codec
 }
 #else
 static inline void colibri_pxa320_init_ac97(void) {}
