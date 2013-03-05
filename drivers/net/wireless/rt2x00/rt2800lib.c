@@ -1670,6 +1670,9 @@ static void rt2800_config_lna_gain(struct rt2x00_dev *rt2x00dev,
 	rt2x00dev->lna_gain = lna_gain;
 }
 
+#define POWER_BOUND		0x27
+#define FREQ_OFFSET_BOUND	0x5f
+
 static void rt2800_config_channel_rf2xxx(struct rt2x00_dev *rt2x00dev,
 					 struct ieee80211_conf *conf,
 					 struct rf_channel *rf,
@@ -1754,22 +1757,30 @@ static void rt2800_config_channel_rf3xxx(struct rt2x00_dev *rt2x00dev,
 	rt2800_rfcsr_write(rt2x00dev, 6, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 12, &rfcsr);
-	info->default_power1 = 0x1f;
 	rt2x00_set_field8(&rfcsr, RFCSR12_TX_POWER, info->default_power1);
 	rt2800_rfcsr_write(rt2x00dev, 12, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 13, &rfcsr);
-	info->default_power2 = 0x1f;
 	rt2x00_set_field8(&rfcsr, RFCSR13_TX_POWER, info->default_power2);
 	rt2800_rfcsr_write(rt2x00dev, 13, rfcsr);
 
+	/*
+	 * FixMe: Why POWER_BOUND and FREQ_OFFSET_BOUND not init here?
+	 */
+
 	rt2800_rfcsr_read(rt2x00dev, 49, &rfcsr);
-	rfcsr = 0x27;
+	if (info->default_power1 > POWER_BOUND)
+		rt2x00_set_field8(&rfcsr, RFCSR49_TX, POWER_BOUND);
+	else
+		rt2x00_set_field8(&rfcsr, RFCSR49_TX, info->default_power1);
 	rt2800_rfcsr_write(rt2x00dev, 49, rfcsr);
 
-	rt2800_rfcsr_read(rt2x00dev, 50, &rfcsr);
-	rfcsr = 0x27;
-	rt2800_rfcsr_write(rt2x00dev, 50, rfcsr);
+	rt2800_rfcsr_read(rt2x00dev, 17, &rfcsr);
+	if (rt2x00dev->freq_offset > FREQ_OFFSET_BOUND)
+		rt2x00_set_field8(&rfcsr, RFCSR17_CODE, FREQ_OFFSET_BOUND);
+	else
+		rt2x00_set_field8(&rfcsr, RFCSR17_CODE, rt2x00dev->freq_offset);
+	rt2800_rfcsr_write(rt2x00dev, 17, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 1, &rfcsr);
 	rt2x00_set_field8(&rfcsr, RFCSR1_RX0_PD, 0);
@@ -1997,9 +2008,6 @@ static void rt2800_config_channel_rf3052(struct rt2x00_dev *rt2x00dev,
 	rt2x00_set_field8(&rfcsr, RFCSR7_RF_TUNING, 1);
 	rt2800_rfcsr_write(rt2x00dev, 7, rfcsr);
 }
-
-#define POWER_BOUND		0x27
-#define FREQ_OFFSET_BOUND	0x5f
 
 static void rt2800_config_channel_rf3290(struct rt2x00_dev *rt2x00dev,
 					 struct ieee80211_conf *conf,
@@ -2593,14 +2601,7 @@ static u8 rt2800_compensate_txpower(struct rt2x00_dev *rt2x00dev, int is_rate_b,
 		reg_limit = 0;
 
 	txpower = max(0, txpower + delta - reg_limit);
-#if 1
-    /*
-     * FixMe: allways return maximum txpower regardles any other thinks
-     */
-	return 0x0C;
-#else
 	return min_t(u8, txpower, 0xc);
-#endif
 }
 
 /*
@@ -2663,14 +2664,6 @@ static void rt2800_config_txpower(struct rt2x00_dev *rt2x00dev,
 	} else {
 		power_ctrl = 0;
 	}
-#if 1
-	/*
-	 * FixMe: See comment above. But we need maximum
-	 * txpower regardles regulatory. Set +6 dBm allways
-	 */
-	power_ctrl = 3;
-	delta = 0;
-#endif
 	rt2x00_set_field8(&r1, BBP1_TX_POWER_CTRL, power_ctrl);
 	rt2800_bbp_write(rt2x00dev, 1, r1);
 	offset = TX_PWR_CFG_0;
@@ -5237,7 +5230,6 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 	default_power2 = rt2x00_eeprom_addr(rt2x00dev, EEPROM_TXPOWER_BG2);
 
 	for (i = 0; i < 14; i++) {
-		info[i].max_power = MAX_G_TXPOWER;
 		info[i].default_power1 = default_power1[i];
 		info[i].default_power2 = default_power2[i];
 	}
@@ -5247,7 +5239,6 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 		default_power2 = rt2x00_eeprom_addr(rt2x00dev, EEPROM_TXPOWER_A2);
 
 		for (i = 14; i < spec->num_channels; i++) {
-			info[i].max_power = MAX_A_TXPOWER;
 			info[i].default_power1 = default_power1[i];
 			info[i].default_power2 = default_power2[i];
 		}
