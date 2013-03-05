@@ -2015,10 +2015,10 @@ static void rt2800_config_channel_rf3290(struct rt2x00_dev *rt2x00dev,
 	rt2800_rfcsr_write(rt2x00dev, 11, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 49, &rfcsr);
-//	if (info->default_power1 > POWER_BOUND)
+	if (info->default_power1 > POWER_BOUND)
 		rt2x00_set_field8(&rfcsr, RFCSR49_TX, POWER_BOUND);
-//	else
-//		rt2x00_set_field8(&rfcsr, RFCSR49_TX, info->default_power1);
+	else
+		rt2x00_set_field8(&rfcsr, RFCSR49_TX, info->default_power1);
 	rt2800_rfcsr_write(rt2x00dev, 49, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 17, &rfcsr);
@@ -2111,10 +2111,10 @@ static void rt2800_config_channel_rf53xx(struct rt2x00_dev *rt2x00dev,
 	rt2800_rfcsr_write(rt2x00dev, 11, rfcsr);
 
 	rt2800_rfcsr_read(rt2x00dev, 49, &rfcsr);
-//	if (info->default_power1 > POWER_BOUND)
+	if (info->default_power1 > POWER_BOUND)
 		rt2x00_set_field8(&rfcsr, RFCSR49_TX, POWER_BOUND);
-//	else
-//		rt2x00_set_field8(&rfcsr, RFCSR49_TX, info->default_power1);
+	else
+		rt2x00_set_field8(&rfcsr, RFCSR49_TX, info->default_power1);
 	rt2800_rfcsr_write(rt2x00dev, 49, rfcsr);
 
 	if (rt2x00_rt(rt2x00dev, RT5392)) {
