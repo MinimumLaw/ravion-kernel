@@ -443,7 +443,7 @@ wlcore_set_min_fw_ver(struct wl1271 *wl, unsigned int chip,
 }
 
 /* Firmware image load chunk size */
-#define CHUNK_SIZE	16384
+#define CHUNK_SIZE	1024
 
 /* Quirks */
 
