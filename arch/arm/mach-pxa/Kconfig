@@ -263,6 +263,10 @@ config MACH_COLIBRI_EVALBOARD
 	bool "Toradex Colibri Evaluation Carrier Board support"
 	depends on MACH_COLIBRI || MACH_COLIBRI300 || MACH_COLIBRI320
 
+config MACH_COLIBRI_RAVIONBOARD
+	bool "OAO Radioavionica Board support for Colibri PXA320"
+	depends on MACH_COLIBRI320
+
 config MACH_VPAC270
 	bool "Voipac PXA270"
 	select HAVE_PATA_PLATFORM
