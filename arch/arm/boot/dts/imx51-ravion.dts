@@ -198,14 +198,19 @@
 		reg = <1>;
 
 		partition@0 {
-			label = "U-Boot";
-			reg = <0x0 0x40000>;
+			label = "u-boot";
+			reg = <0x0 0xc0000>;
 			read-only;
 		};
 
-		partition@40000 {
-			label = "Kernel";
-			reg = <0x40000 0x3c0000>;
+		partition@c0000 {
+			label = "u-boot-env";
+			reg = <0xc0000 0x40000>;
+		};
+
+		partition@100000 {
+			label = "u-boot-env";
+			reg = <0x100000 0x300000>;
 		};
 	};
 };
