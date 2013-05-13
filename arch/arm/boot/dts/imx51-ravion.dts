@@ -37,17 +37,6 @@
 		pinctrl-0 = <&pinctrl_ipu_disp2_1>;
 	};
 
-	gpio-keys {
-		compatible = "gpio-keys";
-
-		power {
-			label = "Power Button";
-			gpios = <&gpio2 21 0>;
-			linux,code = <116>; /* KEY_POWER */
-			gpio-key,wakeup;
-		};
-	};
-
 	sound {
 		compatible = "fsl,imx51-babbage-sgtl5000",
 			     "fsl,imx-audio-sgtl5000";
@@ -68,21 +57,6 @@
 	pinctrl-0 = <&pinctrl_esdhc1_1>;
 	fsl,cd-controller;
 	fsl,wp-controller;
-	status = "okay";
-};
-
-&esdhc2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_esdhc2_1>;
-	cd-gpios = <&gpio1 6 0>;
-	wp-gpios = <&gpio1 5 0>;
-	status = "okay";
-};
-
-&uart3 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart3_1>;
-	fsl,uart-has-rtscts;
 	status = "okay";
 };
 
@@ -209,10 +183,34 @@
 		};
 
 		partition@100000 {
-			label = "u-boot-env";
+			label = "reserved_nor";
 			reg = <0x100000 0x300000>;
 		};
 	};
+};
+
+&nfc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	partition@0 {
+		label = "resque";
+		reg = <0x0 0x3200000>;
+	};
+
+	partition@3200000 {
+		label = "restore";
+		reg = <0x3200000 0x1c200000>;
+	};
+
+	partition@1f400000 {
+		label = "reserved_nand";
+		reg = <0x1f400000 0xc00000>;
+	};
+
+
 };
 
 &ssi2 {
@@ -252,6 +250,13 @@
 	status = "okay";
 };
 
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3_1>;
+	fsl,uart-has-rtscts;
+	status = "okay";
+};
+
 &i2c2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2_1>;
@@ -279,24 +284,3 @@
 	status = "okay";
 };
 
-&kpp {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_kpp_1>;
-	linux,keymap = <0x00000067	/* KEY_UP */
-			0x0001006c	/* KEY_DOWN */
-			0x00020072	/* KEY_VOLUMEDOWN */
-			0x00030066	/* KEY_HOME */
-			0x0100006a	/* KEY_RIGHT */
-			0x01010069	/* KEY_LEFT */
-			0x0102001c	/* KEY_ENTER */
-			0x01030073	/* KEY_VOLUMEUP */
-			0x02000040	/* KEY_F6 */
-			0x02010042	/* KEY_F8 */
-			0x02020043	/* KEY_F9 */
-			0x02030044	/* KEY_F10 */
-			0x0300003b	/* KEY_F1 */
-			0x0301003c	/* KEY_F2 */
-			0x0302003d	/* KEY_F3 */
-			0x03030074>;	/* KEY_POWER */
-	status = "okay";
-};
