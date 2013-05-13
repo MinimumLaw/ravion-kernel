@@ -91,6 +91,7 @@ dtb-$(CONFIG_ARCH_MXC) += \
 	imx31-bug.dtb \
 	imx51-apf51.dtb \
 	imx51-babbage.dtb \
+	imx51-ravion.dtb \
 	imx53-ard.dtb \
 	imx53-evk.dtb \
 	imx53-mba53.dtb \
