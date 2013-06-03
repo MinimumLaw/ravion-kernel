@@ -16,6 +16,9 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 
+#include <mach/colibri.h>
+#include <asm/io.h>
+
 #include <asm/mach-types.h>
 
 #include "soc_common.h"
@@ -92,12 +95,71 @@ static int
 colibri_pcmcia_configure_socket(struct soc_pcmcia_socket *skt,
 				const socket_state_t *state)
 {
-	gpio_set_value(colibri_pcmcia_gpios[PPEN].gpio,
-			!(state->Vcc == 33 && state->Vpp < 50));
-	gpio_set_value(colibri_pcmcia_gpios[RESET].gpio,
-			state->flags & SS_RESET);
-	return 0;
+    unsigned long flags;
+    int ret;
+
+    local_irq_save(flags);
+    switch (skt->nr) {
+	case 0:
+	    if (state->Vcc == 0 && state->Vpp == 0)
+		gpio_set_value(colibri_pcmcia_gpios[PPEN].gpio, 1);
+	    else if (state->Vcc == 33 && state->Vpp < 50)
+		gpio_set_value(colibri_pcmcia_gpios[PPEN].gpio, 0);
+	    else {
+		printk(KERN_ERR "%s(): unsupported Vcc %u Vpp %u combination\n",
+		__FUNCTION__, state->Vcc, state->Vpp);
+		return -1; }
+
+	    if (state->flags & SS_RESET)
+		gpio_set_value(colibri_pcmcia_gpios[RESET].gpio, 1);
+
+            if (state->flags & SS_OUTPUT_ENA) {
+		if ( machine_is_colibri320() )
+		    __raw_writew(
+                   CPLD_MEM_nOE_EN | CPLD_MEM_RDnWR_EN | CPLD_MEM_CF_EN,
+                   CPLD_MEM_CTRL );
+            }
+
+        ret = 0;
+        break;
+        default:
+          ret = -1;
+    };
+
+    local_irq_restore(flags);
+    udelay(200);
+    return ret;
 }
+
+static void colibri_pcmcia_socket_init(struct soc_pcmcia_socket *skt)
+{
+    switch( skt->nr ) {
+	case 0:
+	    if ( machine_is_colibri320() )
+		__raw_writew(
+		    CPLD_MEM_nOE_DIS | CPLD_MEM_RDnWR_DIS | CPLD_MEM_CF_DIS,
+		    CPLD_MEM_CTRL );
+	    gpio_set_value(colibri_pcmcia_gpios[PPEN].gpio, 0);
+	    gpio_set_value(colibri_pcmcia_gpios[RESET].gpio, 1);
+	    udelay(10);
+	    gpio_set_value(colibri_pcmcia_gpios[RESET].gpio, 0);
+	break;
+	default:
+	    printk(KERN_INFO "Try init NOT present PCCards socket\n");
+    };
+}
+
+static void colibri_pcmcia_socket_suspend(struct soc_pcmcia_socket *skt)
+{
+    switch( skt->nr ) {
+	case 0:
+	    gpio_set_value(colibri_pcmcia_gpios[PPEN].gpio, 1);
+	break;
+	default:
+	    printk(KERN_INFO "Try suspend NOT present PCCards socket\n");
+    };
+}
+
 
 static struct pcmcia_low_level colibri_pcmcia_ops = {
 	.owner			= THIS_MODULE,
@@ -109,6 +171,8 @@ static struct pcmcia_low_level colibri_pcmcia_ops = {
 	.hw_shutdown		= colibri_pcmcia_hw_shutdown,
 
 	.socket_state		= colibri_pcmcia_socket_state,
+	.socket_init		= colibri_pcmcia_socket_init,
+	.socket_suspend		= colibri_pcmcia_socket_suspend,
 	.configure_socket	= colibri_pcmcia_configure_socket,
 };
 
