@@ -865,10 +865,9 @@ int p54_parse_eeprom(struct ieee80211_hw *dev, void *eeprom, int len)
 		case PDR_END:
 			crc16 = ~crc_ccitt(crc16, (u8 *) entry, sizeof(*entry));
 			if (crc16 != le16_to_cpup((__le16 *)entry->data)) {
-				wiphy_err(dev->wiphy, "eeprom failed checksum "
-					 "test!\n");
-				err = -ENOMSG;
-				goto err;
+				wiphy_err(dev->wiphy, "Caution: eeprom failed checksum "
+					 "test! Found: %04X, requre %04X\n", crc16, le16_to_cpup((__le16 *)entry->data));
+				goto good_eeprom;
 			} else {
 				goto good_eeprom;
 			}
