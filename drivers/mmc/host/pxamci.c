@@ -128,7 +128,7 @@ static void pxamci_stop_clock(struct pxamci_host *host)
 			v = readl(host->base + MMC_STAT);
 			if (!(v & STAT_CLK_EN))
 				break;
-			udelay(1);
+			udelay(10);
 		} while (timeout--);
 
 		if (v & STAT_CLK_EN)
