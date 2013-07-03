@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Mon Apr  9 13:44:00 2012
+# Wed Jul  3 14:43:41 2013
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -928,7 +928,7 @@ CONFIG_NETDEVICES=y
 # CONFIG_BONDING is not set
 # CONFIG_MACVLAN is not set
 # CONFIG_EQUALIZER is not set
-# CONFIG_TUN is not set
+CONFIG_TUN=m
 # CONFIG_VETH is not set
 CONFIG_PHYLIB=y
 
@@ -1485,7 +1485,7 @@ CONFIG_USB_OHCI_LITTLE_ENDIAN=y
 #
 # USB Device Class drivers
 #
-# CONFIG_USB_ACM is not set
+CONFIG_USB_ACM=m
 # CONFIG_USB_PRINTER is not set
 # CONFIG_USB_WDM is not set
 # CONFIG_USB_TMC is not set
