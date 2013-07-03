@@ -139,13 +139,12 @@ static void pxamci_stop_clock(struct pxamci_host *host)
 		unsigned long timeout = 10000;
 		unsigned int v;
 
-		writel(STOP_CLOCK, host->base + MMC_STRPCL);
-
 		do {
+			writel(STOP_CLOCK, host->base + MMC_STRPCL);
 			v = readl(host->base + MMC_STAT);
 			if (!(v & STAT_CLK_EN))
 				break;
-			udelay(1);
+			udelay(10);
 		} while (timeout--);
 
 		if (v & STAT_CLK_EN)
