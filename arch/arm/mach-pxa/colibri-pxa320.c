@@ -280,25 +280,35 @@ static mfp_cfg_t colibri_pxa320_ac97_pin_config[] __initdata = {
 	GPIO40_AC97_nACRESET
 };
 
-/* Rev > 2.0a use WM9715l codec with aSoC - 100% comp. with wm9712 */
-static struct platform_device colibri_asoc_device = {
-	.name	= "colibri-audio",
+static struct platform_device colibri_asoc_dev = {
+	.name	= "colibri-wm9715",
 	.id	= -1,
 };
 
-/* AC97 Sound Support */
-static struct platform_device colibri_ac97_device = {
-        .name = "pxa2xx-ac97"
+static struct platform_device colibri_asoc_ac97_dev = {
+	.name	= "pxa2xx-ac97",
+	.id	= -1,
+};
+
+// WM9712 fully compatible with WM9715
+static struct platform_device colibri_codec_dev = {
+	.name	= "wm9712-codec",
+	.id	= -1,
 };
 
 static inline void __init colibri_pxa320_init_ac97(void)
 {
 	pxa3xx_mfp_config(ARRAY_AND_SIZE(colibri_pxa320_ac97_pin_config));
-//	if ( system_rev >= 0x20a ) {
-//	    platform_device_register(&colibri_ac97_device);
-//	    platform_device_register(&colibri_asoc_device);
-//	} else
-	    pxa_set_ac97_info(NULL); // AC97 codec
+	/* UCB14000 on module rev. <2.0a use AC97 bus, WM9715 use soc-audio bus */
+	if ( system_rev < 0x20a )
+		/* AC97 bus */
+		pxa_set_ac97_info(NULL);
+	else {
+		/* ASoC BUS */
+		platform_device_register(&colibri_codec_dev);
+		platform_device_register(&colibri_asoc_ac97_dev);
+		platform_device_register(&colibri_asoc_dev);
+	}
 }
 #else
 static inline void colibri_pxa320_init_ac97(void) {}
