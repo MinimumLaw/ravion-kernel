@@ -328,7 +328,7 @@ static int p54_config(struct ieee80211_hw *dev, u32 changed)
 		priv->output_power = conf->power_level << 2;
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {
 		struct ieee80211_channel *oldchan;
-		//WARN_ON(p54_wait_for_stats(dev));
+		WARN_ON(p54_wait_for_stats(dev));
 		oldchan = priv->curchan;
 		priv->curchan = NULL;
 		ret = p54_scan(priv, P54_SCAN_EXIT, 0);
@@ -342,21 +342,21 @@ static int p54_config(struct ieee80211_hw *dev, u32 changed)
 		 */
 		priv->curchan = priv->hw->conf.chandef.chan;
 		p54_reset_stats(priv);
-		//WARN_ON(p54_fetch_statistics(priv));
+		WARN_ON(p54_fetch_statistics(priv));
 	}
 	if (changed & IEEE80211_CONF_CHANGE_PS) {
-		//WARN_ON(p54_wait_for_stats(dev));
+		WARN_ON(p54_wait_for_stats(dev));
 		ret = p54_set_ps(priv);
 		if (ret)
 			goto out;
-		//WARN_ON(p54_wait_for_stats(dev));
+		WARN_ON(p54_wait_for_stats(dev));
 	}
 	if (changed & IEEE80211_CONF_CHANGE_IDLE) {
-		//WARN_ON(p54_wait_for_stats(dev));
+		WARN_ON(p54_wait_for_stats(dev));
 		ret = p54_setup_mac(priv);
 		if (ret)
 			goto out;
-		//WARN_ON(p54_wait_for_stats(dev));
+		WARN_ON(p54_wait_for_stats(dev));
 	}
 
 out:
