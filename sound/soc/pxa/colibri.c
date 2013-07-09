@@ -38,7 +38,7 @@ static struct snd_soc_dai_link colibri_dai[] = {
 };
 
 static struct snd_soc_card colibri = {
-	.name = "WM9715L",
+	.name = "WM9715G",
 	.owner = THIS_MODULE,
 	.dai_link = colibri_dai,
 	.num_links = ARRAY_SIZE(colibri_dai),
