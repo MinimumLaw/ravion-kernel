@@ -50,13 +50,13 @@
  ******************************************************************************/
 static mfp_cfg_t colibri_pxa320_ravionboard_pin_config[] __initdata = {
         /* MMC */
-        GPIO22_MMC1_CLK,
-        GPIO23_MMC1_CMD,
-        GPIO18_MMC1_DAT0,
-        GPIO19_MMC1_DAT1,
-        GPIO20_MMC1_DAT2,
-        GPIO21_MMC1_DAT3,
-        GPIO28_GPIO,    /* SD detect */
+        GPIO22_MMC1_CLK | MFP_DS13X,
+        GPIO23_MMC1_CMD | MFP_DS13X,
+        GPIO18_MMC1_DAT0| MFP_DS13X,
+        GPIO19_MMC1_DAT1| MFP_DS13X,
+        GPIO20_MMC1_DAT2| MFP_DS13X,
+        GPIO21_MMC1_DAT3| MFP_DS13X,
+        GPIO28_GPIO	| MFP_DS08X,    /* SD detect */
 
         /* UART 1 configuration (may be set by bootloader) */
         GPIO97_UART1_RXD,
