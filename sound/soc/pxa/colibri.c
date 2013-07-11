@@ -50,7 +50,7 @@ static int colibri_wm9715_probe(struct platform_device *pdev)
 
 	colibri.dev = &pdev->dev;
 	rc =  snd_soc_register_card(&colibri);
-	if (!rc)
+	if (rc)
 		dev_warn(&pdev->dev, "snd_soc_register_card() failed with %d in %s()!\n",
 		    rc, __FUNCTION__);
 	return rc;
