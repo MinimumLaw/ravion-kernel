@@ -169,6 +169,7 @@ source "drivers/net/ethernet/xircom/Kconfig"
 config AX88796C
 	tristate "ASIX AX88796C SDRAM-like interface"
 	depends on ARM || MIPS || SUPERH
+	select MII
 	select PHYLIB
 	select MDIO_BITBANG
 	---help---
