@@ -934,28 +934,20 @@ static struct spi_board_info mxc_sagrad_device[] __initdata = {
 static int sdhc_write_protect(struct device *dev)
 {
 	/* DIMAS: No write protection bit on micro SD card */
-	
-	unsigned short rc = 0;
-/*
-	if (to_platform_device(dev)->id == 0)
-		rc = gpio_get_value(BABBAGE_SD1_WP);
-	else
-		rc = gpio_get_value(BABBAGE_SD2_WP);
-*/
-	return rc;
+	return 0;
 }
 
 static unsigned int sdhc_get_card_det_status(struct device *dev)
 {
 	int ret;
-	
+
 	/* read the det pin for SDHC1/2 */
 	if (to_platform_device(dev)->id == 0)
 		ret = gpio_get_value(BABBAGE_SD1_CD);
 	else
 	{
 		/* TiWi card inserted, if WP==1 && CD==0 for UTSVU board */
-		
+
 		if(gpio_get_value(BABBAGE_SD2_WP))
 			ret = gpio_get_value(BABBAGE_SD2_CD);
 		else
@@ -980,14 +972,13 @@ static struct mxc_mmc_platform_data mmc1_data = {
 static struct mxc_mmc_platform_data mmc2_data = {
 	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30 |
 	    MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_DISABLE | MMC_CAP_NONREMOVABLE,
+	.caps = MMC_CAP_4_BIT_DATA,
 	.min_clk = 150000,
 	.max_clk = 26000000,
 	.card_inserted_state = 0,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
 	.clock_mmc = "esdhc_clk",
-    .power_mmc = NULL,
 };
 
 static int mxc_sgtl5000_amp_enable(int enable)
