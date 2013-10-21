@@ -70,7 +70,7 @@ static unsigned timer_margin = TIMER_MARGIN_DEFAULT;
 module_param(timer_margin, uint, 0);
 MODULE_PARM_DESC(timer_margin, "initial watchdog timeout (in seconds)");
 
-static unsigned dev_num;
+static unsigned dev_num = 0;
 
 static void mxc_wdt_ping(void *base)
 {
@@ -176,8 +176,8 @@ static int mxc_wdt_release(struct inode *inode, struct file *file)
 }
 
 static ssize_t
-mxc_wdt_write(struct file *file, const char __user *data,
-	      size_t len, loff_t *ppos)
+mxc_wdt_write(struct file *file, const char __user * data,
+	      size_t len, loff_t * ppos)
 {
 	/* Refresh LOAD_TIME. */
 	if (len)
@@ -264,6 +264,11 @@ static int __init mxc_wdt_probe(struct platform_device *pdev)
 	wdt_base_reg = ioremap(res->start, res->end - res->start + 1);
 	mxc_wdt_disable(wdt_base_reg);
 	mxc_wdt_adjust_timeout(timer_margin);
+
+	// Added by DIMAS - reload timeout after starting WDOG driver
+	mxc_wdt_set_timeout(wdt_base_reg);
+	mxc_wdt_ping(wdt_base_reg);
+	// end
 
 	mxc_wdt_users = 0;
 
