@@ -101,7 +101,7 @@ DEFINE_SPINLOCK(tve_lock);
 
 static struct fb_info *tve_fbi;
 static struct fb_modelist tve_modelist;
-static bool g_enable_tve = true;
+static bool g_enable_tve;
 
 struct tve_data {
 	struct platform_device *pdev;
