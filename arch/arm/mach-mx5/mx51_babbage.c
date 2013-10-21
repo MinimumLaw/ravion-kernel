@@ -1244,7 +1244,7 @@ static void __init mx51_babbage_io_init(void)
 	msleep(1);
 	gpio_set_value(BABBAGE_VADC_RESET_B, 1);
 	gpio_direction_output(BABBAGE_VADC_POWER_DOWN_B, 0);
-	
+
 	/* EIM IRQ */
 	gpio_request(BABBAGE_EIM_IRQ, "eim-irq");
 	gpio_direction_input(BABBAGE_EIM_IRQ);
@@ -1255,15 +1255,15 @@ static void __init mx51_babbage_io_init(void)
 	gpio_set_value(BABBAGE_EIM_RESET, 1);
 	msleep(1);
 	gpio_set_value(BABBAGE_EIM_RESET, 0);
-	
+
 	/* Bluetooth enable */
 	gpio_request(BABBAGE_BT_ENABLE, "bt-en");
 	gpio_direction_output(BABBAGE_BT_ENABLE, 1);
-	
+
 	/* GPI_0 */
 	gpio_request(BABBAGE_GPI_0, "gpi-0");
 	gpio_direction_input(BABBAGE_GPI_0);
-	
+
 	/* GPI_1 */
 	gpio_request(BABBAGE_GPI_1, "gpi-1");
 	gpio_direction_input(BABBAGE_GPI_1);
@@ -1271,7 +1271,7 @@ static void __init mx51_babbage_io_init(void)
 	/* GPI_2 */
 	gpio_request(BABBAGE_GPI_2, "gpi-2");
 	gpio_direction_input(BABBAGE_GPI_2);
-	
+
 	/* GPI_3 */
 	gpio_request(BABBAGE_GPI_3, "gpi-3");
 	gpio_direction_input(BABBAGE_GPI_3);
@@ -1291,7 +1291,7 @@ static void __init mx51_babbage_io_init(void)
 	/* GPO_3 */
 	gpio_request(BABBAGE_GPO_3, "gpo-3");
 	gpio_direction_output(BABBAGE_GPO_3, 0);
-	
+
 	if (enable_w1) {
 		/* OneWire */
 		struct pad_desc onewire = MX51_PAD_OWIRE_LINE__OWIRE_LINE;
@@ -1340,7 +1340,7 @@ static struct pad_desc mx51_utsvu_pads[] = {
 
 	MX51_PAD_KEY_COL4__UART1_RI,
 	MX51_PAD_KEY_COL5__UART1_DCD,
-	
+
 	MX51_PAD_CSI2_PIXCLK__GPIO_4_15, /* 3.3 V ON */
 };
 
@@ -1354,7 +1354,7 @@ static void __init mx51_utsvu_io_init(void)
 {
 	mxc_iomux_v3_setup_multiple_pads(mx51_utsvu_pads,
 					ARRAY_SIZE(mx51_utsvu_pads));
-	
+
 	/* GPIO 1_4 as POWER OFF pin */
 	gpio_request(BABBAGE_WDOG_B, "power-off");
 	gpio_direction_output(BABBAGE_WDOG_B, 1);
@@ -1366,7 +1366,7 @@ static void __init mx51_utsvu_io_init(void)
 	/* Switch 12 V */
 	gpio_request(BABBAGE_SW12V_EN, "sw12v-en");
 	gpio_direction_output(BABBAGE_SW12V_EN, 0);
-	
+
 	/* CAN Reset */
 	gpio_request(BABBAGE_CAN_RESET_B, "can-rst_n");
 	gpio_direction_output(BABBAGE_CAN_RESET_B, 0);
@@ -1382,7 +1382,7 @@ extern unsigned int system_rev;
 static void __init mxc_board_init(void)
 {
 	sd2card_type_t sd2_device_type;
-	
+
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "csi_mclk1");
@@ -1398,7 +1398,7 @@ static void __init mxc_board_init(void)
 
 	mxc_cpu_common_init();
 	mx51_babbage_io_init();
-	
+
 	// NJM: Special I/O init for Avionika UTSVU board
 	mx51_utsvu_io_init();
 
@@ -1409,7 +1409,7 @@ static void __init mxc_board_init(void)
 	else
 	if((gpio_get_value(BABBAGE_SD2_CD) == 0) && gpio_get_value(BABBAGE_SD2_WP))
 		sd2_device_type = CARD_TIWI;
-	
+
 	switch(sd2_device_type)
 	{
 		case CARD_SAGRAD:
@@ -1421,7 +1421,6 @@ static void __init mxc_board_init(void)
 		default:
 			break;
 	};
-    
 	mxc_register_device(&mxc_dma_device, NULL);
 	mxc_register_device(&mxc_wdt_device, NULL);
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
@@ -1460,7 +1459,7 @@ static void __init mxc_board_init(void)
 #else
 	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
 #endif
-	
+
 	mx51_babbage_init_mc13892();
 
 	//if (board_is_rev(BOARD_REV_2))
@@ -1471,9 +1470,9 @@ static void __init mxc_board_init(void)
 		/* BB2.0 */
 	//	spi_register_board_info(mxc_spi_nor_device,
 	//				ARRAY_SIZE(mxc_spi_nor_device));
-	
+
 	pr_info("DIMAS: board revision: %X\n", system_rev);
-	
+
 	/* DIMAS: CAN init */
 	mx51_utsvu_mcp251x_init();
 
@@ -1493,9 +1492,9 @@ static void __init mxc_board_init(void)
 			pr_info("DIMAS: No card inserted.\n");
 			break;
 	};
-	
+
 	spi_register_board_info(mxc_mcp2515x_device, ARRAY_SIZE(mxc_mcp2515x_device));
-	
+
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 				ARRAY_SIZE(mxc_i2c0_board_info));
 	i2c_register_board_info(1, mxc_i2c1_board_info,
