@@ -1321,11 +1321,11 @@ static void __init mx51_utsvu_wireless_for_tiwi_init(void)
 	/* Wireless enable */
 	gpio_request(BABBAGE_WL_ENABLE, "wl-en");
 	gpio_direction_output(BABBAGE_WL_ENABLE, 1);
-	
+
 	if( (gpio_request(BABBAGE_WIRELESS_IRQ, "WIRELESS INT") == 0) && (gpio_direction_input(BABBAGE_WIRELESS_IRQ) == 0) )
 	{
 		gpio_export(BABBAGE_WIRELESS_IRQ, 0);
-		//set_irq_type(IOMUX_TO_IRQ_V3(BABBAGE_WIRELESS_IRQ), IRQ_TYPE_EDGE_RISING);
+		set_irq_type(IOMUX_TO_IRQ_V3(BABBAGE_WIRELESS_IRQ), IRQ_TYPE_EDGE_RISING);
 	}
 	else
 	{
