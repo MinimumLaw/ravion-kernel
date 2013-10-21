@@ -1,0 +1,185 @@
+[Meego-kernel] [PATCH 02/26] wl1271: sdio: claim host only when doing IO[Meego-kernel] 
+[PATCH 02/26] wl1271: sdio: claim host only when doing IO
+Brouat, Claude claude.brouat at intel.com 
+Wed Oct 20 10:34:06 PDT 2010 
+  Previous message: [Meego-kernel] [PATCH 1/1] CMT Speech driver for 
+  intel_mid_i2s on meego intel mid platforms 
+  Next message: [Meego-kernel] [PATCH 02/26] wl1271: sdio: claim host only when 
+  doing IO 
+  Messages sorted by: [ date ] [ thread ] [ subject ] [ author ] 
+
+
+
+Hi
+
+
+
+This is a patch regarding WL1271 TI driver.
+
+It is second item of a series of 26 patches that will follow.
+
+It is a back-port from upstreamed patches to 2.6.35 meego kernel.
+
+
+
+Claude
+
+***************************************************************************
+
+>From 4d560ec8ab6387cebac14eb20bf4c469d2e05d18 Mon Sep 17 00:00:00 2001
+From: Ohad Ben-Cohen <ohad at wizery.com>
+Date: Tue, 7 Sep 2010 04:24:21 +0300
+Subject: [PATCH 02/26] wl1271: sdio: claim host only when doing IO
+
+Do not maintain a persistent sdio_claim_host state. Instead,
+claim host before doing IO and release host soon after.
+
+This fixes several mmc deadlock scenarios, e.g. during
+suspend/resume.
+
+Signed-off-by: Ohad Ben-Cohen <ohad at wizery.com>
+Acked-by: Luciano Coelho <luciano.coelho at nokia.com>
+Signed-off-by: John W. Linville <linville at tuxdriver.com>
+Signed-off-by: Claude Brouat <claude.brouat at intel.com>
+---
+ drivers/net/wireless/wl12xx/wl1271_sdio.c |   43 +++++++++++++++++++++++-----
+ 1 files changed, 35 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/wireless/wl12xx/wl1271_sdio.c b/drivers/net/wireless/wl12xx/wl1271_sdio.c
+index 7059b5c..b3c3158 100644
+--- a/drivers/net/wireless/wl12xx/wl1271_sdio.c
++++ b/drivers/net/wireless/wl12xx/wl1271_sdio.c
+@@ -107,6 +107,8 @@ static void wl1271_sdio_raw_read(struct wl1271 *wl, int addr, void *buf,
+     int ret;
+     struct sdio_func *func = wl_to_func(wl);
+
++    sdio_claim_host(func);
++
+     if (unlikely(addr == HW_ACCESS_ELP_CTRL_REG_ADDR)) {
+           ((u8 *)buf)[0] = sdio_f0_readb(func, addr, &ret);
+           wl1271_debug(DEBUG_SDIO, "sdio read 52 addr 0x%x, byte 0x%02x",
+@@ -122,9 +124,10 @@ static void wl1271_sdio_raw_read(struct wl1271 *wl, int addr, void *buf,
+           wl1271_dump_ascii(DEBUG_SDIO, "data: ", buf, len);
+     }
+
++    sdio_release_host(func);
++
+     if (ret)
+           wl1271_error("sdio read failed (%d)", ret);
+-
+ }
+
+ static void wl1271_sdio_raw_write(struct wl1271 *wl, int addr, void *buf,
+@@ -133,6 +136,8 @@ static void wl1271_sdio_raw_write(struct wl1271 *wl, int addr, void *buf,
+     int ret;
+     struct sdio_func *func = wl_to_func(wl);
+
++    sdio_claim_host(func);
++
+     if (unlikely(addr == HW_ACCESS_ELP_CTRL_REG_ADDR)) {
+           sdio_f0_writeb(func, ((u8 *)buf)[0], addr, &ret);
+           wl1271_debug(DEBUG_SDIO, "sdio write 52 addr 0x%x, byte 0x%02x",
+@@ -147,9 +152,33 @@ static void wl1271_sdio_raw_write(struct wl1271 *wl, int addr, void *buf,
+           else
+                ret = sdio_memcpy_toio(func, addr, buf, len);
+     }
++
++    sdio_release_host(func);
++
+     if (ret)
+           wl1271_error("sdio write failed (%d)", ret);
++}
++
++static int wl1271_sdio_power_on(struct wl1271 *wl)
++{
++    struct sdio_func *func = wl_to_func(wl);
++
++    sdio_claim_host(func);
++    sdio_enable_func(func);
++    sdio_release_host(func);
+
++    return 0;
++}
++
++static int wl1271_sdio_power_off(struct wl1271 *wl)
++{
++    struct sdio_func *func = wl_to_func(wl);
++
++    sdio_claim_host(func);
++    sdio_disable_func(func);
++    sdio_release_host(func);
++
++    return 0;
+ }
+
+ static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
+@@ -160,13 +189,11 @@ static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
+      * keep host claimed while wlan is in use to keep wl1271
+      * alive.
+      */
+-    if (enable) {
+-          sdio_claim_host(func);
+-          sdio_enable_func(func);
+-    } else {
+-          sdio_disable_func(func);
+-          sdio_release_host(func);
+-    }
++    if (enable)
++          return wl1271_sdio_power_on(wl);
++    else
++          return wl1271_sdio_power_off(wl);
++
+ }
+
+ static struct wl1271_if_operations sdio_ops = {
+--
+1.6.3.3
+
+
+
+
+Claude BROUAT
+UMG/MIPE/WSIV  System Integrator
+Office:    +33 (0)1 72 21 04 54
+mailto: mailto:claude.brouat at intel.com
+
+Intel Corp. SAS
+134, av du Général Eisenhower
+BP 73586
+31100 TOULOUSE
+France
+
+
+
+---------------------------------------------------------------------
+Intel Corporation SAS (French simplified joint stock company)
+Registered headquarters: "Les Montalets"- 2, rue de Paris, 
+92196 Meudon Cedex, France
+Registration Number:  302 456 199 R.C.S. NANTERRE
+Capital: 4,572,000 Euros
+
+This e-mail and any attachments may contain confidential material for
+the sole use of the intended recipient(s). Any review or distribution
+by others is strictly prohibited. If you are not the intended
+recipient, please contact the sender and delete all copies.
+-------------- next part --------------
+An HTML attachment was scrubbed...
+URL: <http://lists.meego.com/pipermail/meego-kernel/attachments/20101020/ffe66abf/attachment.html>
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: 0002-wl1271-sdio-claim-host-only-when-doing-IO.patch
+Type: application/octet-stream
+Size: 3187 bytes
+Desc: 0002-wl1271-sdio-claim-host-only-when-doing-IO.patch
+URL: <http://lists.meego.com/pipermail/meego-kernel/attachments/20101020/ffe66abf/attachment.obj>
+
+
+
+  Previous message: [Meego-kernel] [PATCH 1/1] CMT Speech driver for 
+  intel_mid_i2s on meego intel mid platforms 
+  Next message: [Meego-kernel] [PATCH 02/26] wl1271: sdio: claim host only when 
+  doing IO 
+  Messages sorted by: [ date ] [ thread ] [ subject ] [ author ] 
+
+
+More information about the Meego-kernel mailing list

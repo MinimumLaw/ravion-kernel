@@ -37,6 +37,10 @@
 
 #include "lmac.h"
 
+/* DIMAS: setup GPIO pads for UTSVU board */
+#define BABBAGE_WL_ENABLE		(1*32 + 16)	/* GPIO_2_16 */
+#define BABBAGE_WIRELESS_IRQ		(1*32 + 19)	/* GPIO_2_19 */
+
 MODULE_FIRMWARE("3826.arm");
 MODULE_ALIAS("stlc45xx");
 
@@ -46,70 +50,144 @@ MODULE_ALIAS("stlc45xx");
  * in include/linux, let's use module paramaters for now
  */
 
-static int p54spi_gpio_power = 97;
+static int p54spi_gpio_power = BABBAGE_WL_ENABLE;
 module_param(p54spi_gpio_power, int, 0444);
 MODULE_PARM_DESC(p54spi_gpio_power, "gpio number for power line");
 
-static int p54spi_gpio_irq = 87;
+static int p54spi_gpio_irq = BABBAGE_WIRELESS_IRQ;
 module_param(p54spi_gpio_irq, int, 0444);
 MODULE_PARM_DESC(p54spi_gpio_irq, "gpio number for irq line");
 
 static void p54spi_spi_read(struct p54s_priv *priv, u8 address,
 			      void *buf, size_t len)
 {
-	struct spi_transfer t[2];
+	struct spi_transfer t;
 	struct spi_message m;
 	__le16 addr;
+	u16 spi_buf_tx[16], spi_buf_rx[16];
+	u16 count_bytes, count_words, count_dwords, index, i, start_i;
 
-	/* We first push the address */
+	memset(spi_buf_tx, 0, sizeof(spi_buf_tx));
 	addr = cpu_to_le16(address << 8 | SPI_ADRS_READ_BIT_15);
+	index = 0;
 
-	spi_message_init(&m);
-	memset(t, 0, sizeof(t));
+	while(len)
+	{
+		count_bytes = len < 26 ? len : 26;
+		count_words = count_bytes & 0x0001 ? (count_bytes + 1)/sizeof(u16) : count_bytes/sizeof(u16);
+		count_words += 1; // address field added
+		if(count_words & 0x0001)
+		{
+			count_dwords = (count_words + 1)/(sizeof(u32)/sizeof(u16));
+			spi_buf_tx[0] = addr;
+			start_i = 4;
+		}
+		else
+		{
+			count_dwords = count_words/(sizeof(u32)/sizeof(u16));
+			spi_buf_tx[1] = addr;
+			start_i = 2;
+		}			
 
-	t[0].tx_buf = &addr;
-	t[0].len = sizeof(addr);
-	spi_message_add_tail(&t[0], &m);
-
-	t[1].rx_buf = buf;
-	t[1].len = len;
-	spi_message_add_tail(&t[1], &m);
-
-	spi_sync(priv->spi, &m);
+		spi_message_init(&m);
+		memset(&t, 0, sizeof(t));
+		
+		t.tx_buf = spi_buf_tx;
+		t.rx_buf = spi_buf_rx;
+		t.len = count_dwords;
+		
+		priv->spi->bits_per_word = 16 * count_words;
+		spi_setup(priv->spi);
+		
+		spi_message_add_tail(&t, &m);
+		spi_sync(priv->spi, &m);
+		
+		// Reverse word order in each dword
+		for(i=0; i<count_dwords; i++)
+		{
+			u16 temp = spi_buf_rx[2 * i];
+			spi_buf_rx[2 * i] = spi_buf_rx[2 * i + 1];
+			spi_buf_rx[2 * i + 1] = temp;
+		}
+		for(i=0; i<count_bytes; i++)
+		{
+			((u8*)buf)[index + i] = ((u8*)spi_buf_rx)[start_i + i];
+		}
+		
+		index += count_bytes;
+		len -= count_bytes;
+	}
 }
 
 
 static void p54spi_spi_write(struct p54s_priv *priv, u8 address,
 			     const void *buf, size_t len)
 {
-	struct spi_transfer t[3];
+	struct spi_transfer t;
 	struct spi_message m;
 	__le16 addr;
+	u16 spi_buf_tx[16], spi_buf_rx[16];
+	u16 count_bytes, count_words, count_dwords, index, i, start_i;
 
-	/* We first push the address */
 	addr = cpu_to_le16(address << 8);
+	index = 0;
+	while(len)
+	{
+		count_bytes = len < 26 ? len : 26;
+		count_words = count_bytes & 0x0001 ? (count_bytes + 1)/sizeof(u16) : count_bytes/sizeof(u16);
+		count_words += 1; // address field added
+		if(count_words & 0x0001)
+		{
+			count_dwords = (count_words + 1)/(sizeof(u32)/sizeof(u16));
+			spi_buf_tx[1] = addr;
+			start_i = 4;
+		}
+		else
+		{
+			count_dwords = count_words/(sizeof(u32)/sizeof(u16));
+			spi_buf_tx[0] = addr;
+			start_i = 2;
+		}			
 
-	spi_message_init(&m);
-	memset(t, 0, sizeof(t));
+		for(i=0; i<count_bytes; i++)
+		{
+			((u8*)spi_buf_tx)[start_i + i] = ((u8*)buf)[index + i];
+		}
+		
+		// Reverse word order in each dword
+		for(i=0; i<count_dwords; i++)
+		{
+			u16 temp = spi_buf_tx[2 * i];
+			spi_buf_tx[2 * i] = spi_buf_tx[2 * i + 1];
+			spi_buf_tx[2 * i + 1] = temp;
+		}
 
-	t[0].tx_buf = &addr;
-	t[0].len = sizeof(addr);
-	spi_message_add_tail(&t[0], &m);
+		
+		spi_message_init(&m);
+		memset(&t, 0, sizeof(t));
+		
+		t.tx_buf = spi_buf_tx;
+		t.rx_buf = spi_buf_rx;
+		t.len = count_dwords;
+		
+		priv->spi->bits_per_word = 16 * count_words;
+		spi_setup(priv->spi);
 
-	t[1].tx_buf = buf;
-	t[1].len = len & ~1;
-	spi_message_add_tail(&t[1], &m);
-
-	if (len % 2) {
-		__le16 last_word;
-		last_word = cpu_to_le16(((u8 *)buf)[len - 1]);
-
-		t[2].tx_buf = &last_word;
-		t[2].len = sizeof(last_word);
-		spi_message_add_tail(&t[2], &m);
+		spi_message_add_tail(&t, &m);
+		spi_sync(priv->spi, &m);
+		
+		index += count_bytes;
+		len -= count_bytes;
 	}
+}
 
-	spi_sync(priv->spi, &m);
+static u16 p54spi_read16(struct p54s_priv *priv, u8 addr)
+{
+	__le16 val;
+
+	p54spi_spi_read(priv, addr, &val, sizeof(val));
+
+	return le16_to_cpu(val);
 }
 
 static u32 p54spi_read32(struct p54s_priv *priv, u8 addr)
@@ -134,12 +212,17 @@ static inline void p54spi_write32(struct p54s_priv *priv, u8 addr, __le32 val)
 static int p54spi_wait_bit(struct p54s_priv *priv, u16 reg, u32 bits)
 {
 	int i;
-
+	u32 buffer;
+	
 	for (i = 0; i < 2000; i++) {
-		u32 buffer = p54spi_read32(priv, reg);
-		if ((buffer & bits) == bits)
-			return 1;
+		buffer = p54spi_read32(priv, reg);
+		if ((buffer & bits) == bits){
+			//dev_err(&priv->spi->dev, "wait bits %X OK (on %d step), readed %X = %X.\n", bits, i, reg, buffer);
+			return 1;}
 	}
+	
+	dev_err(&priv->spi->dev, "wait bits %X ERR, readed %X = %X.\n", bits, reg, buffer);
+	
 	return 0;
 }
 
@@ -158,6 +241,24 @@ static int p54spi_spi_write_dma(struct p54s_priv *priv, __le32 base,
 	p54spi_write16(priv, SPI_ADRS_DMA_WRITE_LEN, cpu_to_le16(len));
 	p54spi_write32(priv, SPI_ADRS_DMA_WRITE_BASE, base);
 	p54spi_spi_write(priv, SPI_ADRS_DMA_DATA, buf, len);
+	return 0;
+}
+
+static int p54spi_spi_read_dma(struct p54s_priv *priv, __le32 base,
+				const void *buf, size_t len)
+{
+	if (!p54spi_wait_bit(priv, SPI_ADRS_DMA_READ_CTRL, HOST_ALLOWED)) {
+		dev_err(&priv->spi->dev, "spi_read_dma not allowed "
+			"to DMA read.\n");
+		return -EAGAIN;
+	}
+
+	p54spi_write16(priv, SPI_ADRS_DMA_READ_CTRL,
+		       cpu_to_le16(SPI_DMA_READ_CTRL_ENABLE));
+
+	p54spi_write16(priv, SPI_ADRS_DMA_READ_LEN, cpu_to_le16(len));
+	p54spi_write32(priv, SPI_ADRS_DMA_READ_BASE, base);
+	p54spi_spi_read(priv, SPI_ADRS_DMA_DATA, buf, len);
 	return 0;
 }
 
@@ -212,14 +313,19 @@ static int p54spi_upload_firmware(struct ieee80211_hw *dev)
 	struct p54s_priv *priv = dev->priv;
 	unsigned long fw_len, _fw_len;
 	unsigned int offset = 0;
-	int err = 0;
+	int err = 0, i;
 	u8 *fw;
+	u8 *fw_readed;
 
 	fw_len = priv->firmware->size;
 	fw = kmemdup(priv->firmware->data, fw_len, GFP_KERNEL);
 	if (!fw)
 		return -ENOMEM;
-
+	fw_readed = kmalloc(fw_len, GFP_KERNEL);
+	if (!fw_readed)
+		return -ENOMEM;
+	memset(fw_readed, 0xFF, fw_len);
+	
 	/* stop the device */
 	p54spi_write16(priv, SPI_ADRS_DEV_CTRL_STAT, cpu_to_le16(
 		       SPI_CTRL_STAT_HOST_OVERRIDE | SPI_CTRL_STAT_HOST_RESET |
@@ -276,6 +382,7 @@ static void p54spi_power_off(struct p54s_priv *priv)
 
 static void p54spi_power_on(struct p54s_priv *priv)
 {
+	u8 i;
 	gpio_set_value(p54spi_gpio_power, 1);
 	enable_irq(gpio_to_irq(p54spi_gpio_irq));
 
@@ -283,7 +390,17 @@ static void p54spi_power_on(struct p54s_priv *priv)
 	 * need to wait a while before device can be accessed, the lenght
 	 * is just a guess
 	 */
-	msleep(10);
+	
+	for(i=0; i<240; i++) /* Wait max 240 ms (datasheet 4.10.2) */
+	{
+		if(p54spi_read16(priv, SPI_ADRS_DEV_CTRL_STAT) & 0x0001)
+			msleep(1);
+		else
+		{
+			dev_info(&priv->spi->dev, "Reset succes after %d ms.\n", i);
+			return;
+		}
+	}
 }
 
 static inline void p54spi_int_ack(struct p54s_priv *priv, u32 val)
@@ -598,7 +715,7 @@ static int __devinit p54spi_probe(struct spi_device *spi)
 	struct p54s_priv *priv = NULL;
 	struct ieee80211_hw *hw;
 	int ret = -EINVAL;
-
+	
 	hw = p54_init_common(sizeof(*priv));
 	if (!hw) {
 		dev_err(&spi->dev, "could not alloc ieee80211_hw");
@@ -634,6 +751,8 @@ static int __devinit p54spi_probe(struct spi_device *spi)
 	gpio_direction_output(p54spi_gpio_power, 0);
 	gpio_direction_input(p54spi_gpio_irq);
 
+    set_irq_type(gpio_to_irq(p54spi_gpio_irq), IRQ_TYPE_EDGE_RISING);
+    
 	ret = request_irq(gpio_to_irq(p54spi_gpio_irq),
 			  p54spi_interrupt, IRQF_DISABLED, "p54spi",
 			  priv->spi);
@@ -641,9 +760,6 @@ static int __devinit p54spi_probe(struct spi_device *spi)
 		dev_err(&priv->spi->dev, "request_irq() failed");
 		goto err_free_common;
 	}
-
-	set_irq_type(gpio_to_irq(p54spi_gpio_irq),
-		     IRQ_TYPE_EDGE_RISING);
 
 	disable_irq(gpio_to_irq(p54spi_gpio_irq));
 

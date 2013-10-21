@@ -231,6 +231,10 @@ struct mcp251x_priv {
 
 	u8 *spi_tx_buf;
 	u8 *spi_rx_buf;
+	
+	u32 *spi_tx_buf_dw;
+	u32 *spi_rx_buf_dw;
+	
 	dma_addr_t spi_tx_dma;
 	dma_addr_t spi_rx_dma;
 
@@ -265,6 +269,16 @@ static void mcp251x_clean(struct net_device *net)
 }
 
 /*
+ * This function initializes the SPI device parameters.
+ */
+static inline int mcp251x_spi_setup(struct spi_device *spi, int len)
+{
+	spi->bits_per_word = len << 3;
+
+	return spi_setup(spi);
+}
+
+/*
  * Note about handling of error return of mcp251x_spi_trans: accessing
  * registers via SPI is not really different conceptually than using
  * normal I/O assembler instructions, although it's much more
@@ -279,16 +293,22 @@ static void mcp251x_clean(struct net_device *net)
  */
 static int mcp251x_spi_trans(struct spi_device *spi, int len)
 {
+	int dwords_count = (len + 3)/sizeof(u32);
+	int bytes_count;
 	struct mcp251x_priv *priv = dev_get_drvdata(&spi->dev);
 	struct spi_transfer t = {
-		.tx_buf = priv->spi_tx_buf,
-		.rx_buf = priv->spi_rx_buf,
-		.len = len,
+		.tx_buf = priv->spi_tx_buf_dw,
+		.rx_buf = priv->spi_rx_buf_dw,
+		.len = dwords_count,
 		.cs_change = 0,
 	};
 	struct spi_message m;
-	int ret;
-
+	int ret, i, j, ind;
+	u8* buf_ptr;
+	
+	/* DIMAS: workaround about no CS_CHANGE mechanics in Freescale iMX SPI */
+	mcp251x_spi_setup(spi, len);
+	
 	spi_message_init(&m);
 
 	if (mcp251x_enable_dma) {
@@ -296,12 +316,37 @@ static int mcp251x_spi_trans(struct spi_device *spi, int len)
 		t.rx_dma = priv->spi_rx_dma;
 		m.is_dma_mapped = 1;
 	}
+	
+	// Reorder transmitt byte buffer to dword buffer
+	buf_ptr = (u8*)(priv->spi_tx_buf_dw);
+	bytes_count = len % sizeof(u32) ? len % sizeof(u32) : 4;
+	ind = 0;
+	for(i=0; i<dwords_count; i++)
+	{
+		for(j=0; j<bytes_count; j++)
+			buf_ptr[i * 4 + bytes_count - j - 1] = priv->spi_tx_buf[ind++];
+		bytes_count = 4;
 
+		priv->spi_rx_buf_dw[i] = 0;
+	}
+	
 	spi_message_add_tail(&t, &m);
 
 	ret = spi_sync(spi, &m);
 	if (ret)
 		dev_err(&spi->dev, "spi transfer failed: ret = %d\n", ret);
+	
+	// Reorder receive dword buffer to byte buffer
+	buf_ptr = (u8*)(priv->spi_rx_buf_dw);
+	bytes_count = len % sizeof(u32) ? len % sizeof(u32) : 4;
+	ind = 0;
+	for(i=0; i<dwords_count; i++)
+	{
+		for(j=0; j<bytes_count; j++)
+			priv->spi_rx_buf[ind++] = buf_ptr[i * 4 + bytes_count - j - 1];
+		bytes_count = 4;
+	}
+	
 	return ret;
 }
 
@@ -312,7 +357,7 @@ static u8 mcp251x_read_reg(struct spi_device *spi, uint8_t reg)
 
 	priv->spi_tx_buf[0] = INSTRUCTION_READ;
 	priv->spi_tx_buf[1] = reg;
-
+	
 	mcp251x_spi_trans(spi, 3);
 	val = priv->spi_rx_buf[2];
 
@@ -551,11 +596,6 @@ static int mcp251x_do_set_bittiming(struct net_device *net)
 			  (bt->prop_seg - 1));
 	mcp251x_write_bits(spi, CNF3, CNF3_PHSEG2_MASK,
 			   (bt->phase_seg2 - 1));
-	dev_info(&spi->dev, "CNF: 0x%02x 0x%02x 0x%02x\n",
-		 mcp251x_read_reg(spi, CNF1),
-		 mcp251x_read_reg(spi, CNF2),
-		 mcp251x_read_reg(spi, CNF3));
-
 	return 0;
 }
 
@@ -577,6 +617,8 @@ static int mcp251x_hw_reset(struct spi_device *spi)
 	int ret;
 	unsigned long timeout;
 
+	mcp251x_spi_setup(spi, 1);
+	
 	priv->spi_tx_buf[0] = INSTRUCTION_RESET;
 	ret = spi_write(spi, priv->spi_tx_buf, 1);
 	if (ret) {
@@ -989,6 +1031,16 @@ static int __devinit mcp251x_can_probe(struct spi_device *spi)
 			ret = -ENOMEM;
 			goto error_rx_buf;
 		}
+		priv->spi_tx_buf_dw = kmalloc(SPI_TRANSFER_BUF_LEN + 3, GFP_KERNEL);
+		if (!priv->spi_tx_buf_dw) {
+			ret = -ENOMEM;
+			goto error_tx_buf_dw;
+		}
+		priv->spi_rx_buf_dw = kmalloc(SPI_TRANSFER_BUF_LEN + 3, GFP_KERNEL);
+		if (!priv->spi_rx_buf_dw) {
+			ret = -ENOMEM;
+			goto error_rx_buf_dw;
+		}
 	}
 
 	if (pdata->power_enable)
@@ -1022,6 +1074,12 @@ static int __devinit mcp251x_can_probe(struct spi_device *spi)
 	}
 error_probe:
 	if (!mcp251x_enable_dma)
+		kfree(priv->spi_rx_buf_dw);
+error_rx_buf_dw:
+	if (!mcp251x_enable_dma)
+		kfree(priv->spi_tx_buf_dw);
+error_tx_buf_dw:
+	if (!mcp251x_enable_dma)
 		kfree(priv->spi_rx_buf);
 error_rx_buf:
 	if (!mcp251x_enable_dma)
@@ -1054,6 +1112,8 @@ static int __devexit mcp251x_can_remove(struct spi_device *spi)
 	} else {
 		kfree(priv->spi_tx_buf);
 		kfree(priv->spi_rx_buf);
+		kfree(priv->spi_tx_buf_dw);
+		kfree(priv->spi_rx_buf_dw);
 	}
 
 	if (pdata->power_enable)

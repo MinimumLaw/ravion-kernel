@@ -1072,8 +1072,10 @@ static void wl1271_op_remove_interface(struct ieee80211_hw *hw,
 
 	for (i = 0; i < NUM_TX_QUEUES; i++)
 		wl->tx_blocks_freed[i] = 0;
-
+        
+#ifdef CONFIG_MAC80211_DEBUGFS
 	wl1271_debugfs_reset(wl);
+#endif
 
 	kfree(wl->fw_status);
 	wl->fw_status = NULL;
@@ -1673,7 +1675,7 @@ static void wl1271_op_bss_info_changed(struct ieee80211_hw *hw,
 	if (ret < 0)
 		goto out;
 
-	if ((changed && BSS_CHANGED_BEACON_INT) &&
+	if ((changed & BSS_CHANGED_BEACON_INT) &&
 	    (wl->bss_type == BSS_TYPE_IBSS)) {
 		wl1271_debug(DEBUG_ADHOC, "ad-hoc beacon interval updated: %d",
 			bss_conf->beacon_int);
@@ -1682,7 +1684,7 @@ static void wl1271_op_bss_info_changed(struct ieee80211_hw *hw,
 		do_join = true;
 	}
 
-	if ((changed && BSS_CHANGED_BEACON) &&
+	if ((changed & BSS_CHANGED_BEACON) &&
 	    (wl->bss_type == BSS_TYPE_IBSS)) {
 		struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
 
@@ -2399,7 +2401,9 @@ struct ieee80211_hw *wl1271_alloc_hw(void)
 	/* Apply default driver configuration. */
 	wl1271_conf_init(wl);
 
+#ifdef CONFIG_MAC80211_DEBUGFS
 	wl1271_debugfs_init(wl);
+#endif
 
 	/* Register platform device */
 	ret = platform_device_register(wl->plat_dev);
@@ -2432,7 +2436,9 @@ err_platform:
 	platform_device_unregister(wl->plat_dev);
 
 err_hw:
+#ifdef CONFIG_MAC80211_DEBUGFS
 	wl1271_debugfs_exit(wl);
+#endif
 	kfree(plat_dev);
 
 err_plat_alloc:
@@ -2449,7 +2455,9 @@ int wl1271_free_hw(struct wl1271 *wl)
 	platform_device_unregister(wl->plat_dev);
 	kfree(wl->plat_dev);
 
+#ifdef CONFIG_MAC80211_DEBUGFS
 	wl1271_debugfs_exit(wl);
+#endif
 
 	vfree(wl->fw);
 	wl->fw = NULL;

@@ -347,6 +347,15 @@ config MFD_WM8994
 	  core support for the WM8994, in order to use the actual
 	  functionaltiy of the device other drivers must be enabled.
 
+config MFD_LTC3589
+	bool
+	depends on GENERIC_HARDIRQS
+
+config MFD_LTC3589_I2C
+	bool "Support for Linear LTC3589 with I2C"
+	select MFD_LTC3589
+	depends on I2C=y && GENERIC_HARDIRQS
+
 config MFD_PCF50633
 	tristate "Support for NXP PCF50633"
 	depends on I2C
@@ -481,6 +490,13 @@ config MFD_JANZ_CMODIO
 	  carrier board. This device is a PCI to MODULbus bridge which may
 	  host many different types of MODULbus daughterboards, including
 	  CAN and GPIO controllers.
+
+config MFD_MAX17135
+    tristate "MAX17135 PMIC core"
+	depends on I2C
+    help
+      This is the MAX17135 PMIC support. It includes
+      core support for communication with the MAX17135 chip.
 
 endif # MFD_SUPPORT
 
