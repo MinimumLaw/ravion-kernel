@@ -592,19 +592,15 @@ static struct mxc_spdif_platform_data mxc_spdif_data = {
 
 static struct mtd_partition nand_flash_partitions[] = {
 	{
-	 .name = "bootloader",
+	 .name = "resque",
 	 .offset = 0,
-	 .size = 3 * 1024 * 1024},
+	 .size = 50 * 1024 * 1024},
 	{
-	 .name = "nand.kernel",
+	 .name = "restore",
 	 .offset = MTDPART_OFS_APPEND,
-	 .size = 5 * 1024 * 1024},
+	 .size = 450 * 1024 * 1024},
 	{
-	 .name = "nand.rootfs",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 256 * 1024 * 1024},
-	{
-	 .name = "nand.userfs1",
+	 .name = "reserved",
 	 .offset = MTDPART_OFS_APPEND,
 	 .size = MTDPART_SIZ_FULL},
 };
@@ -883,11 +879,15 @@ static struct mtd_partition mxc_spi_nor_partitions[] = {
 
 static struct mtd_partition mxc_dataflash_partitions[] = {
 	{
-	 .name = "bootloader",
+	 .name = "u-boot",
 	 .offset = 0,
-	 .size = 0x000108000,},
+	 .size = 768 * 1024,},
 	{
-	 .name = "kernel",
+	 .name = "u-boot-env",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 256 * 1024,},
+	{
+	 .name = "reserved",
 	 .offset = MTDPART_OFS_APPEND,
 	 .size = MTDPART_SIZ_FULL,},
 };
