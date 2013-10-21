@@ -1138,6 +1138,29 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	}
 }
 
+/*
+ *   We need SPI1 interface pins placed in reset state for
+ * correctly boot form SPI interface after watchdog reset.
+ */
+static  struct pad_desc mx51_spi1_boot[] = {
+	IOMUX_PAD(0x600, 0x210, 0x03, 0, 0, 0xA5), // MOSI
+	IOMUX_PAD(0x604, 0x214, 0x03, 0, 0, 0x85), // MISO
+	IOMUX_PAD(0x608, 0x218, 0x03, 0, 0, 0x85), // SS0
+	IOMUX_PAD(0x60c, 0x21c, 0x03, 0, 0, 0x85), // SS1
+	IOMUX_PAD(0x610, 0x220, 0x03, 0, 0, 0x80), // RDY
+	IOMUX_PAD(0x614, 0x224, 0x03, 0, 0, 0xA5), // SCLK
+
+};
+
+#define ARRAY_AND_SIZE(x)       (x), ARRAY_SIZE(x)
+
+static void mxc_restart(char mode, const char* cmd)
+{
+	mxc_iomux_v3_setup_multiple_pads(
+	    ARRAY_AND_SIZE(mx51_spi1_boot));
+	arm_machine_restart(mode, cmd);
+}
+
 #define PWGT1SPIEN (1<<15)
 #define PWGT2SPIEN (1<<16)
 #define USEROFFSPI (1<<3)
@@ -1513,7 +1536,8 @@ static void __init mxc_board_init(void)
 	i2c_register_board_info(1, mxc_i2c1_board_info,
 				ARRAY_SIZE(mxc_i2c1_board_info));
 
-	pm_power_off = mxc_power_off;
+	pm_power_off	= mxc_power_off;
+	arm_pm_restart	= mxc_restart;
 
 	if (cpu_is_mx51_rev(CHIP_REV_1_1) == 2) {
 		sgtl5000_data.sysclk = 26000000;
