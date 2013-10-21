@@ -354,33 +354,6 @@ static struct fb_videomode video_modes[] = {
 	 FB_SYNC_CLK_LAT_FALL,
 	 FB_VMODE_NONINTERLACED,
 	 0,},
-	{
-	 /*UTSVU VGA */
-	 "UTSVU-VGA", 60, 1024, 768, 15385,
-	 240, 20,
-	 25, 3,
-	 60, 10,
-	 0,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /*UTSVU LVDS */
-	 "UTSVU-LVDS", 72, 640, 480, 31746,
-	 128, 24,
-	 28, 9,
-	 40, 3,
-	 0,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /*UTSVU TFT */
-	 "UTSVU-TFT", 72, 800, 600, 20000,
-	 64, 56,
-	 23, 37,
-	 120, 6,
-	 FB_SYNC_CLK_LAT_FALL,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
 };
 
 struct cpu_wp *mx51_babbage_get_cpu_wp(int *wp)
