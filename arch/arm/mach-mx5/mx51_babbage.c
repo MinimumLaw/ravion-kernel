@@ -27,12 +27,12 @@
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
 #include <linux/regulator/consumer.h>
-#include <linux/regulator/machine.h>
-#include <linux/regulator/fixed.h>
 #include <linux/pmic_external.h>
 #include <linux/pmic_status.h>
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
+#include <linux/gpio.h>
+#include <linux/gpio_keys.h>
 #include <linux/pwm_backlight.h>
 #include <linux/can/platform/mcp251x.h>
 #include <mach/common.h>
@@ -1144,51 +1144,50 @@ static void mxc_power_off(void)
 		(PWGT1SPIEN|PWGT2SPIEN));
 }
 
-/*!
- * Power Key interrupt handler.
- */
-static irqreturn_t power_key_int(int irq, void *dev_id)
-{
-	if(gpio_get_value(BABBAGE_POWER_KEY))
-		pr_info(KERN_INFO "PWR key de-pressed\n");
-	else
-		pr_info(KERN_INFO "PWR key pressed\n");
-	return 0;
-}
+static struct gpio_keys_button babbage_buttons[] = {
+	{
+	 .gpio = BABBAGE_POWER_KEY,
+	 .code = KEY_POWER,
+	 .desc = "PWR",
+	 .active_low = 1,
+	 .debounce_interval = 100,
+	 .wakeup = 1,
+	},
+};
 
-/*!
- * Power Key initialization.
- */
-static int __init mxc_init_power_key(void)
-{
-	/* Set power key as wakeup resource */
-	int irq, ret;
-	irq = IOMUX_TO_IRQ_V3(BABBAGE_POWER_KEY);
-	set_irq_type(irq, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
-	ret = request_irq(irq, power_key_int, 0, "power_key", 0);
-	if (ret)
-		pr_info("register on-off key interrupt failed\n");
-	else
-		enable_irq_wake(irq);
-	return ret;
-}
-late_initcall(mxc_init_power_key);
+static struct gpio_keys_platform_data babbage_button_data = {
+	.buttons = babbage_buttons,
+	.nbuttons = 1,
+};
+
+static struct platform_device babbage_button_device = {
+	.name = "gpio-keys",
+	.id = -1,
+	.num_resources = 0,
+	.dev = {
+		.platform_data = &babbage_button_data,
+	},
+};
+
+static inline void babbage_init_keyboard_gpio( void ) {
+	mxc_register_device(&babbage_button_device, &babbage_button_data);
+};
 
 static void __init mx51_babbage_io_init(void)
 {
 	mxc_iomux_v3_setup_multiple_pads(mx51babbage_pads,
 					ARRAY_SIZE(mx51babbage_pads));
-	
+
 	gpio_request(BABBAGE_PMIC_INT, "pmic-int");
 	gpio_request(BABBAGE_SD1_CD, "sd1-cd");
-	
+
 	gpio_direction_input(BABBAGE_PMIC_INT);
 	gpio_direction_input(BABBAGE_SD1_CD);
-	
+
 	/* SD2 CD for BB2.5 */
 	gpio_request(BABBAGE_SD2_CD, "sd2-cd");
 	gpio_direction_input(BABBAGE_SD2_CD);
-		
+
 	gpio_request(BABBAGE_SD2_WP, "sd2-wp");
 	gpio_direction_input(BABBAGE_SD2_WP);
 
@@ -1226,15 +1225,13 @@ static void __init mx51_babbage_io_init(void)
 	/* usb_clk_en_b */
 	gpio_request(BABBAGE_USB_CLK_EN_B, "usb-clk-en_n");
 	gpio_direction_output(BABBAGE_USB_CLK_EN_B, 0);
-	
-	/* power key */
-	gpio_request(BABBAGE_POWER_KEY, "pwr-key");
-	gpio_direction_input(BABBAGE_POWER_KEY);
+
+	babbage_init_keyboard_gpio();
 
 	/* VGA power down */
 	gpio_request(BABBAGE_VDAC_POWER_DOWN_B, "vdac-power-down_n");
 	gpio_direction_output(BABBAGE_VDAC_POWER_DOWN_B, 1);
-	
+
 	/* LVDS power down */
 	gpio_request(BABBAGE_LVDS_POWER_DOWN_B, "lvds-power-down_n");
 	gpio_direction_output(BABBAGE_LVDS_POWER_DOWN_B, 1);
