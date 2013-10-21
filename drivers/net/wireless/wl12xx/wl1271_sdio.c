@@ -162,8 +162,8 @@ static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
 	 * alive.
 	 */
 	if (enable) {
-        sdio_claim_host(func);
-        sdio_enable_func(func);
+		sdio_claim_host(func);
+		sdio_enable_func(func);
 	} else {
 		sdio_disable_func(func);
 		sdio_release_host(func);
@@ -211,13 +211,13 @@ static int __devinit wl1271_probe(struct sdio_func *func,
 		goto out_free;
 	}
 
-    set_irq_type(wl->irq, IRQ_TYPE_EDGE_RISING);
-    
-	ret = request_irq(wl->irq, wl1271_irq, IRQF_DISABLED, DRIVER_NAME, wl);
+	ret = request_irq(wl->irq, wl1271_irq, 0, DRIVER_NAME, wl);
 	if (ret < 0) {
 		wl1271_error("request_irq() failed: %d", ret);
 		goto out_free;
 	}
+
+	set_irq_type(wl->irq, IRQ_TYPE_EDGE_RISING);
 
 	disable_irq(wl->irq);
 
