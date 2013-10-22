@@ -1,0 +1,44 @@
+#!/bin/sh
+##################################################################
+# Use this script for build new kernel.
+#
+# Usage samples:
+#  ./build_kernel imx51_ravion_defconfig 
+#	create default config for OAO Radioavionica CIMC-SF board
+#  ./build_kernel
+#	compile and install to _output.bin/ preconfigured kernel
+#  ./build_kernel clean
+#	clean kernel build tree, but not remove config file
+#  ./build_kernel clean distclean
+#	Full clean kernel build tree (with configuration files)
+
+####################################################################
+# Use arm-fsl-linux-gnueabi crosscompiler, like Freescale LTIB tools
+# gcc 4.4.4 (<4.4.5), binutils 2.20.1 (<2.21),  glibc 2.11.3 (<2.12)
+export CROSS_COMPILE=arm-fsl-linux-gnueabi-
+export LOADADDR=0x90800000
+export STARTADDR=0x90800040
+export ARCH=arm
+export ROOT_FS_PATH="`pwd`/../imx51kernel.output"
+export DEF_TARGET="uImage modules"
+export DEF_ARGS="-j3 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
+LOADADDR=${LOADADDR} STARTADDR=${STARTADDR} \
+INSTALL_MOD_PATH=${ROOT_FS_PATH}"
+export SUDO=sudo
+
+if [ -z "$*" ]; then
+    make ${DEF_ARGS} ${DEF_TARGET}
+    echo -n Cleanup old modules...
+    ${SUDO} rm -rf ${ROOT_FS_PATH}/lib/modules/* && echo OK || echo FAIL
+    ${SUDO} make ${DEF_ARGS} modules_install
+    echo Install new kernel into rootfs...
+    if [ -d ${ROOT_FS_PATH}/boot ]; then
+	${SUDO} rm -f ${ROOT_FS_PATH}/boot/uImage
+    else
+	${SUDO} mkdir ${ROOT_FS_PATH}/boot
+    fi
+    ${SUDO} cp -f arch/arm/boot/uImage ${ROOT_FS_PATH}/boot/uImage
+else
+    make ${DEF_ARGS} $*
+fi
+    
