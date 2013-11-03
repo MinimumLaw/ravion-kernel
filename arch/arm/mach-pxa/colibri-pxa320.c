@@ -577,7 +577,7 @@ static void colibri_pxa320_restart ( char mode, const char* cmd ) {
 static inline void colibri_pxa320_init_pm ( void ) {
 #ifdef RAVION_DIET
     int ret;
-        
+
     ret = gpio_request(MFP_PIN_GPIO11,"PWR_OFF");
     if ( ret ) {
 	printk(KERN_INFO "=>> Error reqesting power off gpio <<=\n");
@@ -585,7 +585,7 @@ static inline void colibri_pxa320_init_pm ( void ) {
 	printk(KERN_INFO "=>> Init power pin\n");
 	gpio_direction_output(MFP_PIN_GPIO11, 1); // set to active power
     };	
-#endif     
+#endif
     pm_power_off        = colibri_pxa320_power_off;
     arm_pm_restart      = colibri_pxa320_restart;
 }
@@ -598,51 +598,58 @@ static inline void colibri_pxa320_init_pm ( void ) {}
  */
 #if defined (CONFIG_KEYBOARD_GPIO)
 static struct gpio_keys_button gpio_keys_button[] = {
-        [0] = {
-                .desc   = "Power",
-                .code   = KEY_POWER,
-                .type   = EV_KEY,
-                .active_low = 1,
-                .debounce_interval = 100, // mSec
-                .gpio   = 13,
-                .wakeup = 1,
-        },
-/* Used for specific tasks
-        [1] = {
-                .desc   = "Ext. TNG",
-                .code   = KEY_PROG1,
-                .type   = EV_KEY,
-                .active_low = 1,
-                .debounce_interval = 100, // mSec
-                .gpio   = 73, // CRYPT_REQ, SoDIMM200 pin 105
-                .wakeup = 1,
-        },
-*/
+	[0] = {
+		.desc	= "Power",
+		.code	= KEY_POWER,
+		.type	= EV_KEY,
+		.active_low = 1,
+		.debounce_interval = 100, // mSec
+		.gpio	= 13,
+		.wakeup	= 1,
+	},
+	[1] = {
+		.desc	= "Ext. TNG", /* externel tangenta */
+		.code	= KEY_PROG1,
+		.type	= EV_KEY,
+		.active_low = 1,
+		.debounce_interval = 100, // mSec
+		.gpio	= 73, // CRYPT_REQ, SoDIMM200 pin 105
+		.wakeup	= 1,
+	},
+	[2] = {
+		.desc	= "Ext. CALL", /* external calling */
+		.code	= KEY_PROG2,
+		.type	= EV_KEY,
+		.active_low = 1,
+		.debounce_interval = 100, // mSec
+		.gpio	= 9, // CRYPT_ACK, SoDIMM200 pin 104
+		.wakeup	= 1,
+	},
 };
 
 static struct gpio_keys_platform_data colibri_pxa320_gpio_keys = {
-        .buttons        = gpio_keys_button,
-        .nbuttons       = ARRAY_SIZE(gpio_keys_button),
+	.buttons	= gpio_keys_button,
+	.nbuttons	= ARRAY_SIZE(gpio_keys_button),
 };
 
 static struct platform_device colibri_pxa320_gpio_keys_device = {
-        .name           = "gpio-keys",
-        .id             = -1,
-        .dev            = {
-                .platform_data  = &colibri_pxa320_gpio_keys,
-        },
+	.name	= "gpio-keys",
+	.id	= -1,
+	.dev	= {
+		.platform_data  = &colibri_pxa320_gpio_keys,
+	},
 };
 
 static struct platform_device *colibri_pxa320_keyboard_devices[] __initdata = {
-        &colibri_pxa320_gpio_keys_device,
+	&colibri_pxa320_gpio_keys_device,
 };
 
 static inline void colibri_pxa320_init_keyboard_gpio( void ) {
-    platform_add_devices( ARRAY_AND_SIZE(colibri_pxa320_keyboard_devices) );
+	platform_add_devices( ARRAY_AND_SIZE(colibri_pxa320_keyboard_devices) );
 }
 #else
 static inline void colibri_pxa320_init_keyboard_gpio( void ) {}
-#endif /* CONFIG_KEYBOARD_GPIO */ 
+#endif /* CONFIG_KEYBOARD_GPIO */
 #undef RAVION_DIET
 
 void __init colibri_pxa320_init(void)
@@ -697,7 +704,7 @@ static struct map_desc colibri_pxa320_io_desc[] __initdata = {
         .pfn            = __phys_to_pfn (CPLD_REGS_PHYS),
         .length         = CPLD_REGS_SIZE,
         .type           = MT_DEVICE,
-    }, 
+    },
     { // Static memory controller
 	.virtual	= SMC_VIRT,
 	.pfn		= __phys_to_pfn (SMC_PHYS),
