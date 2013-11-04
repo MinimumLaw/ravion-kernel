@@ -327,17 +327,17 @@ static void __init colibri_pxa320_init_cpld ( void )
     pxa3xx_mfp_write(MFP_PIN_GPIO60,0x8387);
     pxa3xx_mfp_write(MFP_PIN_GPIO61,0x8387);
     pxa3xx_mfp_write(MFP_PIN_GPIO62,0x8387);
-    
+
     // Initialise SMC controller (Warning!!! This code plaftorm specific!)
     // Other PXA3xx based board require selfmade SMC memory mapping!!!
     SMC_CSADRCFG2 	= 0x0032C80B;
     SMC_CSADRCFG3 	= 0x0032C809;
     SMC_CSADRCFG_P	= 0x0038080C;
-    
+
     SMC_MSC1		= 0x000902EC;
     SMC_MECR		= 0x00000002;
     SMC_SXCNFG		= 0x00880008;
-    
+
     SMC_MCMEM		= 0x00028389;
     SMC_MCATT		= 0x00038809;
     SMC_MCIO		= 0x00028391;
@@ -597,6 +597,12 @@ static inline void colibri_pxa320_init_pm ( void ) {}
  * GPIO Keyboard for KEY_POWER from power module
  */
 #if defined (CONFIG_KEYBOARD_GPIO)
+static mfp_cfg_t colibri_pxa320_gpio_keys_pin_config[] __initdata = {
+    GPIO13_GPIO, // Power button
+    GPIO73_GPIO, // PROG1 button (SoDIMM 105)
+    GPIO9_GPIO,  // PROG2 button (SoDIMM 107)
+};
+
 static struct gpio_keys_button gpio_keys_button[] = {
 	[0] = {
 		.desc	= "Power",
@@ -622,7 +628,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.type	= EV_KEY,
 		.active_low = 1,
 		.debounce_interval = 100, // mSec
-		.gpio	= 9, // CRYPT_ACK, SoDIMM200 pin 104
+		.gpio	= 9, // CRYPT_ACK, SoDIMM200 pin 107
 		.wakeup	= 1,
 	},
 };
@@ -645,6 +651,9 @@ static struct platform_device *colibri_pxa320_keyboard_devices[] __initdata = {
 };
 
 static inline void colibri_pxa320_init_keyboard_gpio( void ) {
+	// Configure MFP subsystem    
+	pxa3xx_mfp_config( ARRAY_AND_SIZE( colibri_pxa320_gpio_keys_pin_config ) );
+	// Register GPIO keyboard device
 	platform_add_devices( ARRAY_AND_SIZE(colibri_pxa320_keyboard_devices) );
 }
 #else
