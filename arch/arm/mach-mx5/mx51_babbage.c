@@ -1341,6 +1341,10 @@ static void __init mx51_utsvu_mcp251x_init(void)
 
 static void __init mx51_utsvu_wireless_for_tiwi_init(void)
 {
+	/* Wireless enable */
+	gpio_request(BABBAGE_WL_ENABLE, "wl-en");
+	gpio_direction_output(BABBAGE_WL_ENABLE, 1);
+
 	if( (gpio_request(BABBAGE_WIRELESS_IRQ, "WIRELESS INT") == 0) && (gpio_direction_input(BABBAGE_WIRELESS_IRQ) == 0) )
 	{
 		gpio_export(BABBAGE_WIRELESS_IRQ, 0);
@@ -1392,10 +1396,6 @@ static void __init mx51_utsvu_io_init(void)
 	gpio_set_value(BABBAGE_CAN_RESET_B, 0);
 	msleep(5);
 	gpio_set_value(BABBAGE_CAN_RESET_B, 1);
-
-	/* Wireless enable */
-	gpio_request(BABBAGE_WL_ENABLE, "wl-en");
-	gpio_direction_output(BABBAGE_WL_ENABLE, 1);
 }
 
 /*!
