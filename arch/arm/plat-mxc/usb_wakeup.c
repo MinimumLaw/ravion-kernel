@@ -122,7 +122,9 @@ static int wakeup_event_thread(void *param)
 
 	sched_setscheduler(current, SCHED_RR, &sch_param);
 	while (1) {
-		wait_for_completion(&ctrl->event);
+		if (wait_for_completion_interruptible(&ctrl->event))
+			continue;
+
 		if (kthread_should_stop())
 			break;
 		wakeup_event_handler(ctrl);
