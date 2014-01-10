@@ -7,7 +7,7 @@
     terms of the GNU Public License version 2 (the "GPL")
 
     (c) Alex Mihaylov (minimumlaw@rambler.ru), 2010
-    
+
     derived from pxa2xx_base.c
 
     (c) Ian Molton (spyro@f2s.com) 2003

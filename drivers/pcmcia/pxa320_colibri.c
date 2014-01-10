@@ -46,18 +46,18 @@ static int coli32x_pcmcia_hw_init(struct soc_pcmcia_socket *skt)
 	if (ret)
 		return ret;
 	gpio_direction_output(COLI32X_PCMCIA_nPPEN, 0); /* switch on */
-	
+
 	ret = gpio_request(COLI32X_PCMCIA_PRST, "PRST");
 	if (ret)
 		return ret;
 	gpio_direction_output(COLI32X_PCMCIA_PRST, 1);
-	
+
 	/* Input signals */
 	ret = gpio_request(COLI32X_PCMCIA_PRDY, "PRDY");
 	if (ret)
 		return ret;
 	gpio_direction_input(COLI32X_PCMCIA_PRDY);
-	
+
 	ret = gpio_request(COLI32X_PCMCIA_PBVD1, "PBVD1");
 	if (ret)
 		return ret;
@@ -67,7 +67,7 @@ static int coli32x_pcmcia_hw_init(struct soc_pcmcia_socket *skt)
 	if (ret)
 		return ret;
 	gpio_direction_input(COLI32X_PCMCIA_PBVD2);
-        
+
 	// Reset PCMCIA Card
 	gpio_direction_output(COLI32X_PCMCIA_PRST, 1);
 	udelay(100);
@@ -137,7 +137,7 @@ static int coli32x_pcmcia_configure_socket(struct soc_pcmcia_socket *skt,
     int ret;
 
     // Configure socket
-    
+
     local_irq_save(flags);
     switch (skt->nr) {
     case 0:
@@ -171,11 +171,11 @@ static int coli32x_pcmcia_configure_socket(struct soc_pcmcia_socket *skt,
 	    // PCCards0 output enabled
 	    coli32x_init_cf_bus();
 	}
-    
+
 	ret = 0;
 	break;
     default:
-	ret = -1;    
+	ret = -1;
     };
 
     local_irq_restore(flags);
@@ -250,7 +250,7 @@ int __init coli32x_pcmcia_init(void)
 		printk(KERN_INFO "Put Colibri PXA320 PCMCIA interface to platform device list.\n");
 		platform_device_put(coli32x_pcmcia_device);
         }
-        
+
 	return ret;
 }
 
@@ -267,7 +267,7 @@ static int __init colibri32x_pcmcia_init(void)
 	    ret = coli32x_pcmcia_init();
 	else
             printk(KERN_INFO "This cpu is NOT PXA320 - skip pxa320_colibri module.\n");
-            
+
 	return ret;
 }
 
