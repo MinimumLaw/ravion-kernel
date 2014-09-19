@@ -18,7 +18,7 @@
 #include <linux/mii.h>
 #include <linux/if_vlan.h>
 
-#include <asm/system.h>
+//#include <asm/system.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 #include <asm/irq.h>

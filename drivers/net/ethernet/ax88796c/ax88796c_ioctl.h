@@ -31,7 +31,7 @@
 
 #include <linux/in.h>
 
-#include <asm/system.h>
+//#include <asm/system.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
