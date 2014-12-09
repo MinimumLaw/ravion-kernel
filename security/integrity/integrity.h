@@ -61,6 +61,7 @@ enum evm_ima_xattr_type {
 	EVM_XATTR_HMAC,
 	EVM_IMA_XATTR_DIGSIG,
 	IMA_XATTR_DIGEST_NG,
+	IMA_XATTR_LAST
 };
 
 struct evm_ima_xattr_data {
@@ -117,7 +118,6 @@ struct integrity_iint_cache {
 /* rbtree tree calls to lookup, insert, delete
  * integrity data associated with an inode.
  */
-struct integrity_iint_cache *integrity_iint_insert(struct inode *inode);
 struct integrity_iint_cache *integrity_iint_find(struct inode *inode);
 
 #define INTEGRITY_KEYRING_EVM		0
