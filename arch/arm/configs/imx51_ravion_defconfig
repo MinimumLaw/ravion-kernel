@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.3
-# Tue Dec 23 09:49:37 2014
+# Tue Dec 23 10:18:55 2014
 #
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
@@ -672,6 +672,7 @@ CONFIG_BT_HCIUART_LL=y
 # CONFIG_AF_RXRPC is not set
 CONFIG_FIB_RULES=y
 CONFIG_WIRELESS=y
+CONFIG_WIRELESS_EXT=y
 CONFIG_WEXT_CORE=y
 CONFIG_WEXT_PROC=y
 # CONFIG_CFG80211 is not set
@@ -681,8 +682,6 @@ CONFIG_WEXT_PROC=y
 #
 # CFG80211 needs to be enabled for MAC80211
 #
-# CONFIG_MAC80211_RC_DEFAULT_PID is not set
-# CONFIG_MAC80211_RC_DEFAULT_MINSTREL is not set
 
 #
 # Some wireless drivers require a rate control algorithm

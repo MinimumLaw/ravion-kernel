@@ -946,8 +946,8 @@ static struct spi_board_info mxc_mcp2515x_device[] __initdata = {
 
 static struct spi_board_info mxc_sagrad_device[] __initdata = {
 	{
-	 .modalias = "cx3110x",
-	 .max_speed_hz = 13000000,	/* max spi clock (SCK) speed in HZ */
+	 .modalias = "p54spi",
+	 .max_speed_hz = 32000000,	/* max spi clock (SCK) speed in HZ */
 	 .mode = SPI_MODE_0,
 	 .bus_num = 3,
 	 .chip_select = 2,

@@ -37,7 +37,7 @@ config MACH_MX51_3DS
 config MACH_MX51_BABBAGE
 	bool "Support MX51 BABBAGE platforms"
 	select ARCH_MX51
-	select WEXT_CORE
+	select WIRELESS_EXT
 	help
 	  Include support for MX51 Babbage platform, also known as MX51EVK in
 	  u-boot. This includes specific configurations for the board and its
