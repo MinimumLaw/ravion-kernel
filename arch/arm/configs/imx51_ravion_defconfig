@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.3
-# Tue Dec 23 10:18:55 2014
+# Fri Jan 23 09:44:25 2015
 #
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
@@ -2410,7 +2410,7 @@ CONFIG_NLS_CODEPAGE_866=y
 # CONFIG_NLS_CODEPAGE_1250 is not set
 # CONFIG_NLS_CODEPAGE_1251 is not set
 CONFIG_NLS_ASCII=y
-# CONFIG_NLS_ISO8859_1 is not set
+CONFIG_NLS_ISO8859_1=y
 # CONFIG_NLS_ISO8859_2 is not set
 # CONFIG_NLS_ISO8859_3 is not set
 # CONFIG_NLS_ISO8859_4 is not set
@@ -2420,7 +2420,7 @@ CONFIG_NLS_ASCII=y
 # CONFIG_NLS_ISO8859_9 is not set
 # CONFIG_NLS_ISO8859_13 is not set
 # CONFIG_NLS_ISO8859_14 is not set
-# CONFIG_NLS_ISO8859_15 is not set
+CONFIG_NLS_ISO8859_15=y
 CONFIG_NLS_KOI8_R=y
 # CONFIG_NLS_KOI8_U is not set
 CONFIG_NLS_UTF8=y
