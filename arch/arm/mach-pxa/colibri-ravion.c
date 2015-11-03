@@ -281,21 +281,45 @@ static inline void colibri_pm_init ( void ) {}
  * GPIO Keyboard for KEY_POWER from power module
  ******************************************************************************/
 #if defined (CONFIG_KEYBOARD_GPIO)
+static mfp_cfg_t colibri_pxa320_gpio_keys_pin_config[] __initdata = {
+    GPIO13_GPIO, // Power button
+    GPIO73_GPIO, // PROG1 button (SoDIMM 105)
+    GPIO9_GPIO,  // PROG2 button (SoDIMM 107)
+};
+
 static struct gpio_keys_button gpio_keys_button[] = {
     [0] = {
-	.desc   = "Power",
-        .code   = KEY_POWER,
-        .type   = EV_KEY,
-        .active_low = 1,
-        .debounce_interval = 100, // mSec
-        .gpio   = 13,
-        .wakeup = 1,
+	.desc	= "Power",
+	.code	= KEY_POWER,
+	.type	= EV_KEY,
+	.active_low = 1,
+	.debounce_interval = 100, // mSec
+	.gpio	= 13,
+	.wakeup	= 1,
+    },
+    [1] = {
+	.desc	= "Ext. TNG", /* externel tangenta */
+	.code	= KEY_PROG1,
+	.type	= EV_KEY,
+	.active_low = 1,
+	.debounce_interval = 100, // mSec
+	.gpio	= 73, // CRYPT_REQ, SoDIMM200 pin 105
+	.wakeup	= 1,
+    },
+    [2] = {
+	.desc	= "Ext. CALL", /* external calling */
+	.code	= KEY_PROG2,
+	.type	= EV_KEY,
+	.active_low = 1,
+	.debounce_interval = 100, // mSec
+	.gpio	= 9, // CRYPT_ACK, SoDIMM200 pin 107
+	.wakeup	= 1,
     },
 };
 
 static struct gpio_keys_platform_data colibri_pxa320_gpio_keys = {
     .buttons        = gpio_keys_button,
-    .nbuttons       = 1,
+    .nbuttons       = ARRAY_SIZE(gpio_keys_button),
 };
 
 static struct platform_device colibri_pxa320_gpio_keys_device = {
@@ -311,7 +335,8 @@ static struct platform_device *colibri_pxa320_keyboard_devices[] __initdata = {
 };
 
 static inline void colibri_kbd_init( void ) {
-    platform_add_devices( ARRAY_AND_SIZE(colibri_pxa320_keyboard_devices) );
+    pxa3xx_mfp_config(ARRAY_AND_SIZE(colibri_pxa320_gpio_keys_pin_config));
+    platform_add_devices(ARRAY_AND_SIZE(colibri_pxa320_keyboard_devices));
 }
 #else
 static inline void colibri_kbd_init( void ) {}
