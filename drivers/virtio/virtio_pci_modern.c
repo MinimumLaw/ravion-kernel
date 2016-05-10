@@ -17,6 +17,7 @@
  *
  */
 
+#include <linux/delay.h>
 #define VIRTIO_PCI_NO_LEGACY
 #include "virtio_pci_common.h"
 
@@ -271,9 +272,13 @@ static void vp_reset(struct virtio_device *vdev)
 	struct virtio_pci_device *vp_dev = to_vp_device(vdev);
 	/* 0 status means a reset. */
 	vp_iowrite8(0, &vp_dev->common->device_status);
-	/* Flush out the status write, and flush in device writes,
-	 * including MSI-X interrupts, if any. */
-	vp_ioread8(&vp_dev->common->device_status);
+	/* After writing 0 to device_status, the driver MUST wait for a read of
+	 * device_status to return 0 before reinitializing the device.
+	 * This will flush out the status write, and flush in device writes,
+	 * including MSI-X interrupts, if any.
+	 */
+	while (vp_ioread8(&vp_dev->common->device_status))
+		msleep(1);
 	/* Flush pending VQ/configuration callbacks. */
 	vp_synchronize_vectors(vdev);
 }
@@ -418,7 +423,7 @@ err_new_queue:
 static int vp_modern_find_vqs(struct virtio_device *vdev, unsigned nvqs,
 			      struct virtqueue *vqs[],
 			      vq_callback_t *callbacks[],
-			      const char *names[])
+			      const char * const names[])
 {
 	struct virtio_pci_device *vp_dev = to_vp_device(vdev);
 	struct virtqueue *vq;
@@ -679,7 +684,7 @@ int virtio_pci_modern_probe(struct virtio_pci_device *vp_dev)
 
 	pci_read_config_dword(pci_dev,
 			      notify + offsetof(struct virtio_pci_notify_cap,
-						cap.length),
+						cap.offset),
 			      &notify_offset);
 
 	/* We don't know how many VQs we'll map, ahead of the time.

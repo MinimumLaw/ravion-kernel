@@ -113,6 +113,9 @@
 #define GET_NUM_REGN(x)		((x & 0x300000) >> 20) /* bits 20-21 */
 #define CHMAP_EXIST		BIT(24)
 
+/* CCSTAT register */
+#define EDMA_CCSTAT_ACTV	BIT(4)
+
 /*
  * Max of 20 segments per channel to conserve PaRAM slots
  * Also note that MAX_NR_SG should be atleast the no.of periods
@@ -484,7 +487,7 @@ static void edma_read_slot(struct edma_cc *ecc, unsigned slot,
  */
 static int edma_alloc_slot(struct edma_cc *ecc, int slot)
 {
-	if (slot > 0) {
+	if (slot >= 0) {
 		slot = EDMA_CHAN_SLOT(slot);
 		/* Requesting entry paRAM slot for a HW triggered channel. */
 		if (ecc->chmap_exist && slot < ecc->num_channels)
@@ -1560,32 +1563,6 @@ static irqreturn_t dma_ccerr_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void edma_tc_set_pm_state(struct edma_tc *tc, bool enable)
-{
-	struct platform_device *tc_pdev;
-	int ret;
-
-	if (!IS_ENABLED(CONFIG_OF) || !tc)
-		return;
-
-	tc_pdev = of_find_device_by_node(tc->node);
-	if (!tc_pdev) {
-		pr_err("%s: TPTC device is not found\n", __func__);
-		return;
-	}
-	if (!pm_runtime_enabled(&tc_pdev->dev))
-		pm_runtime_enable(&tc_pdev->dev);
-
-	if (enable)
-		ret = pm_runtime_get_sync(&tc_pdev->dev);
-	else
-		ret = pm_runtime_put_sync(&tc_pdev->dev);
-
-	if (ret < 0)
-		pr_err("%s: pm_runtime_%s_sync() failed for %s\n", __func__,
-		       enable ? "get" : "put", dev_name(&tc_pdev->dev));
-}
-
 /* Alloc channel resources */
 static int edma_alloc_chan_resources(struct dma_chan *chan)
 {
@@ -1621,8 +1598,6 @@ static int edma_alloc_chan_resources(struct dma_chan *chan)
 	dev_dbg(dev, "Got eDMA channel %d for virt channel %d (%s trigger)\n",
 		EDMA_CHAN_SLOT(echan->ch_num), chan->chan_id,
 		echan->hw_triggered ? "HW" : "SW");
-
-	edma_tc_set_pm_state(echan->tc, true);
 
 	return 0;
 
@@ -1660,7 +1635,6 @@ static void edma_free_chan_resources(struct dma_chan *chan)
 		echan->alloced = false;
 	}
 
-	edma_tc_set_pm_state(echan->tc, false);
 	echan->tc = NULL;
 	echan->hw_triggered = false;
 
@@ -1680,9 +1654,20 @@ static void edma_issue_pending(struct dma_chan *chan)
 	spin_unlock_irqrestore(&echan->vchan.lock, flags);
 }
 
+/*
+ * This limit exists to avoid a possible infinite loop when waiting for proof
+ * that a particular transfer is completed. This limit can be hit if there
+ * are large bursts to/from slow devices or the CPU is never able to catch
+ * the DMA hardware idle. On an AM335x transfering 48 bytes from the UART
+ * RX-FIFO, as many as 55 loops have been seen.
+ */
+#define EDMA_MAX_TR_WAIT_LOOPS 1000
+
 static u32 edma_residue(struct edma_desc *edesc)
 {
 	bool dst = edesc->direction == DMA_DEV_TO_MEM;
+	int loop_count = EDMA_MAX_TR_WAIT_LOOPS;
+	struct edma_chan *echan = edesc->echan;
 	struct edma_pset *pset = edesc->pset;
 	dma_addr_t done, pos;
 	int i;
@@ -1691,7 +1676,32 @@ static u32 edma_residue(struct edma_desc *edesc)
 	 * We always read the dst/src position from the first RamPar
 	 * pset. That's the one which is active now.
 	 */
-	pos = edma_get_position(edesc->echan->ecc, edesc->echan->slot[0], dst);
+	pos = edma_get_position(echan->ecc, echan->slot[0], dst);
+
+	/*
+	 * "pos" may represent a transfer request that is still being
+	 * processed by the EDMACC or EDMATC. We will busy wait until
+	 * any one of the situations occurs:
+	 *   1. the DMA hardware is idle
+	 *   2. a new transfer request is setup
+	 *   3. we hit the loop limit
+	 */
+	while (edma_read(echan->ecc, EDMA_CCSTAT) & EDMA_CCSTAT_ACTV) {
+		/* check if a new transfer request is setup */
+		if (edma_get_position(echan->ecc,
+				      echan->slot[0], dst) != pos) {
+			break;
+		}
+
+		if (!--loop_count) {
+			dev_dbg_ratelimited(echan->vchan.chan.device->dev,
+				"%s: timeout waiting for PaRAM update\n",
+				__func__);
+			break;
+		}
+
+		cpu_relax();
+	}
 
 	/*
 	 * Cyclic is simple. Just subtract pset[0].addr from pos.
@@ -2314,6 +2324,10 @@ static int edma_probe(struct platform_device *pdev)
 		edma_set_chmap(&ecc->slave_chans[i], ecc->dummy_slot);
 	}
 
+	ecc->dma_slave.filter.map = info->slave_map;
+	ecc->dma_slave.filter.mapcnt = info->slavecnt;
+	ecc->dma_slave.filter.fn = edma_filter_fn;
+
 	ret = dma_async_device_register(&ecc->dma_slave);
 	if (ret) {
 		dev_err(dev, "slave ddev registration failed (%d)\n", ret);
@@ -2365,10 +2379,8 @@ static int edma_pm_suspend(struct device *dev)
 	int i;
 
 	for (i = 0; i < ecc->num_channels; i++) {
-		if (echan[i].alloced) {
+		if (echan[i].alloced)
 			edma_setup_interrupt(&echan[i], false);
-			edma_tc_set_pm_state(echan[i].tc, false);
-		}
 	}
 
 	return 0;
@@ -2398,8 +2410,6 @@ static int edma_pm_resume(struct device *dev)
 
 			/* Set up channel -> slot mapping for the entry slot */
 			edma_set_chmap(&echan[i], echan[i].slot[0]);
-
-			edma_tc_set_pm_state(echan[i].tc, true);
 		}
 	}
 
@@ -2421,7 +2431,14 @@ static struct platform_driver edma_driver = {
 	},
 };
 
+static int edma_tptc_probe(struct platform_device *pdev)
+{
+	pm_runtime_enable(&pdev->dev);
+	return pm_runtime_get_sync(&pdev->dev);
+}
+
 static struct platform_driver edma_tptc_driver = {
+	.probe		= edma_tptc_probe,
 	.driver = {
 		.name	= "edma3-tptc",
 		.of_match_table = edma_tptc_of_ids,

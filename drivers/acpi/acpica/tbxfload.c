@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2015, Intel Corp.
+ * Copyright (C) 2000 - 2016, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -83,6 +83,20 @@ acpi_status __init acpi_load_tables(void)
 				"While loading namespace from ACPI tables"));
 	}
 
+	if (!acpi_gbl_group_module_level_code) {
+		/*
+		 * Initialize the objects that remain uninitialized. This
+		 * runs the executable AML that may be part of the
+		 * declaration of these objects:
+		 * operation_regions, buffer_fields, Buffers, and Packages.
+		 */
+		status = acpi_ns_initialize_objects();
+		if (ACPI_FAILURE(status)) {
+			return_ACPI_STATUS(status);
+		}
+	}
+
+	acpi_gbl_reg_methods_enabled = TRUE;
 	return_ACPI_STATUS(status);
 }
 
@@ -191,6 +205,7 @@ acpi_status acpi_tb_load_namespace(void)
 					"(%4.4s:%8.8s) while loading table",
 					table->signature.ascii,
 					table->pointer->oem_table_id));
+
 			tables_failed++;
 
 			ACPI_DEBUG_PRINT_RAW((ACPI_DB_INIT,
@@ -206,7 +221,7 @@ acpi_status acpi_tb_load_namespace(void)
 
 	if (!tables_failed) {
 		ACPI_INFO((AE_INFO,
-			   "%u ACPI AML tables successfully acquired and loaded",
+			   "%u ACPI AML tables successfully acquired and loaded\n",
 			   tables_loaded));
 	} else {
 		ACPI_ERROR((AE_INFO,

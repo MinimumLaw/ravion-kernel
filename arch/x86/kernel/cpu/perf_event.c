@@ -482,6 +482,9 @@ int x86_pmu_hw_config(struct perf_event *event)
 			/* Support for IP fixup */
 			if (x86_pmu.lbr_nr || x86_pmu.intel_cap.pebs_format >= 2)
 				precise++;
+
+			if (x86_pmu.pebs_prec_dist)
+				precise++;
 		}
 
 		if (event->attr.precise_ip > precise)
@@ -593,6 +596,19 @@ void x86_pmu_disable_all(void)
 	}
 }
 
+/*
+ * There may be PMI landing after enabled=0. The PMI hitting could be before or
+ * after disable_all.
+ *
+ * If PMI hits before disable_all, the PMU will be disabled in the NMI handler.
+ * It will not be re-enabled in the NMI handler again, because enabled=0. After
+ * handling the NMI, disable_all will be called, which will not change the
+ * state either. If PMI hits after disable_all, the PMU is already disabled
+ * before entering NMI handler. The NMI handler will not change the state
+ * either.
+ *
+ * So either situation is harmless.
+ */
 static void x86_pmu_disable(struct pmu *pmu)
 {
 	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
@@ -1531,6 +1547,7 @@ static void __init filter_events(struct attribute **attrs)
 {
 	struct device_attribute *d;
 	struct perf_pmu_events_attr *pmu_attr;
+	int offset = 0;
 	int i, j;
 
 	for (i = 0; attrs[i]; i++) {
@@ -1539,7 +1556,7 @@ static void __init filter_events(struct attribute **attrs)
 		/* str trumps id */
 		if (pmu_attr->event_str)
 			continue;
-		if (x86_pmu.event_map(i))
+		if (x86_pmu.event_map(i + offset))
 			continue;
 
 		for (j = i; attrs[j]; j++)
@@ -1547,6 +1564,14 @@ static void __init filter_events(struct attribute **attrs)
 
 		/* Check the shifted attr. */
 		i--;
+
+		/*
+		 * event_map() is index based, the attrs array is organized
+		 * by increasing event index. If we shift the events, then
+		 * we need to compensate for the event_map(), otherwise
+		 * we are looking up the wrong event in the map
+		 */
+		offset++;
 	}
 }
 
@@ -2250,12 +2275,19 @@ perf_callchain_user32(struct pt_regs *regs, struct perf_callchain_entry *entry)
 	ss_base = get_segment_base(regs->ss);
 
 	fp = compat_ptr(ss_base + regs->bp);
+	pagefault_disable();
 	while (entry->nr < PERF_MAX_STACK_DEPTH) {
 		unsigned long bytes;
 		frame.next_frame     = 0;
 		frame.return_address = 0;
 
-		bytes = copy_from_user_nmi(&frame, fp, sizeof(frame));
+		if (!access_ok(VERIFY_READ, fp, 8))
+			break;
+
+		bytes = __copy_from_user_nmi(&frame.next_frame, fp, 4);
+		if (bytes != 0)
+			break;
+		bytes = __copy_from_user_nmi(&frame.return_address, fp+4, 4);
 		if (bytes != 0)
 			break;
 
@@ -2265,6 +2297,7 @@ perf_callchain_user32(struct pt_regs *regs, struct perf_callchain_entry *entry)
 		perf_callchain_store(entry, cs_base + frame.return_address);
 		fp = compat_ptr(ss_base + frame.next_frame);
 	}
+	pagefault_enable();
 	return 1;
 }
 #else
@@ -2302,12 +2335,19 @@ perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 	if (perf_callchain_user32(regs, entry))
 		return;
 
+	pagefault_disable();
 	while (entry->nr < PERF_MAX_STACK_DEPTH) {
 		unsigned long bytes;
 		frame.next_frame	     = NULL;
 		frame.return_address = 0;
 
-		bytes = copy_from_user_nmi(&frame, fp, sizeof(frame));
+		if (!access_ok(VERIFY_READ, fp, 16))
+			break;
+
+		bytes = __copy_from_user_nmi(&frame.next_frame, fp, 8);
+		if (bytes != 0)
+			break;
+		bytes = __copy_from_user_nmi(&frame.return_address, fp+8, 8);
 		if (bytes != 0)
 			break;
 
@@ -2315,8 +2355,9 @@ perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 			break;
 
 		perf_callchain_store(entry, frame.return_address);
-		fp = frame.next_frame;
+		fp = (void __user *)frame.next_frame;
 	}
+	pagefault_enable();
 }
 
 /*

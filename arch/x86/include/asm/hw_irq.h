@@ -130,12 +130,18 @@ struct irq_alloc_info {
 			char		*uv_name;
 		};
 #endif
+#if IS_ENABLED(CONFIG_VMD)
+		struct {
+			struct msi_desc *desc;
+		};
+#endif
 	};
 };
 
 struct irq_cfg {
 	unsigned int		dest_apicid;
 	u8			vector;
+	u8			old_vector;
 };
 
 extern struct irq_cfg *irq_cfg(unsigned int irq);

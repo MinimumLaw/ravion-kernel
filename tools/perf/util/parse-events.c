@@ -4,9 +4,9 @@
 #include "../perf.h"
 #include "evlist.h"
 #include "evsel.h"
-#include "parse-options.h"
+#include <subcmd/parse-options.h>
 #include "parse-events.h"
-#include "exec_cmd.h"
+#include <subcmd/exec-cmd.h>
 #include "string.h"
 #include "symbol.h"
 #include "cache.h"
@@ -398,6 +398,9 @@ static void tracepoint_error(struct parse_events_error *e, int err,
 			     char *sys, char *name)
 {
 	char help[BUFSIZ];
+
+	if (!e)
+		return;
 
 	/*
 	 * We get error directly from syscall errno ( > 0),
@@ -2098,11 +2101,11 @@ char *parse_events_formats_error_string(char *additional_terms)
 
 	/* valid terms */
 	if (additional_terms) {
-		if (!asprintf(&str, "valid terms: %s,%s",
-			      additional_terms, static_terms))
+		if (asprintf(&str, "valid terms: %s,%s",
+			     additional_terms, static_terms) < 0)
 			goto fail;
 	} else {
-		if (!asprintf(&str, "valid terms: %s", static_terms))
+		if (asprintf(&str, "valid terms: %s", static_terms) < 0)
 			goto fail;
 	}
 	return str;

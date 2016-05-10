@@ -803,7 +803,7 @@ static int max77843_muic_probe(struct platform_device *pdev)
 	/* Clear IRQ bits before request IRQs */
 	ret = regmap_bulk_read(max77843->regmap_muic,
 			MAX77843_MUIC_REG_INT1, info->status,
-			MAX77843_MUIC_IRQ_NUM);
+			MAX77843_MUIC_STATUS_NUM);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to Clear IRQ bits\n");
 		goto err_muic_irq;
@@ -811,7 +811,7 @@ static int max77843_muic_probe(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(max77843_muic_irqs); i++) {
 		struct max77843_muic_irq *muic_irq = &max77843_muic_irqs[i];
-		unsigned int virq = 0;
+		int virq = 0;
 
 		virq = regmap_irq_get_virq(max77843->irq_data_muic,
 				muic_irq->irq);

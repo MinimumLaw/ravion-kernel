@@ -335,7 +335,7 @@ static const struct nd_cmd_desc __nd_cmd_dimm_descs[] = {
 	[ND_CMD_IMPLEMENTED] = { },
 	[ND_CMD_SMART] = {
 		.out_num = 2,
-		.out_sizes = { 4, 8, },
+		.out_sizes = { 4, 128, },
 	},
 	[ND_CMD_SMART_THRESHOLD] = {
 		.out_num = 2,
@@ -382,18 +382,18 @@ static const struct nd_cmd_desc __nd_cmd_bus_descs[] = {
 	[ND_CMD_ARS_CAP] = {
 		.in_num = 2,
 		.in_sizes = { 8, 8, },
+		.out_num = 4,
+		.out_sizes = { 4, 4, 4, 4, },
+	},
+	[ND_CMD_ARS_START] = {
+		.in_num = 5,
+		.in_sizes = { 8, 8, 2, 1, 5, },
 		.out_num = 2,
 		.out_sizes = { 4, 4, },
 	},
-	[ND_CMD_ARS_START] = {
-		.in_num = 4,
-		.in_sizes = { 8, 8, 2, 6, },
-		.out_num = 1,
-		.out_sizes = { 4, },
-	},
 	[ND_CMD_ARS_STATUS] = {
-		.out_num = 2,
-		.out_sizes = { 4, UINT_MAX, },
+		.out_num = 3,
+		.out_sizes = { 4, 4, UINT_MAX, },
 	},
 };
 
@@ -442,8 +442,8 @@ u32 nd_cmd_out_size(struct nvdimm *nvdimm, int cmd,
 		return in_field[1];
 	else if (nvdimm && cmd == ND_CMD_VENDOR && idx == 2)
 		return out_field[1];
-	else if (!nvdimm && cmd == ND_CMD_ARS_STATUS && idx == 1)
-		return ND_CMD_ARS_STATUS_MAX;
+	else if (!nvdimm && cmd == ND_CMD_ARS_STATUS && idx == 2)
+		return out_field[1] - 8;
 
 	return UINT_MAX;
 }
@@ -513,10 +513,10 @@ static int __nd_ioctl(struct nvdimm_bus *nvdimm_bus, struct nvdimm *nvdimm,
 
 	/* fail write commands (when read-only) */
 	if (read_only)
-		switch (ioctl_cmd) {
-		case ND_IOCTL_VENDOR:
-		case ND_IOCTL_SET_CONFIG_DATA:
-		case ND_IOCTL_ARS_START:
+		switch (cmd) {
+		case ND_CMD_VENDOR:
+		case ND_CMD_SET_CONFIG_DATA:
+		case ND_CMD_ARS_START:
 			dev_dbg(&nvdimm_bus->dev, "'%s' command while read-only.\n",
 					nvdimm ? nvdimm_cmd_name(cmd)
 					: nvdimm_bus_cmd_name(cmd));

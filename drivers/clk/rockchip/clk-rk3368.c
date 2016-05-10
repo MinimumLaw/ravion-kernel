@@ -165,7 +165,7 @@ static const struct rockchip_cpuclk_reg_data rk3368_cpuclkb_data = {
 	.core_reg = RK3368_CLKSEL_CON(0),
 	.div_core_shift = 0,
 	.div_core_mask = 0x1f,
-	.mux_core_shift = 15,
+	.mux_core_shift = 7,
 };
 
 static const struct rockchip_cpuclk_reg_data rk3368_cpuclkl_data = {
@@ -184,13 +184,13 @@ static const struct rockchip_cpuclk_reg_data rk3368_cpuclkl_data = {
 
 #define RK3368_CLKSEL0(_offs, _aclkm)					\
 	{								\
-		.reg = RK3288_CLKSEL_CON(0 + _offs),			\
+		.reg = RK3368_CLKSEL_CON(0 + _offs),			\
 		.val = HIWORD_UPDATE(_aclkm, RK3368_DIV_ACLKM_MASK,	\
 				RK3368_DIV_ACLKM_SHIFT),		\
 	}
 #define RK3368_CLKSEL1(_offs, _atclk, _pdbg)				\
 	{								\
-		.reg = RK3288_CLKSEL_CON(1 + _offs),			\
+		.reg = RK3368_CLKSEL_CON(1 + _offs),			\
 		.val = HIWORD_UPDATE(_atclk, RK3368_DIV_ATCLK_MASK,	\
 				RK3368_DIV_ATCLK_SHIFT) |		\
 		       HIWORD_UPDATE(_pdbg, RK3368_DIV_PCLK_DBG_MASK,	\
@@ -218,29 +218,29 @@ static const struct rockchip_cpuclk_reg_data rk3368_cpuclkl_data = {
 	}
 
 static struct rockchip_cpuclk_rate_table rk3368_cpuclkb_rates[] __initdata = {
-	RK3368_CPUCLKB_RATE(1512000000, 2, 6, 6),
-	RK3368_CPUCLKB_RATE(1488000000, 2, 5, 5),
-	RK3368_CPUCLKB_RATE(1416000000, 2, 5, 5),
-	RK3368_CPUCLKB_RATE(1200000000, 2, 4, 4),
-	RK3368_CPUCLKB_RATE(1008000000, 2, 4, 4),
-	RK3368_CPUCLKB_RATE( 816000000, 2, 3, 3),
-	RK3368_CPUCLKB_RATE( 696000000, 2, 3, 3),
-	RK3368_CPUCLKB_RATE( 600000000, 2, 2, 2),
-	RK3368_CPUCLKB_RATE( 408000000, 2, 2, 2),
-	RK3368_CPUCLKB_RATE( 312000000, 2, 2, 2),
+	RK3368_CPUCLKB_RATE(1512000000, 1, 5, 5),
+	RK3368_CPUCLKB_RATE(1488000000, 1, 4, 4),
+	RK3368_CPUCLKB_RATE(1416000000, 1, 4, 4),
+	RK3368_CPUCLKB_RATE(1200000000, 1, 3, 3),
+	RK3368_CPUCLKB_RATE(1008000000, 1, 3, 3),
+	RK3368_CPUCLKB_RATE( 816000000, 1, 2, 2),
+	RK3368_CPUCLKB_RATE( 696000000, 1, 2, 2),
+	RK3368_CPUCLKB_RATE( 600000000, 1, 1, 1),
+	RK3368_CPUCLKB_RATE( 408000000, 1, 1, 1),
+	RK3368_CPUCLKB_RATE( 312000000, 1, 1, 1),
 };
 
 static struct rockchip_cpuclk_rate_table rk3368_cpuclkl_rates[] __initdata = {
-	RK3368_CPUCLKL_RATE(1512000000, 2, 7, 7),
-	RK3368_CPUCLKL_RATE(1488000000, 2, 6, 6),
-	RK3368_CPUCLKL_RATE(1416000000, 2, 6, 6),
-	RK3368_CPUCLKL_RATE(1200000000, 2, 5, 5),
-	RK3368_CPUCLKL_RATE(1008000000, 2, 5, 5),
-	RK3368_CPUCLKL_RATE( 816000000, 2, 4, 4),
-	RK3368_CPUCLKL_RATE( 696000000, 2, 3, 3),
-	RK3368_CPUCLKL_RATE( 600000000, 2, 3, 3),
-	RK3368_CPUCLKL_RATE( 408000000, 2, 2, 2),
-	RK3368_CPUCLKL_RATE( 312000000, 2, 2, 2),
+	RK3368_CPUCLKL_RATE(1512000000, 1, 6, 6),
+	RK3368_CPUCLKL_RATE(1488000000, 1, 5, 5),
+	RK3368_CPUCLKL_RATE(1416000000, 1, 5, 5),
+	RK3368_CPUCLKL_RATE(1200000000, 1, 4, 4),
+	RK3368_CPUCLKL_RATE(1008000000, 1, 4, 4),
+	RK3368_CPUCLKL_RATE( 816000000, 1, 3, 3),
+	RK3368_CPUCLKL_RATE( 696000000, 1, 2, 2),
+	RK3368_CPUCLKL_RATE( 600000000, 1, 2, 2),
+	RK3368_CPUCLKL_RATE( 408000000, 1, 1, 1),
+	RK3368_CPUCLKL_RATE( 312000000, 1, 1, 1),
 };
 
 static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
@@ -384,10 +384,10 @@ static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
 	 * Clock-Architecture Diagram 3
 	 */
 
-	COMPOSITE(0, "aclk_vepu", mux_pll_src_cpll_gpll_usb_p, 0,
+	COMPOSITE(0, "aclk_vepu", mux_pll_src_cpll_gpll_npll_usb_p, 0,
 			RK3368_CLKSEL_CON(15), 6, 2, MFLAGS, 0, 5, DFLAGS,
 			RK3368_CLKGATE_CON(4), 6, GFLAGS),
-	COMPOSITE(0, "aclk_vdpu", mux_pll_src_cpll_gpll_usb_p, 0,
+	COMPOSITE(0, "aclk_vdpu", mux_pll_src_cpll_gpll_npll_usb_p, 0,
 			RK3368_CLKSEL_CON(15), 14, 2, MFLAGS, 8, 5, DFLAGS,
 			RK3368_CLKGATE_CON(4), 7, GFLAGS),
 
@@ -442,7 +442,7 @@ static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
 	GATE(SCLK_HDMI_HDCP, "sclk_hdmi_hdcp", "xin24m", 0,
 			RK3368_CLKGATE_CON(4), 13, GFLAGS),
 	GATE(SCLK_HDMI_CEC, "sclk_hdmi_cec", "xin32k", 0,
-			RK3368_CLKGATE_CON(5), 12, GFLAGS),
+			RK3368_CLKGATE_CON(4), 12, GFLAGS),
 
 	COMPOSITE_NODIV(0, "vip_src", mux_pll_src_cpll_gpll_p, 0,
 			RK3368_CLKSEL_CON(21), 15, 1, MFLAGS,
@@ -780,13 +780,13 @@ static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
 	GATE(PCLK_TSADC, "pclk_tsadc", "pclk_peri", 0, RK3368_CLKGATE_CON(20), 0, GFLAGS),
 
 	/* pclk_pd_alive gates */
-	GATE(PCLK_TIMER1, "pclk_timer1", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(14), 8, GFLAGS),
-	GATE(PCLK_TIMER0, "pclk_timer0", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(14), 7, GFLAGS),
-	GATE(0, "pclk_alive_niu", "pclk_pd_alive", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(14), 12, GFLAGS),
-	GATE(PCLK_GRF, "pclk_grf", "pclk_pd_alive", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(14), 11, GFLAGS),
-	GATE(PCLK_GPIO3, "pclk_gpio3", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(14), 3, GFLAGS),
-	GATE(PCLK_GPIO2, "pclk_gpio2", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(14), 2, GFLAGS),
-	GATE(PCLK_GPIO1, "pclk_gpio1", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(14), 1, GFLAGS),
+	GATE(PCLK_TIMER1, "pclk_timer1", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(22), 13, GFLAGS),
+	GATE(PCLK_TIMER0, "pclk_timer0", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(22), 12, GFLAGS),
+	GATE(0, "pclk_alive_niu", "pclk_pd_alive", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(22), 9, GFLAGS),
+	GATE(PCLK_GRF, "pclk_grf", "pclk_pd_alive", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(22), 8, GFLAGS),
+	GATE(PCLK_GPIO3, "pclk_gpio3", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(22), 3, GFLAGS),
+	GATE(PCLK_GPIO2, "pclk_gpio2", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(22), 2, GFLAGS),
+	GATE(PCLK_GPIO1, "pclk_gpio1", "pclk_pd_alive", 0, RK3368_CLKGATE_CON(22), 1, GFLAGS),
 
 	/*
 	 * pclk_vio gates
@@ -796,12 +796,12 @@ static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
 	GATE(0, "pclk_dphytx", "hclk_vio", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(14), 8, GFLAGS),
 
 	/* pclk_pd_pmu gates */
-	GATE(PCLK_PMUGRF, "pclk_pmugrf", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(17), 0, GFLAGS),
-	GATE(PCLK_GPIO0, "pclk_gpio0", "pclk_pd_pmu", 0, RK3368_CLKGATE_CON(17), 4, GFLAGS),
-	GATE(PCLK_SGRF, "pclk_sgrf", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(17), 3, GFLAGS),
-	GATE(0, "pclk_pmu_noc", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(17), 2, GFLAGS),
-	GATE(0, "pclk_intmem1", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(17), 1, GFLAGS),
-	GATE(PCLK_PMU, "pclk_pmu", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(17), 2, GFLAGS),
+	GATE(PCLK_PMUGRF, "pclk_pmugrf", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(23), 5, GFLAGS),
+	GATE(PCLK_GPIO0, "pclk_gpio0", "pclk_pd_pmu", 0, RK3368_CLKGATE_CON(23), 4, GFLAGS),
+	GATE(PCLK_SGRF, "pclk_sgrf", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(23), 3, GFLAGS),
+	GATE(0, "pclk_pmu_noc", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(23), 2, GFLAGS),
+	GATE(0, "pclk_intmem1", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(23), 1, GFLAGS),
+	GATE(PCLK_PMU, "pclk_pmu", "pclk_pd_pmu", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(23), 0, GFLAGS),
 
 	/* timer gates */
 	GATE(0, "sclk_timer15", "xin24m", CLK_IGNORE_UNUSED, RK3368_CLKGATE_CON(24), 11, GFLAGS),
@@ -819,6 +819,13 @@ static struct rockchip_clk_branch rk3368_clk_branches[] __initdata = {
 };
 
 static const char *const rk3368_critical_clocks[] __initconst = {
+	"aclk_bus",
+	"aclk_peri",
+	/*
+	 * pwm1 supplies vdd_logic on a lot of boards, is currently unhandled
+	 * but needs to stay enabled there (including its parents) at all times.
+	 */
+	"pclk_pwm1",
 	"pclk_pd_pmu",
 };
 
@@ -882,6 +889,6 @@ static void __init rk3368_clk_init(struct device_node *np)
 	rockchip_register_softrst(np, 15, reg_base + RK3368_SOFTRST_CON(0),
 				  ROCKCHIP_SOFTRST_HIWORD_MASK);
 
-	rockchip_register_restart_notifier(RK3368_GLB_SRST_FST);
+	rockchip_register_restart_notifier(RK3368_GLB_SRST_FST, NULL);
 }
 CLK_OF_DECLARE(rk3368_cru, "rockchip,rk3368-cru", rk3368_clk_init);
