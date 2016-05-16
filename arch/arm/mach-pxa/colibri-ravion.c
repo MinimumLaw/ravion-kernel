@@ -23,11 +23,11 @@
 #include <linux/i2c.h>
 #include <linux/i2c/pxa-i2c.h>
 
-#include <mach/pxa320.h>
-#include <mach/colibri.h>
+#include "pxa320.h"
+#include "colibri.h"
 #include <linux/platform_data/mmc-pxamci.h>
 #include <linux/platform_data/usb-ohci-pxa27x.h>
-#include <mach/pxa27x-udc.h>
+#include "pxa27x-udc.h"
 
 #include <linux/spi/spi.h>
 #include <linux/spi/pxa2xx_spi.h>
@@ -207,7 +207,6 @@ static struct spi_board_info colibri_pxa320_spi_chips[] = {
 };
 
 static struct pxa2xx_spi_master colibri_pxa320_spi_master = {
-    .clock_enable = CKEN_SSP1,
     .num_chipselect = ARRAY_SIZE(colibri_pxa320_spi_chips),
     .enable_dma = 1,
 };

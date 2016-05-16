@@ -16,9 +16,6 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 
-#include <mach/colibri.h>
-#include <asm/io.h>
-
 #include <asm/mach-types.h>
 
 #include "soc_common.h"
@@ -36,6 +33,40 @@
 #define	COLIBRI320_BVD2_GPIO	79
 #define	COLIBRI320_DETECT_GPIO	81
 #define	COLIBRI320_READY_GPIO	29
+
+/*****************************************************************************
+ * Add virtual memory region for Colibri PXA320 CPLD registers
+ *
+ * Phus start Phys end    Virt start Virt end   Device/Function name
+ * 0x40000000-0x42000000->0xf2000000-0xf4000000 PXA Regs/pxa_map_io()
+ * 0x4a000000-0x4a200000->0xf6000000-0xf6200000 SMEMC/pxa3xx_map.io()
+ * 0x17800000-0x17a00000->0xf6200000-0xf6400000 CPLD/colibri_pxa320_map_io()
+ ****************************************************************************/
+#define CPLD_REGS_PHYS		0x17800000
+#define CPLD_REGS_VIRT		0xf6200000
+#define CPLD_REGS_LEN		0x00200000
+
+#define CPLD_CS_CTRL		(CPLD_REGS_VIRT)
+#define CPLD_EXT_nCS2_EC_DIS	(1<<15)
+#define CPLD_EXT_nCS1_EC_DIS	(1<<14)
+#define CPLD_EXT_nCS0_EC_DIS	(1<<13)
+#define CPLD_EXT_nCS2_DIS	(1<<10)
+#define CPLD_EXT_nCS1_DIS	(1<<9)
+#define CPLD_EXT_nCS0_DIS	(1<<8)
+#define CPLD_EXT_nCS2_EC_EN	(1<<7)
+#define CPLD_EXT_nCS1_EC_EN	(1<<6)
+#define CPLD_EXT_nCS0_EC_EN	(1<<5)
+#define CPLD_EXT_nCS2_EN	(1<<2)
+#define CPLD_EXT_nCS1_EN	(1<<1)
+#define CPLD_EXT_nCS0_EN	(1<<0)
+
+#define CPLD_MEM_CTRL           (CPLD_REGS_VIRT + 4)
+#define CPLD_MEM_nOE_DIS	(1<<10)
+#define CPLD_MEM_RDnWR_DIS	(1<<9)
+#define CPLD_MEM_CF_DIS		(1<<8)
+#define CPLD_MEM_nOE_EN		(1<<2)
+#define CPLD_MEM_RDnWR_EN	(1<<1)
+#define CPLD_MEM_CF_EN		(1<<0)
 
 enum {
 	DETECT = 0,
