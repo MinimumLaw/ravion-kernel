@@ -17,8 +17,11 @@
 	chosen {
 		bootargs = "
 noinitrd console=ttymxc0,115200 boootdelay=10
+root=/dev/no_exist ro";
+/* Uncomment for network boot
 ip=192.168.5.101:192.168.5.222:192.168.5.222:255.255.255.0:imx51dev:eth0:off
 root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
+*/
 		stdout-path = &uart1;
 	};
 
@@ -34,7 +37,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		osc   { clock-frequency = <24000000>; };
 
 		/* Board clock sources */
-		src_26MHz: gen_26MHz {
+		src_26MHz: src_26MHz {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-output-names = "src_26MHz";
@@ -42,16 +45,16 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
 		};
 
-		codec_clock: codec_26MHz {
-			compatible = "gpio-gated-clock";
+		codec_clock: codec_clock { /* 26Mhz */
+			compatible = "gpio-gate-clock";
 			#clock-cells = <0>;
 			clocks = <&src_26MHz>;
 			clock-output-names = "codec_clock";
 			enable_gpios = <&gpio4 26 GPIO_ACTIVE_HIGH>;
 		};
 
-		ulpi_clock: ulpi_26MHz {
-			compatible = "gpio-gated-clock";
+		ulpi_clock: ulpi_clock { /* 26 MHz */
+			compatible = "gpio-gate-clock";
 			#clock-cells = <0>;
 			clocks = <&src_26MHz>;
 			clock-output-names = "ulpi_clock";
@@ -118,12 +121,12 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
-        gpio-poweroff {
-                compatible = "gpio-poweroff";
-                pinctrl-0 = <&pinctrl_gpio_poweroff>;
-                pinctrl-names = "default";
-                gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
-        };
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		pinctrl-0 = <&pinctrl_gpio_poweroff>;
+		pinctrl-names = "default";
+		gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+	};
 
 
 	gpio-keys {
@@ -237,7 +240,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			gpio = <&gpio1 7 GPIO_ACTIVE_HIGH>;
 			enable-active-high;
 		};
-		
+
 		reg_12v_en: sw_12v_en@1 { /* 12V enabler */
 			compatible = "regulator-fixed";
 			regulator-name = "12V";
@@ -292,9 +295,9 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi1>;
 	fsl,spi-num-chipselects = <3>;
-	cs-gpios = <&gpio4 24 GPIO_ACTIVE_HIGH>, /* PMIC */
-		   <&gpio4 25 GPIO_ACTIVE_LOW>,  /* Codec */
-		   <&gpio3 0  GPIO_ACTIVE_LOW>;  /* Extension board */
+	cs-gpios =	<&gpio4 24 GPIO_ACTIVE_HIGH>, /* PMIC */
+			<&gpio4 25 GPIO_ACTIVE_LOW>,  /* Codec */
+			<&gpio3 0  GPIO_ACTIVE_LOW>;  /* Extension board */
 	status = "okay";
 
 	pmic: mc13892@0 { /* PMIC */
@@ -405,13 +408,18 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 
 		partition@0 {
 			label = "U-Boot";
-			reg = <0x0 0x40000>;
+			reg = <0x0 0xC0000>;
+			read-only;
+		};
+		partition@C0000 {
+			label = "U-Boot-Config";
+			reg = <0xC0000 0x40000>;
 			read-only;
 		};
 
-		partition@40000 {
-			label = "Kernel";
-			reg = <0x40000 0x3c0000>;
+		partition@100000 {
+			label = "Reserved";
+			reg = <0x100000 0x300000>;
 		};
 	};
 
@@ -421,6 +429,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 &esdhc1 { /* Base board microSD card */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc1>;
+	vmmc-supply = <&vgen2_reg>;
 	cd-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
@@ -428,6 +437,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 &esdhc2 { /* Extension SDIO interface */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_esdhc2>;
+	vmmc-supply = <&vgen2_reg>;
 	cd-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
 	wp-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
 	status = "okay";
@@ -462,6 +472,9 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	phy-handle = <&ethphy>;
 	status = "okay";
 	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		ethphy: ethernet-phy@02 {
 			compatible = "ethernet-phy-id0007.c0f0", "ethernet-phy-ieee802.3-c22";
 			reg = <0x02>;
@@ -492,6 +505,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
 		clocks = <&codec_clock>;
+//		clocks = <&src_26MHz>;
 		micbias-resistor-k-ohms = <2>;
 		micbias-voltage-m-volts = <2250>;
 		VDDA-supply = <&vaudio_reg>;
@@ -521,7 +535,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 &uart1 { /* Full control uart */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
-	fsl,dte-mode;
+	fsl,dte-mode; /* for full hardware control */
 	status = "okay";
 };
 
@@ -534,7 +548,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 &uart3 { /* 4-Wire uart */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
-	fsl,uart-has-rtscts;
+	fsl,uart-has-rtscts; /* for RTS/CTS control */
 	status = "okay";
 };
 
@@ -601,7 +615,7 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 				MX51_PAD_CSPI1_RDY__GPIO4_26		PULLUP /* codec clock */
 			>;
 		};
-	
+
 		pinctrl_ipu_disp1: ipudisp1grp { /* VGA adapter */
 			fsl,pins = <
 				MX51_PAD_DISP1_DAT0__DISP1_DAT0		NOPULL
@@ -748,10 +762,10 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 
 		pinctrl_sound: soundgrp { /* Serial Sound Interface - Checked */
 			fsl,pins = <
-				MX51_PAD_AUD3_BB_TXD__AUD3_TXD		NOPULL
-				MX51_PAD_AUD3_BB_RXD__AUD3_RXD		NOPULL
-				MX51_PAD_AUD3_BB_CK__AUD3_TXC		NOPULL
-				MX51_PAD_AUD3_BB_FS__AUD3_TXFS		NOPULL
+				MX51_PAD_AUD3_BB_TXD__AUD3_TXD		NO_CFG
+				MX51_PAD_AUD3_BB_RXD__AUD3_RXD		NO_CFG
+				MX51_PAD_AUD3_BB_CK__AUD3_TXC		NO_CFG
+				MX51_PAD_AUD3_BB_FS__AUD3_TXFS		NO_CFG
 			>;
 		};
 
@@ -850,83 +864,83 @@ root=/dev/nfs rw nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 
 		pinctrl_esdhc1: esdhc1grp { /* Base board microSD - checked */
 			fsl,pins = <
-				MX51_PAD_SD1_CMD__SD1_CMD		NOPULL
-				MX51_PAD_SD1_CLK__SD1_CLK		NOPULL
-				MX51_PAD_SD1_DATA0__SD1_DATA0		NOPULL
-				MX51_PAD_SD1_DATA1__SD1_DATA1		NOPULL
-				MX51_PAD_SD1_DATA2__SD1_DATA2		NOPULL
-				MX51_PAD_SD1_DATA3__SD1_DATA3		NOPULL
-				MX51_PAD_GPIO1_0__GPIO1_0		PULLUP /* CD */
+				MX51_PAD_SD1_CMD__SD1_CMD		0x400020d5
+				MX51_PAD_SD1_CLK__SD1_CLK		0x20d5
+				MX51_PAD_SD1_DATA0__SD1_DATA0		0x20d5
+				MX51_PAD_SD1_DATA1__SD1_DATA1		0x20d5
+				MX51_PAD_SD1_DATA2__SD1_DATA2		0x20d5
+				MX51_PAD_SD1_DATA3__SD1_DATA3		0x20d5
+				MX51_PAD_GPIO1_0__GPIO1_0		0x100	/* CD */
 				/* no WP gpio used */
 			>;
 		};
 
 		pinctrl_esdhc2: esdhc2grp { /* Extension board SDIO - checked */
 			fsl,pins = <
-				MX51_PAD_SD2_CMD__SD2_CMD		NOPULL
-				MX51_PAD_SD2_CLK__SD2_CLK		NOPULL
-				MX51_PAD_SD2_DATA0__SD2_DATA0		NOPULL
-				MX51_PAD_SD2_DATA1__SD2_DATA1		NOPULL
-				MX51_PAD_SD2_DATA2__SD2_DATA2		NOPULL
-				MX51_PAD_SD2_DATA3__SD2_DATA3		NOPULL
-				MX51_PAD_GPIO1_6__GPIO1_6		PULLUP /* CD */
-				MX51_PAD_GPIO1_5__GPIO1_5		PULLUP /* WP */
+				MX51_PAD_SD2_CMD__SD2_CMD		0x400020d5
+				MX51_PAD_SD2_CLK__SD2_CLK		0x20d5
+				MX51_PAD_SD2_DATA0__SD2_DATA0		0x20d5
+				MX51_PAD_SD2_DATA1__SD2_DATA1		0x20d5
+				MX51_PAD_SD2_DATA2__SD2_DATA2		0x20d5
+				MX51_PAD_SD2_DATA3__SD2_DATA3		0x20d5
+				MX51_PAD_GPIO1_6__GPIO1_6		0x100	/* CD */
+				MX51_PAD_GPIO1_5__GPIO1_5		0x100	/* WP */
 			>;
 		};
 
 		pinctrl_pmic: pmicgrp { /* PMIC IRQ - checked */
 			fsl,pins = <
-				MX51_PAD_GPIO1_8__GPIO1_8		PULLUP /* IRQ */
+				MX51_PAD_GPIO1_8__GPIO1_8		0xe5 /* IRQ */
 			>;
 		};
 
 		pinctrl_owire: owiregrp { /* Maxim/Dalas OneWire checked */
 			fsl,pins = <
-				MX51_PAD_OWIRE_LINE__OWIRE_LINE		OPENDR
+				MX51_PAD_OWIRE_LINE__OWIRE_LINE		0x400001ed
 			>;
 		};
 
 		pinctrl_i2c1: i2c1grp { /* I2C1 - checked */
 			fsl,pins = <
-				MX51_PAD_EIM_D19__I2C1_SCL		OPENDR
-				MX51_PAD_EIM_D16__I2C1_SDA		OPENDR
+				MX51_PAD_EIM_D19__I2C1_SCL		0x400001ed
+				MX51_PAD_EIM_D16__I2C1_SDA		0x400001ed
 			>;
 		};
 
 		pinctrl_i2c2: i2c2grp { /* I2C2 - checked */
 			fsl,pins = <
-				MX51_PAD_GPIO1_2__I2C2_SCL		OPENDR
-				MX51_PAD_GPIO1_3__I2C2_SDA		OPENDR
+				MX51_PAD_GPIO1_2__I2C2_SCL		0x400001ed
+				MX51_PAD_GPIO1_3__I2C2_SDA		0x400001ed
 			>;
 		};
 
 		pinctrl_uart1: uart1grp { /* Full control UART1 - checked */
 			fsl,pins = <
-				MX51_PAD_UART1_RXD__UART1_RXD		NOPULL
-				MX51_PAD_UART1_TXD__UART1_TXD		NOPULL
-				MX51_PAD_UART1_RTS__UART1_RTS		NOPULL
-				MX51_PAD_UART1_CTS__UART1_CTS		NOPULL
+				MX51_PAD_UART1_RXD__UART1_RXD		0x1c5
+				MX51_PAD_UART1_TXD__UART1_TXD		0x1c5
+				MX51_PAD_UART1_RTS__UART1_RTS		0x1c5
+				MX51_PAD_UART1_CTS__UART1_CTS		0x1c5
 				/* Full control lines */
-				MX51_PAD_UART3_RXD__UART1_DTR		NOPULL
-				MX51_PAD_UART3_TXD__UART1_DSR		NOPULL
-				MX51_PAD_KEY_COL4__UART1_RI		NOPULL
-				MX51_PAD_KEY_COL5__UART1_DCD		NOPULL
+				MX51_PAD_UART3_RXD__UART1_DTR		0x1c5
+				MX51_PAD_UART3_TXD__UART1_DSR		0x1c5
+				MX51_PAD_KEY_COL4__UART1_RI		0x1c5
+				MX51_PAD_KEY_COL5__UART1_DCD		0x1c5
 			>;
 		};
 
 		pinctrl_uart2: uart2grp { /* 2Wire UART2 - checked */
 			fsl,pins = <
-				MX51_PAD_UART2_RXD__UART2_RXD		NOPULL
-				MX51_PAD_UART2_TXD__UART2_TXD		NOPULL
+				MX51_PAD_UART2_RXD__UART2_RXD		0x1c5 //INPUT
+				MX51_PAD_UART2_TXD__UART2_TXD		0x1c5 //NOPULL
 			>;
 		};
 
 		pinctrl_uart3: uart3grp { /* 4Wire UART3 - checked */
 			fsl,pins = <
-				MX51_PAD_EIM_D25__UART3_RXD		NOPULL
-				MX51_PAD_EIM_D26__UART3_TXD		NOPULL
-				MX51_PAD_EIM_D27__UART3_RTS		NOPULL
-				MX51_PAD_EIM_D24__UART3_CTS		NOPULL
+				MX51_PAD_EIM_D25__UART3_RXD		0x1c5 //INPUT
+				MX51_PAD_EIM_D26__UART3_TXD		0x1c5 //NOPULL
+				MX51_PAD_EIM_D27__UART3_RTS		0x1c5 //INPUT
+				MX51_PAD_EIM_D24__UART3_CTS		0x1c5 //NOPULL
 			>;
 		};
 
