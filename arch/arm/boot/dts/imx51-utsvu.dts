@@ -40,7 +40,7 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			clock-output-names = "gen_26MHz";
 			clock-frequency = <26000000>;
 		};
-
+#if 0 /* Disabled die to gpio-gate-clock not worked */
 		src_26MHz: src_26MHz {
 			compatible = "gpio-gate-clock";
 			#clock-cells = <0>;
@@ -67,6 +67,7 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			clock-output-names = "ulpi_clock";
 			enable_gpios = <&gpio4 13 GPIO_ACTIVE_LOW>;
 		};
+#endif
 	};
 
 	display0: display@di0 {
@@ -194,6 +195,24 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
 		};
 
+		/* 26MHz clock domain */
+		gen-26MHz-en {
+			label = "gen_26MHz_enable";
+			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+		codec-clk-en {
+			label = "codec_26MHz_enable";
+			gpios = <&gpio4 26 GPIO_ACTIVE_LOW>;
+			default-state = "on";
+		};
+		ulpi-clk-en {
+			label = "ulpi_26MHz_enable";
+			gpios = <&gpio4 13 GPIO_ACTIVE_LOW>;
+			default-state = "on";
+		};
+
+		/* Power down and reset switches */
 		cam-en {
 			label = "camera_enable";
 			gpios = <&gpio4 12 GPIO_ACTIVE_LOW>;
@@ -226,8 +245,8 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usbh1reg>;
 			reg = <0>;
-			clocks = <&ulpi_clock>;
-			clock-names = "main_clk";
+			clocks = <&gen_26MHz>;
+			clock-names = "gen_26MHz";
 			reset-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -281,8 +300,8 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
 			"Headphone Jack", "HP_OUT";
-		mux-int-port = <1>;
-		mux-ext-port = <2>;
+		mux-int-port = <2>;
+		mux-ext-port = <3>;
 	};
 };
 
@@ -512,11 +531,11 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
 		clocks = <&gen_26MHz>; /* FixMe: clock tree or another clock control */
+		clock-names = "gen_26MHz";
 		micbias-resistor-k-ohms = <2>;
 		micbias-voltage-m-volts = <2250>;
 		VDDA-supply = <&vaudio_reg>;
 		VDDIO-supply = <&vvideo_reg>;
-		VDDD-suply = <&reg_3v3_en>; /* Optional */
 	};
 	
 	adv7180: capture@40 {
@@ -608,10 +627,6 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 				/* power control */
 				MX51_PAD_GPIO1_1__GPIO1_1		0x000000E7	/* sw_12v_en */
 				MX51_PAD_CSI2_PIXCLK__GPIO4_15		0x000000E7	/* sw_3v3_en */
-				/* clocks control */
-				MX51_PAD_DI1_PIN12__GPIO3_1		0x000000E7	/* osc_26m_en */
-				MX51_PAD_CSI2_VSYNC__GPIO4_13		0x000000E7	/* usb_clk_en */
-				MX51_PAD_CSPI1_RDY__GPIO4_26		0x000000E7	/* codec clock */
 			>;
 		};
 
@@ -752,6 +767,10 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 				MX51_PAD_CSI2_D19__GPIO4_12		0x000000E7	/* cam_en */
 				MX51_PAD_DISPB2_SER_RS__GPIO3_8		0x000000E7	/* vga_en */
 				MX51_PAD_DI1_D0_CS__GPIO3_3		0x000000E7	/* lvds_en */
+				/* clocks control */
+				MX51_PAD_DI1_PIN12__GPIO3_1		0x000000E7	/* osc_26m_en */
+				MX51_PAD_CSI2_VSYNC__GPIO4_13		0x000000E7	/* usb_clk_en */
+				MX51_PAD_CSPI1_RDY__GPIO4_26		0x000000E7	/* codec clock */
 				/* ToDo: Move extension board ouputs to specific devices */
 				MX51_PAD_EIM_A21__GPIO2_15		0x000000E7	/* BT_EN */
 				MX51_PAD_EIM_A22__GPIO2_16		0x000000E7	/* WL_EN */
