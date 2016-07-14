@@ -235,12 +235,12 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
-	usbphy { /* USB PHY chip */
+	usbphy { /* USB ULPI interface */
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "simple-bus";
 
-		usbh1phy: usbh1phy@0 {
+		usbh1phy: usbh1phy@0 { /* USB PHY chip*/
 			compatible = "usb-nop-xceiv";
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usbh1reg>;
@@ -934,31 +934,31 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 
 		pinctrl_uart1: uart1grp { /* Full control UART1 */
 			fsl,pins = <
-				MX51_PAD_UART1_RXD__UART1_RXD		0x80000000
-				MX51_PAD_UART1_TXD__UART1_TXD		0x80000000
-				MX51_PAD_UART1_RTS__UART1_RTS		0x80000000
-				MX51_PAD_UART1_CTS__UART1_CTS		0x80000000
+				MX51_PAD_UART1_RXD__UART1_RXD		0x00002185
+				MX51_PAD_UART1_TXD__UART1_TXD		0x00002185
+				MX51_PAD_UART1_RTS__UART1_RTS		0x00002185
+				MX51_PAD_UART1_CTS__UART1_CTS		0x00002185
 				/* Full control lines */
-				MX51_PAD_UART3_RXD__UART1_DTR		0x80000000
-				MX51_PAD_UART3_TXD__UART1_DSR		0x80000000
-				MX51_PAD_KEY_COL4__UART1_RI		0x80000000
-				MX51_PAD_KEY_COL5__UART1_DCD		0x80000000
+				MX51_PAD_UART3_RXD__UART1_DTR		0x00002185
+				MX51_PAD_UART3_TXD__UART1_DSR		0x00002185
+				MX51_PAD_KEY_COL4__UART1_RI		0x00002185
+				MX51_PAD_KEY_COL5__UART1_DCD		0x00002185
 			>;
 		};
 
 		pinctrl_uart2: uart2grp { /* 2Wire UART2 */
 			fsl,pins = <
-				MX51_PAD_UART2_RXD__UART2_RXD		0x80000000
-				MX51_PAD_UART2_TXD__UART2_TXD		0x80000000
+				MX51_PAD_UART2_RXD__UART2_RXD		0x00002185
+				MX51_PAD_UART2_TXD__UART2_TXD		0x00002185
 			>;
 		};
 
 		pinctrl_uart3: uart3grp { /* 4Wire UART3 */
 			fsl,pins = <
-				MX51_PAD_EIM_D25__UART3_RXD		0x80000000
-				MX51_PAD_EIM_D26__UART3_TXD		0x80000000
-				MX51_PAD_EIM_D27__UART3_RTS		0x80000000
-				MX51_PAD_EIM_D24__UART3_CTS		0x80000000
+				MX51_PAD_EIM_D25__UART3_RXD		0x00002185
+				MX51_PAD_EIM_D26__UART3_TXD		0x00002185
+				MX51_PAD_EIM_D27__UART3_RTS		0x00002185
+				MX51_PAD_EIM_D24__UART3_CTS		0x00002185
 			>;
 		};
 
