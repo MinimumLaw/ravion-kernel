@@ -432,19 +432,20 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		spi-max-frequency = <25000000>;
 		reg = <1>;
 
+		/* Serial flash partition table */
 		partition@0 {
-			label = "U-Boot";
+			label = "uboot";
 			reg = <0x0 0xC0000>;
 			read-only;
 		};
 		partition@C0000 {
-			label = "U-Boot-Config";
+			label = "uboot-cfg";
 			reg = <0xC0000 0x40000>;
 			read-only;
 		};
 
 		partition@100000 {
-			label = "Reserved";
+			label = "sflash-reserved";
 			reg = <0x100000 0x300000>;
 		};
 	};
@@ -479,11 +480,25 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_nfc>;
 	nand-bus-width = <8>;
-	nsnd-ecc-mode = "hw";
-/*	nand-on-flash-bbt = <true> */
+	nand-ecc-mode = "hw";
 	status = "okay";
-};
 
+	/* NAND Partition table */
+	partition@0 {
+		label = "resque";
+		reg = <0x0 0x03200000>;
+	};
+	partition@3200000 {
+		label = "restore";
+		reg = <0x03200000 0x1c200000>;
+	};
+
+	partition@1f400000 {
+		label = "nand-reserved";
+		reg = <0x1f400000 0x00c00000>;
+	};
+
+};
 
 &fec { /* Fast ethernet MAC/PHY */
 	/* GPIO multiplexing and configuration */
@@ -798,25 +813,27 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			>;
 		};
 
-		pinctrl_nfc: nfcgrp { /* NAND Flash Controller - */
+		pinctrl_nfc: nfcgrp { /* NAND Flash Controller */
 			fsl,pins = <
-				MX51_PAD_NANDF_WE_B__NANDF_WE_B		0x00000087
-				MX51_PAD_NANDF_RE_B__NANDF_RE_B		0x00000087
-				MX51_PAD_NANDF_ALE__NANDF_ALE		0x00000087
-				MX51_PAD_NANDF_CLE__NANDF_CLE		0x00000087
-				MX51_PAD_NANDF_WP_B__NANDF_WP_B		0x00000087
-				MX51_PAD_NANDF_RB0__NANDF_RB0		0x00000087
-				MX51_PAD_NANDF_RB1__NANDF_RB1		0x00000087
-				MX51_PAD_NANDF_CS0__NANDF_CS0		0x00000087
-				MX51_PAD_NANDF_CS1__NANDF_CS1		0x00000087
-				MX51_PAD_NANDF_D0__NANDF_D0		0x00000087
-				MX51_PAD_NANDF_D1__NANDF_D1		0x00000087
-				MX51_PAD_NANDF_D2__NANDF_D2		0x00000087
-				MX51_PAD_NANDF_D3__NANDF_D3		0x00000087
-				MX51_PAD_NANDF_D4__NANDF_D4		0x00000087
-				MX51_PAD_NANDF_D5__NANDF_D5		0x00000087
-				MX51_PAD_NANDF_D6__NANDF_D6		0x00000087
-				MX51_PAD_NANDF_D7__NANDF_D7		0x00000087
+				MX51_PAD_NANDF_WE_B__NANDF_WE_B		0x80000000
+				MX51_PAD_NANDF_RE_B__NANDF_RE_B		0x80000000
+				MX51_PAD_NANDF_ALE__NANDF_ALE		0x80000000
+				MX51_PAD_NANDF_CLE__NANDF_CLE		0x80000000
+				MX51_PAD_NANDF_WP_B__NANDF_WP_B		0x80000000
+				MX51_PAD_NANDF_CS0__NANDF_CS0		0x80000000
+				MX51_PAD_NANDF_RB0__NANDF_RB0		0x80000000
+#if 0 				/* Nand chip on CS1 not present on UTSVU board */
+				MX51_PAD_NANDF_CS1__NANDF_CS1		0x80000000
+				MX51_PAD_NANDF_RB1__NANDF_RB1		0x80000000
+#endif
+				MX51_PAD_NANDF_D0__NANDF_D0		0x80000000
+				MX51_PAD_NANDF_D1__NANDF_D1		0x80000000
+				MX51_PAD_NANDF_D2__NANDF_D2		0x80000000
+				MX51_PAD_NANDF_D3__NANDF_D3		0x80000000
+				MX51_PAD_NANDF_D4__NANDF_D4		0x80000000
+				MX51_PAD_NANDF_D5__NANDF_D5		0x80000000
+				MX51_PAD_NANDF_D6__NANDF_D6		0x80000000
+				MX51_PAD_NANDF_D7__NANDF_D7		0x80000000
 			>;
 		};
 
