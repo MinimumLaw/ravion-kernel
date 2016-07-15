@@ -932,11 +932,17 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 			>;
 		};
 
+/*
+ * We need fix RXD and RTS pins on I.MX515 - see imx51-pinfunc.h for detail 
+ */
+#define MX51_PAD_UART1_RXD__UART1_RXD_FIXED		0x228 0x618 0x9e4 0x0 0x1
+#define MX51_PAD_UART1_RTS__UART1_RTS_FIXED		0x230 0x620 0x9e0 0x0 0x1
+
 		pinctrl_uart1: uart1grp { /* Full control UART1 */
 			fsl,pins = <
-				MX51_PAD_UART1_RXD__UART1_RXD		0x00002185
+				MX51_PAD_UART1_RXD__UART1_RXD_FIXED	0x00002185
 				MX51_PAD_UART1_TXD__UART1_TXD		0x00002185
-				MX51_PAD_UART1_RTS__UART1_RTS		0x00002185
+				MX51_PAD_UART1_RTS__UART1_RTS_FIXED	0x00002185
 				MX51_PAD_UART1_CTS__UART1_CTS		0x00002185
 				/* Full control lines */
 				MX51_PAD_UART3_RXD__UART1_DTR		0x00002185
