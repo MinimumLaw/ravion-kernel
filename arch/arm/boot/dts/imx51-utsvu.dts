@@ -77,37 +77,93 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		status = "okay";
 
 		display-timings {
-			native-mode = <&svga>;
+			native-mode = <&sxga75>;
 			/* Timing from http://wwww.tinyvga.com/vga-timing */
-			vga: vdac_vga { /* VESA VGA: 640x480@75Hz */
-				clock-frequency = <31500000>;
+			vga60: vdac_vga60 { /* VGA: 640x480@63.5Hz 31.6KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <26600000>; /* 25.175MHz required */
 				hsync-len = <64>;	hfront-porch = <16>;	hactive = <640>;	hback-porch = <120>;
 				hsync-active = <0>;	/* negative, whole line 840 */
-				vsync-len = <3>;	vfront-porch = <1>;	vactive = <480>;	vback-porch = <16>;
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <480>;	vback-porch = <15>;
 				vsync-active = <0>;	/* negative, whole frame 500 */
-				de-active = <0>;	pixelclk-active = <1>;	//doubleclk;
-			};
-			svga: vdac_svga { /* SVGA: 800x600@75Hz */
-				clock-frequency = <49500000>;
-				hsync-len = <80>;	hfront-porch = <16>;	hactive = <800>;	hback-porch = <160>;
-				hsync-active = <1>;	/* positive, whole line 1056 */
-				vsync-len = <3>;	vfront-porch = <1>;	vactive = <600>;	vback-porch = <21>;
-				vsync-active = <1>;	/* positive, whole frame 625 */
 				de-active = <0>;	pixelclk-active = <1>;
 			};
-			xga: vdac_xga { /* VESA XGA: 1024x768@75Hz */
-				clock-frequency = <78800000>;
-				hsync-len = <96>;	hfront-porch = <16>;	hactive = <1024>;	hback-porch = <176>;
-				hsync-active = <1>;	/* positive, whole line 1312 */
-				vsync-len = <3>;	vfront-porch = <1>;	vactive = <768>;	vback-porch = <28>;
-				vsync-active = <1>;	/* positive, whole frame 800 */
+			vga75: vdac_vga75 { /* VGA: 640x480@79.3Hz 39.6KHz - checked for work on CRT only */
+				clock-frequency = <33250000>; /* 31.5MHz required */
+				hsync-len = <64>;	hfront-porch = <16>;	hactive = <640>;	hback-porch = <120>;
+				hsync-active = <0>;	/* negative, whole line 840 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <480>;	vback-porch = <15>;
+				vsync-active = <0>;	/* negative, whole frame 500 */
 				de-active = <0>;	pixelclk-active = <1>;
 			};
-			nnga: vdac_nnga { /* VESA NNGA: 1280x1024@60Hz */
-				clock-frequency = <108000000>;
+			svga56: vdac_svga56 { /* SVGA: 800x600@52.0Hz 32.4KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <33250000>; /* 36MHz required */
+				hsync-len = <72>;	hfront-porch = <24>;	hactive = <800>;	hback-porch = <128>;
+				hsync-active = <1>;	/* positive, whole line 1024 */
+				vsync-len = <2>;	vfront-porch = <2>;	vactive = <600>;	vback-porch = <21>;
+				vsync-active = <1>;	/* positive, whole frame 636 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			svga100: vdac_svga100 { /* SVGA: 800x600@97.8Hz 62.0KHz - checked for work on CRT only */
+				clock-frequency = <66500000>; /* 68.18MHz required */
+				hsync-len = <88>;	hfront-porch = <48>;	hactive = <800>;	hback-porch = <136>;
+				hsync-active = <1>;	/* positive, whole line 1072 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <600>;	vback-porch = <31>;
+				vsync-active = <1>;	/* positive, whole frame 636 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			xga60: vdac_xga60 { /* XGA: 1024x768@61.5Hz 49.4KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <66500000>; /* 65MHz required */
+				hsync-len = <136>;	hfront-porch = <24>;	hactive = <1024>;	hback-porch = <160>;
+				hsync-active = <0>;	/* negative, whole line 1344 */
+				vsync-len = <6>;	vfront-porch = <3>;	vactive = <768>;	vback-porch = <29>;
+				vsync-active = <0>;	/* negative, whole frame 806 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			xga70: vdac_xga70 { /* XGA: 1024x768@62.2Hz 50.0KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <66500000>; /* 75MHz required */
+				hsync-len = <136>;	hfront-porch = <24>;	hactive = <1024>;	hback-porch = <144>;
+				hsync-active = <0>;	/* negative, whole line 1328 */
+				vsync-len = <6>;	vfront-porch = <3>;	vactive = <768>;	vback-porch = <29>;
+				vsync-active = <0>;	/* negative, whole frame 806 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			sxga60: vdac_sxga60 { /* SXGA: 1280x1024@74.1Hz 78.8KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <133000000>; /* 108MHz required */
 				hsync-len = <112>;	hfront-porch = <48>;	hactive = <1280>;	hback-porch = <248>;
 				hsync-active = <1>;	/* positive, whole line 1688 */
-				vsync-len = <3>;	vfront-porch = <1>;	vactive = <1024>;	vback-porch = <38>;
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <1024>;	vback-porch = <37>;
+				vsync-active = <1>;	/* positive, whole frame 1066 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			sxga75: vdac_sxga75 { /* SXGA: 1280x1024@74.1Hz 78.8KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <133000000>; /* 135Mhz required */
+				hsync-len = <144>;	hfront-porch = <16>;	hactive = <1280>;	hback-porch = <248>;
+				hsync-active = <1>;	/* positive, whole line 1688 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <1024>;	vback-porch = <37>;
+				vsync-active = <1>;	/* positive, whole frame 1066 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			sxgap60: vdac_sxgap60 { /* SXGA+: 1400x1050@65.2Hz 70.7KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <133000000>; /* 122.61Mhz required */
+				hsync-len = <152>;	hfront-porch = <88>;	hactive = <1400>;	hback-porch = <240>;
+				hsync-active = <0>;	/* negative, whole line 1880 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <1050>;	vback-porch = <32>;
+				vsync-active = <1>;	/* positive, whole frame 1066 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			sxgap72: vdac_sxgap72 { /* SXGA+: 1400x1050@64.3Hz 70.2KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <133000000>; /* 149.34Mhz required */
+				hsync-len = <152>;	hfront-porch = <96>;	hactive = <1400>;	hback-porch = <248>;
+				hsync-active = <0>;	/* negative, whole line 1896 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <1050>;	vback-porch = <39>;
+				vsync-active = <1>;	/* positive, whole frame 1066 */
+				de-active = <0>;	pixelclk-active = <1>;
+			};
+			uxga60: vdac_uxga60 { /* UXGA: 1600x1200@49.3Hz 61.6KHz - checked for work on CRT and LCD monitors */
+				clock-frequency = <133000000>; /* 162Mhz required */
+				hsync-len = <192>;	hfront-porch = <64>;	hactive = <1600>;	hback-porch = <304>;
+				hsync-active = <1>;	/* positive, whole line 1896 */
+				vsync-len = <3>;	vfront-porch = <2>;	vactive = <1200>;	vback-porch = <45>;
 				vsync-active = <1>;	/* positive, whole frame 1066 */
 				de-active = <0>;	pixelclk-active = <1>;
 			};
