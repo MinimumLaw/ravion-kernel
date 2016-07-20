@@ -16,7 +16,7 @@
 
 	chosen {
 		bootargs = "
-console=ttymxc0,115200 bootdelay=1 root=/dev/nfs rw
+console=tty0 console=ttymxc0,115200 bootdelay=1 root=/dev/nfs rw
 ip=192.168.5.101:192.168.5.222:192.168.5.222:255.255.255.0:imx51dev:eth0:off
 nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		stdout-path = &uart1;
@@ -42,18 +42,19 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
-	display0: display@di0 {
+	display0: display@di0 { /* LVDS */
 		compatible = "fsl,imx-parallel-display";
 		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu_disp1>;
-		status = "disabled"; // "okay";
+		status = "okay"; // "disabled";
 
 		display-timings {
 			native-mode = <&mfpi>;
 			/* Timing from 7.1 in datasheet */
 			mfpi: lvds_wsvga { /* WSVGA: 1024x600@75Hz */
-				clock-frequency = <53990000>;
+				/* clock-frequency = <66500000>; 92Hz - not in [60Hz...80Hz] range */
+				clock-frequency = <44333333>; /* 61Hz - 53.99MHz reqired for typical 75Hz */
 				hsync-len = <32>;	hfront-porch = <48>;	hactive = <1024>;	hback-porch = <80>;
 				hsync-active = <0>;	/* negative, whole line 1184 */
 				vsync-len = <1>;	vfront-porch = <3>;	vactive = <600>;	vback-porch = <4>;
@@ -69,12 +70,12 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
-	display1: display@di1 {
+	display1: display@di1 { /* VGA */
 		compatible = "fsl,imx-parallel-display";
 		interface-pix-fmt = "rgb565";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu_disp2>;
-		status = "okay";
+		status = "okay"; // "disabled";
 
 		display-timings {
 			native-mode = <&sxga75>;
@@ -277,7 +278,7 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 		lvds-en {
 			label = "lvds_enable";
-			gpios = <&gpio3 3 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 	};

@@ -9,11 +9,11 @@ export STARTADDR=0x90800040
 
 if [ -z ${1} ]; then
     if [ -f .config ]; then
-	make UIMAGE_LOADADDR=${LOADADDR} UIMAGE_ENTRYADDR=${STARTADDR} -j5 imx51-utsvu.dtb uImage
+	make -j5 UIMAGE_LOADADDR=${LOADADDR} UIMAGE_ENTRYADDR=${STARTADDR} -j5 imx51-utsvu.dtb uImage
     else
 	make clean distclean
 	make utsvu_defconfig
-	make UIMAGE_LOADADDR=${LOADADDR} UIMAGE_ENTRYADDR=${STARTADDR} -j5 imx51-utsvu.dtb uImage
+	make -j5 UIMAGE_LOADADDR=${LOADADDR} UIMAGE_ENTRYADDR=${STARTADDR} -j5 imx51-utsvu.dtb uImage
     fi
     if [ -f arch/arm/boot/uImage ]; then
 	echo Update TFTP kernel
