@@ -498,7 +498,14 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
-	/* ToDo: extension board SPI device placed here */
+	/* Extension board SPI device */
+	wifi: stlc4560@2 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "p54spi-disabled"; /* ToDo: patch driver */
+		spi-max-frequency = <54000000>;
+		reg = <2>;
+	};
 };
 
 &esdhc1 { /* Base board microSD card */
@@ -586,7 +593,7 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	status = "okay";
 	
 	ds2782: battery@0x34 {
-	    compatible = "ds2782-battery";
+	    compatible = "ds2782-disabled"; /* FixMe: disabled - NO connect on dev board */
 	    reg = <0x34>;
 	};
 };
@@ -614,6 +621,14 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		pinctrl-0 = <&pinctrl_cci1>; 
 		compatible = "adi,adv7180";
 		reg = <0x40>; /* ALSB on GROUNG plane */
+		/* remote = <&CSI0>; FixMe: later... */
+
+		port {
+			adv7180_csi:endpoint {
+				bus-width = <12>;
+				/* remote-endpoint = <&CSI0_ep1>; FixMe: later... */
+			};
+		};
 	};
 };
 
