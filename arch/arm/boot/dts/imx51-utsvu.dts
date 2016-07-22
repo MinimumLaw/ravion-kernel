@@ -536,14 +536,8 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	pinctrl-0 = <&pinctrl_nfc>;
 	nand-bus-width = <8>;
 	nand-on-flash-bbt;
-	status = "okay";
-#if 0
 	nand-ecc-mode = "hw";
-#else
-	nand-ecc-mode = "hw_syndrome";
-	nand-ecc-strength = <9>;
-	nand-ecc-step-size = <4>;
-#endif
+	status = "okay";
 
 	/* NAND Partition table */
 	partition@0 {
