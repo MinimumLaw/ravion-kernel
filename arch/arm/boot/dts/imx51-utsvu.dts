@@ -353,6 +353,17 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 	};
 };
 
+/* Add Camera Sense Interfaces */
+&ipu {
+	ipu_csi0: port@0 {
+		reg = <0>;
+		status = "disabled";
+	};
+	ipu_csi1: port@1 {
+		reg = <1>;
+	};
+};
+
 &ipu_di0_disp0 {
 	remote-endpoint = <&display0_in>;
 };
@@ -615,7 +626,7 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		pinctrl-0 = <&pinctrl_cci1>; 
 		compatible = "adi,adv7180";
 		reg = <0x40>; /* ALSB on GROUNG plane */
-		/* remote = <&CSI0>; FixMe: later... */
+		remote = <&ipu_csi1>;
 
 		port {
 			adv7180_csi:endpoint {
