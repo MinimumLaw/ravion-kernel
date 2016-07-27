@@ -42,6 +42,52 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 		};
 	};
 
+	soc { /* Fix trouble in imx51.dtsi */
+		/* No clock source for iram in imx51.dtsi */
+		iram {
+			clocks = <&clks IMX5_CLK_OCRAM>;
+		};
+
+		/* TVE not present in imx51.dtsi */
+		tve: tve@63ff0000 {
+			compatible = "fsl,imx51-tve";
+			reg = <0x63ff0000 0x1000>;
+			interrupts = <92>;
+			clocks = <&clks IMX5_CLK_TVE_GATE>,
+			         <&clks IMX5_CLK_IPU_DI1_SEL>;
+			clock-names = "tve", "di_sel";
+			/* status = "disabled"; */
+
+			port {
+				tve_in: endpoint {
+					remote-endpoint = <&ipu_di1_tve>;
+				};
+			};
+		};
+
+		/* VPU not present in imx51.dtsi */
+		vpu: vpu@63ff4000 {
+			compatible = "fsl,imx51-vpu", "cnm,coda7541";
+			reg = <0x63ff4000 0x1000>;
+			interrupts = <9>;
+			clocks = <&clks IMX5_CLK_VPU_REFERENCE_GATE>,
+				<&clks IMX5_CLK_VPU_GATE>;
+			clock-names = "per", "ahb";
+			resets = <&src 1>;
+			iram = <&iram>;
+		};
+
+		/* SAHARA not present in imx51.dtsi */
+		sahara: crypto@63ff8000 {
+			compatible = "fsl,imx51-sahara";
+			reg = <0x63ff8000 0x4000>;
+			interrupts = <19 20>;
+			clocks = <&clks IMX5_CLK_SAHARA_IPG_GATE>,
+				<&clks IMX5_CLK_SAHARA_IPG_GATE>;
+			clock-names = "ipg", "ahb";
+		};
+	};
+
 	display0: display@di0 { /* LVDS */
 		compatible = "fsl,imx-parallel-display";
 		interface-pix-fmt = "rgb24";
@@ -370,6 +416,10 @@ nfsroot=192.168.5.222:/cimc/root/armv7a-neon/exports,v3,tcp";
 
 &ipu_di1_disp1 {
 	remote-endpoint = <&display1_in>;
+};
+
+&ipu_di1_tve {
+	remote-endpoint = <&tve_in>;
 };
 
 &audmux {
