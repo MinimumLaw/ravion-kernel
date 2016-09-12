@@ -1405,7 +1405,6 @@ made_compressed_probe:
 	spin_lock_init(&acm->write_lock);
 	spin_lock_init(&acm->read_lock);
 	mutex_init(&acm->mutex);
-	acm->rx_endpoint = usb_rcvbulkpipe(usb_dev, epread->bEndpointAddress);
 	acm->is_int_ep = usb_endpoint_xfer_int(epread);
 	if (acm->is_int_ep)
 		acm->bInterval = epread->bInterval;
@@ -1445,14 +1444,14 @@ made_compressed_probe:
 		urb->transfer_dma = rb->dma;
 		if (acm->is_int_ep) {
 			usb_fill_int_urb(urb, acm->dev,
-					 acm->rx_endpoint,
+					 usb_rcvintpipe(usb_dev, epread->bEndpointAddress),
 					 rb->base,
 					 acm->readsize,
 					 acm_read_bulk_callback, rb,
 					 acm->bInterval);
 		} else {
 			usb_fill_bulk_urb(urb, acm->dev,
-					  acm->rx_endpoint,
+					  usb_rcvbulkpipe(usb_dev, epread->bEndpointAddress),
 					  rb->base,
 					  acm->readsize,
 					  acm_read_bulk_callback, rb);
@@ -1680,7 +1679,7 @@ static int acm_resume(struct usb_interface *intf)
 	if (--acm->susp_count)
 		goto out;
 
-	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags)) {
+	if (tty_port_initialized(&acm->port)) {
 		rv = usb_submit_urb(acm->ctrlurb, GFP_ATOMIC);
 
 		for (;;) {
@@ -1710,7 +1709,7 @@ static int acm_reset_resume(struct usb_interface *intf)
 {
 	struct acm *acm = usb_get_intfdata(intf);
 
-	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags))
+	if (tty_port_initialized(&acm->port))
 		tty_port_tty_hangup(&acm->port, false);
 
 	return acm_resume(intf);
