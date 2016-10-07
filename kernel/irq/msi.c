@@ -334,7 +334,8 @@ int msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,
 		ops->set_desc(&arg, desc);
 
 		virq = __irq_domain_alloc_irqs(domain, -1, desc->nvec_used,
-					       dev_to_node(dev), &arg, false);
+					       dev_to_node(dev), &arg, false,
+					       desc->affinity);
 		if (virq < 0) {
 			ret = -ENOSPC;
 			if (ops->handle_error)
@@ -352,6 +353,7 @@ int msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,
 		ops->msi_finish(&arg, 0);
 
 	for_each_msi_entry(desc, dev) {
+		virq = desc->irq;
 		if (desc->nvec_used == 1)
 			dev_dbg(dev, "irq %d for MSI\n", virq);
 		else
