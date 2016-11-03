@@ -142,22 +142,13 @@
 	status = "okay";
 
 	spidev0: spidev@1 {
-		compatible = "spidev";
 		reg = <0>;
 		spi-max-frequency = <23000000>;
-		status = "okay";
+		status = "disabled";
 	};
 };
 
-&hdmi_audio {
-	status = "okay";
-};
-
-&hdmi { /* hdmi_core now hdmi */
-	status = "okay";
-};
-
-&hdmi_video {
+&hdmi {
 	status = "okay";
 };
 
@@ -221,18 +212,6 @@
 	};
 };
 
-&lcd {
-	status = "okay";
-};
-
-&mxcfb1 {
-	status = "okay";
-};
-
-&mxcfb2 {
-	status = "okay";
-};
-
 &pwm1 {
 	status = "okay";
 };
@@ -246,10 +225,6 @@
 };
 
 &pwm4 {
-	status = "okay";
-};
-
-&sound_hdmi {
 	status = "okay";
 };
 

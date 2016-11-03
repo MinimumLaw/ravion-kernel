@@ -139,37 +139,6 @@
 			};
 		};
 
-		/* ToDo: need ports */
-		hdmi_video: hdmi_video@020e0000 {
-		    compatible = "fsl,imx6q-hdmi-video";
-		    reg = <0x020e0000 0x1000>;
-		    reg-names = "hdmi_gpr";
-		    interrupts = <0 115 IRQ_TYPE_LEVEL_HIGH>;
-		    clocks = <&clks IMX6QDL_CLK_HDMI_ISFR>,
-			    <&clks IMX6QDL_CLK_HDMI_IAHB>,
-			    <&clks IMX6QDL_CLK_HSI_TX>;
-		    clock-names = "hdmi_isfr", "hdmi_iahb", "mipi_core";
-		    status = "disabled";
-		};
-
-		hdmi_audio: hdmi_audio@00120000 {
-		    compatible = "fsl,imx6q-hdmi-audio";
-		    clocks = <&clks IMX6QDL_CLK_HDMI_ISFR>,
-			    <&clks IMX6QDL_CLK_HDMI_IAHB>,
-			    <&clks IMX6QDL_CLK_HSI_TX>;
-		    clock-names = "hdmi_isfr", "hdmi_iahb", "mipi_core";
-		    dmas = <&sdma 2 24 0>;
-		    dma-names = "tx";
-		    status = "disabled";
-		};
-
-		hdmi_cec: hdmi_cec@00120000 {
-		    compatible = "fsl,imx6q-hdmi-cec";
-		    interrupts = <0 115 IRQ_TYPE_LEVEL_HIGH>;
-		    status = "disabled";
-		};
-		/* ToDo: to here */
-
 		gpu_3d: gpu@00130000 {
 			compatible = "vivante,gc";
 			reg = <0x00130000 0x4000>;
