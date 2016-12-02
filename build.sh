@@ -2,9 +2,9 @@
 
 export CROSS_COMPILE=armv7a-neon-linux-gnueabi-
 export ARCH=arm
-export ROOT_FS_PATH=/cimc/root/armv7a-neon/exports
-export TFTP_FS_PATH=/cimc/exporttftp
+export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export BR_OVERLAY_PATH=/cimc/build/__git__/buildroot/output/overlay
+export TFTP_FS_PATH=/cimc/exporttftp
 export DEF_TARGET="zImage modules imx6dl-colibri-mcp.dtb"
 export DEF_ARGS="-j3 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
 INSTALL_MOD_PATH=${ROOT_FS_PATH}"
