@@ -145,6 +145,17 @@
 				pixelclk-active = <0>;
 			};
 
+/* MFPi display timing */
+mfpi: lvds_wsvga { /* WSVGA: 1024x600@75Hz */
+	/* clock-frequency = <66500000>; 92Hz - not in [60Hz...80Hz] range */
+	clock-frequency = <44333333>; /* 61Hz - 53.99MHz reqired for typical 75Hz */
+	hsync-len = <32>;	hfront-porch = <48>;	hactive = <1024>;	hback-porch = <80>;
+	hsync-active = <0>;	/* negative, whole line 1184 */
+	vsync-len = <1>;	vfront-porch = <3>;	vactive = <600>;	vback-porch = <4>;
+	vsync-active = <0>;	/* negative, whole frame 608 */
+	de-active = <1>;	pixelclk-active = <1>;
+};
+
 /* Timing from http://wwww.tinyvga.com/vga-timing */
 vga60: vdac_vga60 { /* VGA: 640x480@63.5Hz 31.6KHz - checked for work on CRT and LCD monitors */
 	clock-frequency = <26600000>; /* 25.175MHz required */
