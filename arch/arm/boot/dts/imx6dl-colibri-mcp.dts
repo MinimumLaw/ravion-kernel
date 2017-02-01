@@ -195,20 +195,22 @@
 	             &pinctrl_weim_gpio_3 &pinctrl_weim_gpio_4
 	             &pinctrl_weim_gpio_5 &pinctrl_weim_gpio_6
 	             &pinctrl_csi_gpio_1
-	             &pinctrl_gpio_1
-	             &pinctrl_gpio_2
+/*	             &pinctrl_gpio_1
+	             &pinctrl_gpio_2 */
 	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1>;
 
-	pinctrl_gpio_poweroff: gpio-poweroff {
+	mcp {
+		pinctrl_gpio_poweroff: gpio-poweroff {
 		fsl,pins = <
 			MX6QDL_PAD_NANDF_D3__GPIO2_IO03	0x0f058 /* PU_22K */
-		>;
-	};
+			>;
+		};
 
-	pinctrl_gpio_leds: gpio-leds {
+		pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K */
-		>;
+			>;
+		};
 	};
 };
 
