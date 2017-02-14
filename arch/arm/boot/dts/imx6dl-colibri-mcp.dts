@@ -148,10 +148,6 @@
 	};
 };
 
-&hdmi {
-	status = "okay";
-};
-
 /*
  * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
  * board)
@@ -178,11 +174,11 @@
  */
 &i2cddc {
 	status = "okay";
+};
 
-	hdmi_edid: edid@50 {
-		compatible = "fsl,imx6-hdmi-i2c";
-		reg = <0x50>;
-	};
+&hdmi {
+	ddc-i2c-bus = <&i2cddc>;
+	status = "okay";
 };
 
 &iomuxc {
