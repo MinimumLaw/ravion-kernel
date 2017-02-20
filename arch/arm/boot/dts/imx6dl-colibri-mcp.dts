@@ -1,19 +1,48 @@
 /*
- * Copyright 2014-2015 Toradex AG
+ * Copyright 2014-2016 Toradex AG
  * Copyright 2012 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
  *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License
+ *     version 2 as published by the Free Software Foundation.
+ *
+ *     This file is distributed in the hope that it will be useful
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED , WITHOUT WARRANTY OF ANY KIND
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /dts-v1/;
 
-#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6dl.dtsi"
@@ -25,29 +54,12 @@
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 
 	aliases {
-		i2c0 = &i2cddc;
-		i2c1 = &i2c2;
-		i2c2 = &i2c3;
+		i2c0 = &i2c2;
+		i2c1 = &i2c3;
 	};
 
 	aliases {
-		rtc0 = "/soc/aips-bus@02000000/snvs@020cc000/snvs-rtc-lp@34";
-	};
-
-	aliases {
-		/* the following, together with kernel patches, forces a fixed assignment
-		   between device id and usdhc controller */
-		/* i.e. the eMMC on usdhc3 will be /dev/mmcblk0 */
-		mmc0 = &usdhc3; /* eMMC */
-		mmc1 = &usdhc1; /* MMC 4bit slot */
-	};
-
-	extcon_usbc_det: usbc_det {
-		compatible = "linux,extcon-usb-gpio";
-		debounce = <25>;
-		id-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usbc_det_1>;
+		rtc0 = &snvs_rtc;
 	};
 
 	gpio-leds {
@@ -69,10 +81,10 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>; /* SODIMM 45 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
-			gpio-key,wakeup;
+			wakeup-source;
 		};
 	};
 
@@ -83,74 +95,48 @@
 		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
 	};
 
-	pwmleds {
-		compatible = "pwm-leds";
-		ledpwm2 {
-			label = "PWM<B>";
-			pwms = <&pwm1 0 50000>;
-			max-brightness = <255>;
-		};
+	lcd_display: display@di0 {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "bgr666";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
+		status = "okay";
 
-		ledpwm3 {
-			label = "PWM<C>";
-			pwms = <&pwm4 0 50000>;
-			max-brightness = <255>;
-		};
-		ledpwm4 {
-			label = "PWM<D>";
-			pwms = <&pwm2 0 50000>;
-			max-brightness = <255>;
-		};
-	};
+		#include "ravion-timings.dtsi"
 
-	regulators {
-		reg_usb_host_vbus: usb_host_vbus {
-			status = "okay";
+		port@0 {
+			reg = <0>;
+
+			lcd_display_in: endpoint {
+				remote-endpoint = <&ipu1_di0_disp0>;
+			};
 		};
 	};
 };
 
 &backlight {
-#if 0 /* PWM polarity: if 1 is brightest */
-#if 0 /* Fusion 7 needs 10kHz PWM frequency */
-	pwms = <&pwm3 0 100000>;
-#endif
-	brightness-levels = <0 4 8 16 32 64 128 255>;
-	default-brightness-level = <6>;
-#else /* PWM plarity: if 0 is brightest */
 	brightness-levels = <0 127 191 223 239 247 251 255>;
 	default-brightness-level = <1>;
-#endif
 	status = "okay";
 };
 
-/ {
-	clocks {
-		/* fixed crystal dedicated to mpc258x */
-		clk16m: clk@1 {
-			compatible = "fixed-clock";
-			reg=<1>;
-			#clock-cells = <0>;
-			clock-frequency = <16000000>;
-			clock-output-names = "clk16m";
-		};
-	};
-};
-
-/* Colibri SPI */
+/* Colibri SSP */
 &ecspi4 {
 	status = "okay";
 
 	spidev0: spidev@1 {
 		reg = <0>;
-		spi-max-frequency = <23000000>;
-		status = "disabled";
 	};
 };
 
+&hdmi {
+	status = "okay";
+};
+
 /*
- * I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier
- * board)
+ * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
 &i2c3 {
 	status = "okay";
@@ -164,50 +150,14 @@
 
 	/* DS2484: I2C to OneWire Converter */
 	owc: ds2482@18 {
+		status = "okay";
 		compatible = "ds2482";
 		reg = <0x18>;
 	};
 };
 
-/*
- * DDC_I2C: I2C2_SDA/SCL on extension connector pin 15/16
- */
-&i2cddc {
-	status = "okay";
-};
-
-&hdmi {
-	ddc-i2c-bus = <&i2cddc>;
-	status = "okay";
-};
-
-&iomuxc {
-	/*
-	 * Mux all pins which are unused to be GPIOs
-	 * so they are ready for export to user space
-	 */
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_weim_gpio_1 &pinctrl_weim_gpio_2
-	             &pinctrl_weim_gpio_3 &pinctrl_weim_gpio_4
-	             &pinctrl_weim_gpio_5 &pinctrl_weim_gpio_6
-	             &pinctrl_csi_gpio_1
-/*	             &pinctrl_gpio_1
-	             &pinctrl_gpio_2 */
-	             &pinctrl_usbh_oc_1 &pinctrl_usbc_id_1>;
-
-	mcp {
-		pinctrl_gpio_poweroff: gpio-poweroff {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D3__GPIO2_IO03	0x0f058 /* PU_22K */
-			>;
-		};
-
-		pinctrl_gpio_leds: gpio-leds {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K */
-			>;
-		};
-	};
+&ipu1_di0_disp0 {
+	remote-endpoint = <&lcd_display_in>;
 };
 
 &pwm1 {
@@ -226,15 +176,16 @@
 	status = "okay";
 };
 
+&reg_usb_host_vbus {
+	status = "okay";
+};
+
 &uart1 {
 	status = "okay";
 };
 
 &uart2 {
 	status = "okay";
-#if 0
-	linux,rs485-enabled-at-boot-time;
-#endif
 };
 
 &uart3 {
@@ -242,43 +193,34 @@
 };
 
 &usbh1 {
+	vbus-supply = <&reg_usb_host_vbus>;
 	status = "okay";
 };
 
 &usbotg {
 	status = "okay";
-	extcon = <&extcon_usbc_det>;
 };
 
-/* MMC */
+/* Colibri MMC */
 &usdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mmc_cd>;
+	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* MMCD */
 	status = "okay";
 };
 
 &weim {
-	status = "okay";
-	/* weim memory map: 32MB on CS0, 32MB on CS1, 32MB on CS2 */
-	ranges = <0 0 0x08000000 0x02000000
-	          1 0 0x0a000000 0x02000000
-	          2 0 0x0c000000 0x02000000>;
-	/* SRAM on CS0 */
-	sram@0,0 {
-		compatible = "cypress,cy7c1019dv33-10zsxi, mtd-ram";
-		reg = <0 0 0x00010000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		bank-width = <2>;
-		fsl,weim-cs-timing = <0x00010081 0x00000000 0x04000000
-				0x00000000 0x04000040 0x00000000>;
-	};
-	/* SRAM on CS1 */
-	sram@1,0 {
-		compatible = "cypress,cy7c1019dv33-10zsxi, mtd-ram";
-		reg = <1 0 0x00010000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		bank-width = <2>;
-		fsl,weim-cs-timing = <0x00010081 0x00000000 0x04000000
-				0x00000000 0x04000040 0x00000000>;
+	status = "disabled";
+};
+
+&iomuxc {
+	mcp {
+		pinctrl_gpio_poweroff: gpio-poweroff {
+			fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
+		};
+
+		pinctrl_gpio_leds: gpio-leds {
+			fsl,pins = <MX6QDL_PAD_NANDF_D6__GPIO2_IO06 0x0f058>; /* PU_22K */
+		};
 	};
 };
