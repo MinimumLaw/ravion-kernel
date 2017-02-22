@@ -1,5 +1,5 @@
 display-timings {
-    native-mode = <&sxga75>;
+    native-mode = <&m35l>;
 
     vga: VGA { /* Classic VGA from scratch */
 	clock-frequency = <25200000>;
@@ -19,6 +19,27 @@ display-timings {
 	vsync-len = <1>;	vfront-porch = <3>;	vactive = <600>;	vback-porch = <4>;
 	vsync-active = <0>;	/* negative, whole frame 608 */
 	de-active = <1>;	pixelclk-active = <1>;
+    };
+
+    /* Mitsubish AA035AE01 */
+    m35l: lvds_mitsubish_35 { /* QVGA: 960x540@60Hz */
+	clock-frequency = <33250000>; /* 37.8MHz required */
+
+	hsync-len = <1>;
+	hfront-porch = <30>;
+	hactive = <960>;
+	hback-porch = <87>;
+
+	vsync-len = <1>;
+	vfront-porch = <13>;
+	vactive = <540>;
+	vback-porch = <30>;
+
+	hsync-active = <0>;
+	vsync-active = <0>;
+	de-active = <1>;
+
+	pixelclk-active = <1>;
     };
 
     /* Timing from http://wwww.tinyvga.com/vga-timing */
