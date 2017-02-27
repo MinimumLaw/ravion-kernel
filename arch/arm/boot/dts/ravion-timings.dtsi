@@ -1,5 +1,5 @@
 display-timings {
-    native-mode = <&m35l>;
+    native-mode = <&sxga75>;
 
     vga: VGA { /* Classic VGA from scratch */
 	clock-frequency = <25200000>;
