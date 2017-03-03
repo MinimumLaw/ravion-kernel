@@ -126,8 +126,11 @@
 &ecspi4 {
 	status = "okay";
 
-	spidev0: spidev@1 {
+	spidev0: spidev@0 {
 		reg = <0>;
+		spi-max-frequency = <1000000>;
+		compatible = "spidev";
+		status = "okay";
 	};
 };
 
@@ -214,13 +217,11 @@
 };
 
 &iomuxc {
-	mcp {
-		pinctrl_gpio_poweroff: gpio-poweroff {
-			fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
-		};
+	pinctrl_gpio_poweroff: gpio-poweroff {
+		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
+	};
 
-		pinctrl_gpio_leds: gpio-leds {
-			fsl,pins = <MX6QDL_PAD_NANDF_D6__GPIO2_IO06 0x0f058>; /* PU_22K */
-		};
+	pinctrl_gpio_leds: gpio-leds {
+		fsl,pins = <MX6QDL_PAD_NANDF_D6__GPIO2_IO06 0x0f058>; /* PU_22K */
 	};
 };
