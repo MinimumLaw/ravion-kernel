@@ -24,21 +24,30 @@ display-timings {
     /* Mitsubish AA035AE01 */
     m35l: lvds_mitsubish_35 { /* QVGA: 960x540@60Hz */
 	clock-frequency = <33250000>; /* 37.8MHz required */
+	hsync-len = <1>;	hfront-porch = <30>;	hactive = <960>;	hback-porch = <87>;
+	vsync-len = <1>;	vfront-porch = <13>;	vactive = <540>;	vback-porch = <30>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <1>;	pixelclk-active = <1>;
+    };
 
-	hsync-len = <1>;
-	hfront-porch = <30>;
-	hactive = <960>;
-	hback-porch = <87>;
+    /* KOE TX09D200VM0BAA */
+    koe35t: tft_koe_35 {
+	clock-frequency = <6500000>; /* 6...7MHz required */
 
-	vsync-len = <1>;
-	vfront-porch = <13>;
-	vactive = <540>;
-	vback-porch = <30>;
+	hsync-len = <16>;
+	hfront-porch = <16>;
+	hactive = <240>;
+	hback-porch = <48>;
 
+	vsync-len = <6>;
+	vfront-porch = <6>;
+	vactive = <320>;
+	vback-porch = <6>;
+	
 	hsync-active = <0>;
 	vsync-active = <0>;
-	de-active = <1>;
 
+	de-active = <1>;
 	pixelclk-active = <1>;
     };
 
