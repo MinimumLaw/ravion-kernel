@@ -33,22 +33,20 @@ display-timings {
     /* KOE TX09D200VM0BAA */
     koe35t: tft_koe_35 {
 	clock-frequency = <6500000>; /* 6...7MHz required */
+	hsync-len = <16>;	hfront-porch = <16>;	hactive = <240>;	hback-porch = <48>;
+	vsync-len = <6>;	vfront-porch = <6>;	vactive = <320>;	vback-porch = <6>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <1>;	pixelclk-active = <1>;
+    };
 
-	hsync-len = <16>;
-	hfront-porch = <16>;
-	hactive = <240>;
-	hback-porch = <48>;
+    /* Winstar WF35LSIACDNN0# */
+    win35t: tft_winstar_35 {
+	clock-frequency = <6500000>; /* up to 10MHz required */
 
-	vsync-len = <6>;
-	vfront-porch = <6>;
-	vactive = <320>;
-	vback-porch = <6>;
-	
-	hsync-active = <0>;
-	vsync-active = <0>;
-
-	de-active = <1>;
-	pixelclk-active = <1>;
+	hsync-len = <30>;	hfront-porch = <20>;	hactive = <320>;	hback-porch = <38>;
+	vsync-len = <3>;	vfront-porch = <4>;	vactive = <240>;	vback-porch = <15>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <0>;	pixelclk-active = <1>;
     };
 
     /* Timing from http://wwww.tinyvga.com/vga-timing */
