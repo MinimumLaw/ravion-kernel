@@ -65,6 +65,23 @@ static int max17211_battery_get_property(struct power_supply *psy,
 		else
 			val->intval = INT_MIN;
 		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		if(!w1_max17211_reg_get(info->w1_dev, regRepSOC, &reg)) {
+			reg >>= 8; /* convert to percets */
+			if(reg > 95)
+			    val->intval = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
+			else if(reg > 75)
+			    val->intval = POWER_SUPPLY_CAPACITY_LEVEL_HIGH;
+			else if(reg > 25)
+			    val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
+			else if(reg > 5)
+			    val->intval = POWER_SUPPLY_CAPACITY_LEVEL_LOW;
+			else
+			    val->intval = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
+		} else
+			val->intval = POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN;
+		break;
+		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		if(!w1_max17211_reg_get(info->w1_dev, regBatt, &reg))
 			val->intval = reg * VOLT_MULTIPLER;
@@ -107,6 +124,7 @@ static int max17211_battery_get_property(struct power_supply *psy,
 static enum power_supply_property max17211_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
