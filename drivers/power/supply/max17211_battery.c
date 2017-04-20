@@ -24,7 +24,6 @@
 
 #define DEF_DEV_NAME	"MAX17211"
 #define DEF_MFG_NAME	"MAXIM"
-#define DEF_SER_NUMB	"000000"
 
 struct max17211_device_info {
 	struct device *dev;
@@ -35,7 +34,7 @@ struct max17211_device_info {
 	uint16_t rsense; /* in tenths uOhm */
 	char DeviceName[2*regDevNumb + 1];
 	char ManufacturerName[2*regMfgNumb + 1];
-	char SerialNumber[2*regSerNumb + 1];
+	char SerialNumber[13]; /* see get_sn_str() later for comment */
 };
 
 static inline struct max17211_device_info *
@@ -138,7 +137,7 @@ static enum power_supply_property max17211_battery_props[] = {
 static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
 {
 	uint16_t val;
-	if(!str || !(reg == regMfgStr || reg == regDevStr || reg == regSerStr))
+	if(!str || !(reg == regMfgStr || reg == regDevStr))
 		 return -EFAULT;
 	while(nr--) {
 		if(w1_max17211_reg_get(dev, reg++, &val))
@@ -146,6 +145,25 @@ static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
 		*str++ = val>>8 & 0x00FF;
 		*str++ = val & 0x00FF;
 	}
+	return 0;
+}
+
+/* Maxim say: Serial number is a hex string up to 12 hex characters */
+static int get_sn_string(struct device *dev, char* str)
+{
+	uint16_t val[3];
+
+	if(!str)
+		 return -EFAULT;
+
+	if(w1_max17211_reg_get(dev, regSerHex, &val[0]))
+		return -EFAULT;
+	if(w1_max17211_reg_get(dev, regSerHex + 1, &val[1]))
+		return -EFAULT;
+	if(w1_max17211_reg_get(dev, regSerHex + 2, &val[2]))
+		return -EFAULT;
+
+	snprintf(str,13,"%04X%04X%04X", val[0], val[1], val[2]);
 	return 0;
 }
 
@@ -195,12 +213,10 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	if(!dev_info->DeviceName[0])
 		strncpy(dev_info->DeviceName, DEF_DEV_NAME, 2*regDevNumb);
 
-	if(get_string(dev_info->w1_dev, regSerStr, regSerNumb, dev_info->SerialNumber)) {
+	if(get_sn_string(dev_info->w1_dev, dev_info->SerialNumber)) {
 		dev_err(dev_info->dev,"Can't read serial. Hardware error.\n");
 		return -ENODEV;
 	};
-	if(!dev_info->SerialNumber[0])
-		strncpy(dev_info->SerialNumber, DEF_SER_NUMB, 2*regSerNumb);
 
 	dev_info->bat = power_supply_register(&pdev->dev, &dev_info->bat_desc,
 						&psy_cfg);

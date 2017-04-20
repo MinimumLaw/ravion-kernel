@@ -36,8 +36,8 @@
 #define regMfgNumb	3
 #define regDevStr	(0x1DB)
 #define	regDevNumb	5
-#define regSerStr	(0x1D8)
-#define regSerNumb	3
+
+#define regSerHex	(0x1D8)
 
 extern int w1_max17211_reg_get(struct device *dev, uint16_t addr,
 			uint16_t *val);
