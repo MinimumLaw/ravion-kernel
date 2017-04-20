@@ -22,75 +22,77 @@
 #include "../../w1/w1.h"
 #include "../../w1/slaves/w1_max17211.h"
 
+#define DEF_DEV_NAME	"MAX17211"
+#define DEF_MFG_NAME	"MAXIM"
+#define DEF_SER_NUMB	"000000"
+
 struct max17211_device_info {
 	struct device *dev;
 	struct power_supply *bat;
 	struct power_supply_desc bat_desc;
 	struct device *w1_dev;
+	/* battery design format */
+	uint16_t rsense; /* in tenths uOhm */
+	char DeviceName[2*regDevNumb + 1];
+	char ManufacturerName[2*regMfgNumb + 1];
+	char SerialNumber[2*regSerNumb + 1];
 };
 
-static const char model[] = "MAX17211";
-static const char manufacturer[] = "Maxim/Dallas";
-
 static inline struct max17211_device_info *
-to_max17211_device_info(struct power_supply *psy)
+to_device_info(struct power_supply *psy)
 {
-	return power_supply_get_drvdata(psy);
-}
-
-static inline struct power_supply *to_power_supply(struct device *dev)
-{
-	return dev_get_drvdata(dev);
+    return power_supply_get_drvdata(psy);
 }
 
 static int max17211_battery_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
+	struct max17211_device_info *info = to_device_info(psy);
+	uint16_t reg;
 	int ret = 0;
-	struct max17211_device_info *dev_info = to_max17211_device_info(psy);
 
 	switch (psp) {
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = 1000;
-		break;
-
 	case POWER_SUPPLY_PROP_TEMP:
-		ret = 2300;
+		if(!w1_max17211_reg_get(info->w1_dev, regTemp, &reg))
+			val->intval = (int16_t)reg * TEMP_MULTIPLER;
+		else
+			val->intval = INT_MIN;
 		break;
-
-	case POWER_SUPPLY_PROP_MODEL_NAME:
-		val->strval = model;
-		break;
-
-	case POWER_SUPPLY_PROP_MANUFACTURER:
-		val->strval = manufacturer;
-		break;
-
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = 100000;
-		break;
-
-	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		ret = 200000;
-		break;
-
-	case POWER_SUPPLY_PROP_STATUS:
-		ret = 0;
-		break;
-
 	case POWER_SUPPLY_PROP_CAPACITY:
-		ret = 48000;
+		if(!w1_max17211_reg_get(info->w1_dev, regRepSOC, &reg))
+			val->intval = reg * PERC_MULTIPLER;
+		else
+			val->intval = INT_MIN;
 		break;
-
-	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-		ret = 350000; //max17211_get_accumulated_current(dev_info, &val->intval);
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if(!w1_max17211_reg_get(info->w1_dev, regBatt, &reg))
+			val->intval = reg * VOLT_MULTIPLER;
+		else
+			val->intval = INT_MIN;
 		break;
-
-	case POWER_SUPPLY_PROP_CHARGE_NOW:
-		ret = 1;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		if(!w1_max17211_reg_get(info->w1_dev, regCurrent, &reg))
+			val->intval = reg * CURR_FULL_SCALE / info->rsense;
+		else
+			val->intval = INT_MIN;
 		break;
-
+	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		if(!w1_max17211_reg_get(info->w1_dev, regAvgCurrent, &reg))
+			val->intval = reg * CURR_FULL_SCALE / info->rsense;
+		else
+			val->intval = INT_MIN;
+		break;
+	/* strings */
+	case POWER_SUPPLY_PROP_MODEL_NAME:
+		val->strval = info->DeviceName;
+		break;
+	case POWER_SUPPLY_PROP_MANUFACTURER:
+		val->strval = info->ManufacturerName;
+		break;
+	case POWER_SUPPLY_PROP_SERIAL_NUMBER:
+		val->strval = info->SerialNumber;
+		break;
 	default:
 		ret = -EINVAL;
 	}
@@ -99,17 +101,30 @@ static int max17211_battery_get_property(struct power_supply *psy,
 }
 
 static enum power_supply_property max17211_battery_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_TEMP,
-	POWER_SUPPLY_PROP_MODEL_NAME,
-	POWER_SUPPLY_PROP_MANUFACTURER,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
-	POWER_SUPPLY_PROP_CAPACITY,
-	POWER_SUPPLY_PROP_CHARGE_COUNTER,
-	POWER_SUPPLY_PROP_CHARGE_NOW,
+	/* strings */
+	POWER_SUPPLY_PROP_MODEL_NAME,
+	POWER_SUPPLY_PROP_MANUFACTURER,
+	POWER_SUPPLY_PROP_SERIAL_NUMBER,
 };
+
+static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
+{
+	uint16_t val;
+	if(!str || !(reg == regMfgStr || reg == regDevStr || reg == regSerStr))
+		 return -EFAULT;
+	while(nr--) {
+		if(w1_max17211_reg_get(dev, reg++, &val))
+			return -EFAULT;
+		*str++ = val>>8 & 0x00FF;
+		*str++ = val & 0x00FF;
+	}
+	return 0;
+}
 
 static int max17211_battery_probe(struct platform_device *pdev)
 {
@@ -129,8 +144,40 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	dev_info->bat_desc.properties	= max17211_battery_props;
 	dev_info->bat_desc.num_properties = ARRAY_SIZE(max17211_battery_props);
 	dev_info->bat_desc.get_property	= max17211_battery_get_property;
-
+/* ToDo: device without no_thermal = true not register (err -22) */
+	dev_info->bat_desc.no_thermal	= true;
 	psy_cfg.drv_data		= dev_info;
+
+	if(w1_max17211_reg_get(dev_info->w1_dev, regnRSense, &dev_info->rsense))
+		return -ENODEV;
+
+	if(!dev_info->rsense) {
+		dev_warn(dev_info->dev, "RSenese not calibrated, set 10 mOhms!\n");
+		dev_info->rsense = 1000; /* in regs in 10uOhms */
+	};
+	dev_info(dev_info->dev,"RSense: %duOhms.\n", 10*dev_info->rsense);
+
+	if(get_string(dev_info->w1_dev, regMfgStr, regMfgNumb, dev_info->ManufacturerName)) {
+		dev_err(dev_info->dev,"Can't read manufacturer. Hardware error.\n");
+		return -ENODEV;
+	};
+
+	if(!dev_info->ManufacturerName[0])
+		strncpy(dev_info->ManufacturerName, DEF_MFG_NAME, 2*regMfgNumb);
+
+	if(get_string(dev_info->w1_dev, regDevStr, regDevNumb, dev_info->DeviceName)) {
+		dev_err(dev_info->dev,"Can't read device. Hardware error.\n");
+		return -ENODEV;
+	};
+	if(!dev_info->DeviceName[0])
+		strncpy(dev_info->DeviceName, DEF_DEV_NAME, 2*regDevNumb);
+
+	if(get_string(dev_info->w1_dev, regSerStr, regSerNumb, dev_info->SerialNumber)) {
+		dev_err(dev_info->dev,"Can't read serial. Hardware error.\n");
+		return -ENODEV;
+	};
+	if(!dev_info->SerialNumber[0])
+		strncpy(dev_info->SerialNumber, DEF_SER_NUMB, 2*regSerNumb);
 
 	dev_info->bat = power_supply_register(&pdev->dev, &dev_info->bat_desc,
 						&psy_cfg);
