@@ -3,8 +3,6 @@
  *
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
- * Based on ds2781_battery drivers
- *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -185,7 +183,8 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	dev_info->bat_desc.properties	= max17211_battery_props;
 	dev_info->bat_desc.num_properties = ARRAY_SIZE(max17211_battery_props);
 	dev_info->bat_desc.get_property	= max17211_battery_get_property;
-/* ToDo: device without no_thermal = true not register (err -22) */
+	/* FixMe: 
+	 * device without no_thermal = true not register (err -22) */
 	dev_info->bat_desc.no_thermal	= true;
 	psy_cfg.drv_data		= dev_info;
 
@@ -196,7 +195,7 @@ static int max17211_battery_probe(struct platform_device *pdev)
 		dev_warn(dev_info->dev, "RSenese not calibrated, set 10 mOhms!\n");
 		dev_info->rsense = 1000; /* in regs in 10uOhms */
 	};
-	dev_info(dev_info->dev,"RSense: %duOhms.\n", 10*dev_info->rsense);
+	dev_info(dev_info->dev,"RSense: %d uOhms.\n", 10*dev_info->rsense);
 
 	if(get_string(dev_info->w1_dev, regMfgStr, regMfgNumb, dev_info->ManufacturerName)) {
 		dev_err(dev_info->dev,"Can't read manufacturer. Hardware error.\n");
@@ -250,4 +249,3 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
 MODULE_DESCRIPTION("Maxim MAX17211/MAX17215 Fuel Gauage IC driver");
 MODULE_ALIAS("platform:max17211-battery");
-
