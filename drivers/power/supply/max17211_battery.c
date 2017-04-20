@@ -87,13 +87,13 @@ static int max17211_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if(!w1_max17211_reg_get(info->w1_dev, regCurrent, &reg))
-			val->intval = reg * CURR_FULL_SCALE / info->rsense;
+			val->intval = (int16_t)reg * CURR_MULTIPLER / info->rsense;
 		else
 			val->intval = INT_MIN;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		if(!w1_max17211_reg_get(info->w1_dev, regAvgCurrent, &reg))
-			val->intval = reg * CURR_FULL_SCALE / info->rsense;
+			val->intval = (int16_t)reg * CURR_MULTIPLER / info->rsense;
 		else
 			val->intval = INT_MIN;
 		break;
