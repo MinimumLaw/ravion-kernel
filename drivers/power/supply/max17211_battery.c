@@ -83,6 +83,10 @@ static int max17211_battery_get_property(struct power_supply *psy,
 		else
 			val->intval = INT_MIN;
 		break;
+	/* constant props. */
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+		break;
 	/* strings */
 	case POWER_SUPPLY_PROP_MODEL_NAME:
 		val->strval = info->DeviceName;
@@ -106,6 +110,7 @@ static enum power_supply_property max17211_battery_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_TECHNOLOGY,
 	/* strings */
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
