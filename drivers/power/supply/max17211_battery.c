@@ -178,7 +178,6 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	info->dev = &pdev->dev;
 	info->w1_dev = pdev->dev.parent;
 	info->bat_desc.name = dev_name(&pdev->dev);
-	dev_info(info->dev,"Name: %s\n", info->bat_desc.name);
 	info->bat_desc.type = POWER_SUPPLY_TYPE_BATTERY;
 	info->bat_desc.properties = max17211_battery_props;
 	info->bat_desc.num_properties = ARRAY_SIZE(max17211_battery_props);
