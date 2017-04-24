@@ -21,6 +21,8 @@
 
 /* MAX17211/MAX17215 Output Registers */
 
+#define REG_STATUS	0x000
+#define MAX17211_BAT_PRESENT	(1<<4)
 #define REG_TEMP	0x008	/* Temperature */
 #define TEMP_MULTIPLER	10/256 	/* in tenths of deg. C */
 #define REG_BATT	0x0DA	/* Battery voltage */

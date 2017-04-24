@@ -37,8 +37,8 @@ int w1_max17211_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
 		w1_write_8(sl->master, W1_MAX17211_READ_DATA);
 		w1_write_8(sl->master, addr & 0x00FF);
 		w1_write_8(sl->master, addr>>8 & 0x00FF);
-		((uint8_t*)val)[0] = w1_read_8(sl->master);
-		((uint8_t*)val)[1] = w1_read_8(sl->master);
+		*val = w1_read_8(sl->master);
+		*val |= w1_read_8(sl->master)<<8;
 		ret = 0;
 	}
 

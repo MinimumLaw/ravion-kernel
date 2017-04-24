@@ -50,6 +50,16 @@ static int max17211_battery_get_property(struct power_supply *psy,
 	int ret = 0;
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		/*
+		 * POWER_SUPPLY_PROP_PRESENT will always readable via
+		 * sysfs interface). Value return 0 if battery absent
+		 * or unaccesable via W1.
+		 */
+		val->intval =
+			w1_max17211_reg_get(info->w1_dev, REG_STATUS, &reg) ?
+			0 : !(reg & MAX17211_BAT_PRESENT);
+		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		ret = w1_max17211_reg_get(info->w1_dev, REG_REPSOC, &reg);
 		val->intval = reg * PERC_MULTIPLER;
@@ -116,6 +126,7 @@ static int max17211_battery_get_property(struct power_supply *psy,
 
 static enum power_supply_property max17211_battery_props[] = {
 	/* int */
+	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
