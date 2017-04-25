@@ -117,10 +117,10 @@ config BATTERY_DS2782
 	  Say Y here to enable support for the DS2782/DS2786 standalone battery
 	  gas-gauge.
 
-config BATTERY_MAX17211
+config BATTERY_MAX1721X
 	tristate "MAX17211/MAX17215 standalone gas-gauge"
 	depends on W1
-	select W1_SLAVE_MAX17211
+	select W1_SLAVE_MAX1721X
 	help
 	  Say Y here to enable support for the MAX17211/MAX17215 standalone
 	  battery gas-gauge.

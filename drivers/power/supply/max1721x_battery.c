@@ -18,10 +18,12 @@
 #include <linux/idr.h>
 
 #include "../../w1/w1.h"
-#include "../../w1/slaves/w1_max17211.h"
+#include "../../w1/slaves/w1_max1721x.h"
 
-#define DEF_DEV_NAME	"MAX17211"
-#define DEF_MFG_NAME	"MAXIM"
+#define DEF_DEV_NAME_MAX17211	"MAX17211"
+#define DEF_DEV_NAME_MAX17215	"MAX17215"
+#define DEF_DEV_NAME_UNKNOWN	"UNKNOWN"
+#define DEF_MFG_NAME		"MAXIM"
 
 struct max17211_device_info {
 	struct device *dev;
@@ -30,8 +32,8 @@ struct max17211_device_info {
 	struct device *w1_dev;
 	/* battery design format */
 	uint16_t rsense; /* in tenths uOhm */
-	char DeviceName[2 * REG_DEV_NUMB + 1];
-	char ManufacturerName[2 * REG_MFG_NUMB + 1];
+	char DeviceName[2 * MAX1721X_REG_DEV_NUMB + 1];
+	char ManufacturerName[2 * MAX1721X_REG_MFG_NUMB + 1];
 	char SerialNumber[13]; /* see get_sn_str() later for comment */
 };
 
@@ -41,7 +43,7 @@ to_device_info(struct power_supply *psy)
     return power_supply_get_drvdata(psy);
 }
 
-static int max17211_battery_get_property(struct power_supply *psy,
+static int max1721x_battery_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
@@ -53,36 +55,36 @@ static int max17211_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 		/*
 		 * POWER_SUPPLY_PROP_PRESENT will always readable via
-		 * sysfs interface). Value return 0 if battery absent
-		 * or unaccesable via W1.
+		 * sysfs interface. Value return 0 if battery not
+		 * present or unaccesable via W1.
 		 */
 		val->intval =
-			w1_max17211_reg_get(info->w1_dev, REG_STATUS, &reg) ?
-			0 : !(reg & MAX17211_BAT_PRESENT);
+			w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_STATUS, &reg) ?
+			0 : !(reg & MAX172XX_BAT_PRESENT);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_REPSOC, &reg);
-		val->intval = reg * PERC_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_REPSOC, &reg);
+		val->intval = reg * MAX172XX_PERC_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_BATT, &reg);
-		val->intval = reg * VOLT_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_BATT, &reg);
+		val->intval = reg * MAX172XX_VOLT_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_DESIGNCAP, &reg);
-		val->intval = reg * CAP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_DESIGNCAP, &reg);
+		val->intval = reg * MAX172XX_CAP_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_AVG:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_REPCAP, &reg);
-		val->intval = reg * CAP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_REPCAP, &reg);
+		val->intval = reg * MAX172XX_CAP_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_TTE, &reg);
-		val->intval = reg * TIME_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TTE, &reg);
+		val->intval = reg * MAX172XX_TIME_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_AVG:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_TTF, &reg);
-		val->intval = reg * TIME_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TTF, &reg);
+		val->intval = reg * MAX172XX_TIME_MULTIPLER;
 		break;
 	/*
 	 * Current may be negative (discarge) or positive (charge),
@@ -90,31 +92,31 @@ static int max17211_battery_get_property(struct power_supply *psy,
 	 * uint16_t. So, we need foreced them be signed type int16_t.
 	 */
 	case POWER_SUPPLY_PROP_TEMP:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_TEMP, &reg);
-		val->intval = (int16_t)reg * TEMP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TEMP, &reg);
+		val->intval = (int16_t)reg * MAX172XX_TEMP_MULTIPLER;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_CURRENT, &reg);
-		val->intval = (int16_t)reg * CURR_MULTIPLER / info->rsense;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_CURRENT, &reg);
+		val->intval = (int16_t)reg * MAX172XX_CURR_MULTIPLER / info->rsense;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_AVGCURRENT, &reg);
-		val->intval = (int16_t)reg * CURR_MULTIPLER / info->rsense;
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_AVGCURRENT, &reg);
+		val->intval = (int16_t)reg * MAX172XX_CURR_MULTIPLER / info->rsense;
 		break;
 	/*
 	 * Strings already received and inited by probe.
 	 * We do dummy read for check battery still available.
 	 */
 	case POWER_SUPPLY_PROP_MODEL_NAME:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_DEV_STR, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_DEV_STR, &reg);
 		val->strval = info->DeviceName;
 		break;
 	case POWER_SUPPLY_PROP_MANUFACTURER:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_MFG_STR, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_MFG_STR, &reg);
 		val->strval = info->ManufacturerName;
 		break;
 	case POWER_SUPPLY_PROP_SERIAL_NUMBER:
-		ret = w1_max17211_reg_get(info->w1_dev, REG_SER_HEX, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_SER_HEX, &reg);
 		val->strval = info->SerialNumber;
 		break;
 	default:
@@ -124,7 +126,7 @@ static int max17211_battery_get_property(struct power_supply *psy,
 	return ret;
 }
 
-static enum power_supply_property max17211_battery_props[] = {
+static enum power_supply_property max1721x_battery_props[] = {
 	/* int */
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY,
@@ -145,10 +147,10 @@ static enum power_supply_property max17211_battery_props[] = {
 static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
 {
 	uint16_t val;
-	if (!str || !(reg == REG_MFG_STR || reg == REG_DEV_STR))
+	if (!str || !(reg == MAX1721X_REG_MFG_STR || reg == MAX1721X_REG_DEV_STR))
 		 return -EFAULT;
 	while(nr--) {
-		if (w1_max17211_reg_get(dev, reg++, &val))
+		if (w1_max1721x_reg_get(dev, reg++, &val))
 			return -EFAULT;
 		*str++ = val>>8 & 0x00FF;
 		*str++ = val & 0x00FF;
@@ -164,18 +166,18 @@ static int get_sn_string(struct device *dev, char* str)
 	if (!str)
 		 return -EFAULT;
 
-	if (w1_max17211_reg_get(dev, REG_SER_HEX, &val[0]))
+	if (w1_max1721x_reg_get(dev, MAX1721X_REG_SER_HEX, &val[0]))
 		return -EFAULT;
-	if (w1_max17211_reg_get(dev, REG_SER_HEX + 1, &val[1]))
+	if (w1_max1721x_reg_get(dev, MAX1721X_REG_SER_HEX + 1, &val[1]))
 		return -EFAULT;
-	if (w1_max17211_reg_get(dev, REG_SER_HEX + 2, &val[2]))
+	if (w1_max1721x_reg_get(dev, MAX1721X_REG_SER_HEX + 2, &val[2]))
 		return -EFAULT;
 
 	snprintf(str,13,"%04X%04X%04X", val[0], val[1], val[2]);
 	return 0;
 }
 
-static int max17211_battery_probe(struct platform_device *pdev)
+static int max1721x_battery_probe(struct platform_device *pdev)
 {
 	struct power_supply_config psy_cfg = {};
 	struct max17211_device_info *info;
@@ -190,9 +192,9 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	info->w1_dev = pdev->dev.parent;
 	info->bat_desc.name = dev_name(&pdev->dev);
 	info->bat_desc.type = POWER_SUPPLY_TYPE_BATTERY;
-	info->bat_desc.properties = max17211_battery_props;
-	info->bat_desc.num_properties = ARRAY_SIZE(max17211_battery_props);
-	info->bat_desc.get_property = max17211_battery_get_property;
+	info->bat_desc.properties = max1721x_battery_props;
+	info->bat_desc.num_properties = ARRAY_SIZE(max1721x_battery_props);
+	info->bat_desc.get_property = max1721x_battery_get_property;
 	/* FixMe: 
 	 * Device without no_thermal = true not register (err -22)
 	 * Len of platform device name "max17211-battery.X.auto"
@@ -201,7 +203,7 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	info->bat_desc.no_thermal = true;
 	psy_cfg.drv_data = info;
 
-	if (w1_max17211_reg_get(info->w1_dev, REG_NRSENSE, &info->rsense))
+	if (w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_NRSENSE, &info->rsense))
 		return -ENODEV;
 
 	if (!info->rsense) {
@@ -210,20 +212,37 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	}
 	dev_dbg(info->dev,"RSense: %d mOhms.\n", info->rsense / 100);
 
-	if (get_string(info->w1_dev, REG_MFG_STR, REG_MFG_NUMB, info->ManufacturerName)) {
+	if (get_string(info->w1_dev, MAX1721X_REG_MFG_STR, MAX1721X_REG_MFG_NUMB, info->ManufacturerName)) {
 		dev_err(info->dev,"Can't read manufacturer. Hardware error.\n");
 		return -ENODEV;
 	}
 
 	if (!info->ManufacturerName[0])
-		strncpy(info->ManufacturerName, DEF_MFG_NAME, 2*REG_MFG_NUMB);
+		strncpy(info->ManufacturerName, DEF_MFG_NAME, 2*MAX1721X_REG_MFG_NUMB);
 
-	if (get_string(info->w1_dev, REG_DEV_STR, REG_DEV_NUMB, info->DeviceName)) {
+	if (get_string(info->w1_dev, MAX1721X_REG_DEV_STR, MAX1721X_REG_DEV_NUMB, info->DeviceName)) {
 		dev_err(info->dev,"Can't read device. Hardware error.\n");
 		return -ENODEV;
 	}
-	if (!info->DeviceName[0])
-		strncpy(info->DeviceName, DEF_DEV_NAME, 2*REG_DEV_NUMB);
+	if (!info->DeviceName[0]) {
+		uint16_t dev_name;
+
+		if (w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_DEVNAME, &dev_name)) {
+			dev_err(info->w1_dev, "Can't read device name reg.\n");
+			return -ENODEV;
+		}
+
+		switch(dev_name & MAX172XX_DEV_MASK) {
+		    case MAX172X1_DEV:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17211, 2 * MAX1721X_REG_DEV_NUMB);
+			break;
+		    case MAX172X5_DEV:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17215, 2 * MAX1721X_REG_DEV_NUMB);
+			break;
+		    default:
+			strncpy(info->DeviceName, DEF_DEV_NAME_UNKNOWN, 2 * MAX1721X_REG_DEV_NUMB);
+		}
+	}
 
 	if (get_sn_string(info->w1_dev, info->SerialNumber)) {
 		dev_err(info->dev,"Can't read serial. Hardware error.\n");
@@ -240,7 +259,7 @@ static int max17211_battery_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int max17211_battery_remove(struct platform_device *pdev)
+static int max1721x_battery_remove(struct platform_device *pdev)
 {
 	struct max17211_device_info *info = platform_get_drvdata(pdev);
 
@@ -249,16 +268,16 @@ static int max17211_battery_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver max17211_battery_driver = {
+static struct platform_driver max1721x_battery_driver = {
 	.driver = {
-		.name = "max17211-battery",
+		.name = "max1721x-battery",
 	},
-	.probe	  = max17211_battery_probe,
-	.remove   = max17211_battery_remove,
+	.probe	  = max1721x_battery_probe,
+	.remove   = max1721x_battery_remove,
 };
-module_platform_driver(max17211_battery_driver);
+module_platform_driver(max1721x_battery_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
 MODULE_DESCRIPTION("Maxim MAX17211/MAX17215 Fuel Gauage IC driver");
-MODULE_ALIAS("platform:max17211-battery");
+MODULE_ALIAS("platform:max1721x-battery");

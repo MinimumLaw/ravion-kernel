@@ -78,7 +78,7 @@ config W1_SLAVE_DS2433_CRC
 	  Each block has 30 bytes of data and a two byte CRC16.
 	  Full block writes are only allowed if the CRC is valid.
 
-config W1_SLAVE_MAX17211
+config W1_SLAVE_MAX1721X
 	tristate "Maxim MAX17211/MAX17215 battery monitor chip"
 	help
 	  If you enable this you will have the MAX17211/MAX17215 battery

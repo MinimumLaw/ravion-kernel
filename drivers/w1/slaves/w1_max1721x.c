@@ -21,20 +21,20 @@
 #include "../w1.h"
 #include "../w1_int.h"
 #include "../w1_family.h"
-#include "w1_max17211.h"
+#include "w1_max1721x.h"
 
-int w1_max17211_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
+int w1_max1721x_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
 {
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
 	int ret = -ENODEV;
 
-	if (addr > MAX17211_MAX_REG_NR || addr < 0 || !val || !dev)
+	if (addr > MAX1721X_MAX_REG_NR || addr < 0 || !val || !dev)
 		return -EFAULT;
 
 	mutex_lock(&sl->master->bus_mutex);
 
 	if (!w1_reset_select_slave(sl)) {
-		w1_write_8(sl->master, W1_MAX17211_READ_DATA);
+		w1_write_8(sl->master, W1_MAX1721X_READ_DATA);
 		w1_write_8(sl->master, addr & 0x00FF);
 		w1_write_8(sl->master, addr>>8 & 0x00FF);
 		*val = w1_read_8(sl->master);
@@ -47,18 +47,18 @@ int w1_max17211_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
 	return ret;
 }
 
-int w1_max17211_reg_set(struct device *dev, uint16_t addr, uint16_t val)
+int w1_max1721x_reg_set(struct device *dev, uint16_t addr, uint16_t val)
 {
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
 	int ret = -ENODEV;
 
-	if (addr > MAX17211_MAX_REG_NR || addr < 0 || !dev)
+	if (addr > MAX1721X_MAX_REG_NR || addr < 0 || !dev)
 		return -EFAULT;
 
 	mutex_lock(&sl->master->bus_mutex);
 
 	if (!w1_reset_select_slave(sl)) {
-		w1_write_8(sl->master, W1_MAX17211_READ_DATA);
+		w1_write_8(sl->master, W1_MAX1721X_READ_DATA);
 		w1_write_8(sl->master, addr & 0x00FF);
 		w1_write_8(sl->master, addr>>8 & 0x00FF);
 		w1_write_8(sl->master, val & 0x00FF);
@@ -76,7 +76,7 @@ static int w1_max17211_add_device(struct w1_slave *sl)
 	int ret;
 	struct platform_device *pdev;
 
-	pdev = platform_device_alloc("max17211-battery", PLATFORM_DEVID_AUTO);
+	pdev = platform_device_alloc("max1721x-battery", PLATFORM_DEVID_AUTO);
 	if (!pdev)
 		return -ENOMEM;
 	pdev->dev.parent = &sl->dev;
@@ -113,8 +113,8 @@ static struct w1_family w1_max17211_family = {
 };
 module_w1_family(w1_max17211_family);
 
-EXPORT_SYMBOL(w1_max17211_reg_get);
-EXPORT_SYMBOL(w1_max17211_reg_set);
+EXPORT_SYMBOL(w1_max1721x_reg_get);
+EXPORT_SYMBOL(w1_max1721x_reg_set);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
