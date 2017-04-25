@@ -195,7 +195,7 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	info->bat_desc.properties = max1721x_battery_props;
 	info->bat_desc.num_properties = ARRAY_SIZE(max1721x_battery_props);
 	info->bat_desc.get_property = max1721x_battery_get_property;
-	/* FixMe: 
+	/* FixMe:
 	 * Device without no_thermal = true not register (err -22)
 	 * Len of platform device name "max17211-battery.X.auto"
 	 * more than 20 chars limit in THERMAL_NAME_LENGTH from
