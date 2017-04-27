@@ -46,6 +46,7 @@ int w1_max1721x_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
 
 	return ret;
 }
+EXPORT_SYMBOL(w1_max1721x_reg_get);
 
 int w1_max1721x_reg_set(struct device *dev, uint16_t addr, uint16_t val)
 {
@@ -70,6 +71,7 @@ int w1_max1721x_reg_set(struct device *dev, uint16_t addr, uint16_t val)
 
 	return ret;
 }
+EXPORT_SYMBOL(w1_max1721x_reg_set);
 
 static int w1_max17211_add_device(struct w1_slave *sl)
 {
@@ -112,9 +114,6 @@ static struct w1_family w1_max17211_family = {
 	.fops = &w1_max17211_fops,
 };
 module_w1_family(w1_max17211_family);
-
-EXPORT_SYMBOL(w1_max1721x_reg_get);
-EXPORT_SYMBOL(w1_max1721x_reg_set);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");

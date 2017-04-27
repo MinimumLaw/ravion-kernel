@@ -40,7 +40,7 @@ struct max17211_device_info {
 static inline struct max17211_device_info *
 to_device_info(struct power_supply *psy)
 {
-    return power_supply_get_drvdata(psy);
+	return power_supply_get_drvdata(psy);
 }
 
 static int max1721x_battery_get_property(struct power_supply *psy,
@@ -59,64 +59,71 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 		 * present or unaccesable via W1.
 		 */
 		val->intval =
-			w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_STATUS, &reg) ?
-			0 : !(reg & MAX172XX_BAT_PRESENT);
+			w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_STATUS,
+				&reg) ? 0 : !(reg & MAX172XX_BAT_PRESENT);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_REPSOC, &reg);
-		val->intval = reg * MAX172XX_PERC_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_REPSOC, &reg);
+		val->intval = max172xx_percent_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_BATT, &reg);
-		val->intval = reg * MAX172XX_VOLT_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_BATT, &reg);
+		val->intval = max172xx_voltage_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_DESIGNCAP, &reg);
-		val->intval = reg * MAX172XX_CAP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_DESIGNCAP, &reg);
+		val->intval = max172xx_capacity_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_AVG:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_REPCAP, &reg);
-		val->intval = reg * MAX172XX_CAP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_REPCAP, &reg);
+		val->intval = max172xx_capacity_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TTE, &reg);
-		val->intval = reg * MAX172XX_TIME_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_TTE, &reg);
+		val->intval = max172xx_time_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_AVG:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TTF, &reg);
-		val->intval = reg * MAX172XX_TIME_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_TTF, &reg);
+		val->intval = max172xx_time_to_ps(reg);
 		break;
-	/*
-	 * Current may be negative (discarge) or positive (charge),
-	 * temperature also may be bellow zero, but reg have unsigned type
-	 * uint16_t. So, we need foreced them be signed type int16_t.
-	 */
 	case POWER_SUPPLY_PROP_TEMP:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_TEMP, &reg);
-		val->intval = (int16_t)reg * MAX172XX_TEMP_MULTIPLER;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_TEMP, &reg);
+		val->intval = max172xx_temperature_to_ps(reg);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_CURRENT, &reg);
-		val->intval = (int16_t)reg * MAX172XX_CURR_MULTIPLER / info->rsense;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_CURRENT, &reg);
+		val->intval = max172xx_current_to_voltage(reg) / info->rsense;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_AVGCURRENT, &reg);
-		val->intval = (int16_t)reg * MAX172XX_CURR_MULTIPLER / info->rsense;
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX172XX_REG_AVGCURRENT, &reg);
+		val->intval = max172xx_current_to_voltage(reg) / info->rsense;
 		break;
 	/*
 	 * Strings already received and inited by probe.
 	 * We do dummy read for check battery still available.
 	 */
 	case POWER_SUPPLY_PROP_MODEL_NAME:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_DEV_STR, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX1721X_REG_DEV_STR, &reg);
 		val->strval = info->DeviceName;
 		break;
 	case POWER_SUPPLY_PROP_MANUFACTURER:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_MFG_STR, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX1721X_REG_MFG_STR, &reg);
 		val->strval = info->ManufacturerName;
 		break;
 	case POWER_SUPPLY_PROP_SERIAL_NUMBER:
-		ret = w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_SER_HEX, &reg);
+		ret = w1_max1721x_reg_get(info->w1_dev,
+			MAX1721X_REG_SER_HEX, &reg);
 		val->strval = info->SerialNumber;
 		break;
 	default:
@@ -144,12 +151,15 @@ static enum power_supply_property max1721x_battery_props[] = {
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
 };
 
-static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
+static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char *str)
 {
 	uint16_t val;
-	if (!str || !(reg == MAX1721X_REG_MFG_STR || reg == MAX1721X_REG_DEV_STR))
-		 return -EFAULT;
-	while(nr--) {
+
+	if (!str || !(reg == MAX1721X_REG_MFG_STR ||
+			reg == MAX1721X_REG_DEV_STR))
+		return -EFAULT;
+
+	while (nr--) {
 		if (w1_max1721x_reg_get(dev, reg++, &val))
 			return -EFAULT;
 		*str++ = val>>8 & 0x00FF;
@@ -159,12 +169,12 @@ static int get_string(struct device *dev, uint16_t reg, uint8_t nr, char* str)
 }
 
 /* Maxim say: Serial number is a hex string up to 12 hex characters */
-static int get_sn_string(struct device *dev, char* str)
+static int get_sn_string(struct device *dev, char *str)
 {
 	uint16_t val[3];
 
 	if (!str)
-		 return -EFAULT;
+		return -EFAULT;
 
 	if (w1_max1721x_reg_get(dev, MAX1721X_REG_SER_HEX, &val[0]))
 		return -EFAULT;
@@ -173,7 +183,7 @@ static int get_sn_string(struct device *dev, char* str)
 	if (w1_max1721x_reg_get(dev, MAX1721X_REG_SER_HEX + 2, &val[2]))
 		return -EFAULT;
 
-	snprintf(str,13,"%04X%04X%04X", val[0], val[1], val[2]);
+	snprintf(str, 13, "%04X%04X%04X", val[0], val[1], val[2]);
 	return 0;
 }
 
@@ -195,57 +205,67 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	info->bat_desc.properties = max1721x_battery_props;
 	info->bat_desc.num_properties = ARRAY_SIZE(max1721x_battery_props);
 	info->bat_desc.get_property = max1721x_battery_get_property;
-	/* FixMe:
+	/*
+	 * FixMe:
 	 * Device without no_thermal = true not register (err -22)
 	 * Len of platform device name "max17211-battery.X.auto"
 	 * more than 20 chars limit in THERMAL_NAME_LENGTH from
-	 * include/uapi/linux/thermal.h */
+	 * include/uapi/linux/thermal.h
+	 */
 	info->bat_desc.no_thermal = true;
 	psy_cfg.drv_data = info;
 
-	if (w1_max1721x_reg_get(info->w1_dev, MAX1721X_REG_NRSENSE, &info->rsense))
+	if (w1_max1721x_reg_get(info->w1_dev,
+			MAX1721X_REG_NRSENSE, &info->rsense))
 		return -ENODEV;
 
 	if (!info->rsense) {
 		dev_warn(info->dev, "RSenese not calibrated, set 10 mOhms!\n");
 		info->rsense = 1000; /* in regs in 10^-5 */
 	}
-	dev_dbg(info->dev,"RSense: %d mOhms.\n", info->rsense / 100);
+	dev_dbg(info->dev, "RSense: %d mOhms.\n", info->rsense / 100);
 
-	if (get_string(info->w1_dev, MAX1721X_REG_MFG_STR, MAX1721X_REG_MFG_NUMB, info->ManufacturerName)) {
-		dev_err(info->dev,"Can't read manufacturer. Hardware error.\n");
+	if (get_string(info->w1_dev, MAX1721X_REG_MFG_STR,
+			MAX1721X_REG_MFG_NUMB, info->ManufacturerName)) {
+		dev_err(info->dev, "Can't read manufacturer. Hardware error.\n");
 		return -ENODEV;
 	}
 
 	if (!info->ManufacturerName[0])
-		strncpy(info->ManufacturerName, DEF_MFG_NAME, 2*MAX1721X_REG_MFG_NUMB);
+		strncpy(info->ManufacturerName, DEF_MFG_NAME,
+			2 * MAX1721X_REG_MFG_NUMB);
 
-	if (get_string(info->w1_dev, MAX1721X_REG_DEV_STR, MAX1721X_REG_DEV_NUMB, info->DeviceName)) {
-		dev_err(info->dev,"Can't read device. Hardware error.\n");
+	if (get_string(info->w1_dev, MAX1721X_REG_DEV_STR,
+			MAX1721X_REG_DEV_NUMB, info->DeviceName)) {
+		dev_err(info->dev, "Can't read device. Hardware error.\n");
 		return -ENODEV;
 	}
 	if (!info->DeviceName[0]) {
 		uint16_t dev_name;
 
-		if (w1_max1721x_reg_get(info->w1_dev, MAX172XX_REG_DEVNAME, &dev_name)) {
+		if (w1_max1721x_reg_get(info->w1_dev,
+				MAX172XX_REG_DEVNAME, &dev_name)) {
 			dev_err(info->w1_dev, "Can't read device name reg.\n");
 			return -ENODEV;
 		}
 
-		switch(dev_name & MAX172XX_DEV_MASK) {
-		    case MAX172X1_DEV:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17211, 2 * MAX1721X_REG_DEV_NUMB);
+		switch (dev_name & MAX172XX_DEV_MASK) {
+		case MAX172X1_DEV:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17211,
+				2 * MAX1721X_REG_DEV_NUMB);
 			break;
-		    case MAX172X5_DEV:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17215, 2 * MAX1721X_REG_DEV_NUMB);
+		case MAX172X5_DEV:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17215,
+				2 * MAX1721X_REG_DEV_NUMB);
 			break;
-		    default:
-			strncpy(info->DeviceName, DEF_DEV_NAME_UNKNOWN, 2 * MAX1721X_REG_DEV_NUMB);
+		default:
+			strncpy(info->DeviceName, DEF_DEV_NAME_UNKNOWN,
+				2 * MAX1721X_REG_DEV_NUMB);
 		}
 	}
 
 	if (get_sn_string(info->w1_dev, info->SerialNumber)) {
-		dev_err(info->dev,"Can't read serial. Hardware error.\n");
+		dev_err(info->dev, "Can't read serial. Hardware error.\n");
 		return -ENODEV;
 	}
 
