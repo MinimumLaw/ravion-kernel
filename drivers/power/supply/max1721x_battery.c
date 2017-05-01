@@ -269,7 +269,7 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	info->bat = power_supply_register(&pdev->dev, &info->bat_desc,
+	info->bat = devm_power_supply_register(&pdev->dev, &info->bat_desc,
 						&psy_cfg);
 	if (IS_ERR(info->bat)) {
 		dev_err(info->dev, "failed to register battery\n");
@@ -279,21 +279,11 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int max1721x_battery_remove(struct platform_device *pdev)
-{
-	struct max17211_device_info *info = platform_get_drvdata(pdev);
-
-	power_supply_unregister(info->bat);
-
-	return 0;
-}
-
 static struct platform_driver max1721x_battery_driver = {
 	.driver = {
 		.name = "max1721x-battery",
 	},
 	.probe	  = max1721x_battery_probe,
-	.remove   = max1721x_battery_remove,
 };
 module_platform_driver(max1721x_battery_driver);
 
