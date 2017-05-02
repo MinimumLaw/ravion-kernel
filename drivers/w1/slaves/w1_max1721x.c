@@ -48,31 +48,6 @@ int w1_max1721x_reg_get(struct device *dev, uint16_t addr, uint16_t *val)
 }
 EXPORT_SYMBOL(w1_max1721x_reg_get);
 
-int w1_max1721x_reg_set(struct device *dev, uint16_t addr, uint16_t val)
-{
-	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
-	if (addr > MAX1721X_MAX_REG_NR || addr < 0 || !dev)
-		return -EFAULT;
-
-	mutex_lock(&sl->master->bus_mutex);
-
-	if (!w1_reset_select_slave(sl)) {
-		w1_write_8(sl->master, W1_MAX1721X_READ_DATA);
-		w1_write_8(sl->master, addr & 0x00FF);
-		w1_write_8(sl->master, addr>>8 & 0x00FF);
-		w1_write_8(sl->master, val & 0x00FF);
-		w1_write_8(sl->master, val>>8 & 0x00FF);
-		ret = 0;
-	}
-
-	mutex_unlock(&sl->master->bus_mutex);
-
-	return ret;
-}
-EXPORT_SYMBOL(w1_max1721x_reg_set);
-
 static int w1_max17211_add_device(struct w1_slave *sl)
 {
 	int ret;
