@@ -93,7 +93,4 @@ static inline int max172xx_current_to_voltage(uint16_t reg)
 	return (int16_t)reg * 156252;
 }
 
-extern int w1_max1721x_reg_get(struct device *dev, uint16_t addr,
-			uint16_t *val);
-
 #endif /* !__w1_max17211_h__ */
