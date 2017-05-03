@@ -1,7 +1,7 @@
 /*
  * Register map access API - W1 (OneWire) support
  *
- * Copyright 2017 OAO Radioavionica
+ * Copyright (C) 2017 OAO Radioavionica
  *
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *

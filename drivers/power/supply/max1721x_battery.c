@@ -1,6 +1,8 @@
 /*
  * 1-wire client/driver for the Maxim MAX17211/MAX17215 Fuel Gauge IC
  *
+ * Copyright (C) 2017 OAO Radioavionica
+ *
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -90,17 +92,18 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = regmap_read(info->regmap, MAX172XX_REG_TEMP, &reg);
-		val->intval = max172xx_temperature_to_ps((uint16_t)reg);
+		val->intval = max172xx_temperature_to_ps(reg);
 		break;
+	/* We need signed current, so must cast info->rsense to signed type */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = regmap_read(info->regmap, MAX172XX_REG_CURRENT, &reg);
 		val->intval =
-		    max172xx_current_to_voltage((uint16_t)reg) / info->rsense;
+			max172xx_current_to_voltage(reg) / (int)info->rsense;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		ret = regmap_read(info->regmap, MAX172XX_REG_AVGCURRENT, &reg);
 		val->intval =
-		    max172xx_current_to_voltage((uint16_t)reg) / info->rsense;
+			max172xx_current_to_voltage(reg) / (int)info->rsense;
 		break;
 	/*
 	 * Strings already received and inited by probe.

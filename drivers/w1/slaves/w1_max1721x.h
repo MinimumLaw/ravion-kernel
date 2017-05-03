@@ -1,7 +1,9 @@
 /*
  * 1-Wire implementation for the max17211 chip
  *
- * Copyright © 2017, Alex A. Mihaylov <minimumlaw@rambler.ru>
+ * Copyright (C) 2017 OAO Radioavionica
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is
@@ -50,22 +52,22 @@
 
 /* Convert regs value to power_supply units */
 
-static inline int max172xx_time_to_ps(uint16_t reg)
+static inline int max172xx_time_to_ps(unsigned int reg)
 {
 	return reg * 5625 / 1000;	/* in sec. */
 }
 
-static inline int max172xx_percent_to_ps(uint16_t reg)
+static inline int max172xx_percent_to_ps(unsigned int reg)
 {
 	return reg / 256;	/* in percent from 0 to 100 */
 }
 
-static inline int max172xx_voltage_to_ps(uint16_t reg)
+static inline int max172xx_voltage_to_ps(unsigned int reg)
 {
 	return reg * 1250;	/* in uV */
 }
 
-static inline int max172xx_capacity_to_ps(uint16_t reg)
+static inline int max172xx_capacity_to_ps(unsigned int reg)
 {
 	return reg * 500;	/* in uAh */
 }
@@ -75,9 +77,10 @@ static inline int max172xx_capacity_to_ps(uint16_t reg)
  * value must be converted to signed type
  */
 
-static inline int max172xx_temperature_to_ps(uint16_t reg)
+static inline int max172xx_temperature_to_ps(unsigned int reg)
 {
-	return (int16_t)reg * 10 / 256;	/* in tenths of deg. C */
+	int val = (int16_t)(reg);
+	return val * 10 / 256; /* in tenths of deg. C */
 }
 
 /*
@@ -88,9 +91,10 @@ static inline int max172xx_temperature_to_ps(uint16_t reg)
  * 16 bit current reg fullscale +/-51.2mV is 102400 uV.
  * So: 102400 / 65535 * 10^5 = 156252
  */
-static inline int max172xx_current_to_voltage(uint16_t reg)
+static inline int max172xx_current_to_voltage(unsigned int reg)
 {
-	return (int16_t)reg * 156252;
+	int val = (int16_t)(reg);
+	return val * 156252;
 }
 
 #endif /* !__w1_max17211_h__ */

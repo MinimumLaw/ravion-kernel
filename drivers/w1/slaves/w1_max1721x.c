@@ -1,7 +1,9 @@
 /*
  * 1-Wire implementation for the max17211 chip
  *
- * Copyright © 2017, Alex A. Mihaylov <minimumlaw@rambler.ru>
+ * Copyright (C) 2017 OAO Radioavionica
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is
