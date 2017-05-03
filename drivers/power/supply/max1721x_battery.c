@@ -217,9 +217,11 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	psy_cfg.drv_data = info;
 
 	/* regmap init */
-	info->regmap = devm_regmap_init_w1(info->w1_dev, &max1721x_regmap_w1_config);
+	info->regmap = devm_regmap_init_w1(info->w1_dev,
+					&max1721x_regmap_w1_config);
 	if (IS_ERR(info->regmap)) {
 		int err = PTR_ERR(info->regmap);
+
 		dev_err(info->dev, "Failed to allocate register map: %d\n",
 			err);
 		return err;

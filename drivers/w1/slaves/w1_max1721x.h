@@ -80,6 +80,7 @@ static inline int max172xx_capacity_to_ps(unsigned int reg)
 static inline int max172xx_temperature_to_ps(unsigned int reg)
 {
 	int val = (int16_t)(reg);
+
 	return val * 10 / 256; /* in tenths of deg. C */
 }
 
@@ -94,6 +95,7 @@ static inline int max172xx_temperature_to_ps(unsigned int reg)
 static inline int max172xx_current_to_voltage(unsigned int reg)
 {
 	int val = (int16_t)(reg);
+
 	return val * 156252;
 }
 
