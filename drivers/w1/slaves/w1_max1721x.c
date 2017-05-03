@@ -1,8 +1,8 @@
 /*
- * 1-Wire implementation for the max17211 chip
+ * 1-Wire implementation for Maxim Semiconductor
+ * MAX17211/MAX17215 standalone fuel gauge chip
  *
  * Copyright (C) 2017 OAO Radioavionica
- *
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * Use consistent with the GNU GPL is permitted,

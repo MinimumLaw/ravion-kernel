@@ -1,8 +1,8 @@
 /*
- * 1-wire client/driver for the Maxim MAX17211/MAX17215 Fuel Gauge IC
+ * 1-wire client/driver for the Maxim Semicondactor
+ * MAX17211/MAX17215 Standalone Fuel Gauge IC
  *
  * Copyright (C) 2017 OAO Radioavionica
- *
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * This program is free software; you can redistribute it and/or modify
