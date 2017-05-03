@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/param.h>
 #include <linux/pm.h>
+#include <linux/regmap.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/idr.h>
@@ -30,6 +31,7 @@ struct max17211_device_info {
 	struct power_supply *bat;
 	struct power_supply_desc bat_desc;
 	struct device *w1_dev;
+	struct regmap *regmap;
 	/* battery design format */
 	uint16_t rsense; /* in tenths uOhm */
 	char DeviceName[2 * MAX1721X_REG_DEV_NUMB + 1];
@@ -187,6 +189,11 @@ static int get_sn_string(struct device *dev, char *str)
 	return 0;
 }
 
+static const struct regmap_config max1721x_regmap_w1_config = {
+	.reg_bits = 16,
+	.val_bits = 16,
+};
+
 static int max1721x_battery_probe(struct platform_device *pdev)
 {
 	struct power_supply_config psy_cfg = {};
@@ -214,6 +221,15 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	 */
 	info->bat_desc.no_thermal = true;
 	psy_cfg.drv_data = info;
+
+	/* regmap init */
+	info->regmap = devm_regmap_init_w1(info->w1_dev, &max1721x_regmap_w1_config);
+	if (IS_ERR(info->regmap)) {
+		int err = PTR_ERR(info->regmap);
+		dev_err(info->dev, "Failed to allocate register map: %d\n",
+			err);
+		return err;
+	}
 
 	if (w1_max1721x_reg_get(info->w1_dev,
 			MAX1721X_REG_NRSENSE, &info->rsense))
