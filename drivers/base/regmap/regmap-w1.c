@@ -188,8 +188,6 @@ static struct regmap_bus regmap_w1_bus_a16_v16 = {
 static const struct regmap_bus *regmap_get_w1_bus(struct device *w1_dev,
 					const struct regmap_config *config)
 {
-	/* ToDo: endian checking */
-
 	if (config->reg_bits == 8 && config->val_bits == 8)
 		return &regmap_w1_bus_a8_v8;
 
