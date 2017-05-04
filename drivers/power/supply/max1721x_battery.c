@@ -185,7 +185,7 @@ static int get_sn_string(struct max17211_device_info *info, char *str)
 
 /* Model Gauge M5 Register Memory Map access */
 static const struct regmap_range max1721x_regs_allow[] = {
-	/* M5 Model Gauge Algorith area */
+	/* M5 Model Gauge Algorithm area */
 	regmap_reg_range(0x00, 0x23),
 	regmap_reg_range(0x27, 0x2F),
 	regmap_reg_range(0x32, 0x32),

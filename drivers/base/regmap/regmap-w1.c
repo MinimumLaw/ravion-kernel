@@ -75,7 +75,8 @@ static struct regmap_bus regmap_w1_bus_a8_v8 = {
  * OneWire slaves registers with addess 8 bit and data 16 bit
  */
 
-static int w1_reg_a8_v16_read(void *context, unsigned int reg, unsigned int *val)
+static int w1_reg_a8_v16_read(void *context, unsigned int reg,
+				unsigned int *val)
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
@@ -98,7 +99,8 @@ static int w1_reg_a8_v16_read(void *context, unsigned int reg, unsigned int *val
 	return ret;
 }
 
-static int w1_reg_a8_v16_write(void *context, unsigned int reg, unsigned int val)
+static int w1_reg_a8_v16_write(void *context, unsigned int reg,
+				unsigned int val)
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
