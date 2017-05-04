@@ -183,9 +183,61 @@ static int get_sn_string(struct max17211_device_info *info, char *str)
 	return 0;
 }
 
+/* Model Gauge M5 Register Memory Map access */
+static const struct regmap_range max1721x_regs_allow[] = {
+	/* M5 Model Gauge Algorith area */
+	regmap_reg_range(0x00, 0x23),
+	regmap_reg_range(0x27, 0x2F),
+	regmap_reg_range(0x32, 0x32),
+	regmap_reg_range(0x35, 0x36),
+	regmap_reg_range(0x38, 0x3A),
+	regmap_reg_range(0x3D, 0x3F),
+	regmap_reg_range(0x42, 0x42),
+	regmap_reg_range(0x45, 0x46),
+	regmap_reg_range(0x4A, 0x4A),
+	regmap_reg_range(0x4D, 0x4D),
+	regmap_reg_range(0xB0, 0xB0),
+	regmap_reg_range(0xB4, 0xB4),
+	regmap_reg_range(0xB8, 0xBE),
+	regmap_reg_range(0xD1, 0xDA),
+	regmap_reg_range(0xDC, 0xDF),
+	/* Factory settins area */
+	regmap_reg_range(0x180, 0x1DF),
+	{ }
+};
+
+static const struct regmap_range max1721x_regs_deny[] = {
+	regmap_reg_range(0x24, 0x26),
+	regmap_reg_range(0x30, 0x31),
+	regmap_reg_range(0x33, 0x34),
+	regmap_reg_range(0x37, 0x37),
+	regmap_reg_range(0x3B, 0x3C),
+	regmap_reg_range(0x40, 0x41),
+	regmap_reg_range(0x43, 0x44),
+	regmap_reg_range(0x47, 0x49),
+	regmap_reg_range(0x4B, 0x4C),
+	regmap_reg_range(0x4E, 0xAF),
+	regmap_reg_range(0xB1, 0xB3),
+	regmap_reg_range(0xB5, 0xB7),
+	regmap_reg_range(0xBF, 0xD0),
+	regmap_reg_range(0xDB, 0xDB),
+	regmap_reg_range(0xE0, 0x17F),
+	{ }
+};
+
+static const struct regmap_access_table max1721x_regs = {
+	.yes_ranges	= max1721x_regs_allow,
+	.n_yes_ranges	= ARRAY_SIZE(max1721x_regs_allow),
+	.no_ranges	= max1721x_regs_deny,
+	.n_no_ranges	= ARRAY_SIZE(max1721x_regs_deny),
+};
+
+/* W1 regmap config */
 static const struct regmap_config max1721x_regmap_w1_config = {
 	.reg_bits = 16,
 	.val_bits = 16,
+	.volatile_table = &max1721x_regs,
+	.max_register = MAX1721X_MAX_REG_NR,
 };
 
 static int max1721x_battery_probe(struct platform_device *pdev)

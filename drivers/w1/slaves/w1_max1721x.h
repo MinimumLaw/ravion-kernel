@@ -29,9 +29,6 @@
 /* HEX Strings */
 #define MAX1721X_REG_SER_HEX	0x1D8
 
-/* Number of valid register addresses */
-#define MAX1721X_MAX_REG_NR	(0x1EF)
-
 /* MAX1721X/MAX17215 Output Registers for I2C and W1 chips */
 
 #define MAX172XX_REG_STATUS	0x000	/* status reg */
@@ -49,6 +46,9 @@
 #define MAX172XX_REG_REPCAP	0x005	/* Average capacity */
 #define MAX172XX_REG_TTE	0x011	/* Time to empty */
 #define MAX172XX_REG_TTF	0x020	/* Time to full */
+
+/* Number of valid register addresses */
+#define MAX1721X_MAX_REG_NR	0x1EF
 
 /* Convert regs value to power_supply units */
 
