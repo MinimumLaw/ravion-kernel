@@ -16,8 +16,6 @@
 
 /* Known commands to the MAX1721X chip */
 #define W1_MAX1721X_FAMILY_ID		0x26
-#define W1_MAX1721X_READ_DATA		0x69
-#define W1_MAX1721X_WRITE_DATA		0x6C
 
 /* Factory settings (nonvilatile registers) (W1 specific) */
 
@@ -30,21 +28,7 @@
 /* HEX Strings */
 #define MAX1721X_REG_SER_HEX	0x1D8
 
-/* Factory settings (nonvilatile registers) (I2C specific, SLA=0x16) */
-#define MAX1720X_NV_REGS_SLA	0x16
-
-#define MAX1720X_REG_NRSENSE	0xCF	/* RSense in 10^-5 Ohm */
-/* Strings */
-#define MAX1720X_REG_MFG_STR	0xCC
-#define MAX1720X_REG_MFG_NUMB	3
-#define MAX1720X_REG_DEV_STR	0xDB
-#define MAX1720X_REG_DEV_NUMB	5
-/* HEX Strings */
-#define MAX1720X_REG_SER_HEX	0xD8
-
-/* MAX172XX Output Registers for I2C (SLA=0x6C) and W1 chips */
-#define MAX1720X_FG_REGS_SLA	0x6C
-
+/* MAX172XX Output Registers for W1 chips */
 #define MAX172XX_REG_STATUS	0x000	/* status reg */
 #define MAX172XX_BAT_PRESENT	(1<<4)	/* battery connected bit */
 #define MAX172XX_REG_DEVNAME	0x021	/* chip config */
@@ -63,9 +47,6 @@
 
 /* Number of valid register addresses in W1 mode */
 #define MAX1721X_MAX_REG_NR	0x1EF
-
-/* Number of valid register addresses in I2C mode */
-#define MAX1720X_MAX_REG_NR	0xEF
 
 /* Convert regs value to power_supply units */
 
