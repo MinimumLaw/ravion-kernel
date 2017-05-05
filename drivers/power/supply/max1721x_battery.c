@@ -21,7 +21,7 @@
 #include <linux/idr.h>
 
 #include "../../w1/w1.h"
-#include "../../w1/slaves/w1_max1721x.h"
+#include "linux/power/max172xx-battery.h"
 
 #define DEF_DEV_NAME_MAX17211	"MAX17211"
 #define DEF_DEV_NAME_MAX17215	"MAX17215"
@@ -29,7 +29,6 @@
 #define DEF_MFG_NAME		"MAXIM"
 
 struct max17211_device_info {
-	struct device *dev;
 	struct power_supply *bat;
 	struct power_supply_desc bat_desc;
 	struct device *w1_dev;
@@ -240,41 +239,32 @@ static const struct regmap_config max1721x_regmap_w1_config = {
 	.max_register = MAX1721X_MAX_REG_NR,
 };
 
-static int max1721x_battery_probe(struct platform_device *pdev)
+static int w1_max1721x_add_device(struct w1_slave *sl)
 {
 	struct power_supply_config psy_cfg = {};
 	struct max17211_device_info *info;
 
-	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
+	info = devm_kzalloc(&sl->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
 
-	platform_set_drvdata(pdev, info);
+	sl->family_data = (void *)info;
 
-	info->dev = &pdev->dev;
-	info->w1_dev = pdev->dev.parent;
-	info->bat_desc.name = dev_name(&pdev->dev);
+	info->w1_dev = &sl->dev;
+	info->bat_desc.name = dev_name(&sl->dev);
 	info->bat_desc.type = POWER_SUPPLY_TYPE_BATTERY;
 	info->bat_desc.properties = max1721x_battery_props;
 	info->bat_desc.num_properties = ARRAY_SIZE(max1721x_battery_props);
 	info->bat_desc.get_property = max1721x_battery_get_property;
-	/*
-	 * FixMe:
-	 * Device without no_thermal = true not register (err -22)
-	 * Len of platform device name "max17211-battery.X.auto"
-	 * more than 20 chars limit in THERMAL_NAME_LENGTH from
-	 * include/uapi/linux/thermal.h
-	 */
-	info->bat_desc.no_thermal = true;
 	psy_cfg.drv_data = info;
 
 	/* regmap init */
-	info->regmap = devm_regmap_init_w1(info->w1_dev,
+	info->regmap = regmap_init_w1(info->w1_dev,
 					&max1721x_regmap_w1_config);
 	if (IS_ERR(info->regmap)) {
 		int err = PTR_ERR(info->regmap);
 
-		dev_err(info->dev, "Failed to allocate register map: %d\n",
+		dev_err(info->w1_dev, "Failed to allocate register map: %d\n",
 			err);
 		return err;
 	}
@@ -284,14 +274,14 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	if (regmap_read(info->regmap, MAX1721X_REG_NRSENSE, &info->rsense))
 
 	if (!info->rsense) {
-		dev_warn(info->dev, "RSenese not calibrated, set 10 mOhms!\n");
+		dev_warn(info->w1_dev, "RSenese not calibrated, set 10 mOhms!\n");
 		info->rsense = 1000; /* in regs in 10^-5 */
 	}
-	dev_info(info->dev, "RSense: %d mOhms.\n", info->rsense / 100);
+	dev_info(info->w1_dev, "RSense: %d mOhms.\n", info->rsense / 100);
 
 	if (get_string(info, MAX1721X_REG_MFG_STR,
 			MAX1721X_REG_MFG_NUMB, info->ManufacturerName)) {
-		dev_err(info->dev, "Can't read manufacturer. Hardware error.\n");
+		dev_err(info->w1_dev, "Can't read manufacturer. Hardware error.\n");
 		return -ENODEV;
 	}
 
@@ -301,7 +291,7 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 
 	if (get_string(info, MAX1721X_REG_DEV_STR,
 			MAX1721X_REG_DEV_NUMB, info->DeviceName)) {
-		dev_err(info->dev, "Can't read device. Hardware error.\n");
+		dev_err(info->w1_dev, "Can't read device. Hardware error.\n");
 		return -ENODEV;
 	}
 	if (!info->DeviceName[0]) {
@@ -329,29 +319,43 @@ static int max1721x_battery_probe(struct platform_device *pdev)
 	}
 
 	if (get_sn_string(info, info->SerialNumber)) {
-		dev_err(info->dev, "Can't read serial. Hardware error.\n");
+		dev_err(info->w1_dev, "Can't read serial. Hardware error.\n");
 		return -ENODEV;
 	}
 
-	info->bat = devm_power_supply_register(&pdev->dev, &info->bat_desc,
+	info->bat = power_supply_register(&sl->dev, &info->bat_desc,
 						&psy_cfg);
 	if (IS_ERR(info->bat)) {
-		dev_err(info->dev, "failed to register battery\n");
+		dev_err(info->w1_dev, "failed to register battery\n");
 		return PTR_ERR(info->bat);
 	}
 
 	return 0;
 }
 
-static struct platform_driver max1721x_battery_driver = {
-	.driver = {
-		.name = "max1721x-battery",
-	},
-	.probe	  = max1721x_battery_probe,
+static void w1_max1721x_remove_device(struct w1_slave *sl)
+{
+	struct max17211_device_info *info =
+		(struct max17211_device_info *)sl->family_data;
+
+	power_supply_unregister(info->bat);
+	regmap_exit(info->regmap);
+	kfree(info);
+}
+
+static struct w1_family_ops w1_max1721x_fops = {
+	.add_slave = w1_max1721x_add_device,
+	.remove_slave = w1_max1721x_remove_device,
 };
-module_platform_driver(max1721x_battery_driver);
+
+static struct w1_family w1_max1721x_family = {
+	.fid = W1_MAX1721X_FAMILY_ID,
+	.fops = &w1_max1721x_fops,
+};
+
+module_w1_family(w1_max1721x_family);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
 MODULE_DESCRIPTION("Maxim MAX17211/MAX17215 Fuel Gauage IC driver");
-MODULE_ALIAS("platform:max1721x-battery");
+MODULE_ALIAS("w1-family-" __stringify(W1_MAX1721X_FAMILY_ID));
