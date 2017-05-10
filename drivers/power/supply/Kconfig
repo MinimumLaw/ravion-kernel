@@ -271,7 +271,6 @@ config BATTERY_MAX17042
 config BATTERY_MAX1721X
 	tristate "MAX17211/MAX17215 standalone gas-gauge"
 	depends on W1
-	select W1_SLAVE_MAX1721X
 	select REGMAP_W1
 	help
 	  MAX1721x is fuel-gauge systems for lithium-ion (Li+) batteries
