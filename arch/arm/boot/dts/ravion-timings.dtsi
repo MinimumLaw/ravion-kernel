@@ -30,6 +30,15 @@ display-timings {
 	de-active = <1>;	pixelclk-active = <1>;
     };
 
+    /* Mitsubish AA050MH01-DA1 */
+    m50t: tft_mitsubish_50 { /* WVGA: 800x480@60Hz */
+	clock-frequency = <33250000>; /* 30.4 MHz required */
+	hsync-len = <1>;	hfront-porch = <30>;	hactive = <800>;	hback-porch = <87>;
+	vsync-len = <1>;	vfront-porch = <13>;	vactive = <480>;	vback-porch = <30>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <0>;	pixelclk-active = <1>;
+    };
+
     /* KOE TX09D200VM0BAA */
     koe35t: tft_koe_35 {
 	clock-frequency = <6500000>; /* 6...7MHz required */
