@@ -196,12 +196,38 @@
 		sbs,poll-retry-count = <1>;
 	};
 
+	/* Composite video capture interface */
+	cvbs: adv7280@20 {
+		status = "okay";
+		compatible = "adv7280", "adi-adv7280";
+		reg = <0x20>;
+		/* FixMe: may be swapped powerdown and reset pins
+		reset-gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>; */
+
+		port {
+			parallel_camera: endpoint {
+				remote_endpoint = <&ipu1_csi0>;
+				/* FixMe: correct params required!!! */
+				bus-width = <8>;
+				hsync-active = <1>;
+				vsync_active = <1>;
+				data-active = <1>;
+				pclk-sample = <1>;
+			};
+		};
+	};
+
 	/* DS2484: I2C to OneWire Converter */
 	owc: ds2482@18 {
 		status = "okay";
 		compatible = "ds2482";
 		reg = <0x18>;
 	};
+};
+
+&ipu1_csi0 {
+	remote-endpoint = <&parallel_camera>;
 };
 
 &ipu1_di0_disp0 {
