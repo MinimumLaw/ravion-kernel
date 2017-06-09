@@ -13,12 +13,8 @@
 
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/param.h>
-#include <linux/pm.h>
 #include <linux/regmap.h>
-#include <linux/platform_device.h>
 #include <linux/power_supply.h>
-#include <linux/idr.h>
 
 #include "../../w1/w1.h"
 #include "linux/power/max172xx-battery.h"
@@ -28,7 +24,10 @@
 #define DEF_DEV_NAME_UNKNOWN	"UNKNOWN"
 #define DEF_MFG_NAME		"MAXIM"
 
+#define PSY_MAX_NAME_LEN	32
+
 struct max17211_device_info {
+	char name[PSY_MAX_NAME_LEN];
 	struct power_supply *bat;
 	struct power_supply_desc bat_desc;
 	struct device *w1_dev;
@@ -182,30 +181,18 @@ static int get_sn_string(struct max17211_device_info *info, char *str)
 	return 0;
 }
 
-/* Model Gauge M5 Register Memory Map access */
-static const struct regmap_range max1721x_regs_allow[] = {
-	/* M5 Model Gauge Algorithm area */
-	regmap_reg_range(0x00, 0x23),
-	regmap_reg_range(0x27, 0x2F),
-	regmap_reg_range(0x32, 0x32),
-	regmap_reg_range(0x35, 0x36),
-	regmap_reg_range(0x38, 0x3A),
-	regmap_reg_range(0x3D, 0x3F),
-	regmap_reg_range(0x42, 0x42),
-	regmap_reg_range(0x45, 0x46),
-	regmap_reg_range(0x4A, 0x4A),
-	regmap_reg_range(0x4D, 0x4D),
-	regmap_reg_range(0xB0, 0xB0),
-	regmap_reg_range(0xB4, 0xB4),
-	regmap_reg_range(0xB8, 0xBE),
-	regmap_reg_range(0xD1, 0xDA),
-	regmap_reg_range(0xDC, 0xDF),
-	/* Factory settins area */
-	regmap_reg_range(0x180, 0x1DF),
+/*
+ * MAX1721x registers description for w1-regmap
+ */
+static const struct regmap_range max1721x_allow_range[] = {
+	regmap_reg_range(0, 0xDF),	/* volatile data */
+	regmap_reg_range(0x180, 0x1DF),	/* non-volatile memory */
+	regmap_reg_range(0x1E0, 0x1EF),	/* non-volatile history (unused) */
 	{ }
 };
 
-static const struct regmap_range max1721x_regs_deny[] = {
+static const struct regmap_range max1721x_deny_range[] = {
+	/* volatile data unused registers */
 	regmap_reg_range(0x24, 0x26),
 	regmap_reg_range(0x30, 0x31),
 	regmap_reg_range(0x33, 0x34),
@@ -220,22 +207,40 @@ static const struct regmap_range max1721x_regs_deny[] = {
 	regmap_reg_range(0xB5, 0xB7),
 	regmap_reg_range(0xBF, 0xD0),
 	regmap_reg_range(0xDB, 0xDB),
+	/* hole between volatile and non-volatile registers */
 	regmap_reg_range(0xE0, 0x17F),
 	{ }
 };
 
 static const struct regmap_access_table max1721x_regs = {
-	.yes_ranges	= max1721x_regs_allow,
-	.n_yes_ranges	= ARRAY_SIZE(max1721x_regs_allow),
-	.no_ranges	= max1721x_regs_deny,
-	.n_no_ranges	= ARRAY_SIZE(max1721x_regs_deny),
+	.yes_ranges	= max1721x_allow_range,
+	.n_yes_ranges	= ARRAY_SIZE(max1721x_allow_range),
+	.no_ranges	= max1721x_deny_range,
+	.n_no_ranges	= ARRAY_SIZE(max1721x_deny_range),
 };
 
-/* W1 regmap config */
+/*
+ * Model Gauge M5 Algorithm output register
+ * Volatile data (must not be cached)
+ */
+static const struct regmap_range max1721x_volatile_allow[] = {
+	regmap_reg_range(0, 0xDF),
+	{ }
+};
+
+static const struct regmap_access_table max1721x_volatile_regs = {
+	.yes_ranges	= max1721x_volatile_allow,
+	.n_yes_ranges	= ARRAY_SIZE(max1721x_volatile_allow),
+};
+
+/*
+ * W1-regmap config
+ */
 static const struct regmap_config max1721x_regmap_w1_config = {
 	.reg_bits = 16,
 	.val_bits = 16,
-	.volatile_table = &max1721x_regs,
+	.rd_table = &max1721x_regs,
+	.volatile_table = &max1721x_volatile_regs,
 	.max_register = MAX1721X_MAX_REG_NR,
 };
 
@@ -249,9 +254,23 @@ static int w1_max1721x_add_device(struct w1_slave *sl)
 		return -ENOMEM;
 
 	sl->family_data = (void *)info;
-
 	info->w1_dev = &sl->dev;
-	info->bat_desc.name = dev_name(&sl->dev);
+
+	/*
+	 * power_supply class battery name translated from W1 slave device
+	 * unical ID (look like 26-0123456789AB) to "max1721x-0123456789AB\0"
+	 * so, 26 (device family) correcpondent to max1721x devices.
+	 * Device name still unical for any numbers connected devices.
+	 */
+	snprintf(info->name, sizeof(info->name),
+		"max1721x-%012X", (unsigned int)sl->reg_num.id);
+	info->bat_desc.name = info->name;
+
+	/*
+	 * FixMe: battery device name exceed max len for thermal_zone device
+	 * name and translation to thermal_zone must be disabled.
+	 */
+	info->bat_desc.no_thermal = true;
 	info->bat_desc.type = POWER_SUPPLY_TYPE_BATTERY;
 	info->bat_desc.properties = max1721x_battery_props;
 	info->bat_desc.num_properties = ARRAY_SIZE(max1721x_battery_props);
