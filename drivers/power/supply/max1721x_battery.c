@@ -188,7 +188,6 @@ static const struct regmap_range max1721x_allow_range[] = {
 	regmap_reg_range(0, 0xDF),	/* volatile data */
 	regmap_reg_range(0x180, 0x1DF),	/* non-volatile memory */
 	regmap_reg_range(0x1E0, 0x1EF),	/* non-volatile history (unused) */
-	{ }
 };
 
 static const struct regmap_range max1721x_deny_range[] = {
@@ -209,7 +208,6 @@ static const struct regmap_range max1721x_deny_range[] = {
 	regmap_reg_range(0xDB, 0xDB),
 	/* hole between volatile and non-volatile registers */
 	regmap_reg_range(0xE0, 0x17F),
-	{ }
 };
 
 static const struct regmap_access_table max1721x_regs = {
@@ -225,7 +223,6 @@ static const struct regmap_access_table max1721x_regs = {
  */
 static const struct regmap_range max1721x_volatile_allow[] = {
 	regmap_reg_range(0, 0xDF),
-	{ }
 };
 
 static const struct regmap_access_table max1721x_volatile_regs = {
