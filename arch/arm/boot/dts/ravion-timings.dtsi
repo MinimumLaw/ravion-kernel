@@ -1,5 +1,6 @@
 display-timings {
-    native-mode = <&xga60>;
+/*  native-mode = <&koe35t>; */
+    native-mode = <&m70l>;
 
     vga: VGA { /* Classic VGA from scratch */
 	clock-frequency = <25200000>;
@@ -16,10 +17,10 @@ display-timings {
     hdmi_HDTV_720p_169: tft24_hdmi_HDTV_720p_169 {
 	clock-frequency = <74200000>; /* ??Hz - 74.2MHz reqired for typical 60Hz */
 	hsync-len = <80>;	hfront-porch = <72>;	hactive = <1280>;	hback-porch = <216>;
-	hsync-active = <1>;	/* negative, whole line 1648 */
+	hsync-active = <0>;	/* negative, whole line 1648 */
 	vsync-len = <5>;	vfront-porch = <3>;	vactive = <720>;	vback-porch = <22>;
-	vsync-active = <1>;	/* negative, whole frame 750 */
-	de-active = <0>;	pixelclk-active = <1>;
+	vsync-active = <0>;	/* negative, whole frame 750 */
+	de-active = <1>;	pixelclk-active = <1>;
     };
     hdmi_HDTV_720p_43: tft24_hdmi_HDTV_720p_43 {
 	clock-frequency = <55800000>; /* ??Hz - 55.8MHz reqired for typical 60Hz */
@@ -73,6 +74,15 @@ display-timings {
 	vsync-len = <1>;	vfront-porch = <13>;	vactive = <480>;	vback-porch = <30>;
 	hsync-active = <0>;	vsync-active = <0>;
 	de-active = <0>;	pixelclk-active = <1>;
+    };
+
+    /* Mitsubish AA070ME11-DA-01 */
+    m70l: lvds_mitsubish_70 { /* WVGA: 800x480@60Hz */
+	clock-frequency = <33250000>; /* 30.4 MHz required */
+	hsync-len = <1>;	hfront-porch = <30>;	hactive = <800>;	hback-porch = <87>;
+	vsync-len = <1>;	vfront-porch = <13>;	vactive = <480>;	vback-porch = <30>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <1>;	pixelclk-active = <1>;
     };
 
     /* KOE TX09D200VM0BAA */

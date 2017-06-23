@@ -51,7 +51,7 @@
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		pwms = <&pwm3 0 5000000>;
+		pwms = <&pwm1 0 5000000>;
 		enable-gpios = <&gpio3 26 GPIO_ACTIVE_HIGH>; /* Colibri BL_ON */
 		status = "disabled";
 	};
@@ -557,6 +557,13 @@
 			MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15	0xa1
 			MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16	0xa1
 			MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17	0xa1
+			/* 24 bit interface pin config */
+			MX6QDL_PAD_DISP0_DAT18__IPU1_DISP0_DATA18	0xa1
+			MX6QDL_PAD_DISP0_DAT19__IPU1_DISP0_DATA19	0xa1
+			MX6QDL_PAD_DISP0_DAT20__IPU1_DISP0_DATA20	0xa1
+			MX6QDL_PAD_DISP0_DAT21__IPU1_DISP0_DATA21	0xa1
+			MX6QDL_PAD_DISP0_DAT22__IPU1_DISP0_DATA22	0xa1
+			MX6QDL_PAD_DISP0_DAT23__IPU1_DISP0_DATA23	0xa1
 		>;
 	};
 
