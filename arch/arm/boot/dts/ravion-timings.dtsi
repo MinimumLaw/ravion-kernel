@@ -1,6 +1,6 @@
 display-timings {
-/*  native-mode = <&koe35t>; */
-    native-mode = <&m70l>;
+    native-mode = <&koe35t>;
+/*  native-mode = <&m70l>; */
 
     vga: VGA { /* Classic VGA from scratch */
 	clock-frequency = <25200000>;
@@ -94,8 +94,17 @@ display-timings {
 	de-active = <1>;	pixelclk-active = <1>;
     };
 
+    /* Bolimin BT035SN7G1E0 */
+    bolimin35t: tft_bolimin_35 {
+	clock-frequency = <6500000>; /* 6...7MHz required */
+	hsync-len = <16>;	hfront-porch = <20>;	hactive = <320>;	hback-porch = <42>;
+	vsync-len = <6>;	vfront-porch = <4>;	vactive = <240>;	vback-porch = <12>;
+	hsync-active = <0>;	vsync-active = <0>;
+	de-active = <0>;	pixelclk-active = <0>;
+    };
+
     /* Winstar WF35LSIACDNN0# */
-    win35t: tft_winstar_35 {
+    winstar35t: tft_winstar_35 {
 	clock-frequency = <6500000>; /* up to 10MHz required */
 
 	hsync-len = <30>;	hfront-porch = <20>;	hactive = <320>;	hback-porch = <38>;
