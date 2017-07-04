@@ -99,13 +99,13 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-/*		interface-pix-fmt = "rgb24";	*/
-		interface-pix-fmt = "bgr666";
+		interface-pix-fmt = "rgb24";
+/*		interface-pix-fmt = "bgr666"; */
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
 
-		#include "ravion-timings.dtsi"
+/*		#include "ravion-timings.dtsi" */
 
 		port@0 {
 			reg = <0>;
@@ -114,12 +114,64 @@
 				remote-endpoint = <&ipu1_di0_disp0>;
 			};
 		};
+
+		port@1 {
+			reg = <1>;
+
+			lcd_display_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
 	};
+
+	winstar_lcd: panel {
+		compatible = "winstar,wf35ltiacd";
+		backlight = <&backlight>;
+		status = "disabled";
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+
+	bolimin_lcd: panel {
+		compatible = "bolimin,bt35sn7g1e0";
+		backlight = <&backlight>;
+		status = "okay";
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+
+	koe_lcd: panel {
+		compatible = "koe,tx09d200vm0baa";
+		backlight = <&backlight>;
+		status = "disabled";
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+};
+
+&ipu1_di0_disp0 {
+	remote-endpoint = <&lcd_display_in>;
 };
 
 &backlight {
 	brightness-levels = <0 31 63 95 127 159 191 223 255>;
 	default-brightness-level = <4>;
+	status = "okay";
+};
+
+&hdmi {
 	status = "okay";
 };
 
@@ -133,10 +185,6 @@
 /*		compatible = "spidev"; */
 		status = "okay";
 	};
-};
-
-&hdmi {
-	status = "okay";
 };
 
 /*
@@ -213,10 +261,6 @@
 		compatible = "ds2482";
 		reg = <0x18>;
 	};
-};
-
-&ipu1_di0_disp0 {
-	remote-endpoint = <&lcd_display_in>;
 };
 
 &pwm1 {

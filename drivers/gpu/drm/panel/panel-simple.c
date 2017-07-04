@@ -735,6 +735,31 @@ static const struct panel_desc boe_nv101wxmn51 = {
 	},
 };
 
+static const struct drm_display_mode bolimin_bt35sn7g1e0_mode = {
+	.clock = 6410,
+	.hdisplay = 320,
+	.hsync_start = 320 + 20,
+	.hsync_end = 320 + 20 + 30,
+	.htotal = 320 + 20 + 30 + 38,
+	.vdisplay = 240,
+	.vsync_start = 240 + 4,
+	.vsync_end = 240 + 4 + 3,
+	.vtotal = 240 + 4 + 3 + 15,
+	.vrefresh = 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc bolimin_bt35sn7g1e0 = {
+	.modes = &bolimin_bt35sn7g1e0_mode,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 70,
+		.height = 53,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+};
+
 static const struct drm_display_mode chunghwa_claa070wp03xg_mode = {
 	.clock = 66770,
 	.hdisplay = 800,
@@ -1181,6 +1206,32 @@ static const struct panel_desc innolux_zj070na_01p = {
 		.width = 154,
 		.height = 90,
 	},
+};
+
+static const struct drm_display_mode koe_tx09d200vm0baa_timing = {
+	.clock = 6500,
+	.hdisplay = 240,
+	.hsync_start = 240 + 16,
+	.hsync_end = 240 + 16 + 16,
+	.htotal = 240 + 16 + 16 + 48,
+	.vdisplay = 320,
+	.vsync_start = 320 + 6,
+	.vsync_end = 320 + 6 + 6,
+	.vtotal = 320 + 6 + 6 + 6,
+	.vrefresh = 60,
+	.flags =  DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc koe_tx09d200vm0baa = {
+	.modes = &koe_tx09d200vm0baa_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 53,
+		.height = 71,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
 };
 
 static const struct display_timing kyo_tcg121xglp_timing = {
@@ -1897,6 +1948,9 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "boe,nv101wxmn51",
 		.data = &boe_nv101wxmn51,
 	}, {
+		.compatible = "bolimin,bt35sn7g1e0",
+		.data = &bolimin_bt35sn7g1e0,
+	}, {
 		.compatible = "chunghwa,claa070wp03xg",
 		.data = &chunghwa_claa070wp03xg,
 	}, {
@@ -1953,6 +2007,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "innolux,zj070na-01p",
 		.data = &innolux_zj070na_01p,
+	}, {
+		.compatible = "koe,tx09d200vm0baa",
+		.data = &koe_tx09d200vm0baa,
 	}, {
 		.compatible = "kyo,tcg121xglp",
 		.data = &kyo_tcg121xglp,
