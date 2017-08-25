@@ -3,7 +3,7 @@
 #include "tegra30-colibri.dtsi"
 
 / {
-	model = "Toradex Colibri T30 on Colibri Evaluation Board";
+	model = "Toradex Colibri T30 on Radioavionica MCP Board";
 	compatible = "toradex,colibri_t30-eval-v3", "toradex,colibri_t30", "nvidia,tegra30";
 
 	aliases {
@@ -13,11 +13,11 @@
 		serial1 = &uartb;
 		serial2 = &uartd;
 	};
-
+/*****************************************************************************
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
-
+*****************************************************************************/
 	host1x@50000000 {
 		dc@54200000 {
 			rgb {

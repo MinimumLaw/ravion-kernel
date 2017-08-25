@@ -16,10 +16,10 @@ if [ -z "$*" ]; then
     ${SUDO} rm -rf ${ROOT_FS_PATH}/lib/modules/* && echo OK || echo FAIL
     ${SUDO} make ${DEF_ARGS} modules_install
     echo install kernel into rootfs and tftp
-    ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/tegra30-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/tegra30-colibri-mcp.dtb
-    ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/tegra30-colibri-mcp.dtb ${TFTP_FS_PATH}/tegra30-colibri-mcp.dtb
+    ${SUDO} cp -f arch/arm/boot/zImage				${ROOT_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/tegra30-colibri-mcp.dtb	${ROOT_FS_PATH}/boot/tegra30.dtb
+    ${SUDO} cp -f arch/arm/boot/zImage				${TFTP_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/tegra30-colibri-mcp.dtb	${TFTP_FS_PATH}/boot/tegra30.dtb
 else
     make ${DEF_ARGS} $*
 fi
