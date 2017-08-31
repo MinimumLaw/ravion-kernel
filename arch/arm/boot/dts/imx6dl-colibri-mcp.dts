@@ -174,10 +174,11 @@
 &ecspi4 {
 	status = "okay";
 
-	spidev0: spidev@0 {
+	spidev0: spi@0 {
 		reg = <0>;
 		spi-max-frequency = <1000000>;
-/*		compatible = "spidev"; */
+		 /* not allowed compatible = "spidev", so set allowed */
+		compatible = "ge,achc";
 		status = "okay";
 	};
 };
