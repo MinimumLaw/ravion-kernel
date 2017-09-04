@@ -1,7 +1,7 @@
 /*
- * Register map access API - W1 (OneWire) support
+ * Register map access API - W1 (1-Wire) support
  *
- * Copyright (C) 2017 OAO Radioavionica
+ * Copyright (c) 2017 Radioavionica Corporation
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -11,7 +11,7 @@
 
 #include <linux/regmap.h>
 #include <linux/module.h>
-#include "../../w1/w1.h"
+#include <linux/w1.h>
 
 #include "internal.h"
 
@@ -19,15 +19,14 @@
 #define W1_CMD_WRITE_DATA	0x6C
 
 /*
- * OneWire slaves registers with addess 8 bit and data 8 bit
+ * 1-Wire slaves registers with addess 8 bit and data 8 bit
  */
 
 static int w1_reg_a8_v8_read(void *context, unsigned int reg, unsigned int *val)
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 255)
 		return -EINVAL;
@@ -37,7 +36,8 @@ static int w1_reg_a8_v8_read(void *context, unsigned int reg, unsigned int *val)
 		w1_write_8(sl->master, W1_CMD_READ_DATA);
 		w1_write_8(sl->master, reg);
 		*val = w1_read_8(sl->master);
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
@@ -48,8 +48,7 @@ static int w1_reg_a8_v8_write(void *context, unsigned int reg, unsigned int val)
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 255)
 		return -EINVAL;
@@ -59,20 +58,16 @@ static int w1_reg_a8_v8_write(void *context, unsigned int reg, unsigned int val)
 		w1_write_8(sl->master, W1_CMD_WRITE_DATA);
 		w1_write_8(sl->master, reg);
 		w1_write_8(sl->master, val);
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
 	return ret;
 }
 
-static struct regmap_bus regmap_w1_bus_a8_v8 = {
-	.reg_read = w1_reg_a8_v8_read,
-	.reg_write = w1_reg_a8_v8_write,
-};
-
 /*
- * OneWire slaves registers with addess 8 bit and data 16 bit
+ * 1-Wire slaves registers with addess 8 bit and data 16 bit
  */
 
 static int w1_reg_a8_v16_read(void *context, unsigned int reg,
@@ -80,8 +75,7 @@ static int w1_reg_a8_v16_read(void *context, unsigned int reg,
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 255)
 		return -EINVAL;
@@ -92,7 +86,8 @@ static int w1_reg_a8_v16_read(void *context, unsigned int reg,
 		w1_write_8(sl->master, reg);
 		*val = w1_read_8(sl->master);
 		*val |= w1_read_8(sl->master)<<8;
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
@@ -104,8 +99,7 @@ static int w1_reg_a8_v16_write(void *context, unsigned int reg,
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 255)
 		return -EINVAL;
@@ -116,20 +110,16 @@ static int w1_reg_a8_v16_write(void *context, unsigned int reg,
 		w1_write_8(sl->master, reg);
 		w1_write_8(sl->master, val & 0x00FF);
 		w1_write_8(sl->master, val>>8 & 0x00FF);
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
 	return ret;
 }
 
-static struct regmap_bus regmap_w1_bus_a8_v16 = {
-	.reg_read = w1_reg_a8_v16_read,
-	.reg_write = w1_reg_a8_v16_write,
-};
-
 /*
- * OneWire slaves registers with addess 16 bit and data 16 bit
+ * 1-Wire slaves registers with addess 16 bit and data 16 bit
  */
 
 static int w1_reg_a16_v16_read(void *context, unsigned int reg,
@@ -137,8 +127,7 @@ static int w1_reg_a16_v16_read(void *context, unsigned int reg,
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 65535)
 		return -EINVAL;
@@ -150,7 +139,8 @@ static int w1_reg_a16_v16_read(void *context, unsigned int reg,
 		w1_write_8(sl->master, reg>>8 & 0x00FF);
 		*val = w1_read_8(sl->master);
 		*val |= w1_read_8(sl->master)<<8;
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
@@ -162,8 +152,7 @@ static int w1_reg_a16_v16_write(void *context, unsigned int reg,
 {
 	struct device *dev = context;
 	struct w1_slave *sl = container_of(dev, struct w1_slave, dev);
-	int ret = -ENODEV;
-
+	int ret = 0;
 
 	if (reg > 65535)
 		return -EINVAL;
@@ -175,12 +164,27 @@ static int w1_reg_a16_v16_write(void *context, unsigned int reg,
 		w1_write_8(sl->master, reg>>8 & 0x00FF);
 		w1_write_8(sl->master, val & 0x00FF);
 		w1_write_8(sl->master, val>>8 & 0x00FF);
-		ret = 0;
+	} else {
+		ret = -ENODEV;
 	}
 	mutex_unlock(&sl->master->bus_mutex);
 
 	return ret;
 }
+
+/*
+ * Various types of supported bus addressing
+ */
+
+static struct regmap_bus regmap_w1_bus_a8_v8 = {
+	.reg_read = w1_reg_a8_v8_read,
+	.reg_write = w1_reg_a8_v8_write,
+};
+
+static struct regmap_bus regmap_w1_bus_a8_v16 = {
+	.reg_read = w1_reg_a8_v16_read,
+	.reg_write = w1_reg_a8_v16_write,
+};
 
 static struct regmap_bus regmap_w1_bus_a16_v16 = {
 	.reg_read = w1_reg_a16_v16_read,
