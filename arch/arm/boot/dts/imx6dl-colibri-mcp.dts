@@ -183,6 +183,17 @@
 	};
 };
 
+&ipu1_csi0_mux_from_parallel_sensor {
+    status = "okay";
+    remote = <&cvbs_ep>;
+
+    bus-width = <10>;
+    hsync-active = <1>;
+    vsync-active = <1>;
+    data-active = <1>;
+    pclk-sample = <1>;
+};
+
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
@@ -246,9 +257,20 @@
 		status = "okay";
 		compatible = "adv7280", "adi,adv7280";
 		reg = <0x20>;
-		/* FixMe: may be swapped powerdown and reset pins
+		/* FixMe: may be swapped powerdown and reset pins */
 		reset-gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
-		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>; */
+		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+
+		port {
+			cvbs_ep: endpoint {
+				bus-width = <10>;
+				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				hsync-active = <1>;
+				vsync-active = <1>;
+				data-active = <1>;
+				pclk-sample = <1>;
+			};
+		};
 	};
 
 	/* DS2484: I2C to OneWire Converter */
