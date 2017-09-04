@@ -186,32 +186,23 @@
 	};
 
 	regulators {
-		sys_5v0_reg: regulator@1 {
+		usbc_vbus_reg: regulator@1 {
 			compatible = "regulator-fixed";
 			reg = <1>;
-			regulator-name = "5v0";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			regulator-always-on;
-		};
-
-		usbc_vbus_reg: regulator@2 {
-			compatible = "regulator-fixed";
-			reg = <2>;
 			regulator-name = "usbc_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			vin-supply = <&sys_5v0_reg>; 
+			vin-supply = <&charge_pump_5v0_reg>; 
 		};
 		/* USBH_PEN */
-		usbh_vbus_reg: regulator@3 {
+		usbh_vbus_reg: regulator@2 {
 			compatible = "regulator-fixed";
-			reg = <3>;
+			reg = <2>;
 			regulator-name = "usbh_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			gpio = <&gpio TEGRA_GPIO(W, 2) GPIO_ACTIVE_LOW>;
-			vin-supply = <&sys_5v0_reg>;
+			vin-supply = <&charge_pump_5v0_reg>;
 		};
 	};
 };
