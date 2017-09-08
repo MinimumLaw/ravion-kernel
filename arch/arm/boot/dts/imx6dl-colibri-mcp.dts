@@ -99,7 +99,11 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-/*		interface-pix-fmt = "rgb24"; "bgr666"; */
+#if 0
+		interface-pix-fmt = "rgb24";
+#else
+		interface-pix-fmt = "bgr666";
+#endif
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
@@ -116,11 +120,46 @@
 			reg = <1>;
 
 			lcd_display_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
+				remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
 			};
 		};
 	};
 
+	adv7123: encoder {
+		compatible = "adi,adv7123";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				adv7123_in: endpiont@0 {
+					remote-endpoint = <&lcd_display_out>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				adv7123_out: endpoint@0 {
+					remote-endpoint = <&vga_connector_in>;
+				};
+			};
+		};
+	};
+
+	vga0: connector@0 {
+		compatible = "vga-connector";
+		label = "vga";
+
+		/*ddc-i2c-bus = <&i2c3> */
+
+		port {
+			vga_connector_in: endpoint {
+				remote-endpoint = <&adv7123_out>;
+			};
+		};
+	};
+
+#if 0 /* This time KOE primary display */
 	koe_lcd: panel {
 		compatible = "koe,tx09d200vm0baa";
 		backlight = <&backlight>;
@@ -131,7 +170,7 @@
 			};
 		};
 	};
-#if 0 /* This time KOE primary display */
+
 	bolimin_lcd: panel {
 		compatible = "bolimin,bt35sn7g1e0";
 		backlight = <&backlight>;
@@ -159,6 +198,7 @@
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
 };
+
 
 &backlight {
 	brightness-levels = <0 31 63 95 127 159 191 223 255>;
@@ -253,17 +293,17 @@
 	};
 
 	/* Composite video capture interface */
-	cvbs: adv7280@20 {
+	cvbs: adv7280@21 {
 		status = "okay";
 		compatible = "adv7280", "adi,adv7280";
-		reg = <0x20>;
+		reg = <0x21>;
 		/* FixMe: may be swapped powerdown and reset pins */
-		reset-gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
-		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio2 9>;
+		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
 
 		port {
 			cvbs_ep: endpoint {
-				bus-width = <10>;
+				bus-width = <8>;
 				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
 				hsync-active = <1>;
 				vsync-active = <1>;
@@ -281,17 +321,31 @@
 	};
 };
 
+&ipu1_csi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ipu1_csi0>;
+
+	fim {
+		status = "okay";
+	};
+};
+
+&ipu1_csi0_from_ipu1_csi0_mux {
+	bus-width = <8>;
+};
+
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&cvbs_ep>;
+};
+
+
 &pwm1 {
 	status = "okay";
 };
 
-&pwm2 {
-	status = "okay";
-};
-
-&pwm3 {
-	status = "okay";
-};
+/* disabled: conflict with parallel camera interface */
+&pwm2 {	status = "disabled";	};
+&pwm3 {	status = "disabled";	};
 
 &pwm4 {
 	status = "okay";
