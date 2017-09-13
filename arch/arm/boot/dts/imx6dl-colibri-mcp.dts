@@ -72,6 +72,12 @@
 			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
+
+		cif {
+			label = "CIF_PWR";
+			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
 	};
 
 	gpio-keys {
@@ -203,7 +209,7 @@
 &backlight {
 	brightness-levels = <0 31 63 95 127 159 191 223 255>;
 	default-brightness-level = <4>;
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi {
@@ -223,16 +229,6 @@
 	};
 };
 
-&ipu1_csi0_mux_from_parallel_sensor {
-    status = "okay";
-    remote = <&cvbs_ep>;
-
-    bus-width = <10>;
-    hsync-active = <1>;
-    vsync-active = <1>;
-    data-active = <1>;
-    pclk-sample = <1>;
-};
 
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
@@ -294,20 +290,25 @@
 
 	/* Composite video capture interface */
 	cvbs: adv7280@21 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7280>;
 		status = "okay";
 		compatible = "adv7280", "adi,adv7280";
+		interrupt-parent = <&gpio1>;
+		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
+		inputs = <0x00 0x01 0x02>;
+		input-names = "Ain1","Ain2","Ain3";
 		reg = <0x21>;
-		/* FixMe: may be swapped powerdown and reset pins */
-		reset-gpios = <&gpio2 9>;
-		powerdown-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio3 26>;
+		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 
 		port {
-			cvbs_ep: endpoint {
+			adv7280_ep: endpoint {
 				bus-width = <8>;
 				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
-				hsync-active = <1>;
-				vsync-active = <1>;
-				data-active = <1>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				data-active = <0>;
 				pclk-sample = <1>;
 			};
 		};
@@ -331,13 +332,11 @@
 };
 
 &ipu1_csi0_from_ipu1_csi0_mux {
-	bus-width = <8>;
 };
 
 &ipu1_csi0_mux_from_parallel_sensor {
-	remote-endpoint = <&cvbs_ep>;
+	remote-endpoint = <&adv7280_ep>;
 };
-
 
 &pwm1 {
 	status = "okay";
@@ -389,11 +388,20 @@
 };
 
 &iomuxc {
+	pinctrl_adv7280: gpio-adv7280 {
+		fsl,pins = <
+			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
+		>;
+	};
+
 	pinctrl_gpio_poweroff: gpio-poweroff {
 		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
 	};
 
 	pinctrl_gpio_leds: gpio-leds {
-		fsl,pins = <MX6QDL_PAD_NANDF_D6__GPIO2_IO06 0x0f058>; /* PU_22K */
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K */
+			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
+		>;
 	};
 };
