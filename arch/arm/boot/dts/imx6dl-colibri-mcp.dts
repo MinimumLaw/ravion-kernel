@@ -292,24 +292,18 @@
 	cvbs: adv7280@21 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_adv7280>;
-		status = "okay";
 		compatible = "adv7280", "adi,adv7280";
+		reg = <0x21>;
+		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		inputs = <0x00 0x01 0x02>;
-		input-names = "Ain1","Ain2","Ain3";
-		reg = <0x21>;
 		reset-gpios = <&gpio3 26>;
-		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+		status = "okay";
 
 		port {
 			adv7280_ep: endpoint {
-				bus-width = <8>;
 				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				data-active = <0>;
-				pclk-sample = <1>;
+				bus-width = <8>;
 			};
 		};
 	};
