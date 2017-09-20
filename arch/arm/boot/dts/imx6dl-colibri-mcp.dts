@@ -302,7 +302,7 @@
 
 		port {
 			adv7280_ep: endpoint {
-				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
 				bus-width = <8>;
 			};
 		};
@@ -316,19 +316,19 @@
 	};
 };
 
-&ipu1_csi0 {
+&ipu1_csi1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ipu1_csi0>;
+	pinctrl-0 = <&pinctrl_ipu1_csi1>;
 
 	fim {
 		status = "okay";
 	};
 };
 
-&ipu1_csi0_from_ipu1_csi0_mux {
+&ipu1_csi1_from_ipu1_csi1_mux {
 };
 
-&ipu1_csi0_mux_from_parallel_sensor {
+&ipu1_csi1_mux_from_parallel_sensor {
 	remote-endpoint = <&adv7280_ep>;
 };
 

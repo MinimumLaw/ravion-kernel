@@ -515,7 +515,7 @@
 		>;
 	};
 
-	pinctrl_ipu1_csi0: ipu1csi0grp { /* Parallel Camera */
+	pinctrl_ipu1_csi1: ipu1csi1grp { /* Parallel Camera */
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A17__IPU1_CSI1_DATA12	0xb0b1
 			MX6QDL_PAD_EIM_A18__IPU1_CSI1_DATA13	0xb0b1
