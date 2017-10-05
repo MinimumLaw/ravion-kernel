@@ -105,11 +105,8 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-#if 0
-		interface-pix-fmt = "rgb24";
-#else
+/*		interface-pix-fmt = "rgb24"; */
 		interface-pix-fmt = "bgr666";
-#endif
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
@@ -133,6 +130,9 @@
 
 	adv7123: encoder {
 		compatible = "adi,adv7123";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_vga_encoder>;
+		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
 
 		ports {
 			#address-cells = <1>;
@@ -204,7 +204,6 @@
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
 };
-
 
 &backlight {
 	brightness-levels = <0 31 63 95 127 159 191 223 255>;
@@ -398,4 +397,11 @@
 			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
 		>;
 	};
+
+	pinctrl_vga_encoder: vga-encoder {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x0f058 /* PU_22K soDimm 71: BL_ON */
+		>;
+	};
+
 };
