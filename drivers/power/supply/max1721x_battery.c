@@ -335,7 +335,7 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 	/*
 	 * power_supply class battery name translated from W1 slave device
 	 * unical ID (look like 26-0123456789AB) to "max1721x-0123456789AB\0"
-	 * so, 26 (device family) correspondent to max1721x devices.
+	 * so, 26 (device family) correcpondent to max1721x devices.
 	 * Device name still unical for any numbers connected devices.
 	 */
 	snprintf(info->name, sizeof(info->name),
