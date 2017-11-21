@@ -50,10 +50,25 @@
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 
+	aliases {
+		i2c0 = &i2c2;
+		i2c1 = &i2c3;
+	};
+
+	aliases {
+		rtc0 = &snvs_rtc;
+	};
+
 	gpio-leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_leds>;
+
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
 
 		cif {
 			label = "CIF_PWR";
@@ -62,9 +77,35 @@
 		};
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>; /* SODIMM 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-poweroff {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_poweroff>;
+		compatible = "gpio-poweroff";
+		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
+	};
 
 	lcd_display: display@di0 {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+/*		interface-pix-fmt = "rgb24"; */
 		interface-pix-fmt = "bgr666";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
 
 		port@0 {
@@ -120,17 +161,128 @@
 			};
 		};
 	};
+
+#if 0 /* This time KOE primary display */
+	koe_lcd: panel {
+		compatible = "koe,tx09d200vm0baa";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+
+	bolimin_lcd: panel {
+		compatible = "bolimin,bt35sn7g1e0";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+
+	winstar_lcd: panel {
+		compatible = "winstar,wf35ltiacd";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
+			};
+		};
+	};
+#endif
 };
 
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
 };
 
+&backlight {
+	brightness-levels = <0 31 63 95 127 159 191 223 255>;
+	default-brightness-level = <4>;
+	status = "disabled";
+};
+
+&hdmi {
+	status = "okay";
+};
+
+/* Colibri SSP */
+&ecspi4 {
+	status = "okay";
+
+	spidev0: spi@0 {
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		 /* not allowed compatible = "spidev", so set allowed */
+		compatible = "ge,achc";
+		status = "okay";
+	};
+};
+
+
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
 &i2c3 {
 	status = "okay";
+
+	/* DS2782: Legacy Fuel Gauge Controller */
+	fgc: ds2782@34 {
+		status = "disabled";
+		compatible = "ds2782";
+		reg = <0x34>;
+	};
+
+	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
+		status = "disabled";
+		compatible = "nxp,pca9541";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery1: bq20z655@0b {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <1>;
+			};
+		};
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery2: bq20z655@ob {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <1>;
+			};
+		};
+	};
+
+	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+	battery0: bq20z655@0b {
+		status = "disabled";
+		compatible = "sbs,sbs-battery";
+		reg = <0x0b>;
+		sbs,i2c-retry-count = <2>;
+		sbs,poll-retry-count = <1>;
+	};
 
 	/* Composite video capture interface */
 	cvbs: adv7280@21 {
@@ -151,6 +303,13 @@
 			};
 		};
 	};
+
+	/* DS2484: I2C to OneWire Converter */
+	owc: ds2482@18 {
+		status = "okay";
+		compatible = "ds2482";
+		reg = <0x18>;
+	};
 };
 
 &ipu1_csi1 {
@@ -169,9 +328,54 @@
 	remote-endpoint = <&adv7280_ep>;
 };
 
+&pwm1 {
+	status = "okay";
+};
+
 /* disabled: conflict with parallel camera interface */
 &pwm2 {	status = "disabled";	};
 &pwm3 {	status = "disabled";	};
+
+&pwm4 {
+	status = "okay";
+};
+
+&reg_usb_host_vbus {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart3 {
+	status = "okay";
+};
+
+&usbh1 {
+	vbus-supply = <&reg_usb_host_vbus>;
+	status = "okay";
+};
+
+&usbotg {
+	status = "okay";
+};
+
+/* Colibri MMC */
+&usdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_mmc_cd>;
+	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* MMCD */
+	status = "okay";
+};
+
+&weim {
+	status = "disabled";
+};
 
 &iomuxc {
 	pinctrl_adv7280: gpio-adv7280 {
@@ -180,8 +384,13 @@
 		>;
 	};
 
+	pinctrl_gpio_poweroff: gpio-poweroff {
+		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
+	};
+
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K */
 			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
 		>;
 	};
