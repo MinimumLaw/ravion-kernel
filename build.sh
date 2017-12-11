@@ -18,10 +18,10 @@ if [ -z "$*" ]; then
     ${SUDO} make ${DEF_ARGS} modules_install
     echo install kernel into rootfs and tftp
     ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/mx6.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/mx6-eval.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/mx6-cimc-lite.dtb
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/mx6.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/mx6-eval.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/mx6-cimc-lite.dtb
     if [ -d ${BR_OVERLAY_PATH} ]; then
 	rm -rf \
