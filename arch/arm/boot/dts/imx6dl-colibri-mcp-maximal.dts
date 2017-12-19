@@ -340,10 +340,6 @@
 	status = "okay";
 };
 
-&reg_usb_host_vbus {
-	status = "okay";
-};
-
 &uart1 {
 	status = "okay";
 };
@@ -357,11 +353,16 @@
 };
 
 &usbh1 {
-	vbus-supply = <&reg_usb_host_vbus>;
+	status = "okay";
+};
+
+&reg_usb_otg_vbus {
 	status = "okay";
 };
 
 &usbotg {
+	vbus-supply = <&reg_usb_otg_vbus>;
+	dr_mode = "otg";
 	status = "okay";
 };
 
@@ -384,8 +385,10 @@
 		>;
 	};
 
-	pinctrl_gpio_poweroff: gpio-poweroff {
-		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
+	pinctrl_gpio_bl_on: gpioblon {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0
+		>;
 	};
 
 	pinctrl_gpio_leds: gpio-leds {

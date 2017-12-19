@@ -47,6 +47,33 @@
 	model = "Toradex Colibri iMX6DL/S Module";
 	compatible = "toradex,colibri_imx6dl", "fsl,imx6dl";
 
+	/*
+	 * All ravion board have power key on soDimm pin 45
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>; /* SODIMM 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	/*
+	 * All ravion board have power-off output on soDimm pin 133
+	 */
+	gpio-poweroff {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_poweroff>;
+		compatible = "gpio-poweroff";
+		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* SODIMM 133 */
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
@@ -80,14 +107,15 @@
 		regulator-always-on;
 	};
 
-	reg_usb_host_vbus: regulator-usb-host-vbus {
+	reg_usb_otg_vbus: regulator-usb-otg-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_regulator_usbh_pwr>;
-		regulator-name = "usb_host_vbus";
+		pinctrl-0 = <&pinctrl_regulator_usb_otg_pwr>;
+		regulator-name = "usb_otg_vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>; /* USBH_PEN */
+		regulator-boot-on;
 		status = "disabled";
 	};
 
@@ -271,6 +299,7 @@
 		id = <0>;
 		blocks = <0x5>;
 		irq-trigger = <0x1>;
+		status = "disabled";
 
 		stmpe_touchscreen {
 			compatible = "st,stmpe-ts";
@@ -378,6 +407,14 @@
 	status = "disabled";
 };
 
+/*
+ * USB Host - allways enabled on ravion boaards
+ */
+&usbh1 {
+	disable-over-current;
+	status = "okay";
+};
+
 &usbotg {
 	pinctrl-names = "default";
 	disable-over-current;
@@ -474,10 +511,8 @@
 		>;
 	};
 
-	pinctrl_gpio_bl_on: gpioblon {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26		0x1b0b0
-		>;
+	pinctrl_gpio_poweroff: gpio-poweroff {
+		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
 	};
 
 	pinctrl_gpio_keys: gpiokeys {
@@ -515,7 +550,7 @@
 		>;
 	};
 
-	pinctrl_ipu1_csi0: ipu1csi0grp { /* Parallel Camera */
+	pinctrl_ipu1_csi1: ipu1csi1grp { /* Parallel Camera */
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A17__IPU1_CSI1_DATA12	0xb0b1
 			MX6QDL_PAD_EIM_A18__IPU1_CSI1_DATA13	0xb0b1
@@ -558,6 +593,12 @@
 			MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15	0xa1
 			MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16	0xa1
 			MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17	0xa1
+			MX6QDL_PAD_DISP0_DAT18__IPU1_DISP0_DATA18	0xa1
+			MX6QDL_PAD_DISP0_DAT19__IPU1_DISP0_DATA19	0xa1
+			MX6QDL_PAD_DISP0_DAT20__IPU1_DISP0_DATA20	0xa1
+			MX6QDL_PAD_DISP0_DAT21__IPU1_DISP0_DATA21	0xa1
+			MX6QDL_PAD_DISP0_DAT22__IPU1_DISP0_DATA22	0xa1
+			MX6QDL_PAD_DISP0_DAT23__IPU1_DISP0_DATA23	0xa1
 		>;
 	};
 
@@ -600,7 +641,7 @@
 		>;
 	};
 
-	pinctrl_regulator_usbh_pwr: gpioregusbhpwrgrp {
+	pinctrl_regulator_usb_otg_pwr: gpioregusbhpwrgrp {
 		fsl,pins = <
 			/* USBH_EN */
 			MX6QDL_PAD_EIM_D31__GPIO3_IO31	0x0f058

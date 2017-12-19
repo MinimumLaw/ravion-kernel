@@ -43,13 +43,19 @@
 
 /dts-v1/;
 
-#include "imx6dl-colibri-mcp.dtsi"
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6dl.dtsi"
+#include "imx6qdl-colibri-ravion.dtsi"
 
 / {
 	model = "Toradex Colibri iMX6DL/S on Radioavionica CIMC Lite Board";
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 
+	/*
+	 * Device specific leds
+	 */
 	gpio-leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
@@ -61,13 +67,28 @@
 			default-state = "on";
 		};
 
-		cif {
-			label = "CIF_PWR";
-			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>;
+		bt {
+			label = "BT";
+			gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		nreset {
+			label = "nRESET";
+			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		cif_bt_pwr {
+			label = "CIF_BT_PWR";
+			gpios = <&gpio3 02 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 	};
 
+	/*
+	 * Device specific keys
+	 */
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -181,8 +202,12 @@
 	};
 
 	lcd_display: display@di0 {
-/*		interface-pix-fmt = "rgb24"; */
-		interface-pix-fmt = "bgr666";
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "rgb24";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
 
 		port@0 {
@@ -219,11 +244,11 @@
 };
 
 &backlight {
-#if 1
-	compatinle = "pwm-backlight";
-	enable-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpio_bl_on>;
+	compatible = "pwm-backlight";
+	enable-gpios = <&gpio3 07 GPIO_ACTIVE_HIGH>;
 	pwms = <&pwm1 0 500>;
-#endif
 	brightness-levels = <0 31 63 95 127 159 191 223 255>;
 	default-brightness-level = <4>;
 	status = "okay";
@@ -279,22 +304,39 @@
 	remote-endpoint = <&adv7280_ep>;
 };
 
-/* pwm2 and pwm3 disabled: conflict with parallel camera interface */
-&pwm1 { status = "okay";	};
-&pwm2 { status = "disabled";	};
-&pwm3 { status = "disabled";	};
-&pwm4 { status = "okay";	};
+/* Only pwm1 used as bright contol, all other - disabled  */
+&pwm1 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
-/* uart2 - bluetoth (H3), uart3 not used */
-&uart1 { status = "okay";	};
-&uart2 {
-	uart-has-rtscts;
+/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
+&uart1 { status = "okay"; }; /* default full feature uart */
+&uart2 { status = "okay"; }; /* default have CTS/RTS pins */
+
+/*
+ * USB OTG use VBUS source on USB HOST PEN pin
+ */
+&reg_usb_otg_vbus {
+	regulator-boot-on;
 	status = "okay";
 };
-&uart3 { status = "disabled";	};
+
+/*
+ * USB OTG configuration for ravin boards
+ */
+&usbotg {
+	disable-over-current; /* FixMe: WTF!!! */
+	dr_mode = "host";
+	status = "okay";
+};
+
 
 /* Board specific io muxing */
 &iomuxc {
+	pinctrl_gpio_bl_on: gpioblon {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA7__GPIO3_IO07	0x1b0b0 /* soDimm 125 */
+		>;
+	};
+
 	pinctrl_adv7280: gpio-adv7280 {
 		fsl,pins = <
 			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
@@ -303,8 +345,10 @@
 
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
+			MX6QDL_PAD_EIM_DA3__GPIO3_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
+			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
 			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
-			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
+			MX6QDL_PAD_EIM_DA2__GPIO3_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
 		>;
 	};
 

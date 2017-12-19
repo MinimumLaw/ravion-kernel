@@ -46,7 +46,7 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6dl.dtsi"
-#include "imx6qdl-colibri.dtsi"
+#include "imx6qdl-colibri-ravion.dtsi"
 
 / {
 	model = "Toradex Colibri iMX6DL/S on Radioavionica MCP Board";
@@ -343,9 +343,6 @@
 	status = "okay";
 };
 
-&reg_usb_host_vbus {
-	status = "okay";
-};
 
 &uart1 {
 	status = "okay";
@@ -360,11 +357,17 @@
 };
 
 &usbh1 {
-	vbus-supply = <&reg_usb_host_vbus>;
+	status = "okay";
+};
+
+&reg_usb_otg_vbus {
+	regulator-boot-on;
 	status = "okay";
 };
 
 &usbotg {
+	disable-over-current; /* FixMe: WTF!!! */
+	dr_mode = "host";
 	status = "okay";
 };
 
