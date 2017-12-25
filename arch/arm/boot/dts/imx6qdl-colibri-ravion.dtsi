@@ -74,6 +74,23 @@
 		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* SODIMM 133 */
 	};
 
+	/*
+	 * All ravion board have non-standart USB OTG control pins
+	 */
+	otg_vbus: extcon_otg_vbus {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_extcon_otg_vbus>;
+		compatible = "linux,extcon-usb-gpio";
+		vbus-gpio = <&gpio7 12 GPIO_ACTIVE_HIGH>; /* SODIMM 137 */
+	};
+
+	otg_id: extcon_otg_id {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_extcon_otg_id>;
+		compatible = "linux,extcon-usb-gpio";
+		id-gpio = <&gpio2 02 GPIO_ACTIVE_HIGH>; /* SODIMM 135 */
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pinctrl-names = "default";
@@ -114,9 +131,7 @@
 		regulator-name = "usb_otg_vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-		gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>; /* USBH_PEN */
-		regulator-boot-on;
-		status = "disabled";
+		gpio = <&gpio3 31 GPIO_ACTIVE_HIGH>; /* USBO_PEN : SODIMM 129 */
 	};
 
 	sound {
@@ -415,11 +430,16 @@
 	status = "okay";
 };
 
+&reg_usb_otg_vbus {
+	status = "okay";
+};
+
 &usbotg {
-	pinctrl-names = "default";
+	vbus-supply = <&reg_usb_otg_vbus>;
 	disable-over-current;
-	dr_mode = "peripheral";
-	status = "disabled";
+	dr_mode = "otg";
+	extcon = <&otg_vbus>, <&otg_id>;
+	status = "okay";
 };
 
 /* Colibri MMC */
@@ -454,6 +474,18 @@
 };
 
 &iomuxc {
+	pinctrl_extcon_otg_vbus: gpiootgvbus {
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D2__GPIO2_IO02	0x1b0b0 /* soDimm 137 */
+		>;
+	};
+
+	pinctrl_extcon_otg_id: gpiootgid {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_17__GPIO7_IO12	0x1b0b0 /* soDimm 135 */
+		>;
+	};
+
 	pinctrl_audmux: audmuxgrp {
 		fsl,pins = <
 			MX6QDL_PAD_KEY_COL0__AUD5_TXC	0x130b0

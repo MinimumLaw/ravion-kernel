@@ -311,24 +311,6 @@
 &uart1 { status = "okay"; }; /* default full feature uart */
 &uart2 { status = "okay"; }; /* default have CTS/RTS pins */
 
-/*
- * USB OTG use VBUS source on USB HOST PEN pin
- */
-&reg_usb_otg_vbus {
-	regulator-boot-on;
-	status = "okay";
-};
-
-/*
- * USB OTG configuration for ravin boards
- */
-&usbotg {
-	disable-over-current; /* FixMe: WTF!!! */
-	dr_mode = "host";
-	status = "okay";
-};
-
-
 /* Board specific io muxing */
 &iomuxc {
 	pinctrl_gpio_bl_on: gpioblon {
