@@ -262,13 +262,13 @@
 
 	/* Composite video capture interface */
 	cvbs: adv7280@21 {
+		reg = <0x21>;
+		compatible = "adv7280", "adi,adv7280";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_adv7280>;
-		compatible = "adv7280", "adi,adv7280";
-		reg = <0x21>;
-		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
+		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio3 26>;
 		status = "okay";
 
