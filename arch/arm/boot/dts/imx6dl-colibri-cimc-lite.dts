@@ -81,7 +81,7 @@
 
 		cif_bt_pwr {
 			label = "CIF_BT_PWR";
-			gpios = <&gpio3 02 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio3 02 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
 	};
