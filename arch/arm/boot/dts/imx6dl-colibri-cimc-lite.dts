@@ -69,7 +69,7 @@
 
 		bt {
 			label = "BT";
-			gpios = <&gpio3 3 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio3 3 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
 
@@ -199,6 +199,19 @@
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
+	};
+
+	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
 	};
 
 	lcd_display: display@di0 {
@@ -353,6 +366,12 @@
 			MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x1b0b0	/* RSP:		soDimm 176 */
 			MX6QDL_PAD_KEY_COL4__GPIO4_IO14		0x1b0b0	/* Transmit:	soDimm 178 */
 			MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x1b0b0	/* HP Tangenta:	soDimm 180 */
+		>;
+	};
+
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };
