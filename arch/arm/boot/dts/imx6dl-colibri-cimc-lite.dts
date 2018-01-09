@@ -214,6 +214,9 @@
 		status = "okay";
 	};
 
+	/*
+	 * Display subsystem
+	 */
 	lcd_display: display@di0 {
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
@@ -322,7 +325,14 @@
 
 /* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
 &uart1 { status = "okay"; }; /* default full feature uart */
-&uart2 { status = "okay"; }; /* default have CTS/RTS pins */
+&uart2 { /* default have CTS/RTS pins */
+	status = "okay";
+
+	bluetooth {
+		compatible	= "ti,wl1271-st";
+		status = "okay";
+	};
+};
 
 /* Board specific io muxing */
 &iomuxc {
