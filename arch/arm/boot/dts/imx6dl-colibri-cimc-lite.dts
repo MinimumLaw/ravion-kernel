@@ -99,6 +99,7 @@
 			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
 			default-state = "off";
 		};
+
 	};
 
 	/*
@@ -347,11 +348,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_bluetooth>;
 
-		enable-gpios	= <&gpio3 3 GPIO_ACTIVE_LOW>; /* _HIGH on original PCB */
+		enable-gpios	= <&gpio3 3 GPIO_ACTIVE_HIGH>;
 		compatible	= "ti,wl1271-st";
 		clocks		= <&clk_32k_bt 0>;
 		clock-names	= "ext_clock";
-		max-speed	= <3000000>;
+		max-speed	= <3686400>;
 		/*
 		 * Params not found in source, but described in documentation
 		 */
@@ -360,7 +361,6 @@
 		vbat-supply	= <&reg_3p3v>;
 		status = "okay";
 	};
-
 };
 
 /* Board specific io muxing */
