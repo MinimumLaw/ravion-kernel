@@ -293,8 +293,8 @@
 	status = "okay";
 
 	/* Composite video capture interface */
-	cvbs: adv7280@21 {
-		reg = <0x21>;
+	cvbs: adv7280@20 {
+		reg = <0x20>;
 		compatible = "adv7280", "adi,adv7280";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_adv7280>;
@@ -302,12 +302,18 @@
 		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
 		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio3 26>;
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
 		status = "okay";
 
 		port {
 			adv7280_ep: endpoint {
 				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
 				bus-width = <8>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				data-active = <0>;
+				pclk-sample = <1>;
 			};
 		};
 	};
