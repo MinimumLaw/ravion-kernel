@@ -364,6 +364,9 @@
 	};
 };
 
+/* external mmc card */
+&usdhc1 { status = "okay"; };
+
 /* Board specific io muxing */
 &iomuxc {
 	pinctrl_gpio_bl_on: gpioblon {
