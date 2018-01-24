@@ -112,7 +112,7 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 22 GPIO_ACTIVE_HIGH>; /* SODIMM 45 */
+			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>; /* SODIMM 45 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 			wakeup-source;
@@ -120,98 +120,98 @@
 		/* Board specific buttons */
 		fm1 {
 			label = "PROG1";
-			gpios = <&gpio2 27 GPIO_ACTIVE_HIGH>; /* SODIMM 150 */
+			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* SODIMM 150 */
 			linux,code = <KEY_PROG1>;
 			debounce-interval = <100>;
 		};
 		fm2 {
 			label = "PROG2";
-			gpios = <&gpio6 31 GPIO_ACTIVE_HIGH>; /* SODIMM 152 */
+			gpios = <&gpio6 31 GPIO_ACTIVE_LOW>; /* SODIMM 152 */
 			linux,code = <KEY_PROG2>;
 			debounce-interval = <100>;
 		};
 		enter {
 			label = "Enter";
-			gpios = <&gpio6 16 GPIO_ACTIVE_HIGH>; /* SODIMM 154 */
+			gpios = <&gpio6 16 GPIO_ACTIVE_LOW>; /* SODIMM 154 */
 			linux,code = <KEY_ENTER>;
 			debounce-interval = <100>;
 		};
 		up {
 			label = "Up";
-			gpios = <&gpio6 14 GPIO_ACTIVE_HIGH>; /* SODIMM 156 */
+			gpios = <&gpio6 14 GPIO_ACTIVE_LOW>; /* SODIMM 156 */
 			linux,code = <KEY_UP>;
 			debounce-interval = <100>;
 		};
 		escape {
 			label = "Escape";
-			gpios = <&gpio6 10 GPIO_ACTIVE_HIGH>; /* SODIMM 158 */
+			gpios = <&gpio6 10 GPIO_ACTIVE_LOW>; /* SODIMM 158 */
 			linux,code = <KEY_ESC>;
 			debounce-interval = <100>;
 		};
 		left {
 			label = "Left";
-			gpios = <&gpio6 8 GPIO_ACTIVE_HIGH>; /* SODIMM 160 */
+			gpios = <&gpio6 8 GPIO_ACTIVE_LOW>; /* SODIMM 160 */
 			linux,code = <KEY_LEFT>;
 			debounce-interval = <100>;
 		};
 		down {
 			label = "Down";
-			gpios = <&gpio6 9 GPIO_ACTIVE_HIGH>; /* SODIMM 162 */
+			gpios = <&gpio6 9 GPIO_ACTIVE_LOW>; /* SODIMM 162 */
 			linux,code = <KEY_DOWN>;
 			debounce-interval = <100>;
 		};
 		right {
 			label = "Right";
-			gpios = <&gpio6 11 GPIO_ACTIVE_HIGH>; /* SODIMM 164 */
+			gpios = <&gpio6 11 GPIO_ACTIVE_LOW>; /* SODIMM 164 */
 			linux,code = <KEY_RIGHT>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 		tangenta {
 			label = "Tangenta";
-			gpios = <&gpio6 7 GPIO_ACTIVE_HIGH>; /* SODIMM 166 */
+			gpios = <&gpio6 7 GPIO_ACTIVE_LOW>; /* SODIMM 166 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
 		request {
 			label = "Request";
-			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>; /* SODIMM 168 */
+			gpios = <&gpio4 5 GPIO_ACTIVE_LOW>; /* SODIMM 168 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 		abonent {
 			label = "Abonent";
-			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>; /* SODIMM 170 */
+			gpios = <&gpio5 19 GPIO_ACTIVE_LOW>; /* SODIMM 170 */
 			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 		};
 		alarm {
 			label = "Alarm";
-			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>; /* SODIMM 172 */
+			gpios = <&gpio5 18 GPIO_ACTIVE_LOW>; /* SODIMM 172 */
 			linux,code = <KEY_F4>;
 			debounce-interval = <100>;
 		};
 		function {
 			label = "Function";
-			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>; /* SODIMM 174 */
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
 			linux,code = <KEY_F5>;
 			debounce-interval = <100>;
 		};
 		rsp {
 			label = "Rsp";
-			gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>; /* SODIMM 176 */
+			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
 			linux,code = <KEY_F6>;
 			debounce-interval = <100>;
 		};
 		transmit {
 			label = "Transmit";
-			gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>; /* SODIMM 178 */
+			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>; /* SODIMM 178 */
 			linux,code = <KEY_F7>;
 			debounce-interval = <100>;
 		};
 		hp_tangenta {
 			label = "HP tangenta";
-			gpios = <&gpio1 02 GPIO_ACTIVE_HIGH>; /* SODIMM 180 */
+			gpios = <&gpio1 02 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
