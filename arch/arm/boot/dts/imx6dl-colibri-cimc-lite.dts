@@ -100,6 +100,23 @@
 			default-state = "off";
 		};
 
+		/* KOE display SPI-bitband control lines */
+		spi_cs {
+			label = "bb-CS";
+			gpios = <&gpio3 0 GPIO_ACTIVE_HIGH>; /* SODIMM 111 */
+			default-state = "on";
+		};
+		spi_sck {
+			label = "bb-SCK";
+			gpios = <&gpio3 9 GPIO_ACTIVE_HIGH>; /* SODIMM 112 */
+			default-state = "on";
+		};
+		spi_mosi {
+			label = "bb-MOSI";
+			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>; /* SODIMM 113 */
+			default-state = "on";
+		};
+		/* SODIMM 114 - bb-MISO - not used input */
 	};
 
 	/*
@@ -398,6 +415,10 @@
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
 			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
+			MX6QDL_PAD_EIM_DA0__GPIO3_IO00	0x0f058 /* KOE CS   - soDimm 111 */
+			MX6QDL_PAD_EIM_DA9__GPIO3_IO09	0x0f058 /* KOE SCK  - soDimm 112 */
+			MX6QDL_PAD_EIM_DA1__GPIO3_IO01	0x0f058 /* KOE MOSI - soDimm 113 */
+			MX6QDL_PAD_EIM_DA10__GPIO3_IO10	0x1b0b0 /* KOE MISO - soDimm 114 - stay input, not used */
 		>;
 	};
 
