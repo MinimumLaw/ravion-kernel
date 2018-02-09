@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export CROSS_COMPILE=armv7a-neon-linux-gnueabi-
+export CROSS_COMPILE=armv7a-hardfloat-linux-gnueabi-
 export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export BR_OVERLAY_PATH=/cimc/build/__git__/buildroot/output/overlay
