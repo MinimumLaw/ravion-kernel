@@ -62,7 +62,6 @@
 		};
 	};
 
-
 	lcd_display: display@di0 {
 		interface-pix-fmt = "bgr666";
 		status = "okay";
@@ -122,64 +121,15 @@
 	};
 };
 
-&ipu1_di0_disp0 {
-	remote-endpoint = <&lcd_display_in>;
-};
+&ipu1_di0_disp0 {	remote-endpoint = <&lcd_display_in>;	};
 
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
-&i2c3 {
-	status = "okay";
+&i2c3 {	status = "okay";	};
 
-	/* Composite video capture interface */
-	cvbs: adv7280@21 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_adv7280>;
-		compatible = "adv7280", "adi,adv7280";
-		reg = <0x21>;
-		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
-		interrupt-parent = <&gpio1>;
-		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		reset-gpios = <&gpio3 26>;
-		status = "okay";
-
-		port {
-			adv7280_ep: endpoint {
-				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
-				bus-width = <8>;
-			};
-		};
-	};
-};
-
-&ipu1_csi1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ipu1_csi1>;
-
-	fim {
-		status = "okay";
-	};
-};
-
-&ipu1_csi1_from_ipu1_csi1_mux {
-};
-
-&ipu1_csi1_mux_from_parallel_sensor {
-	remote-endpoint = <&adv7280_ep>;
-};
-
-/* disabled: conflict with parallel camera interface */
-&pwm2 {	status = "disabled";	};
-&pwm3 {	status = "disabled";	};
 
 &iomuxc {
-	pinctrl_adv7280: gpio-adv7280 {
-		fsl,pins = <
-			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
-		>;
-	};
-
 	pinctrl_gpio_bl_on: gpioblon {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0

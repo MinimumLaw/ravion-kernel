@@ -105,75 +105,15 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-/*		interface-pix-fmt = "rgb24"; */
-		interface-pix-fmt = "bgr666";
+		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
-
-		port@0 {
-			reg = <0>;
-
-			lcd_display_in: endpoint {
-				remote-endpoint = <&ipu1_di0_disp0>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-
-			lcd_display_out: endpoint {
-				remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
-			};
-		};
 	};
-
-	adv7123: encoder {
-		compatible = "adi,adv7123";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_vga_encoder>;
-		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			port@0 {
-				reg = <0>;
-				adv7123_in: endpiont@0 {
-					remote-endpoint = <&lcd_display_out>;
-				};
-			};
-			port@1 {
-				reg = <1>;
-				adv7123_out: endpoint@0 {
-					remote-endpoint = <&vga_connector_in>;
-				};
-			};
-		};
-	};
-
-	vga0: connector@0 {
-		compatible = "vga-connector";
-		label = "vga";
-
-		/*ddc-i2c-bus = <&i2c3> */
-
-		port {
-			vga_connector_in: endpoint {
-				remote-endpoint = <&adv7123_out>;
-			};
-		};
-	};
-
 };
 
-&ipu1_di0_disp0 {
-	remote-endpoint = <&lcd_display_in>;
-};
 
-&hdmi {
-	status = "okay";
-};
+&hdmi {	status = "okay";	};
 
 /* Colibri SSP */
 &ecspi4 {
@@ -249,14 +189,13 @@
 
 	/* Composite video capture interface */
 	cvbs: adv7280@21 {
+		reg = <0x21>;
+		compatible = "adv7280", "adi,adv7280";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_adv7280>;
-		compatible = "adv7280", "adi,adv7280";
-		reg = <0x21>;
 		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		reset-gpios = <&gpio3 26>;
 		status = "okay";
 
 		port {
@@ -291,62 +230,29 @@
 	remote-endpoint = <&adv7280_ep>;
 };
 
-&pwm1 {
-	status = "okay";
-};
-
-/* disabled: conflict with parallel camera interface */
-&pwm2 {	status = "disabled";	};
-&pwm3 {	status = "disabled";	};
-
-&pwm4 {
-	status = "okay";
-};
+/* pwm2 & pwm3 disabled: conflict with parallel camera interface */
+&pwm1{	status = "okay";	};
+&pwm2{	status = "disabled";	};
+&pwm3{	status = "disabled";	};
+&pwm4{	status = "okay";	};
 
 
-&uart1 {
-	status = "okay";
-};
+&uart1{	status = "okay";	};
+&uart2{	status = "okay";	};
+&uart3{	status = "okay";	};
 
-&uart2 {
-	status = "okay";
-};
-
-&uart3 {
-	status = "okay";
-};
-
-&usbh1 {
-	status = "okay";
-};
-
-&reg_usb_otg_vbus {
-	regulator-boot-on;
-	status = "okay";
-};
-
-&usbotg {
-	disable-over-current; /* FixMe: WTF!!! */
-	dr_mode = "host";
-	status = "okay";
-};
+&usbh1{	status = "okay";	};
 
 /* Colibri MMC */
-&usdhc1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mmc_cd>;
-	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* MMCD */
-	status = "okay";
-};
+&usdhc1{ status = "okay";	};
 
-&weim {
-	status = "disabled";
-};
+&weim{	status = "disabled";	};
 
 &iomuxc {
 	pinctrl_adv7280: gpio-adv7280 {
 		fsl,pins = <
-			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
+			MX6QDL_PAD_SD2_CMD__GPIO1_IO11	0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
+			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
 		>;
 	};
 
@@ -360,11 +266,4 @@
 			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
 		>;
 	};
-
-	pinctrl_vga_encoder: vga-encoder {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x0f058 /* PU_22K soDimm 71: BL_ON */
-		>;
-	};
-
 };
