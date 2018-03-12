@@ -49,19 +49,28 @@
 #include "imx6qdl-colibri-ravion.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica MCP Board";
+	model = "Toradex Colibri iMX6DL/S on Radioavionica CIMC Board stack";
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 
-	aliases {
-		i2c0 = &i2c2;
-		i2c1 = &i2c3;
+	/*
+	 * Device specific regulators
+	 */
+	cvbs_reg: cvbs_1v8 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_reg_cvbs>;
+			compatible = "regulator-fixed";
+			regulator-name = "CVBS";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio3 2 GPIO_ACTIVE_LOW>;
+			regulator-always-on;
+			vin-supply = <&reg_3p3v>;
 	};
 
-	aliases {
-		rtc0 = &snvs_rtc;
-	};
-
+	/*
+	 * Device specific leds
+	 */
 	gpio-leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
@@ -73,13 +82,16 @@
 			default-state = "on";
 		};
 
-		cif {
-			label = "CIF_PWR";
-			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
+		nreset {
+			label = "nRESET";
+			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
+			default-state = "off";
 		};
 	};
 
+	/*
+	 * Device specific keys
+	 */
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -94,19 +106,27 @@
 		};
 	};
 
-	gpio-poweroff {
+	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_poweroff>;
-		compatible = "gpio-poweroff";
-		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
 	};
 
+	/*
+	 * Display subsystem
+	 */
 	lcd_display: display@di0 {
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-/*		interface-pix-fmt = "rgb24"; */
-		interface-pix-fmt = "bgr666";
+		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
 		status = "okay";
@@ -123,69 +143,29 @@
 			reg = <1>;
 
 			lcd_display_out: endpoint {
-				remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
+				remote-endpoint = <&lcd_panel_in>;
 			};
 		};
 	};
 
-	adv7123: encoder {
-		compatible = "adi,adv7123";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_vga_encoder>;
-		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			port@0 {
-				reg = <0>;
-				adv7123_in: endpiont@0 {
-					remote-endpoint = <&lcd_display_out>;
-				};
-			};
-			port@1 {
-				reg = <1>;
-				adv7123_out: endpoint@0 {
-					remote-endpoint = <&vga_connector_in>;
-				};
-			};
-		};
-	};
-
-	vga0: connector@0 {
-		compatible = "vga-connector";
-		label = "vga";
-
-		/*ddc-i2c-bus = <&i2c3> */
+	koe_lcd: panel {
+		compatible = "koe,tx09d200vm0baa";
+		backlight = <&backlight>;
 
 		port {
-			vga_connector_in: endpoint {
-				remote-endpoint = <&adv7123_out>;
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&lcd_display_out>;
 			};
 		};
 	};
 
+	backlight: backlight {
+		compatible = "generic-bl";
+	};
 };
 
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
-};
-
-&hdmi {
-	status = "okay";
-};
-
-/* Colibri SSP */
-&ecspi4 {
-	status = "okay";
-
-	spidev0: spi@0 {
-		reg = <0>;
-		spi-max-frequency = <1000000>;
-		 /* not allowed compatible = "spidev", so set allowed */
-		compatible = "ge,achc";
-		status = "okay";
-	};
 };
 
 
@@ -195,68 +175,17 @@
 &i2c3 {
 	status = "okay";
 
-	/* DS2782: Legacy Fuel Gauge Controller */
-	fgc: ds2782@34 {
-		status = "disabled";
-		compatible = "ds2782";
-		reg = <0x34>;
-	};
-
-	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
-		status = "disabled";
-		compatible = "nxp,pca9541";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-
-		i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-			battery1: bq20z655@0b {
-				status = "okay";
-				compatible = "sbs,sbs-battery";
-				reg = <0x0b>;
-				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
-			};
-		};
-
-		i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-			battery2: bq20z655@ob {
-				status = "okay";
-				compatible = "sbs,sbs-battery";
-				reg = <0x0b>;
-				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
-			};
-		};
-	};
-
-	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-	battery0: bq20z655@0b {
-		status = "disabled";
-		compatible = "sbs,sbs-battery";
-		reg = <0x0b>;
-		sbs,i2c-retry-count = <2>;
-		sbs,poll-retry-count = <1>;
-	};
-
 	/* Composite video capture interface */
-	cvbs: adv7280@21 {
+	cvbs: adv7280@20 {
+		reg = <0x20>;
+		compatible = "adv7280", "adi,adv7280";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_adv7280>;
-		compatible = "adv7280", "adi,adv7280";
-		reg = <0x21>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
 		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
-		interrupt-parent = <&gpio1>;
-		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		reset-gpios = <&gpio3 26>;
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
 		status = "okay";
 
 		port {
@@ -291,80 +220,47 @@
 	remote-endpoint = <&adv7280_ep>;
 };
 
-&pwm1 {
-	status = "okay";
-};
+/* Only pwm1 used as bright contol, all other - disabled  */
+&pwm1 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
-/* disabled: conflict with parallel camera interface */
-&pwm2 {	status = "disabled";	};
-&pwm3 {	status = "disabled";	};
+&uart1 { status = "okay"; }; /* default full feature uart */
+&uart2 { status = "okay"; }; /* default have CTS/RTS pins */
+&uart3 { status = "okay"; }; /* default 3-wire uart */
 
-&pwm4 {
-	status = "okay";
-};
+/* external mmc card */
+&usdhc1 { status = "okay"; };
 
-
-&uart1 {
-	status = "okay";
-};
-
-&uart2 {
-	status = "okay";
-};
-
-&uart3 {
-	status = "okay";
-};
-
-&usbh1 {
-	status = "okay";
-};
-
-&reg_usb_otg_vbus {
-	regulator-boot-on;
-	status = "okay";
-};
-
-&usbotg {
-	disable-over-current; /* FixMe: WTF!!! */
-	dr_mode = "host";
-	status = "okay";
-};
-
-/* Colibri MMC */
-&usdhc1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_mmc_cd>;
-	cd-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* MMCD */
-	status = "okay";
-};
-
-&weim {
-	status = "disabled";
-};
-
+/* Board specific io muxing */
 &iomuxc {
 	pinctrl_adv7280: gpio-adv7280 {
 		fsl,pins = <
-			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
+			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
 		>;
 	};
 
-	pinctrl_gpio_poweroff: gpio-poweroff {
-		fsl,pins = <MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x0f058>; /* PU_22K */
+	pinctrl_reg_cvbs: gpio-cvbs {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA2__GPIO3_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
+		>;
 	};
 
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K */
-			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
+			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
 		>;
 	};
 
-	pinctrl_vga_encoder: vga-encoder {
+	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x0f058 /* PU_22K soDimm 71: BL_ON */
+			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
 		>;
 	};
 
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
+		>;
+	};
 };

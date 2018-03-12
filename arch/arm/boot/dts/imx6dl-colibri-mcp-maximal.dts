@@ -161,51 +161,10 @@
 			};
 		};
 	};
-
-#if 0 /* This time KOE primary display */
-	koe_lcd: panel {
-		compatible = "koe,tx09d200vm0baa";
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-
-	bolimin_lcd: panel {
-		compatible = "bolimin,bt35sn7g1e0";
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-
-	winstar_lcd: panel {
-		compatible = "winstar,wf35ltiacd";
-		backlight = <&backlight>;
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
-			};
-		};
-	};
-#endif
 };
 
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
-};
-
-&backlight {
-	brightness-levels = <0 31 63 95 127 159 191 223 255>;
-	default-brightness-level = <4>;
-	status = "disabled";
 };
 
 &hdmi {
@@ -382,12 +341,6 @@
 	pinctrl_adv7280: gpio-adv7280 {
 		fsl,pins = <
 			MX6QDL_PAD_SD2_CMD__GPIO1_IO11 0x0f058 /* PU_22K soDimm 69: CIF_D10/CIF_IRQn */
-		>;
-	};
-
-	pinctrl_gpio_bl_on: gpioblon {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0
 		>;
 	};
 

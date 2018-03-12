@@ -286,22 +286,23 @@
 			};
 		};
 	};
+
+	backlight: backlight {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio3 07 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
+		pwms = <&pwm1 0 500>;
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <4>;
+		status = "okay";
+	};
 };
 
 &ipu1_di0_disp0 {
 	remote-endpoint = <&lcd_display_in>;
 };
 
-&backlight {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gpio_bl_on>;
-	compatible = "pwm-backlight";
-	enable-gpios = <&gpio3 07 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
-	pwms = <&pwm1 0 500>;
-	brightness-levels = <0 31 63 95 127 159 191 223 255>;
-	default-brightness-level = <4>;
-	status = "okay";
-};
 
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)

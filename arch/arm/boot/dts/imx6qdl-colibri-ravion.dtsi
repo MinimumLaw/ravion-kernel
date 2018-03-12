@@ -93,18 +93,6 @@
 		id-gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* SODIMM 135 */
 	};
 
-	/*
-	 * FixMe: Is backligh platform-specific module???
-	 */
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		pwms = <&pwm3 0 5000000>;
-		enable-gpios = <&gpio3 26 GPIO_ACTIVE_HIGH>; /* Colibri BL_ON */
-		status = "disabled";
-	};
-
 	reg_1p8v: regulator-1p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "1P8V";
