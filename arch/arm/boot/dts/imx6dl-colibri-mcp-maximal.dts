@@ -98,26 +98,6 @@
 		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
 	};
 
-	lcd_display: display@di0 {
-		interface-pix-fmt = "bgr666";
-		status = "okay";
-
-		port@0 {
-			reg = <0>;
-
-			lcd_display_in: endpoint {
-				remote-endpoint = <&ipu1_di0_disp0>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-
-			lcd_display_out: endpoint {
-				remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
-			};
-		};
-	};
 
 	adv7123: encoder {
 		compatible = "adi,adv7123";
@@ -131,7 +111,7 @@
 			port@0 {
 				reg = <0>;
 				adv7123_in: endpiont@0 {
-					remote-endpoint = <&lcd_display_out>;
+					remote-endpoint = <&tft_display_bus_out>;
 				};
 			};
 			port@1 {
@@ -157,7 +137,14 @@
 	};
 };
 
-&ipu1_di0_disp0 {	remote-endpoint = <&lcd_display_in>;	};
+&tft_display_bus {
+	interface-pix-fmt = "bgr666";
+	status = "okay";
+};
+
+&tft_display_bus_out {
+	remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
+};
 
 &hdmi {	status = "okay";	};
 

@@ -128,6 +128,24 @@
 		gpio = <&gpio3 31 0>; /* USBO_PEN : SODIMM 129 */
 	};
 
+	tft_display_bus: disp0@di0 {
+		compatible = "fsl,imx-parallel-display";
+		interface-pix-fmt = "rgb24";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
+
+		port@0 {
+			lcd_display_in: endpoint {
+				remote-endpoint = <&ipu1_di0_disp0>;
+			};
+		};
+
+		port@1 {
+			tft_display_bus_out: endpoint {
+			};
+		};
+	};
+
 	sound {
 		compatible = "fsl,imx-audio-sgtl5000";
 		model = "imx6dl-colibri-sgtl5000";
@@ -141,6 +159,10 @@
 		mux-int-port = <1>;
 		mux-ext-port = <5>;
 	};
+};
+
+&ipu1_di0_disp0 {
+	remote-endpoint = <&lcd_display_in>;
 };
 
 &audmux {
@@ -261,6 +283,7 @@
 		};
 	};
 
+
 	codec: sgtl5000@0a {
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
@@ -284,7 +307,7 @@
 		id = <0>;
 		blocks = <0x5>;
 		irq-trigger = <0x1>;
-		status = "disabled";
+		status = "okay";
 
 		stmpe_touchscreen {
 			compatible = "st,stmpe-ts";
@@ -313,6 +336,8 @@
 		};
 	};
 };
+
+
 
 /*
  * I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)

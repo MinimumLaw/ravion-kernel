@@ -100,18 +100,7 @@
 		compatible = "gpio-poweroff";
 		gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
 	};
-
-	lcd_display: display@di0 {
-		compatible = "fsl,imx-parallel-display";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		interface-pix-fmt = "rgb24";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
-		status = "okay";
-	};
 };
-
 
 &hdmi {	status = "okay";	};
 

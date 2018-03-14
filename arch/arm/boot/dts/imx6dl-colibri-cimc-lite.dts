@@ -247,34 +247,6 @@
 		status = "okay";
 	};
 
-	/*
-	 * Display subsystem
-	 */
-	lcd_display: display@di0 {
-		compatible = "fsl,imx-parallel-display";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		interface-pix-fmt = "rgb24";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ipu1_lcdif>;
-		status = "okay";
-
-		port@0 {
-			reg = <0>;
-
-			lcd_display_in: endpoint {
-				remote-endpoint = <&ipu1_di0_disp0>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-
-			lcd_display_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-	};
 
 	koe_lcd: panel {
 		compatible = "koe,tx09d200vm0baa";
@@ -282,7 +254,7 @@
 
 		port {
 			lcd_panel_in: endpoint {
-				remote-endpoint = <&lcd_display_out>;
+				remote-endpoint = <&tft_display_bus_out>;
 			};
 		};
 	};
@@ -299,8 +271,11 @@
 	};
 };
 
-&ipu1_di0_disp0 {
-	remote-endpoint = <&lcd_display_in>;
+/*
+ * Display subsystem
+ */
+&tft_display_bus_out {
+	remote-endpoint = <&lcd_panel_in>;
 };
 
 
