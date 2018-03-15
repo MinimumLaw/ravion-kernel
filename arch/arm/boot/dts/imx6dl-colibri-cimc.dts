@@ -120,14 +120,16 @@
 	};
 
 
+	/*
+	 * LCD Panel (Warning! TFT=>LVDS=>TFT transparent)
+	 */
 	koe_lcd: panel {
 		compatible = "koe,tx09d200vm0baa";
-		backlight = <&backlight>;
+/*		backlight = <&backlight>; */
 		status = "okay";
 
 		port {
-
-			lcd_panel_in: endpoint {
+			panel_in: endpoint {
 				remote-endpoint = <&tft_display_bus_out>;
 			};
 		};
@@ -140,7 +142,7 @@
 };
 
 &tft_display_bus_out {
-	remote-endpoint = <&lcd_panel_in>;
+	remote-endpoint = <&panel_in>;
 };
 
 /*

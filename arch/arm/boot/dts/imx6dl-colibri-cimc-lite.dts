@@ -248,7 +248,10 @@
 	};
 
 
-	koe_lcd: panel {
+	/*
+	 * LCD Panel
+	 */
+	panel {
 		compatible = "koe,tx09d200vm0baa";
 		backlight = <&backlight>;
 
