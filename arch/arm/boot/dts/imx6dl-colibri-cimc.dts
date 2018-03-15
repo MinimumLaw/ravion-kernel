@@ -104,6 +104,13 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>; /* SODIMM 63 - GPIO2 */
+			linux,code = <KEY_F1>;
+			debounce-interval = <100>;
+		};
 	};
 
 	/*
@@ -114,7 +121,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pps_gpio>;
 
-		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 - GPIO1 board */
 		assert-falling-edge;
 		status = "okay";
 	};
@@ -231,6 +238,7 @@
 	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
+			MX6QDL_PAD_GPIO_8__GPIO1_IO08		0x1b0b0 /* External tangenta */
 		>;
 	};
 
