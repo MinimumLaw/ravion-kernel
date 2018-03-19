@@ -1407,6 +1407,45 @@ static const struct panel_desc lg_lp129qe = {
 	},
 };
 
+static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
+	.clock = 30770,
+	.hdisplay = 800,
+	.hsync_start = 800 + 30,
+	.hsync_end = 800 + 30 + 87,
+	.htotal = 800 + 30 + 87 + 1,
+	.vdisplay = 480,
+	.vsync_start = 480 + 13,
+	.vsync_end = 480 + 13 + 80,
+	.vtotal = 480 + 13 + 80 + 1,
+	.vrefresh = 60,
+	.flags =  DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc mitsubishi_aa050mh01_da1 = {
+	.modes = &mitsubishi_aa050mh01_da1_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 109,
+		.height = 65,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+};
+
+static const struct panel_desc mitsubishi_aa070me11ada11 = {
+	.modes = &mitsubishi_aa050mh01_da1_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 153,
+		.height = 92,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+};
+
+
 static const struct display_timing nec_nl12880bc20_05_timing = {
 	.pixelclock = { 67000000, 71000000, 75000000 },
 	.hactive = { 1280, 1280, 1280 },
@@ -2142,6 +2181,12 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "lg,lp129qe",
 		.data = &lg_lp129qe,
+	}, {
+		.compatible = "mitsubishi,aa050mh01-da1",
+		.data = &mitsubishi_aa050mh01_da1,
+	}, {
+		.compatible = "mitsubishi,aa070me11ada11",
+		.data = &mitsubishi_aa070me11ada11
 	}, {
 		.compatible = "nec,nl12880bc20-05",
 		.data = &nec_nl12880bc20_05,
