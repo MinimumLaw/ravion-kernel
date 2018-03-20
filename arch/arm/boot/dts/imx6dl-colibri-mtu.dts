@@ -88,15 +88,21 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
-		w1 {
-			label = "W1";
-			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
-		};
-
 		nreset {
 			label = "nRESET";
 			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		ts_ckw {
+			label = "ts_ckw";
+			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>; /* SODIMM 186 */
+			default-state = "off";
+		};
+
+		ts_sc {
+			label = "ts_sc";
+			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>; /* SODIMM 188 */
 			default-state = "off";
 		};
 	};
@@ -116,119 +122,7 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
-		/* Board specific buttons */
-		fm1 {
-			label = "PROG1";
-			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* SODIMM 150 */
-			linux,code = <KEY_PROG1>;
-			debounce-interval = <100>;
-		};
-		fm2 {
-			label = "PROG2";
-			gpios = <&gpio6 31 GPIO_ACTIVE_LOW>; /* SODIMM 152 */
-			linux,code = <KEY_PROG2>;
-			debounce-interval = <100>;
-		};
-		enter {
-			label = "Enter";
-			gpios = <&gpio6 16 GPIO_ACTIVE_LOW>; /* SODIMM 154 */
-			linux,code = <KEY_ENTER>;
-			debounce-interval = <100>;
-		};
-		up {
-			label = "Up";
-			gpios = <&gpio6 14 GPIO_ACTIVE_LOW>; /* SODIMM 156 */
-			linux,code = <KEY_UP>;
-			debounce-interval = <100>;
-		};
-		escape {
-			label = "Escape";
-			gpios = <&gpio6 10 GPIO_ACTIVE_LOW>; /* SODIMM 158 */
-			linux,code = <KEY_ESC>;
-			debounce-interval = <100>;
-		};
-		left {
-			label = "Left";
-			gpios = <&gpio6 8 GPIO_ACTIVE_LOW>; /* SODIMM 160 */
-			linux,code = <KEY_LEFT>;
-			debounce-interval = <100>;
-		};
-		down {
-			label = "Down";
-			gpios = <&gpio6 9 GPIO_ACTIVE_LOW>; /* SODIMM 162 */
-			linux,code = <KEY_DOWN>;
-			debounce-interval = <100>;
-		};
-		right {
-			label = "Right";
-			gpios = <&gpio6 11 GPIO_ACTIVE_LOW>; /* SODIMM 164 */
-			linux,code = <KEY_RIGHT>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-		tangenta {
-			label = "Tangenta";
-			gpios = <&gpio6 7 GPIO_ACTIVE_LOW>; /* SODIMM 166 */
-			linux,code = <KEY_F1>;
-			debounce-interval = <100>;
-		};
-		request {
-			label = "Request";
-			gpios = <&gpio4 5 GPIO_ACTIVE_LOW>; /* SODIMM 168 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-		};
-		abonent {
-			label = "Abonent";
-			gpios = <&gpio5 19 GPIO_ACTIVE_LOW>; /* SODIMM 170 */
-			linux,code = <KEY_F3>;
-			debounce-interval = <100>;
-		};
-		alarm {
-			label = "Alarm";
-			gpios = <&gpio5 18 GPIO_ACTIVE_LOW>; /* SODIMM 172 */
-			linux,code = <KEY_F4>;
-			debounce-interval = <100>;
-		};
-		function {
-			label = "Function";
-			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
-			linux,code = <KEY_F5>;
-			debounce-interval = <100>;
-		};
-		rsp {
-			label = "Rsp";
-			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
-			linux,code = <KEY_F6>;
-			debounce-interval = <100>;
-		};
-		transmit {
-			label = "Transmit";
-			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>; /* SODIMM 178 */
-			linux,code = <KEY_F7>;
-			debounce-interval = <100>;
-		};
-		hp_tangenta {
-			label = "HP tangenta";
-			gpios = <&gpio1 02 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
-			linux,code = <KEY_F1>;
-			debounce-interval = <100>;
-		};
 	};
-
-	/*
-	 * PPS pin from SNS receiver
-	 */
-	pps {
-		compatible = "pps-gpio";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_pps_gpio>;
-
-		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
-		assert-falling-edge;
-		status = "okay";
-	};
-
 
 	/*
 	 * LCD Panel
@@ -248,10 +142,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio3 07 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
-		pwms = <&pwm1 0 500>;
+		enable-gpios = <&gpio3 04 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+		pwms = <&pwm1 0 2000>; /* FixMe: frequency !!! */
 		brightness-levels = <0 31 63 95 127 159 191 223 255>;
-		default-brightness-level = <4>;
+		default-brightness-level = <5>;
 		status = "okay";
 	};
 };
@@ -270,49 +164,50 @@
 &i2c3 {
 	status = "okay";
 
-	/* Composite video capture interface */
-	cvbs: adv7280@20 {
-		reg = <0x20>;
-		compatible = "adv7280", "adi,adv7280";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_adv7280>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
-		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
-		input-names = "Ain1","Ain2","Ain3","Ain4";
-		inputs = <0x00 0x01 0x02 0x03>;
-		status = "okay";
+	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
+		status = "disabled";
+		compatible = "nxp,pca9541";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
 
-		port {
-			adv7280_ep: endpoint {
-				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
-				bus-width = <8>;
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery1: bq20z655@0b {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <1>;
+			};
+		};
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery2: bq20z655@ob {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <1>;
 			};
 		};
 	};
 
-	/* DS2484: I2C to OneWire Converter */
-	owc: ds2482@18 {
-		status = "okay";
-		compatible = "ds2482";
-		reg = <0x18>;
+	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+	battery0: bq20z655@0b {
+		status = "disabled";
+		compatible = "sbs,sbs-battery";
+		reg = <0x0b>;
+		sbs,i2c-retry-count = <2>;
+		sbs,poll-retry-count = <1>;
 	};
-};
-
-&ipu1_csi1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ipu1_csi1>;
-
-	fim {
-		status = "okay";
-	};
-};
-
-&ipu1_csi1_from_ipu1_csi1_mux {
-};
-
-&ipu1_csi1_mux_from_parallel_sensor {
-	remote-endpoint = <&adv7280_ep>;
 };
 
 /* Only pwm1 used as bright contol, all other - disabled  */
@@ -341,6 +236,7 @@
 		status = "okay";
 	};
 };
+&uart3 { status = "okay"; }; /* default 3-wire uart */
 
 /* external mmc card */
 &usdhc1 { status = "okay"; };
@@ -349,14 +245,7 @@
 &iomuxc {
 	pinctrl_gpio_bl_on: gpioblon {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_DA7__GPIO3_IO07	0x1b0b0 /* soDimm 125 */
-		>;
-	};
-
-	pinctrl_adv7280: gpio-adv7280 {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
-			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
+			MX6QDL_PAD_EIM_DA4__GPIO3_IO04	0x1b0b0 /* soDimm 119 */
 		>;
 	};
 
@@ -375,35 +264,14 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
-			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
+			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
+			MX6QDL_PAD_KEY_ROW4__GPIO4_IO15	 0xf058 /* PU_22K - soDimm 188. TS_SC */
 		>;
 	};
 
 	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
-			MX6QDL_PAD_EIM_LBA__GPIO2_IO27		0x1b0b0	/* FM1:		soDimm 150 */
-			MX6QDL_PAD_EIM_BCLK__GPIO6_IO31		0x1b0b0	/* FM2:		soDimm 152 */
-			MX6QDL_PAD_NANDF_CS3__GPIO6_IO16	0x1b0b0	/* Enter:	soDimm 154 */
-			MX6QDL_PAD_NANDF_CS1__GPIO6_IO14	0x1b0b0	/* Up:		soDimm 156 */
-			MX6QDL_PAD_NANDF_RB0__GPIO6_IO10	0x1b0b0	/* Escape	soDimm 158 */
-			MX6QDL_PAD_NANDF_ALE__GPIO6_IO08	0x1b0b0	/* Left:	soDimm 160 */
-			MX6QDL_PAD_NANDF_WP_B__GPIO6_IO09	0x1b0b0	/* Down:	soDimm 162 */
-			MX6QDL_PAD_NANDF_CS0__GPIO6_IO11	0x1b0b0	/* Rigth:	soDimm 164 */
-			MX6QDL_PAD_NANDF_CLE__GPIO6_IO07	0x1b0b0	/* Tangenta:	soDimm 166 */
-			MX6QDL_PAD_GPIO_19__GPIO4_IO05		0x1b0b0	/* Request:	soDimm 168 */
-			MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19	0x1b0b0	/* Abonent:	soDimm 170 */
-			MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18	0x1b0b0	/* Alarm:	soDimm 172 */
-			MX6QDL_PAD_GPIO_4__GPIO1_IO04		0x1b0b0	/* Function:	soDimm 174 */
-			MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x1b0b0	/* RSP:		soDimm 176 */
-			MX6QDL_PAD_KEY_COL4__GPIO4_IO14		0x1b0b0	/* Transmit:	soDimm 178 */
-			MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x1b0b0	/* HP Tangenta:	soDimm 180 */
-		>;
-	};
-
-	pinctrl_pps_gpio: gpiopps {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };
