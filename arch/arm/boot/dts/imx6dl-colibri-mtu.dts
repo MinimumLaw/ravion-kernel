@@ -94,6 +94,18 @@
 			default-state = "off";
 		};
 
+		disp_en {
+			label = "display_enable";
+			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
+			default-state = "on";
+		};
+
+		scan_dir {
+			label = "scan_direction";
+			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>; /* SODIMM 184 */
+			default-state = "off";
+		};
+
 		ts_ckw {
 			label = "ts_ckw";
 			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>; /* SODIMM 186 */
@@ -264,6 +276,8 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
+			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
 			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
 			MX6QDL_PAD_KEY_ROW4__GPIO4_IO15	 0xf058 /* PU_22K - soDimm 188. TS_SC */
 		>;

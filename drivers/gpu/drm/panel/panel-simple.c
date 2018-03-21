@@ -1408,17 +1408,17 @@ static const struct panel_desc lg_lp129qe = {
 };
 
 static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
-	.clock = 30770,
+	.name = "800x480",
+	.clock = 30400,
 	.hdisplay = 800,
-	.hsync_start = 800 + 30,
-	.hsync_end = 800 + 30 + 87,
-	.htotal = 800 + 30 + 87 + 1,
+	.hsync_start = 800 + 60,
+	.hsync_end = 800 + 60 + 60,
+	.htotal = 800 + 60 + 60 + 40,
 	.vdisplay = 480,
-	.vsync_start = 480 + 13,
-	.vsync_end = 480 + 13 + 80,
-	.vtotal = 480 + 13 + 80 + 1,
+	.vsync_start = 480 + 15,
+	.vsync_end = 480 + 15 + 15,
+	.vtotal = 480 + 15 + 15 + 15,
 	.vrefresh = 60,
-	.flags =  DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
 static const struct panel_desc mitsubishi_aa050mh01_da1 = {
@@ -1429,8 +1429,8 @@ static const struct panel_desc mitsubishi_aa050mh01_da1 = {
 		.width = 109,
 		.height = 65,
 	},
-	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
-	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
 static const struct panel_desc mitsubishi_aa070me11ada11 = {
@@ -1441,8 +1441,8 @@ static const struct panel_desc mitsubishi_aa070me11ada11 = {
 		.width = 153,
 		.height = 92,
 	},
-	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
-	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
 
