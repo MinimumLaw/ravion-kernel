@@ -1429,7 +1429,7 @@ static const struct panel_desc mitsubishi_aa050mh01_da1 = {
 		.width = 109,
 		.height = 65,
 	},
-	.bus_format = MEDIA_BUS_FMT_RGB888_1X24
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
 	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
