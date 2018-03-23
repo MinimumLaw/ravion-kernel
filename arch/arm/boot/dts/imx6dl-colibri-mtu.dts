@@ -101,9 +101,9 @@
 		};
 
 		scan_dir {
-			label = "scan_direction";
+			label = "disp_scan_direction";
 			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>; /* SODIMM 184 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		ts_ckw {
