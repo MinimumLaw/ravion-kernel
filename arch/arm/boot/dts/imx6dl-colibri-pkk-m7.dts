@@ -94,6 +94,12 @@
 			default-state = "off";
 		};
 
+		wifi_en {
+			label = "wifi_enable";
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; /* SODIMM 122 */
+			default-state = "off";
+		};
+
 		disp_en {
 			label = "display_enable";
 			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
@@ -147,7 +153,7 @@
 	 * LCD Panel
 	 */
 	panel {
-		compatible = "mitsubishi,aa050mh01-da1";
+		compatible = "mitsubishi,aa070me11ada11";
 		backlight = <&backlight>;
 
 		port {
@@ -172,6 +178,11 @@
 /*
  * Display subsystem
  */
+&tft_display_bus {
+	interface-pix-fmt = "bgr666";
+	status = "okay";
+};
+
 &tft_display_bus_out {
 	remote-endpoint = <&lcd_panel_in>;
 };
@@ -283,6 +294,7 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. DISP EN */
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
 			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
