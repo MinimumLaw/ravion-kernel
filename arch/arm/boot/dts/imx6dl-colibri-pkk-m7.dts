@@ -97,7 +97,7 @@
 		wifi_en {
 			label = "wifi_enable";
 			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; /* SODIMM 122 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		disp_en {
