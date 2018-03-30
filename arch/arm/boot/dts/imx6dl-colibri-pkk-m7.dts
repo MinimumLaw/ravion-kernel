@@ -148,47 +148,26 @@
 			debounce-interval = <100>;
 		};
 
-		usb_sw {
-			label = "USB_SW";
-			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
-			linux,input-type = <EV_SW>;
-			linux,code = <SW_DOCK>;
-			debounce-interval = <100>;
-		};
-
 		sw_1 {
 			label = "SW1";
-			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
 
 		sw_2 {
 			label = "SW2";
-			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
+			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 
 		sw_3 {
 			label = "SW3";
-			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 122 */
+			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
 			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 		};
-	};
-
-	/*
-	 * PPS pin from SNS receiver
-	 */
-	pps {
-		compatible = "pps-gpio";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_pps_gpio>;
-
-		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
-		assert-falling-edge;
-		status = "okay";
 	};
 
 	/*
@@ -385,7 +364,7 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
-			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. DISP EN */
+			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. WIFI EN */
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
 			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
@@ -399,14 +378,7 @@
 			MX6QDL_PAD_EIM_DA11__GPIO3_IO11		0x1b0b0	/* soDimm 116 */
 			MX6QDL_PAD_EIM_DA12__GPIO3_IO12		0x1b0b0	/* soDimm 118 */
 			MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x1b0b0	/* soDimm 120 */
-			MX6QDL_PAD_EIM_DA14__GPIO3_IO14		0x1b0b0	/* soDimm 122 */
 			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0x1b0b0 /* Tangenta soDimm 134 */
-		>;
-	};
-
-	pinctrl_pps_gpio: gpiopps {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };

@@ -94,12 +94,6 @@
 			default-state = "off";
 		};
 
-		wifi_en {
-			label = "wifi_enable";
-			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; /* SODIMM 122 */
-			default-state = "on";
-		};
-
 		disp_en {
 			label = "display_enable";
 			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
@@ -150,7 +144,7 @@
 
 		usb_sw {
 			label = "USB_SW";
-			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 122 */
 			linux,input-type = <EV_SW>;
 			linux,code = <SW_DOCK>;
 			debounce-interval = <100>;
@@ -158,21 +152,21 @@
 
 		sw_1 {
 			label = "SW1";
-			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
 
 		sw_2 {
 			label = "SW2";
-			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
+			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 
 		sw_3 {
 			label = "SW3";
-			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 122 */
+			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
 			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 		};
@@ -385,7 +379,6 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
-			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. DISP EN */
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
 			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
