@@ -94,6 +94,12 @@
 			default-state = "off";
 		};
 
+		wifi_en {
+			label = "wifi_enable";
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; /* SODIMM 122 */
+			default-state = "on";
+		};
+
 		disp_en {
 			label = "display_enable";
 			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
@@ -138,16 +144,58 @@
 		hp_tangenta {
 			label = "HP tangenta";
 			gpios = <&gpio2 01 GPIO_ACTIVE_LOW>; /* SODIMM 134 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+		};
+
+		usb_sw {
+			label = "USB_SW";
+			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_DOCK>;
+			debounce-interval = <100>;
+		};
+
+		sw_1 {
+			label = "SW1";
+			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
+
+		sw_2 {
+			label = "SW2";
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+		};
+
+		sw_3 {
+			label = "SW3";
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 122 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+		};
+	};
+
+	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
 	};
 
 	/*
 	 * LCD Panel
 	 */
 	panel {
-		compatible = "mitsubishi,aa050mh01-da1";
+		compatible = "mitsubishi,aa104xf12-de2";
 		backlight = <&backlight>;
 
 		port {
@@ -172,8 +220,32 @@
 /*
  * Display subsystem
  */
+&tft_display_bus {
+	interface-pix-fmt = "bgr666";
+	status = "okay";
+};
+
 &tft_display_bus_out {
 	remote-endpoint = <&lcd_panel_in>;
+};
+
+/*
+ * Composite video capture
+ */
+&ipu1_csi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ipu1_csi1>;
+
+	fim {
+		status = "okay";
+	};
+};
+
+&ipu1_csi1_from_ipu1_csi1_mux {
+};
+
+&ipu1_csi1_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7280_ep>;
 };
 
 
@@ -182,6 +254,29 @@
  */
 &i2c3 {
 	status = "okay";
+
+
+	/* Composite video capture interface */
+	cvbs: adv7280@20 {
+		reg = <0x20>;
+		compatible = "adv7280", "adi,adv7280";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7280>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
+		status = "okay";
+
+		port {
+			adv7280_ep: endpoint {
+				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
+				bus-width = <8>;
+			};
+		};
+	};
+
 
 	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
 		status = "disabled";
@@ -274,6 +369,13 @@
 		>;
 	};
 
+	pinctrl_adv7280: gpio-adv7280 {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
+			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
+		>;
+	};
+
 	pinctrl_reg_bt_cif: gpio-reg-bt-cif {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_DA2__GPIO3_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
@@ -283,6 +385,7 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. DISP EN */
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
 			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
@@ -293,7 +396,17 @@
 	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
+			MX6QDL_PAD_EIM_DA11__GPIO3_IO11		0x1b0b0	/* soDimm 116 */
+			MX6QDL_PAD_EIM_DA12__GPIO3_IO12		0x1b0b0	/* soDimm 118 */
+			MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x1b0b0	/* soDimm 120 */
+			MX6QDL_PAD_EIM_DA14__GPIO3_IO14		0x1b0b0	/* soDimm 122 */
 			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0x1b0b0 /* Tangenta soDimm 134 */
+		>;
+	};
+
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };
