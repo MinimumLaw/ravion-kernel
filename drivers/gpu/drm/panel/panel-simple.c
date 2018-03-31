@@ -1441,7 +1441,33 @@ static const struct panel_desc mitsubishi_aa070me11ada11 = {
 		.width = 153,
 		.height = 92,
 	},
-	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
+static const struct drm_display_mode mitsubishi_aa104xf02_de2_timing = {
+	.name = "1024x768",
+	.clock = 65000,
+	.hdisplay = 1024,
+	.hsync_start = 1024 + 150,
+	.hsync_end = 1024 + 150 + 150,
+	.htotal = 1024 + 150 + 150 + 20,
+	.vdisplay = 768,
+	.vsync_start = 768 + 15,
+	.vsync_end = 768 + 15 + 15,
+	.vtotal = 768 + 15 + 15 + 8,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc mitsubishi_aa104xf12_de2 = {
+	.modes = &mitsubishi_aa104xf02_de2_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 153,
+		.height = 92,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
 	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
@@ -2187,6 +2213,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "mitsubishi,aa070me11ada11",
 		.data = &mitsubishi_aa070me11ada11
+	}, {
+		.compatible = "mitsubishi,aa104xf12-de2",
+		.data = &mitsubishi_aa104xf12_de2,
 	}, {
 		.compatible = "nec,nl12880bc20-05",
 		.data = &nec_nl12880bc20_05,
