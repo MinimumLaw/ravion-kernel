@@ -88,6 +88,12 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
 		nreset {
 			label = "nRESET";
 			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
@@ -171,6 +177,19 @@
 	};
 
 	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
+	};
+
+	/*
 	 * LCD Panel
 	 */
 	panel {
@@ -209,31 +228,10 @@
 };
 
 /*
- * Composite video capture
- */
-&ipu1_csi1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ipu1_csi1>;
-
-	fim {
-		status = "okay";
-	};
-};
-
-&ipu1_csi1_from_ipu1_csi1_mux {
-};
-
-&ipu1_csi1_mux_from_parallel_sensor {
-	remote-endpoint = <&adv7280_ep>;
-};
-
-
-/*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
 &i2c3 {
 	status = "okay";
-
 
 	/* Composite video capture interface */
 	cvbs: adv7280@20 {
@@ -255,7 +253,6 @@
 			};
 		};
 	};
-
 
 	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
 		status = "disabled";
@@ -301,6 +298,32 @@
 		sbs,i2c-retry-count = <2>;
 		sbs,poll-retry-count = <1>;
 	};
+
+	/* DS2484: I2C to OneWire Converter */
+	owc: ds2482@18 {
+		status = "okay";
+		compatible = "ds2482";
+		reg = <0x18>;
+	};
+};
+
+/*
+ * Composite video capture
+ */
+&ipu1_csi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ipu1_csi1>;
+
+	fim {
+		status = "okay";
+	};
+};
+
+&ipu1_csi1_from_ipu1_csi1_mux {
+};
+
+&ipu1_csi1_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7280_ep>;
 };
 
 /* Only pwm1 used as bright contol, all other - disabled  */
@@ -342,16 +365,16 @@
 		>;
 	};
 
-	pinctrl_bluetooth: gpio-bluetooth {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_DA3__GPIO3_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
-		>;
-	};
-
 	pinctrl_adv7280: gpio-adv7280 {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
 			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
+		>;
+	};
+
+	pinctrl_bluetooth: gpio-bluetooth {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA3__GPIO3_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
 		>;
 	};
 
@@ -364,6 +387,7 @@
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
 			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	 0xf058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
 			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. WIFI EN */
 			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
@@ -379,6 +403,12 @@
 			MX6QDL_PAD_EIM_DA12__GPIO3_IO12		0x1b0b0	/* soDimm 118 */
 			MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x1b0b0	/* soDimm 120 */
 			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0x1b0b0 /* Tangenta soDimm 134 */
+		>;
+	};
+
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07<->	0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };
