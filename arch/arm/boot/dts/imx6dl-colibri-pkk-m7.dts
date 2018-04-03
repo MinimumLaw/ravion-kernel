@@ -408,7 +408,7 @@
 
 	pinctrl_pps_gpio: gpiopps {
 		fsl,pins = <
-			MX6QDL_PAD_GPIO_7__GPIO1_IO07<->	0x1b0b0 /* soDimm 55 */
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
 		>;
 	};
 };
