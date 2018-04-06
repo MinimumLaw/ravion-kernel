@@ -75,37 +75,37 @@
 
 		charge_red {
 			label = "charge_red";
-			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>; /* soDimm77 - GPIO4 */
+			gpios = <&gpio3 18 GPIO_ACTIVE_LOW>; /* soDimm77 - GPIO4 */
 			default-state = "off";
 		};
 
 		charge_green {
 			label = "charge_green";
-			gpios = <&gpio2 10 GPIO_ACTIVE_HIGH>; /* soDimm30 - GPIO5 */
+			gpios = <&gpio2 10 GPIO_ACTIVE_LOW>; /* soDimm30 - GPIO5 */
 			default-state = "off";
 		};
 
 		charge_blue {
 			label = "charge_blue";
-			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>; /* soDimm100 - GPIO6 */
+			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>; /* soDimm100 - GPIO6 */
 			default-state = "off";
 		};
 
 		status_red {
 			label = "status_red";
-			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>; /* soDimm102 - GPIO7 */
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm102 - GPIO7 */
 			default-state = "off";
 		};
 
 		status_green {
 			label = "status_green";
-			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>; /* soDimm104 - GPIO8 */
+			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>; /* soDimm104 - GPIO8 */
 			default-state = "off";
 		};
 
 		status_blue {
 			label = "status_blue";
-			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>; /* soDimm134 - GPIO9 */
+			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>; /* soDimm134 - GPIO9 */
 			default-state = "off";
 		};
 	};
