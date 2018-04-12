@@ -229,6 +229,8 @@
 	remote-endpoint = <&lcd_panel_in>;
 };
 
+&hdmi { status = "okay"; };
+
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
