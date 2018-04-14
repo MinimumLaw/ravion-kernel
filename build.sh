@@ -8,6 +8,7 @@ export DEF_TARGET="zImage modules"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mcp.dtb imx6dl-colibri-mcp-maximal.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dtb imx6dl-colibri-pkk-m10.dtb"
+export DEF_TARGET="${DEF_TARGET} imx6qp-ravion.dtb"
 export DEF_ARGS="-j3 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
 INSTALL_MOD_PATH=${ROOT_FS_PATH}"
 export SUDO=sudo
