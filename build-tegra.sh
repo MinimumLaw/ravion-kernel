@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export CROSS_COMPILE=armv7a-neon-linux-gnueabi-
+export CROSS_COMPILE=arm-linux-gnueabihf-
 export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export CROSS_COMPILE=armv7a-hardfloat-linux-gnueabi-
+export CROSS_COMPILE=arm-linux-gnueabihf-
 export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp
@@ -9,7 +9,7 @@ export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mcp.dtb imx6dl-colibri-mcp-maxim
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dtb imx6dl-colibri-pkk-m10.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6qp-ravion.dtb"
-export DEF_ARGS="-j3 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
+export DEF_ARGS="-j `cat /proc/cpuinfo | grep processor | wc -l` ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
 INSTALL_MOD_PATH=${ROOT_FS_PATH}"
 export SUDO=sudo
 
