@@ -29,6 +29,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${ROOT_FS_PATH}/boot/mx6-mtu.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m7.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m10.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${ROOT_FS_PATH}/boot/mx6qp-ravion.dtb
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/mx6-mcp.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${TFTP_FS_PATH}/boot/mx6-eval.dtb
@@ -38,6 +39,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${TFTP_FS_PATH}/boot/mx6-mtu.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m7.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m10.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${TFTP_FS_PATH}/boot/mx6qp-ravion.dtb
 else
     make ${DEF_ARGS} $*
 fi
