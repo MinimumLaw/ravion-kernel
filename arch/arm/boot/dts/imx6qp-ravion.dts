@@ -16,10 +16,6 @@
 	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 Board";
 	compatible = "wand,imx6qp-ravion", "fsl,imx6qp";
 
-	memory {
-		reg = <0x10000000 0x80000000>;
-	};
-
 	/*
 	 * ToDo: power-off key power
 	 */
@@ -38,14 +34,7 @@
 			"Mic Jack", "Mic Bias",
 			"Headphone Jack", "HP_OUT";
 		mux-int-port = <1>;
-		mux-ext-port = <3>;
-	};
-
-	sound-spdif {
-		compatible = "fsl,imx-audio-spdif";
-		model = "imx-spdif";
-		spdif-controller = <&spdif>;
-		spdif-out;
+		mux-ext-port = <4>;
 	};
 };
 
@@ -207,6 +196,8 @@
 	};
 
 	codec: sgtl5000@a {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_codec>;
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
@@ -247,14 +238,11 @@
 /*
  * Ethernet controller
  */
+
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet>;
-	phy-mode = "rgmii";
-	phy-reset-gpios = <&gpio6 7 GPIO_ACTIVE_LOW>;
-	interrupts-extended = <&gpio6 8 IRQ_TYPE_LEVEL_HIGH>,
-			      <&intc 0 119 IRQ_TYPE_LEVEL_HIGH>;
-	fsl,err006687-workaround-present;
+	phy-mode = "rmii";
 	status = "okay";
 };
 
@@ -262,14 +250,6 @@
  * Audio (digital part)
  */
 &audmux {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_audmux>;
-	status = "okay";
-};
-
-&spdif {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_spdif>;
 	status = "okay";
 };
 
@@ -423,38 +403,38 @@
 				MX6QDL_PAD_ENET_MDC__ENET_MDC		0x1b0b0
 				MX6QDL_PAD_ENET_MDIO__ENET_MDIO		0x1b0b0
 				/* receive */
-				MX6QDL_PAD_GPIO_16__ENET_REF_CLK	0x4001b0a8
+				MX6QDL_PAD_GPIO_16__ENET_REF_CLK	((1<<30) | 0x1b030)
 				MX6QDL_PAD_ENET_RXD0__ENET_RX_DATA0	0x1b030
 				MX6QDL_PAD_ENET_RXD1__ENET_RX_DATA1	0x1b030
 				MX6QDL_PAD_ENET_CRS_DV__ENET_RX_EN	0x1b030
 				MX6QDL_PAD_ENET_RX_ER__ENET_RX_ER	0x1b030
 				/* transmitt */
-				MX6QDL_PAD_ENET_REF_CLK__ENET_TX_CLK	0x1b030
 				MX6QDL_PAD_ENET_TXD0__ENET_TX_DATA0	0x1b030
 				MX6QDL_PAD_ENET_TXD1__ENET_TX_DATA1	0x1b030
 				MX6QDL_PAD_ENET_TX_EN__ENET_TX_EN	0x1b030
-				MX6QDL_PAD_GPIO_19__ENET_TX_ER		0x1b030
+				/*
+				 * FixMe: WTF!!! Why this GPIO not described on
+				 * DTB level and not used by driver!!!
+				 */
+#if 0
 				/* GPIO */
 				MX6QDL_PAD_NANDF_CLE__GPIO6_IO07	/* nPHY_RESET */
 				MX6QDL_PAD_NANDF_ALE__GPIO6_IO08	/* nPHY_IRQ */
+#endif
 			>;
 		};
 
 		/*
 		 * Audio (digital part)
 		 */
-		pinctrl_audmux: audmuxgrp {
+		pinctrl_codec: codecgrp {
 			fsl,pins = <
-				MX6QDL_PAD_CSI0_DAT7__AUD3_RXD		0x130b0
-				MX6QDL_PAD_CSI0_DAT4__AUD3_TXC		0x130b0
-				MX6QDL_PAD_CSI0_DAT5__AUD3_TXD		0x110b0
-				MX6QDL_PAD_CSI0_DAT6__AUD3_TXFS		0x130b0
-			>;
-		};
-
-		pinctrl_spdif: spdifgrp {
-			fsl,pins = <
-				MX6QDL_PAD_ENET_RXD0__SPDIF_OUT		0x1b0b0
+				MX6QDL_PAD_DISP0_DAT23__AUD4_RXD	0x130b0
+				MX6QDL_PAD_DISP0_DAT20__AUD4_TXC	0x130b0
+				MX6QDL_PAD_DISP0_DAT21__AUD4_TXD	0x110b0
+				MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	0x130b0
+				/* Codec MCLK clock output */
+				MX6QDL_PAD_GPIO_5__CCM_CLKO1		0x000b0
 			>;
 		};
 
