@@ -66,6 +66,7 @@
 		port@1 {
 			reg = <1>;
 			tft_display_bus_out: endpoint {
+				remote-endpoint = <&adv7123_in>;
 			};
 		};
 	};
@@ -127,6 +128,14 @@
 		mux-ext-port = <4>;
 	};
 };
+
+/*
+ * IPU to TFT bus connector
+ */
+&ipu1_di1_disp1 {
+	remote-endpoint = <&lcd_display_in>;
+};
+
 
 /*
  * Serial ports
