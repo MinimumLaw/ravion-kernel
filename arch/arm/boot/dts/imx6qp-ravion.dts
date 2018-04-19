@@ -10,6 +10,7 @@
  */
 /dts-v1/;
 #include "imx6qp.dtsi"
+#include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
 
 / {
@@ -17,8 +18,97 @@
 	compatible = "wand,imx6qp-ravion", "fsl,imx6qp";
 
 	/*
-	 * ToDo: power-off key power
+	 * All ravion board have power key on soDimm pin 45
 	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	/*
+	 * All ravion board have power-off output on soDimm pin 133
+	 */
+	gpio-poweroff {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_poweroff>;
+		compatible = "gpio-poweroff";
+		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+	};
+
+	/*
+	 * Graphics and video subsystem
+	 */
+	tft_display_bus: parallel-display {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "bgr666";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_di1>;
+		status = "okay";
+
+		port@0 {
+			reg = <0>;
+			lcd_display_in: endpoint {
+				remote-endpoint = <&ipu1_di1_disp1>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			tft_display_bus_out: endpoint {
+			};
+		};
+	};
+
+	/* FixMe: encoder and VGA connector must be removed later on dts => dtsi rename */
+	adv7123: encoder {
+		compatible = "adi,adv7123";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_vga_encoder>;
+		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				adv7123_in: endpiont@0 {
+					remote-endpoint = <&tft_display_bus_out>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				adv7123_out: endpoint@0 {
+					remote-endpoint = <&vga_connector_in>;
+				};
+			};
+		};
+	};
+
+	vga0: connector@0 {
+		compatible = "vga-connector";
+		label = "vga";
+		status = "okay";
+
+		/*ddc-i2c-bus = <&i2c3> */
+
+		port {
+			vga_connector_in: endpoint {
+				remote-endpoint = <&adv7123_out>;
+			};
+		};
+	};
 
 	/*
 	 * Sound subsystem
@@ -212,7 +302,7 @@
 &usdhc1 { /* compatible */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1>;
-/*	cd-gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;  soDimm 43 */
+	cd-gpios = <&gpio5 2 GPIO_ACTIVE_LOW>;  /* soDimm 43 */
 	bus-width = <4>;
 	no-1-8-v;
 	status = "okay";
@@ -221,7 +311,7 @@
 &usdhc2 { /* externed */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2>;
-/*	cd-gpios = <&gpio2 24 GPIO_ACTIVE_LOW>;  soDimm 106 */
+	cd-gpios = <&gpio2 24 GPIO_ACTIVE_LOW>;  /* soDimm 106 */
 	bus-width = <4>;
 	no-1-8-v;
 	status = "okay";
@@ -296,6 +386,21 @@
 
 	imx6qdl-ravion {
 		/*
+		 * Power control
+		 */
+		pinctrl_gpio_poweroff: gpio-poweroff {
+			fsl,pins = <
+				MX6QDL_PAD_SD4_DAT3__GPIO2_IO11		0x0f058 /* soDimm133 PU_22K */
+			>;
+		};
+
+		pinctrl_gpio_keys: gpiokeys {
+			fsl,pins = <	/* Power button */
+				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
+			>;
+		};
+
+		/*
 		 * Uart serial interfaces
 		 */
 		pinctrl_uart1: uart1grp {
@@ -362,7 +467,7 @@
 				MX6QDL_PAD_SD1_DAT1__SD1_DATA1		0x17059
 				MX6QDL_PAD_SD1_DAT2__SD1_DATA2		0x17059
 				MX6QDL_PAD_SD1_DAT3__SD1_DATA3		0x17059
-/*				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x80000000 */
+				MX6QDL_PAD_EIM_A25__GPIO5_IO02		0x0f058
 			>;
 		};
 
@@ -374,7 +479,7 @@
 				MX6QDL_PAD_SD2_DAT1__SD2_DATA1		0x17059
 				MX6QDL_PAD_SD2_DAT2__SD2_DATA2		0x17059
 				MX6QDL_PAD_SD2_DAT3__SD2_DATA3		0x17059
-/*				MX6QDL_PAD_EIM_CS1__GPIO2_IO24		0x80000000 */
+				MX6QDL_PAD_EIM_CS1__GPIO2_IO24		0x0f058
 			>;
 		};
 
@@ -520,6 +625,13 @@
 			MX6QDL_PAD_EIM_D30__IPU1_DISP1_DATA21	0x61	/* soDimm142 TFT_DAT21 */
 			MX6QDL_PAD_EIM_D26__IPU1_DISP1_DATA22	0x61	/* soDimm144 TFT_DAT22 */
 			MX6QDL_PAD_EIM_D27__IPU1_DISP1_DATA23	0x61	/* soDimm146 TFT_DAT23 */
+		>;
+	};
+
+	/* FixMe: Remove on DTS => DTSI convert, conflicted with CSI interface */
+	pinctrl_vga_encoder: vga-encoder {
+		fsl,pins = <
+			MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x0f058 /* soDimm71 BL_ON */
 		>;
 	};
 
