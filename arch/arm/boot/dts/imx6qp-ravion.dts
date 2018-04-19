@@ -180,6 +180,55 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
 	status = "okay";
+
+	/* Composite video capture interface */
+	cvbs: adv7280@20 {
+		reg = <0x20>;
+		compatible = "adv7280", "adi,adv7280";
+#if 0 /* Not required in real world! */
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7280>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+		powerdown-gpios = <&gpio4 31 GPIO_ACTIVE_LOW>;
+#endif /* Not required in real world! */
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
+		status = "okay";
+
+		port {
+			adv7280_ep: endpoint {
+				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				bus-width = <8>;
+			};
+		};
+	};
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t0";
+		reg = <0x68>;
+	};
+
+};
+
+/*
+ * Parallel camera AKA Composite Video Capture
+ */
+&ipu1_csi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ipu1_csi0>;
+
+	fim {
+		status = "okay";
+	};
+};
+
+&ipu1_csi0_from_ipu1_csi0_mux {
+};
+
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7280_ep>;
 };
 
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
@@ -596,6 +645,11 @@
 			MX6QDL_PAD_CSI0_PIXCLK__IPU1_CSI0_PIXCLK	0xb0b1	/* soDimm96  CIF_PCLK */
 			MX6QDL_PAD_CSI0_MCLK__IPU1_CSI0_HSYNC		0xb0b1	/* soDimm94  CIF_HSYNC */
 			MX6QDL_PAD_CSI0_VSYNC__IPU1_CSI0_VSYNC		0xb0b1	/* soDimm81  CIF_VSYNC */
+		>;
+	};
+
+	pinctrl_adv7820: adv7820grp {
+		fsl,pins = <
 			MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30		0x40	/* soDimm71  CIF_DATA0 - CIF_nRESET */
 			MX6QDL_PAD_DISP0_DAT10__GPIO4_IO31		0x40	/* soDimm98  CIF_DATA1 - CIF_nPWRDN */
 		>;
