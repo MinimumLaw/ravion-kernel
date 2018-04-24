@@ -152,7 +152,7 @@
 			     "fsl,imx-audio-sgtl5000";
 		model = "imx6-ravion-sgtl5000";
 		ssi-controller = <&ssi1>;
-		audio-codec = <&codec>;
+		audio-codec = <&sgtl5000>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
@@ -351,7 +351,7 @@
 		};
 	};
 
-	codec: sgtl5000@a {
+	sgtl5000: codec@a {
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_codec>;
 		compatible = "fsl,sgtl5000";
