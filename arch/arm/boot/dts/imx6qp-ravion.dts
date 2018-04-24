@@ -16,7 +16,28 @@
 
 / {
 	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 Board";
-	compatible = "wand,imx6qp-ravion", "fsl,imx6qp";
+	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
+
+	/*
+	 * Power sources
+	 */
+	avcc_reg: avcc_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "avcc-supply";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p3v3_reg: p3v3_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "3v3-supply";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
 
 	/*
 	 * All ravion board have power key on soDimm pin 45
@@ -356,6 +377,9 @@
 		pinctrl-0 = <&pinctrl_codec>;
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
+		VDDA-supply = <&avcc_reg>;
+		VDDIO-supply = <&p3v3_reg>;
+		VDDD-supply = <&vgen2_reg>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
 	};
