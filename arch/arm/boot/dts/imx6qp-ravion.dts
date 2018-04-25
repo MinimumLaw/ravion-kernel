@@ -39,6 +39,17 @@
 		regulator-always-on;
 	};
 
+	reg_usb_otg_vbus: regulator-usb-otg-vbus {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_regulator_usb_otg_pwr>;
+		regulator-name = "usb_otg_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		enable-active-high;
+		gpio = <&gpio1 0 GPIO_ACTIVE_HIGH>; /* USBO_PEN : soDimm 129 */
+	};
+
 	/*
 	 * All ravion board have power key on soDimm pin 45
 	 */
@@ -64,6 +75,23 @@
 		pinctrl-0 = <&pinctrl_gpio_poweroff>;
 		compatible = "gpio-poweroff";
 		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+	};
+
+	/*
+	 * All ravion board have non-standart USB OTG control pins
+	 */
+	extcon_otg_vbus: pin_otg_vbus {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_extcon_otg_vbus>;
+		compatible = "linux,extcon-usb-gpio";
+		vbus-gpio = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* SODIMM 137 */
+	};
+
+	extcon_otg_id: pin_otg_id {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_extcon_otg_id>;
+		compatible = "linux,extcon-usb-gpio";
+		id-gpio = <&gpio1 1 GPIO_ACTIVE_LOW>; /* SODIMM 135 */
 	};
 
 	/*
@@ -460,14 +488,21 @@
 };
 
 &usbh1 {
+	disable-over-current;
 	status = "okay";
 };
 
 &usbotg {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usbotg>;
+	vbus-supply = <&reg_usb_otg_vbus>;
 	disable-over-current;
-	dr_mode = "peripheral";
+	/*
+	 * FixMe:
+	 * Unstable  working on swith from HOST to DEVICE
+	 * May be voltage on VBUS drop to slow???
+	 */
+	dr_mode = "otg";
+	extcon = <&extcon_otg_vbus>,
+		 <&extcon_otg_id>;
 	status = "okay";
 };
 
@@ -559,6 +594,24 @@
 		pinctrl_gpio_keys: gpiokeys {
 			fsl,pins = <	/* Power button */
 				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
+			>;
+		};
+
+		pinctrl_regulator_usb_otg_pwr: gpioregusbopwrgrp {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_0__GPIO1_IO00		0x0f058	/* soDimm129 */
+			>;
+		};
+
+		pinctrl_extcon_otg_vbus: gpiootgvbus {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 137 */
+			>;
+		};
+
+		pinctrl_extcon_otg_id: gpiootgid {
+			fsl,pins = <
+				MX6QDL_PAD_GPIO_1__GPIO1_IO01		0x1b0b0 /* soDimm 135 */
 			>;
 		};
 
@@ -715,12 +768,6 @@
 				MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	0x130b0
 				/* Codec MCLK clock output */
 				MX6QDL_PAD_GPIO_5__CCM_CLKO1		0x000b0
-			>;
-		};
-
-		pinctrl_usbotg: usbotggrp {
-			fsl,pins = <
-				MX6QDL_PAD_GPIO_1__USB_OTG_ID		0x17059
 			>;
 		};
 

@@ -8,7 +8,7 @@ export DEF_TARGET="zImage modules"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mcp.dtb imx6dl-colibri-mcp-maximal.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dtb imx6dl-colibri-pkk-m10.dtb"
-export DEF_TARGET="${DEF_TARGET} imx6qp-ravion.dtb"
+export DEF_TARGET="${DEF_TARGET} imx6qp-ravion.dtb imx6qp-ravion-pkk-m7.dtb imx6qp-ravion-pkk-m10.dtb"
 export DEF_ARGS="-j `cat /proc/cpuinfo | grep processor | wc -l` ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
 INSTALL_MOD_PATH=${ROOT_FS_PATH}"
 export SUDO=sudo
@@ -30,6 +30,8 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m7.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m10.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${ROOT_FS_PATH}/boot/mx6qp-ravion.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${ROOT_FS_PATH}/boot/mx6-ravion-pkk-m7.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${ROOT_FS_PATH}/boot/mx6-ravion-pkk-m10.dtb
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/mx6-mcp.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${TFTP_FS_PATH}/boot/mx6-eval.dtb
@@ -40,6 +42,8 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m7.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m10.dtb
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${TFTP_FS_PATH}/boot/mx6qp-ravion.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${TFTP_FS_PATH}/boot/mx6-ravion-pkk-m7.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${TFTP_FS_PATH}/boot/mx6-ravion-pkk-m10.dtb
 else
     make ${DEF_ARGS} $*
 fi
