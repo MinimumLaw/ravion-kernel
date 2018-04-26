@@ -221,11 +221,11 @@
 
 	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
 	battery0: bq20z655@0b {
-		status = "disabled";
+		status = "okay";
 		compatible = "sbs,sbs-battery";
 		reg = <0x0b>;
 		sbs,i2c-retry-count = <2>;
-		sbs,poll-retry-count = <1>;
+		sbs,poll-retry-count = <10>;
 	};
 };
 
