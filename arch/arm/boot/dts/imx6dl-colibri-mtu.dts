@@ -183,42 +183,6 @@
 &i2c3 {
 	status = "okay";
 
-	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
-		status = "disabled";
-		compatible = "nxp,pca9541";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-
-		i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-			battery1: bq20z655@0b {
-				status = "okay";
-				compatible = "sbs,sbs-battery";
-				reg = <0x0b>;
-				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
-			};
-		};
-
-		i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-			battery2: bq20z655@ob {
-				status = "okay";
-				compatible = "sbs,sbs-battery";
-				reg = <0x0b>;
-				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
-			};
-		};
-	};
-
 	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
 	battery0: bq20z655@0b {
 		status = "okay";
