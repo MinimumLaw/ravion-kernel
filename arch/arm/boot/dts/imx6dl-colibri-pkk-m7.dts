@@ -257,7 +257,7 @@
 	};
 
 	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
-		status = "disabled";
+		status = "okay";
 		compatible = "nxp,pca9541";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -267,13 +267,15 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
+			status = "okay";
+
 			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
 			battery1: bq20z655@0b {
 				status = "okay";
 				compatible = "sbs,sbs-battery";
 				reg = <0x0b>;
 				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
+				sbs,poll-retry-count = <10>;
 			};
 		};
 
@@ -281,24 +283,17 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
+			status = "okay";
+
 			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
 			battery2: bq20z655@ob {
 				status = "okay";
 				compatible = "sbs,sbs-battery";
 				reg = <0x0b>;
 				sbs,i2c-retry-count = <2>;
-				sbs,poll-retry-count = <1>;
+				sbs,poll-retry-count = <10>;
 			};
 		};
-	};
-
-	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-	battery0: bq20z655@0b {
-		status = "disabled";
-		compatible = "sbs,sbs-battery";
-		reg = <0x0b>;
-		sbs,i2c-retry-count = <2>;
-		sbs,poll-retry-count = <1>;
 	};
 
 	/* DS2484: I2C to OneWire Converter */
