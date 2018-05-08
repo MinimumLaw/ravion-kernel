@@ -21,29 +21,29 @@ if [ -z "$*" ]; then
     ${SUDO} make ${DEF_ARGS} modules_install
     echo install kernel into rootfs and tftp
     ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/mx6-mcp.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${ROOT_FS_PATH}/boot/mx6-eval.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/mx6-cimc-lite.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${ROOT_FS_PATH}/boot/mx6-cimc.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-router.dtb ${ROOT_FS_PATH}/boot/mx6-router.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${ROOT_FS_PATH}/boot/mx6-mtu.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m7.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${ROOT_FS_PATH}/boot/mx6-pkk-m10.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${ROOT_FS_PATH}/boot/mx6qp-ravion.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${ROOT_FS_PATH}/boot/mx6-ravion-pkk-m7.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${ROOT_FS_PATH}/boot/mx6-ravion-pkk-m10.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-router.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${ROOT_FS_PATH}/boot/imx6qp-ravion-test.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/mx6-mcp.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${TFTP_FS_PATH}/boot/mx6-eval.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/mx6-cimc-lite.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${TFTP_FS_PATH}/boot/mx6-cimc.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-router.dtb ${TFTP_FS_PATH}/boot/mx6-router.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${TFTP_FS_PATH}/boot/mx6-mtu.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m7.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${TFTP_FS_PATH}/boot/mx6-pkk-m10.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${TFTP_FS_PATH}/boot/mx6qp-ravion.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${TFTP_FS_PATH}/boot/mx6-ravion-pkk-m7.dtb
-    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${TFTP_FS_PATH}/boot/mx6-ravion-pkk-m10.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-router.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m7.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion.dtb ${TFTP_FS_PATH}/boot/imx6qp-ravion-test.dtb
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${TFTP_FS_PATH}/boot/
 else
     make ${DEF_ARGS} $*
 fi
