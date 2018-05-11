@@ -104,7 +104,7 @@
 		interface-pix-fmt = "bgr666";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_di1>;
-		status = "okay";
+		status = "disabled";
 
 		port@0 {
 			reg = <0>;
@@ -121,13 +121,14 @@
 		};
 	};
 
+
 	/* FixMe: encoder and VGA connector must be removed later on dts => dtsi rename */
 	adv7123: encoder {
 		compatible = "adi,adv7123";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_vga_encoder>;
 		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -150,7 +151,7 @@
 	vga0: connector@0 {
 		compatible = "vga-connector";
 		label = "vga";
-		status = "okay";
+		status = "disabled";
 
 		/*ddc-i2c-bus = <&i2c3> */
 
@@ -165,25 +166,24 @@
 	 * Graphics and video subsystem (LVDS interface) - simple panel description
 	 */
 	panel {
-		compatible = "tbs,a711-panel", "panel-lvds";
-/*		backlight = <&backlight>;	*/
-/*		power-supply = <&reg_sw>;	*/
+		compatible = "mitsubishi,aa104xf02-de2", "panel-lvds";
+		backlight = <&backlight>;
+		data-mapping = "jeida-24"; /* "jeida-18" or "vesa-24"; */
 
 		width-mm = <153>;
 		height-mm = <90>;
-		data-mapping = "vesa-24";
 
 		panel-timing {
-			/* 1024x600 @60Hz */
-			clock-frequency = <52000000>;
+			/* 1024x768 @60Hz */
+			clock-frequency = <65000000>;
 			hactive = <1024>;
-			vactive = <600>;
+			vactive = <768>;
 			hsync-len = <20>;
-			hfront-porch = <180>;
-			hback-porch = <160>;
-			vfront-porch = <12>;
-			vback-porch = <23>;
-			vsync-len = <5>;
+			hfront-porch = <150>;
+			hback-porch = <150>;
+			vfront-porch = <15>;
+			vback-porch = <15>;
+			vsync-len = <8>;
 		};
 
 		port {
@@ -191,6 +191,17 @@
 				remote-endpoint = <&lvds0_out>;
 			};
 		};
+	};
+
+	backlight: backlight {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <5>;
+		status = "okay";
 	};
 
 	/*
@@ -553,10 +564,10 @@
  * LVDS display bridge
  */
 &ldb {
-	status = "disabled";
+	status = "okay";
 
 	lvds-channel@0 {
-		fsl,data-mapping = "spwg";
+		fsl,data-mapping = "jeida";
 		fsl,data-width = <24>;
 		status = "okay";
 
@@ -591,6 +602,12 @@
 			>;
 		};
 
+		pinctrl_gpio_bl_on: gpioblon {
+			fsl,pins = <
+				MX6QDL_PAD_NANDF_D4__GPIO2_IO04		0x1b0b0 /* soDimm119 */
+			>;
+		};
+
 		pinctrl_gpio_keys: gpiokeys {
 			fsl,pins = <	/* Power button */
 				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
@@ -605,13 +622,13 @@
 
 		pinctrl_extcon_otg_vbus: gpiootgvbus {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 137 */
+				MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm137 */
 			>;
 		};
 
 		pinctrl_extcon_otg_id: gpiootgid {
 			fsl,pins = <
-				MX6QDL_PAD_GPIO_1__GPIO1_IO01		0x1b0b0 /* soDimm 135 */
+				MX6QDL_PAD_GPIO_1__GPIO1_IO01		0x1b0b0 /* soDimm135 */
 			>;
 		};
 
@@ -659,7 +676,7 @@
 
 		pinctrl_i2c2: i2c2grp { /* Compatible */
 			fsl,pins = <
-				MX6QDL_PAD_EIM_EB2__I2C2_SCL		0x4001b8b1 /* soDImm196 */
+				MX6QDL_PAD_EIM_EB2__I2C2_SCL		0x4001b8b1 /* soDimm196 */
 				MX6QDL_PAD_EIM_D16__I2C2_SDA		0x4001b8b1 /* soDimm194 */
 			>;
 		};
