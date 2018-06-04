@@ -1288,7 +1288,7 @@ static const struct panel_desc koe_tx09d200vm0baa = {
 		.height = 71,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
-	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
 };
 
 static const struct display_timing koe_tx31d200vm0baa_timing = {
