@@ -90,7 +90,7 @@
 
 		nreset {
 			label = "nRESET";
-			gpios = <&gpio6 27 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
