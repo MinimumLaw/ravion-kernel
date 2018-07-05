@@ -5,7 +5,7 @@ export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp
 export DEF_TARGET="zImage modules"
-export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mcp.dtb imx6dl-colibri-mcp-maximal.dtb"
+export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mcp.dtb imx6dl-colibri-mcp-maximal.dtb imx6dl-colibri-eval-v3.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dtb imx6dl-colibri-pkk-m10.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6qp-ravion.dtb imx6qp-ravion-pkk-m7.dtb imx6qp-ravion-pkk-m10.dtb"
@@ -21,6 +21,7 @@ if [ -z "$*" ]; then
     ${SUDO} make ${DEF_ARGS} modules_install
     echo install kernel into rootfs and tftp
     ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-eval-v3.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/
@@ -33,6 +34,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m10.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-eval-v3.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mcp-maximal.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/
