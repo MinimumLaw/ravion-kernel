@@ -1521,7 +1521,7 @@ static const struct panel_desc mitsubishi_aa070me11ada11 = {
 		.height = 92,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
 };
 
 static const struct drm_display_mode mitsubishi_aa104xf02_de2_timing = {
@@ -1547,7 +1547,7 @@ static const struct panel_desc mitsubishi_aa104xf12_de2 = {
 		.height = 92,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
 };
 
 static const struct display_timing nec_nl12880bc20_05_timing = {
