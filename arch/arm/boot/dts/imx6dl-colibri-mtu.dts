@@ -138,7 +138,7 @@
 		hp_tangenta {
 			label = "HP tangenta";
 			gpios = <&gpio2 01 GPIO_ACTIVE_LOW>; /* SODIMM 134 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 	};

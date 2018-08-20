@@ -150,28 +150,28 @@
 		hp_tangenta {
 			label = "HP tangenta";
 			gpios = <&gpio2 01 GPIO_ACTIVE_LOW>; /* SODIMM 134 */
-			linux,code = <KEY_F13>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 
 		sw_1 {
 			label = "SW1";
 			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 		};
 
 		sw_2 {
 			label = "SW2";
 			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F4>;
 			debounce-interval = <100>;
 		};
 
 		sw_3 {
 			label = "SW3";
 			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
-			linux,code = <KEY_F3>;
+			linux,code = <KEY_F5>;
 			debounce-interval = <100>;
 		};
 	};

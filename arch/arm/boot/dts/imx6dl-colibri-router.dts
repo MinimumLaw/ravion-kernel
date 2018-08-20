@@ -130,14 +130,14 @@
 		status {
 			label = "Status";
 			gpios = <&gpio1 11 GPIO_ACTIVE_LOW>; /* soDimm69 - GPIO3 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 		};
 
 		tangenta {
 			label = "Tangenta";
 			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>; /* soDimm63 - GPIO2 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 	};

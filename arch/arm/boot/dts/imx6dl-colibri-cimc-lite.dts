@@ -135,18 +135,6 @@
 			wakeup-source;
 		};
 		/* Board specific buttons */
-		fm1 {
-			label = "PROG1";
-			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* SODIMM 150 */
-			linux,code = <KEY_PROG1>;
-			debounce-interval = <100>;
-		};
-		fm2 {
-			label = "PROG2";
-			gpios = <&gpio6 31 GPIO_ACTIVE_LOW>; /* SODIMM 152 */
-			linux,code = <KEY_PROG2>;
-			debounce-interval = <100>;
-		};
 		enter {
 			label = "Enter";
 			gpios = <&gpio6 16 GPIO_ACTIVE_LOW>; /* SODIMM 154 */
@@ -184,39 +172,39 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
-		tangenta {
-			label = "Tangenta";
-			gpios = <&gpio6 7 GPIO_ACTIVE_LOW>; /* SODIMM 166 */
-			linux,code = <KEY_F1>;
-			debounce-interval = <100>;
-		};
-		request {
-			label = "Request";
-			gpios = <&gpio4 5 GPIO_ACTIVE_LOW>; /* SODIMM 168 */
+		hp_tangenta {
+			label = "HP tangenta";
+			gpios = <&gpio1 02 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
-		abonent {
-			label = "Abonent";
-			gpios = <&gpio5 19 GPIO_ACTIVE_LOW>; /* SODIMM 170 */
-			linux,code = <KEY_F3>;
-			debounce-interval = <100>;
-		};
-		alarm {
-			label = "Alarm";
-			gpios = <&gpio5 18 GPIO_ACTIVE_LOW>; /* SODIMM 172 */
-			linux,code = <KEY_F4>;
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio6 7 GPIO_ACTIVE_LOW>; /* SODIMM 166 */
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 		function {
 			label = "Function";
 			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
-			linux,code = <KEY_F5>;
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+		};
+		request {
+			label = "Request";
+			gpios = <&gpio4 5 GPIO_ACTIVE_LOW>; /* SODIMM 168 */
+			linux,code = <KEY_F4>;
 			debounce-interval = <100>;
 		};
 		rsp {
 			label = "Rsp";
 			gpios = <&gpio1 5 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
+			linux,code = <KEY_F5>;
+			debounce-interval = <100>;
+		};
+		abonent {
+			label = "Abonent";
+			gpios = <&gpio5 19 GPIO_ACTIVE_LOW>; /* SODIMM 170 */
 			linux,code = <KEY_F6>;
 			debounce-interval = <100>;
 		};
@@ -226,10 +214,23 @@
 			linux,code = <KEY_F7>;
 			debounce-interval = <100>;
 		};
-		hp_tangenta {
-			label = "HP tangenta";
-			gpios = <&gpio1 02 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
-			linux,code = <KEY_F1>;
+		alarm {
+			label = "Alarm";
+			gpios = <&gpio5 18 GPIO_ACTIVE_LOW>; /* SODIMM 172 */
+			linux,code = <KEY_F8>;
+			debounce-interval = <100>;
+		};
+		/* temporary unused buttons */
+		fm1 {
+			label = "PROG1";
+			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* SODIMM 150 */
+			linux,code = <KEY_F11>;
+			debounce-interval = <100>;
+		};
+		fm2 {
+			label = "PROG2";
+			gpios = <&gpio6 31 GPIO_ACTIVE_LOW>; /* SODIMM 152 */
+			linux,code = <KEY_F12>;
 			debounce-interval = <100>;
 		};
 	};
