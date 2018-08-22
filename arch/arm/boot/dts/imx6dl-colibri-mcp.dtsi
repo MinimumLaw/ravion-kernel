@@ -198,7 +198,7 @@
 	/* DS2484: I2C to OneWire Converter */
 	owc: ds2482@18 {
 		status = "okay";
-		compatible = "ds2482";
+		compatible = "maxim,ds2482";
 		reg = <0x18>;
 	};
 };
