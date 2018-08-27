@@ -131,6 +131,15 @@
 		compatible = "generic-bl";
 		status = "okay";
 	};
+
+
+	/* Workaround: On CIMC board we use USB-based sound */
+	/delete-node/sound;
+};
+
+&i2c2{
+	/* Workaround: On CIMC board we use USB-based sound */
+	/delete-node/codec;
 };
 
 /*
