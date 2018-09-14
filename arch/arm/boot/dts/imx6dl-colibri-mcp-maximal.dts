@@ -110,7 +110,7 @@
 			#size-cells = <0>;
 			port@0 {
 				reg = <0>;
-				adv7123_in: endpiont@0 {
+				adv7123_in: endpoint@0 {
 					remote-endpoint = <&tft_display_bus_out>;
 				};
 			};

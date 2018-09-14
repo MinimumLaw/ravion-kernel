@@ -309,10 +309,6 @@
 &ipu1_csi0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ipu1_csi0>;
-
-	fim {
-		status = "okay";
-	};
 };
 
 &ipu1_csi0_from_ipu1_csi0_mux {

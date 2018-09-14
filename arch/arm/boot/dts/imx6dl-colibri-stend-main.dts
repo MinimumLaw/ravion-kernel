@@ -43,95 +43,122 @@
 
 /dts-v1/;
 
-#include "imx6dl-colibri-mcp.dtsi"
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6dl.dtsi"
+#include "imx6qdl-colibri-ravion.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica MCP Board";
-	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
+	model = "Toradex Colibri iMX6DL/S on Radioavionica CIMC Stend Board stack";
+	compatible = "toradex,mcp", "toradex,colibri_imx6dl-stend",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
+	/*
+	 * Device specific clocks
+	 */
+	clocks {
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		 };
+	};
 
+	/*
+	 * Device specific leds
+	 */
 	gpio-leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
-		cif {
-			label = "CIF_PWR";
-			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>;
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		nreset {
+			label = "nRESET";
+			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		pps-led {
+			label = "PPS";
+			gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 - GPIO1 board */
 			default-state = "on";
 		};
 	};
 
-
-	adv7123: encoder {
-		compatible = "adi,adv7123";
+	/*
+	 * Device specific keys
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_vga_encoder>;
-		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&pinctrl_gpio_keys>;
 
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			port@0 {
-				reg = <0>;
-				adv7123_in: endpoint@0 {
-					remote-endpoint = <&tft_display_bus_out>;
-				};
-			};
-			port@1 {
-				reg = <1>;
-				adv7123_out: endpoint@0 {
-					remote-endpoint = <&vga_connector_in>;
-				};
-			};
-		};
-	};
-
-	vga0: connector@0 {
-		compatible = "vga-connector";
-		label = "vga";
-
-		/*ddc-i2c-bus = <&i2c3> */
-
-		port {
-			vga_connector_in: endpoint@0 {
-				remote-endpoint = <&adv7123_out>;
-			};
+		power {
+			label = "Power";
+			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>; /* SODIMM 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
 		};
 	};
 };
 
-&tft_display_bus {
-	interface-pix-fmt = "bgr666";
-	status = "okay";
-};
-
-&tft_display_bus_out {
-	remote-endpoint = <&adv7123_in>; /* <&lcd_panel_in>; */
-};
+/*
+ * Display subsystem
+ */
+&tft_display_bus { status = "disabled"; };
+&hdmi { status = "okay"; };
 
 /*
  * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
  */
-&i2c3 {	status = "okay";	};
+&i2c3 {
+	status = "okay";
 
-&iomuxc {
-	pinctrl_gpio_bl_on: gpioblon {
-		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0
-		>;
+	/* DS2484: I2C to OneWire Converter */
+	owc: ds2482@18 {
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
 	};
+};
 
+&uart1 { status = "okay"; }; /* default full-feature debug uart */
+&uart2 { /* default have CTS/RTS pins */
+	status = "okay";
+
+	bluetooth {
+		compatible	= "ti,wl1271-st";
+		clocks		= <&clk_32k_bt 0>;
+		clock-names	= "ext_clock";
+		max-speed	= <3686400>;
+		current-speed	= <115200>;
+		status = "okay";
+	};
+};
+
+/* external mmc card */
+&usdhc1 { status = "okay"; };
+
+/* Board specific io muxing */
+&iomuxc {
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_D18__GPIO3_IO18	0x0f058 /* PU_22K soDimm 77: CIF_D11/CIF_PWR */
+			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07	0x0f058 /* PU_22K soDimm 55: PPS LED */
 		>;
 	};
 
-	pinctrl_vga_encoder: vga-encoder {
+	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x0f058 /* PU_22K soDimm 71: BL_ON */
+			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
 		>;
 	};
-
 };

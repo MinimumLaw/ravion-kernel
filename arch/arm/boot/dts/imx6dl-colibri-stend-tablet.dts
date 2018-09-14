@@ -193,7 +193,7 @@
 	 * LCD Panel
 	 */
 	panel {
-		compatible = "mitsubishi,aa070me11ada11";
+		compatible = "mitsubishi,aa050mh01-da1";
 		backlight = <&backlight>;
 
 		port {
