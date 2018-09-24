@@ -135,7 +135,7 @@
 			#size-cells = <0>;
 			port@0 {
 				reg = <0>;
-				adv7123_in: endpiont@0 {
+				adv7123_in: endpoint@0 {
 					remote-endpoint = <&tft_bus_out>;
 				};
 			};
@@ -256,58 +256,6 @@
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
 
-	/*
-	 * FixMe: PMIC and Codec mut be moved here on release edition
-	 */
-};
-
-&i2c2 { /* Compatible I2C: soDimm 194, 196 */
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c2>;
-	status = "okay";
-
-	/* Composite video capture interface */
-	cvbs: adv7280@20 {
-		reg = <0x20>;
-		compatible = "adv7280", "adi,adv7280";
-#if 0 /* Not required in real world! */
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_adv7280>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
-		powerdown-gpios = <&gpio4 31 GPIO_ACTIVE_LOW>;
-#endif /* Not required in real world! */
-		input-names = "Ain1","Ain2","Ain3","Ain4";
-		inputs = <0x00 0x01 0x02 0x03>;
-		status = "okay";
-
-		port {
-			adv7280_ep: endpoint {
-				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
-				bus-width = <8>;
-			};
-		};
-	};
-
-	/* M41T0M6 real time clock on carrier board */
-	rtc_i2c: rtc@68 {
-		compatible = "st,m41t0";
-		reg = <0x68>;
-	};
-
-};
-
-
-&i2c3 { /* Extended I2C: soDimm 128, 130 */
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c3>;
-	status = "okay";
-
-	/*
-	 * FixMe: Debug revision bugfix: swap internal and extended I2C hosts
-	 */
 	pmic: pfuze100@8 {
 		compatible = "fsl,pfuze100";
 		reg = <0x08>;
@@ -422,6 +370,50 @@
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
 	};
+};
+
+&i2c2 { /* Compatible I2C: soDimm 194, 196 */
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2>;
+	status = "okay";
+
+	/* Composite video capture interface */
+	cvbs: adv7280@20 {
+		reg = <0x20>;
+		compatible = "adv7280", "adi,adv7280";
+#if 0 /* Not required in real world! */
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7280>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+		powerdown-gpios = <&gpio4 31 GPIO_ACTIVE_LOW>;
+#endif /* Not required in real world! */
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
+		status = "okay";
+
+		port {
+			adv7280_ep: endpoint {
+				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
+				bus-width = <8>;
+			};
+		};
+	};
+
+	/* M41T0M6 real time clock on carrier board */
+	rtc_i2c: rtc@68 {
+		compatible = "st,m41t0";
+		reg = <0x68>;
+	};
+};
+
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c3>;
+	status = "okay";
 
 };
 

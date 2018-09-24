@@ -173,28 +173,6 @@
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
 
-	/*
-	 * FixMe: PMIC and Codec mut be moved here on release edition
-	 */
-};
-
-&i2c2 { /* Compatible I2C: soDimm 194, 196 */
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c2>;
-	status = "okay";
-
-};
-
-&i2c3 { /* Extended I2C: soDimm 128, 130 */
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c3>;
-	status = "okay";
-
-	/*
-	 * FixMe: Debug revision bugfix: swap internal and extended I2C hosts
-	 */
 	pmic: pfuze100@8 {
 		compatible = "fsl,pfuze100";
 		reg = <0x08>;
@@ -309,7 +287,21 @@
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
 	};
+};
 
+&i2c2 { /* Compatible I2C: soDimm 194, 196 */
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2>;
+	status = "okay";
+
+};
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c3>;
+	status = "okay";
 };
 
 /*
