@@ -68,6 +68,21 @@
 	};
 
 	/*
+	 * All ravion board use nRESET output signal on soDimm pin 87
+	 */
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_leds>;
+
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* soDimm87 */
+			default-state = "on";
+		};
+	};
+
+	/*
 	 * All ravion board have power-off output on soDimm pin 133
 	 */
 	gpio-poweroff {
@@ -434,7 +449,7 @@
 &usdhc1 { /* compatible */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1>;
-	cd-gpios = <&gpio5 2 GPIO_ACTIVE_LOW>;  /* soDimm 43 */
+/*	cd-gpios = <&gpio5 2 GPIO_ACTIVE_LOW>;	* soDimm 43 */
 	bus-width = <4>;
 	no-1-8-v;
 	status = "okay";
@@ -443,10 +458,10 @@
 &usdhc2 { /* externed */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2>;
-	cd-gpios = <&gpio2 24 GPIO_ACTIVE_LOW>;  /* soDimm 106 */
+/*	cd-gpios = <&gpio2 24 GPIO_ACTIVE_LOW>;	* soDimm 106 */
 	bus-width = <4>;
 	no-1-8-v;
-	status = "disabled";
+	status = "okay";
 };
 
 &usdhc3 { /* eMMC */
@@ -597,8 +612,14 @@
 		};
 
 		pinctrl_gpio_keys: gpiokeys {
-			fsl,pins = <	/* Power button */
-				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
+			fsl,pins = <
+				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 - Power Button */
+			>;
+		};
+
+		pinctrl_gpio_leds: gpioleds {
+			fsl,pins = <
+				MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0x0f058 /* soDimm87 - nRESET_OUT */
 			>;
 		};
 

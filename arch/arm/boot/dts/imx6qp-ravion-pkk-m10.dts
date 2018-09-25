@@ -90,13 +90,13 @@
 			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>; /* soDimm127 */
 			default-state = "on";
 		};
-#if 0
-		nreset {
-			label = "nRESET";
-			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
-			default-state = "off";
+
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* soDimm87 */
+			default-state = "on";
 		};
-#endif
+
 		disp_en {
 			label = "display_enable";
 			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
@@ -378,8 +378,8 @@
 
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
-/*			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27	0xf058 PU_22K interal RGMII_RD1 - nRESET OUT */
-			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* soDImm127: SLPZ@DS2484R   */
+			MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0xf058 /* soDimm87:  nRESET_OUT */
+			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* soDImm127: SLPZ@DS2484R */
 			MX6QDL_PAD_KEY_COL0__GPIO4_IO06		0xf058 /* soDimm124. DISP EN */
 			MX6QDL_PAD_DISP0_DAT6__GPIO4_IO27	0xf058 /* soDimm184. DISP SD */
 			MX6QDL_PAD_DISP0_DAT7__GPIO4_IO28	0xf058 /* soDimm186. TS CKW */
