@@ -115,7 +115,7 @@
 		ts_ckw {
 			label = "ts_ckw";
 			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>; /* SODIMM 186 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		ts_sc {
