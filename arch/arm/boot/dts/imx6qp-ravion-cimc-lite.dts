@@ -7,9 +7,8 @@
 #include "imx6qp-ravion.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica CIMC Lite Board";
-	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
-		"toradex,colibri_imx6dl", "fsl,imx6dl";
+	model = "Ravion200 I.MX6QP on Radioavionica CIMC Lite Board";
+	compatible = "ravion,cimc-lite", "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Device specific clocks
@@ -46,16 +45,16 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
-		w1 {
-			label = "W1";
-			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>;
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* soDimm 87 */
 			default-state = "on";
 		};
 
-		nreset {
-			label = "nRESET";
-			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>;
-			default-state = "off";
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>; /* SODIMM 127 */
+			default-state = "on";
 		};
 
 		/* KOE display SPI-bitband control lines */
@@ -87,12 +86,12 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>; /* SODIMM 45 */
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>; /* soDimm 45 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
-		/* Board specific buttons */
+
 		enter {
 			label = "Enter";
 			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>; /* SODIMM 154 */
@@ -132,7 +131,7 @@
 		};
 		hp_tangenta {
 			label = "HP tangenta";
-			gpios = <&gpio4 25 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
+			gpios = <&gpio4 26 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
@@ -144,7 +143,7 @@
 		};
 		function {
 			label = "Function";
-			gpios = <&gpio4 22 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
+			gpios = <&gpio4 23 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
 			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 		};
@@ -156,7 +155,7 @@
 		};
 		rsp {
 			label = "Rsp";
-			gpios = <&gpio4 23 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
+			gpios = <&gpio4 24 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
 			linux,code = <KEY_F5>;
 			debounce-interval = <100>;
 		};
@@ -168,7 +167,7 @@
 		};
 		transmit {
 			label = "Transmit";
-			gpios = <&gpio4 24 GPIO_ACTIVE_LOW>; /* SODIMM 178 */
+			gpios = <&gpio4 25 GPIO_ACTIVE_LOW>; /* SODIMM 178 */
 			linux,code = <KEY_F7>;
 			debounce-interval = <100>;
 		};
@@ -246,9 +245,9 @@
 };
 
 /*
- * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
+ * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
  */
-&i2c3 {
+&i2c2 {
 	status = "okay";
 
 	/* Composite video capture interface */
@@ -351,18 +350,18 @@
 
 	pinctrl_gpio_leds: gpio-leds {
 		fsl,pins = <
-			MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0x0f058 /* soDimm87 - nRESET_OUT */
-			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
+			MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0xf058 /* soDimm87: nRESET_OUT  */
+			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* soDImm127: SLPZ@DS2484R */
 			MX6QDL_PAD_NANDF_D0__GPIO2_IO00		0xf058 /* KOE CS   - soDimm 111 */
 			MX6QDL_PAD_EIM_RW__GPIO2_IO26		0xf058 /* KOE SCK  - soDimm 112 */
 			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0xf058 /* KOE MOSI - soDimm 113 */
-			MX6QDL_PAD_EIM_LBA__GPIO2_IO27		0x1b0b0 /* KOE MISO - soDimm 114 - stay input, not us
+			MX6QDL_PAD_EIM_LBA__GPIO2_IO27		0x1b0b0 /* KOE MISO - soDimm 114 - stay input, not used */
 		>;
 	};
 
-	pinctrl_gpio_keys: gpiokeys {
+	pinctrl_gpio_keys: gpio-keys {
 		fsl,pins = <
-			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* Power button soDimm 45  */
+			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* Power Button soDimm  45 */
 			MX6QDL_PAD_KEY_COL1__GPIO4_IO08		0x1b0b0	/* FM1:		soDimm 150 */
 			MX6QDL_PAD_KEY_ROW1__GPIO4_IO09		0x1b0b0	/* FM2:		soDimm 152 */
 			MX6QDL_PAD_KEY_COL2__GPIO4_IO10		0x1b0b0	/* Enter:	soDimm 154 */

@@ -386,7 +386,7 @@
 		>;
 	};
 
-	pinctrl_gpio_keys: gpiokeys {
+	pinctrl_gpio_keys: gpio-keys {
 		fsl,pins = <
 			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* Power button */
 			MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x1b0b0	/* soDimm 116 */

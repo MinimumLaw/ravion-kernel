@@ -119,7 +119,7 @@
 		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_di1>;
-		status = "okay";
+		status = "disabled";
 
 		port@0 {
 			reg = <0>;
@@ -308,7 +308,7 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
-	status = "okay";
+	status = "disabled";
 
 };
 
@@ -316,7 +316,7 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c3>;
-	status = "okay";
+	status = "disabled";
 };
 
 /*
@@ -379,8 +379,8 @@
 /*
  * High-speed serial bus
  */
-&pcie {		status = "okay";	};
-&sata {		status = "okay";	};
+&pcie {		status = "disabled";	};
+&sata {		status = "disabled";	};
 
 /*
  * USB Subsystem
@@ -432,7 +432,7 @@
  * LVDS display bridge
  */
 &ldb {
-	status = "okay";
+	status = "disabled";
 
 	lvds-channel@0 {
 		fsl,data-mapping = "spwg";
@@ -466,7 +466,7 @@
 		>;
 	};
 
-	pinctrl_gpio_keys: gpiokeys {
+	pinctrl_gpio_keys: gpio-keys {
 		fsl,pins = <	/* Power button */
 			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
 		>;
