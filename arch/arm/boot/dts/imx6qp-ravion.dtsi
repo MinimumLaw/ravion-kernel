@@ -15,7 +15,7 @@
 
 
 / {
-	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 Board";
+	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 module";
 	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
 
 	/*
@@ -116,10 +116,10 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		interface-pix-fmt = "bgr666";
+		interface-pix-fmt = "rgb24";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_di1>;
-		status = "disabled";
+		status = "okay";
 
 		port@0 {
 			reg = <0>;
@@ -432,7 +432,7 @@
  * LVDS display bridge
  */
 &ldb {
-	status = "disabled";
+	status = "okay";
 
 	lvds-channel@0 {
 		fsl,data-mapping = "spwg";
@@ -629,11 +629,11 @@
 			MX6QDL_PAD_ENET_TXD0__ENET_TX_DATA0	0x1b030
 			MX6QDL_PAD_ENET_TXD1__ENET_TX_DATA1	0x1b030
 			MX6QDL_PAD_ENET_TX_EN__ENET_TX_EN	0x1b030
-#if 0
 			/*
 			 * FixMe: WTF!!! Why this GPIO not described on
 			 * DTB level and not used by driver!!!
 			 */
+#if 0
 			MX6QDL_PAD_NANDF_CLE__GPIO6_IO07	/* nPHY_RESET */
 			MX6QDL_PAD_NANDF_ALE__GPIO6_IO08	/* nPHY_IRQ */
 #endif
