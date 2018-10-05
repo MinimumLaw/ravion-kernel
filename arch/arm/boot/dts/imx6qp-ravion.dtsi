@@ -339,7 +339,7 @@
 /*	cd-gpios = <&gpio5 2 GPIO_ACTIVE_LOW>;	* soDimm 43 */
 	bus-width = <4>;
 	no-1-8-v;
-	status = "okay";
+	status = "disabled";
 };
 
 &usdhc2 { /* externed */

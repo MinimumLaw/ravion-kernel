@@ -27,12 +27,24 @@
 	 */
 	bt_vio_reg: bt_vio {
 			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_bt_cif>;
+			pinctrl-0 = <&pinctrl_reg_bt>;
 			compatible = "regulator-fixed";
 			regulator-name = "VIO_BT";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>;
+			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* SODIMM 115*/
+			regulator-always-on;
+			vin-supply = <&p3v3_reg>;
+	};
+
+	cif_vio_reg: cif_vio {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_reg_cif>;
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_CIF";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio2 6 GPIO_ACTIVE_LOW>; /* SODIMM 123*/
 			regulator-always-on;
 			vin-supply = <&p3v3_reg>;
 	};
@@ -47,7 +59,7 @@
 
 		reset_out {
 			label = "nRESET_OUT";
-			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* soDimm 87 */
+			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* SODIMM  87 */
 			default-state = "on";
 		};
 
@@ -234,7 +246,7 @@
 &hdmi	{	status = "okay";	};
 
 /*
- * Display subsystem
+ * TFT Display subsystem
  */
 &tft_display_bus {
 	status = "okay";
@@ -250,7 +262,7 @@
 &i2c2 {
 	status = "okay";
 
-	/* Composite video capture interface */
+	/* Composite video capture interface - encoder cip */
 	cvbs: adv7280@20 {
 		reg = <0x20>;
 		compatible = "adv7280", "adi,adv7280";
@@ -279,16 +291,16 @@
 	};
 };
 
+/*
+ * Composite video capture interface
+ */
+&ipu1_csi0_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7280_ep>;
+};
+
 &ipu1_csi0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ipu1_csi0>;
-};
-
-&ipu1_csi0_from_ipu1_csi0_mux {
-};
-
-&ipu1_csi0_mux_from_parallel_sensor {
-	remote-endpoint = <&adv7280_ep>;
 };
 
 /* Only pwm1 used as bright contol, all other - disabled  */
@@ -303,7 +315,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_bluetooth>;
 
-		enable-gpios	= <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		enable-gpios	= <&gpio2 3 GPIO_ACTIVE_HIGH>; /* SODIMM 117 */
 		compatible	= "ti,wl1271-st";
 		clocks		= <&clk_32k_bt 0>;
 		clock-names	= "ext_clock";
@@ -318,7 +330,7 @@
 	};
 };
 
-/* external mmc card */
+/* external (compatible) mmc card */
 &usdhc1 { status = "okay"; };
 
 /* Board specific io muxing */
@@ -342,9 +354,15 @@
 		>;
 	};
 
-	pinctrl_reg_bt_cif: gpio-reg-bt-cif {
+	pinctrl_reg_bt: gpio-reg-bt {
 		fsl,pins = <
-			MX6QDL_PAD_NANDF_D2__GPIO2_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
+			MX6QDL_PAD_NANDF_D2__GPIO2_IO02	0x0f058 /* PU_22K soDimm 115: BT_PWR */
+		>;
+	};
+
+	pinctrl_reg_cif: gpio-reg-cif {
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDimm 123: CIF_PWR */
 		>;
 	};
 
