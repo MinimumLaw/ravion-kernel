@@ -183,7 +183,7 @@
 /* Only pwm1 used as bright contol, all other - disabled  */
 &pwm1 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
-/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
+/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 3-wire */
 &uart1 { status = "okay"; }; /* default full feature uart */
 &uart2 { /* default have CTS/RTS pins */
 	status = "okay";
@@ -206,6 +206,7 @@
 		status = "okay";
 	};
 };
+&uart3 { status = "okay"; }; /* default 3-wire uart */
 
 /* external mmc card */
 &usdhc1 { status = "okay"; };

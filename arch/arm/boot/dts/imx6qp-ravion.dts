@@ -461,7 +461,7 @@
 /*	cd-gpios = <&gpio2 24 GPIO_ACTIVE_LOW>;	* soDimm 106 */
 	bus-width = <4>;
 	no-1-8-v;
-	status = "okay";
+	status = "disabled";
 };
 
 &usdhc3 { /* eMMC */
