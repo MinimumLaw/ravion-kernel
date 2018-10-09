@@ -109,7 +109,7 @@
 		scan_dir {
 			label = "disp_scan_direction";
 			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>; /* SODIMM 184 */
-			default-state = "on";
+			default-state = "off";
 		};
 
 		ts_ckw {
@@ -121,7 +121,7 @@
 		ts_sc {
 			label = "ts_sc";
 			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>; /* SODIMM 188 */
-			default-state = "off";
+			default-state = "on";
 		};
 	};
 
