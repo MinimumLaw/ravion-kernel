@@ -46,7 +46,7 @@
 #include "imx6dl-colibri-mcp.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica MCP Board";
+	model = "colibri:mcp";
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 

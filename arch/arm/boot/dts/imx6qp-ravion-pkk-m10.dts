@@ -47,7 +47,7 @@
 #include "imx6qp-ravion.dtsi"
 
 / {
-	model = "Radioavionica soDimm200 iMX6QP module on Radioavionica PKK-M10 Board";
+	model = "ravion:pkk-m10";
 	compatible = "ravion,mcp", "ravion,raviom_imx6qp", "fsl,imx6qp";
 
 	/*

@@ -7,7 +7,7 @@
 #include "imx6qp-ravion.dtsi"
 
 / {
-	model = "Ravion200 I.MX6QP on Radioavionica CIMC I Board";
+	model = "ravion:cimc-i";
 	compatible = "ravion,cimc-i", "ravion,imx6qp", "fsl,imx6qp";
 
 	/*

@@ -49,7 +49,7 @@
 #include "imx6qdl-colibri-ravion.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica Router Board stack";
+	model = "colibri:router";
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 

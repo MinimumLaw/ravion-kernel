@@ -49,7 +49,7 @@
 #include "imx6qdl-colibri-ravion.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Radioavionica CIMC Stend Board stack";
+	model = "colibri:stend-main";
 	compatible = "toradex,mcp", "toradex,colibri_imx6dl-stend",
 		"toradex,colibri_imx6dl", "fsl,imx6dl";
 	/*

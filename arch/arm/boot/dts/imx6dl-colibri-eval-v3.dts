@@ -49,7 +49,7 @@
 #include "imx6qdl-colibri.dtsi"
 
 / {
-	model = "Toradex Colibri iMX6DL/S on Colibri Evaluation Board V3";
+	model = "colibri:eval-v3";
 	compatible = "toradex,colibri_imx6dl-eval-v3", "toradex,colibri_imx6dl",
 		     "fsl,imx6dl";
 
