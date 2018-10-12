@@ -169,7 +169,12 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
+#if 0 /* See pincrtl_uart2 for thinks _MUST_ be fixed in NEXT hardware module revision */
 	uart-has-rtscts;
+#else /* this time very simplest software bugfix used */
+	cts-gpios = <&gpio3 28 GPIO_ACTIVE_LOW>;
+	rts-gpios = <&gpio3 29 GPIO_ACTIVE_LOW>;
+#endif
 	status = "disabled";
 };
 
@@ -517,8 +522,13 @@
 
 	pinctrl_uart2: uart2grp {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_D28__UART2_CTS_B		0x1b0b1	/* soDimm32 */
-			MX6QDL_PAD_EIM_D29__UART2_RTS_B		0x1b0b1	/* soDimm34 */
+#if 0 /* This _MUST_ be fixed in NEXT hardware module revision */
+			MX6QDL_PAD_EIM_D29__UART2_CTS_B		0x1b0b1	/* soDimm32 */
+			MX6QDL_PAD_EIM_D28__UART2_RTS_B		0x1b0b1	/* soDimm34 */
+#else
+			MX6QDL_PAD_EIM_D28__GPIO3_IO28		0x1b0b1	/* soDimm32 */
+			MX6QDL_PAD_EIM_D29__GPIO3_IO29		0x1b0b1	/* soDimm34 */
+#endif
 			MX6QDL_PAD_SD4_DAT4__UART2_RX_DATA	0x1b0b1	/* soDimm36 */
 			MX6QDL_PAD_SD4_DAT7__UART2_TX_DATA	0x1b0b1	/* soDimm38 */
 		>;
