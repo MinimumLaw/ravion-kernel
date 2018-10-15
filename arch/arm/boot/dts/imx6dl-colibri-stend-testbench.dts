@@ -70,12 +70,12 @@
 	 */
 	bt_vio_reg: bt_vio {
 			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_bt_cif>;
+			pinctrl-0 = <&pinctrl_reg_bt>;
 			compatible = "regulator-fixed";
 			regulator-name = "VIO_BT";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio3 2 GPIO_ACTIVE_LOW>;
+			gpio = <&gpio2 8 GPIO_ACTIVE_LOW>;
 			regulator-always-on;
 			vin-supply = <&reg_3p3v>;
 	};
@@ -192,7 +192,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_bluetooth>;
 
-		enable-gpios	= <&gpio3 3 GPIO_ACTIVE_HIGH>;
+		enable-gpios	= <&gpio2 1 GPIO_ACTIVE_HIGH>;
 		compatible	= "ti,wl1271-st";
 		clocks		= <&clk_32k_bt 0>;
 		clock-names	= "ext_clock";
@@ -221,13 +221,13 @@
 
 	pinctrl_bluetooth: gpio-bluetooth {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_DA3__GPIO3_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
+			MX6QDL_PAD_NANDF_D1__GPIO2_IO01	0x0f058 /* PU_22K soDimm 134 - nBT_PDN */
 		>;
 	};
 
-	pinctrl_reg_bt_cif: gpio-reg-bt-cif {
+	pinctrl_reg_bt: gpio-reg-bt {
 		fsl,pins = <
-			MX6QDL_PAD_EIM_DA2__GPIO3_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
+			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08	0x0f058 /* PU_22K soDimm 104: BT_PWR */
 		>;
 	};
 
