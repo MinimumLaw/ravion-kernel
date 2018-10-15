@@ -25,18 +25,6 @@
 	/*
 	 * Device specific regulators
 	 */
-	bt_vio_reg: bt_vio {
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_bt>;
-			compatible = "regulator-fixed";
-			regulator-name = "VIO_BT";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* SODIMM 115*/
-			regulator-always-on;
-			vin-supply = <&p3v3_reg>;
-	};
-
 	cif_vio_reg: cif_vio {
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_reg_cif>;
@@ -295,29 +283,10 @@
 /* Only pwm1 used as bright contol, all other - disabled  */
 &pwm3 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
-/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
+/* Uarts */
 &uart1 { status = "okay"; }; /* default full feature uart */
-&uart2 { /* default have CTS/RTS pins */
-	status = "okay";
-
-	bluetooth {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_bluetooth>;
-
-		enable-gpios	= <&gpio2 3 GPIO_ACTIVE_HIGH>; /* SODIMM 117 */
-		compatible	= "ti,wl1271-st";
-		clocks		= <&clk_32k_bt 0>;
-		clock-names	= "ext_clock";
-		max-speed	= <3686400>;
-		/*
-		 * Params not found in source, but described in documentation
-		 */
-		current-speed	= <115200>;
-		vio-supply	= <&bt_vio_reg>;
-		vbat-supply	= <&p3v3_reg>;
-		status = "okay";
-	};
-};
+&uart2 { status = "okay"; }; /* default CTS/RTS uart */
+&uart3 { status = "okay"; }; /* default 3-wire uart */
 
 /* external (compatible) mmc card */
 &usdhc1 { status = "okay"; };
@@ -334,18 +303,6 @@
 		fsl,pins = <
 			MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
 			MX6QDL_PAD_DISP0_DAT10__GPIO4_IO31	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
-		>;
-	};
-
-	pinctrl_bluetooth: gpio-bluetooth {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D3__GPIO2_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
-		>;
-	};
-
-	pinctrl_reg_bt: gpio-reg-bt {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D2__GPIO2_IO02	0x0f058 /* PU_22K soDimm 115: BT_PWR */
 		>;
 	};
 
