@@ -213,8 +213,8 @@
 		status = "okay";
 
 		port {
-			panel_in: endpoint {
-				remote-endpoint = <&tft_display_bus_out>;
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&tft_bus_out>;
 			};
 		};
 	};
