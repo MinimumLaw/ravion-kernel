@@ -439,10 +439,8 @@
 &ldb {
 	status = "disabled";
 
-	lvds-channel@0 {
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <24>;
-		status = "okay";
+	lvds0_chan: lvds-channel@0 {
+		status = "disabled";
 
 		port@4 {
 			reg = <4>;

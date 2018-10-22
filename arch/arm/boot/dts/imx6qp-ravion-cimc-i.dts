@@ -222,8 +222,8 @@
 			hactive = <240>;
 			vactive = <320>;
 			hsync-len = <16>;
-			hfront-porch = <48>;
-			hback-porch = <24 16 74>;
+			hfront-porch = <16>;
+			hback-porch = <24 48 74>;
 			vfront-porch = <6>;
 			vback-porch = <6>;
 			vsync-len = <6>;
@@ -253,8 +253,14 @@
 /*
  * LVDS display bridge
  */
-&ldb	{	status = "okay";	};
+&ldb {	status = "okay";	};
+&lvds0_chan {
+	fsl,data-mappings = "spwg";
+	fsl,data-width = <24>;
+	status = "okay";
+};
 &lvds0_out { remote-endpoint = <&lvds_panel_in>; };
+
 
 /*
  * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
