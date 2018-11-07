@@ -261,7 +261,6 @@
 };
 &lvds0_out { remote-endpoint = <&lvds_panel_in>; };
 
-
 /*
  * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
  */
