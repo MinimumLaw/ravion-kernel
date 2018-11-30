@@ -734,7 +734,7 @@ static int adv7180_set_pad_format(struct v4l2_subdev *sd,
 			break;
 		/* fall through */
 	default:
-		format->format.field = V4L2_FIELD_ALTERNATE;
+		format->format.field = format->format.field;
 		break;
 	}
 
@@ -1311,7 +1311,7 @@ static int adv7180_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	state->client = client;
-	state->field = V4L2_FIELD_ALTERNATE;
+	state->field = V4L2_FIELD_INTERLACED;
 	state->chip_info = (struct adv7180_chip_info *)id->driver_data;
 
 	state->pwdn_gpio = devm_gpiod_get_optional(&client->dev, "powerdown",
