@@ -156,24 +156,24 @@
 			debounce-interval = <100>;
 		};
 
-		sw_1 {
-			label = "SW1";
+		brightness_down {
+			label = "BRIGHTNESS_DOWN";
 			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
-			linux,code = <KEY_F3>;
+			linux,code = <KEY_BRIGHTNESSDOWN>;
 			debounce-interval = <100>;
 		};
 
-		sw_2 {
-			label = "SW2";
+		brightness_up {
+			label = "BRIGHTNESS_UP";
 			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
-			linux,code = <KEY_F4>;
+			linux,code = <KEY_BRIGHTNESSUP>;
 			debounce-interval = <100>;
 		};
 
-		sw_3 {
-			label = "SW3";
+		display_off {
+			label = "DISPLAY_OFF";
 			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
-			linux,code = <KEY_F5>;
+			linux,code = <KEY_DISPLAY_OFF>;
 			debounce-interval = <100>;
 		};
 	};
@@ -209,7 +209,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio3 04 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+		enable-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
 		pwms = <&pwm1 0 2000>; /* FixMe: frequency !!! */
 		brightness-levels = <0 31 63 95 127 159 191 223 255>;
 		default-brightness-level = <5>;
