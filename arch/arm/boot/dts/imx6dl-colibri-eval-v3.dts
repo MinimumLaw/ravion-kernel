@@ -146,9 +146,8 @@
 &ecspi4 {
 	status = "okay";
 
-
 #if 0 /* SPI interface disconnected by jumpers for SPI Flash chips */
-	mcp251x0: mcp251x@1 {
+	mcp251x0: mcp251x@0 {
 		compatible = "microchip,mcp2515";
 		reg = <0>;
 		clocks = <&clk16m>;
