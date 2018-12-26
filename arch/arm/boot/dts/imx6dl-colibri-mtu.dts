@@ -184,7 +184,7 @@
 	status = "okay";
 
 	/* Texas Instruments SBS-compatible Fuel Gauge Controller */
-	battery0: bq20z655@0b {
+	battery0: bq20z655@b {
 		status = "okay";
 		compatible = "sbs,sbs-battery";
 		reg = <0x0b>;
