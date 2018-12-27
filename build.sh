@@ -5,7 +5,7 @@ export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp
 export DEF_TARGET="zImage modules"
-export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-eval-v3.dtb"
+export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-eval-v3.dtb imx6dl-colibri-cimc-test.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dtb imx6dl-colibri-pkk-m10.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-stend-main.dtb imx6dl-colibri-stend-tablet.dtb"
@@ -28,6 +28,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-test.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-eval-v3.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${ROOT_FS_PATH}/boot/
@@ -49,6 +50,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-test.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-eval-v3.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-mtu.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-pkk-m10.dtb ${TFTP_FS_PATH}/boot/

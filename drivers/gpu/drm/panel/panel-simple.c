@@ -1670,6 +1670,32 @@ static const struct panel_desc mitsubishi_aa070mc01 = {
 	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
 };
 
+static const struct drm_display_mode mitsubishi_ac043na11_02_00_timing = {
+	.name = "480x272",
+	.clock = 9400,
+	.hdisplay = 480,
+	.hsync_start = 480 + 48,
+	.hsync_end = 480 + 48 + 16,
+	.htotal = 480 + 48 + 16 + 60,
+	.vdisplay = 272,
+	.vsync_start = 272 + 16,
+	.vsync_end = 272 + 16 + 2,
+	.vtotal = 272 + 16 + 2 + 12,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc mitsubishi_ac043na11_02_00 = {
+	.modes = &mitsubishi_ac043na11_02_00_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 95,
+		.height = 54,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
 static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
 	.name = "800x480",
 	.clock = 30400,
@@ -2603,6 +2629,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "lg,lp129qe",
 		.data = &lg_lp129qe,
+	}, {
+		.compatible = "mitsubishi,ac043na11_02_00",
+		.data = &mitsubishi_ac043na11_02_00,
 	}, {
 		.compatible = "mitsubishi,aa050mh01-da1",
 		.data = &mitsubishi_aa050mh01_da1,
