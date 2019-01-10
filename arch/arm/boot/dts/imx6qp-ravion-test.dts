@@ -445,6 +445,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi1>;
 	status = "okay";
+
+	ti_codec: pcm3793a@0 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ti_codec>;
+		reg = <0>;
+		compatible = "ti.pcm3793a";
+	};
 };
 
 
@@ -804,6 +811,18 @@
 				MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	0x130b0
 				/* Codec MCLK clock output */
 				MX6QDL_PAD_GPIO_5__CCM_CLKO1		0x000b0
+			>;
+		};
+
+		/*
+		 * Texas Audio (digital part)
+		 */
+		pinctrl_ti_codec: ti_codecgrp {
+			fsl,pins = <
+				MX6QDL_PAD_DISP0_DAT16__AUD5_TXC	0x130b0	/* soDimm2 PCK */
+				MX6QDL_PAD_DISP0_DAT18__AUD5_TXFS	0x130b0 /* soDImm4 FS */
+				MX6QDL_PAD_DISP0_DAT17__AUD5_TXD	0x130b0 /* soDimm6 DO */
+				MX6QDL_PAD_DISP0_DAT19__AUD5_RXD	0x130b0 /* soDimm8 DI */
 			>;
 		};
 
