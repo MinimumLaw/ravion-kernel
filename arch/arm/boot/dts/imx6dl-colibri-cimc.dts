@@ -93,7 +93,7 @@
 		tangenta {
 			label = "Tangenta";
 			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>; /* SODIMM 63 - GPIO2 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 	};
@@ -133,14 +133,18 @@
 	};
 
 
-	/* Workaround: On CIMC board we use USB-based sound */
-	/delete-node/sound;
+#if 0 /* bad codec on USB audio - revert classic codec */
+	/* Workaround: On CIMC board we use USB-based sound
+	/delete-node/sound; */
+#endif
 };
 
+#if 0 /* bad codec on USB audio - revert classic codec */
 &i2c2{
 	/* Workaround: On CIMC board we use USB-based sound */
 	/delete-node/codec;
 };
+#endif
 
 /*
  * Display subsystem

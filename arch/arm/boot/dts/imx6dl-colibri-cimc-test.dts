@@ -93,7 +93,7 @@
 		tangenta {
 			label = "Tangenta";
 			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>; /* SODIMM 63 - GPIO2 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 		};
 	};

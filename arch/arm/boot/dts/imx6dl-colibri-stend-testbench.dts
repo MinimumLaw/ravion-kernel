@@ -116,6 +116,13 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>; /* SODIMM 100 - GPIO6 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+		};
 	};
 
 	/*
@@ -241,6 +248,7 @@
 	pinctrl_gpio_keys: gpiokeys {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
+			MX6QDL_PAD_SD4_DAT3__GPIO2_IO11		0x1b0b0 /* soDimm 100: TANGENTA */
 		>;
 	};
 
