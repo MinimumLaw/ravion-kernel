@@ -1,0 +1,224 @@
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6qp.dtsi"
+#include "imx6qp-ravion.dtsi"
+
+/ {
+	model = "ravion:testbench";
+	compatible = "ravion,cimc-i", "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific clocks
+	 */
+	clocks {
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		 };
+	};
+
+	/*
+	 * Device specific regulators
+	 */
+	bt_reg: bt_vio {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_reg_bt>;
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio2 23 GPIO_ACTIVE_LOW>; /* SODIMM 104 */
+			regulator-always-on;
+			vin-supply = <&p3v3_reg>;
+	};
+
+	/*
+	 * Device specific leds
+	 */
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_leds>;
+
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* SODIMM  87 */
+			default-state = "on";
+		};
+
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>; /* SODIMM 127 */
+			default-state = "on";
+		};
+	};
+
+	/*
+	 * Device specific keys
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>; /* soDimm 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		hp_tangenta {
+			label = "HP tangenta";
+			gpios = <&gpio2 13 GPIO_ACTIVE_LOW>; /* SODIMM 100 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+		};
+	};
+
+	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
+	};
+
+	/*
+	 * TFT LCD Panel
+	 */
+	koe_lcd: panel {
+		compatible = "koe,tx09d200vm0baa";
+		backlight = <&backlight>;
+		status = "okay";
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&tft_bus_out>;
+			};
+		};
+	};
+
+	backlight: backlight {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
+		pwms = <&pwm1 0 500>;
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <4>;
+		status = "okay";
+	};
+};
+
+&hdmi	{	status = "okay";	};
+
+/*
+ * Display subsystem
+ */
+&tft_display_bus {
+	status = "okay";
+};
+  
+&tft_bus_out {
+	remote-endpoint = <&lcd_panel_in>;
+};
+
+/*
+ * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
+ */
+&i2c2 {
+	status = "okay";
+
+	/* DS2484: I2C to OneWire Converter */
+	owc: ds2482@18 {
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+/* Only pwm1 used as bright contol, all other - disabled  */
+&pwm3 { status = "okay";	}; /* soDimm 28 - LCD bright */
+
+/* Uarts */
+&uart1 { status = "okay"; }; /* default full feature uart */
+&uart2 { /* default CTS/RTS uart */
+	status = "okay";
+
+	bluetooth {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_bluetooth>;
+
+		enable-gpios	= <&gpio4 7 GPIO_ACTIVE_HIGH>; /* soDimm: 134 */
+		compatible	= "ti,wl1271-st";
+		clocks		= <&clk_32k_bt 0>;
+		clock-names	= "ext_clock";
+		max-speed	= <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 */
+		current-speed	= <115200>;
+		vio-supply	= <&bt_reg>;
+		vbat-supply	= <&p3v3_reg>;
+		status = "okay";
+	};
+};
+&uart3 { status = "okay"; }; /* default 3-wire uart */
+
+/* external (compatible) mmc card */
+&usdhc1 { status = "okay"; };
+
+/* Board specific io muxing */
+&iomuxc {
+	pinctrl_gpio_bl_on: gpioblon {
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D7__GPIO2_IO07	0x1b0b0 /* soDimm 125: BL_ON  */
+		>;
+	};
+
+	pinctrl_bluetooth: gpio-bluetooth {
+		fsl,pins = <
+			MX6QDL_PAD_KEY_ROW0__GPIO4_IO07	0x0f058 /* PU_22K soDimm 134: nBT_PDN */
+		>;
+	};
+
+	pinctrl_reg_bt: gpio-reg-bt {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_CS0__GPIO2_IO23	0x0f058 /* PU_22K soDimm 104: BT_PWR */
+		>;
+	};
+
+
+
+	pinctrl_gpio_leds: gpio-leds {
+		fsl,pins = <
+			MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0xf058 /* soDimm87: nRESET_OUT  */
+			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* soDImm127: SLPZ@DS2484R */
+		>;
+	};
+
+	pinctrl_gpio_keys: gpio-keys {
+		fsl,pins = <
+			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* Power Button soDimm  45 */
+			MX6QDL_PAD_SD4_DAT5__GPIO2_IO13		0x1b0b0	/* HP Tangenta:	soDimm 100 */
+		>;
+	};
+
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x1b0b0 /* soDimm 55 */
+		>;
+	};
+};
