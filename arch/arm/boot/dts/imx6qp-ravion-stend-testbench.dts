@@ -96,6 +96,33 @@
 	};
 
 	/*
+	 * Graphics and video subsystem (TFT interface)
+	 */
+	tft_display_bus: parallel-display {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "rgb24";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_di1>;
+		status = "okay";
+
+		port@0 {
+			reg = <0>;
+			tft_bus_in: endpoint {
+				remote-endpoint = <&ipu1_di1_disp1>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			tft_bus_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
+	};
+
+	/*
 	 * TFT LCD Panel
 	 */
 	koe_lcd: panel {
@@ -115,25 +142,24 @@
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
-		pwms = <&pwm1 0 500>;
+		pwms = <&pwm3 0 500>;
 		brightness-levels = <0 31 63 95 127 159 191 223 255>;
 		default-brightness-level = <4>;
 		status = "okay";
 	};
 };
 
-&hdmi	{	status = "okay";	};
+/*
+ * IPU to TFT bus connector
+ */
+&ipu1_di1_disp1 {
+	remote-endpoint = <&tft_bus_in>;
+};
 
 /*
  * Display subsystem
  */
-&tft_display_bus {
-	status = "okay";
-};
-  
-&tft_bus_out {
-	remote-endpoint = <&lcd_panel_in>;
-};
+&hdmi	{	status = "okay";	};
 
 /*
  * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
@@ -149,7 +175,7 @@
 	};
 };
 
-/* Only pwm1 used as bright contol, all other - disabled  */
+/* Only pwm3 used as bright contol, all other - disabled  */
 &pwm3 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
 /* Uarts */

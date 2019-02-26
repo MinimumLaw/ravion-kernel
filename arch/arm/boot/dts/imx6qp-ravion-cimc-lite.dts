@@ -217,6 +217,34 @@
 		status = "okay";
 	};
 
+
+	/*
+	 * Graphics and video subsystem (TFT interface)
+	 */
+	tft_display_bus: parallel-display {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "rgb24";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_di1>;
+		status = "okay";
+
+		port@0 {
+			reg = <0>;
+			tft_bus_in: endpoint {
+				remote-endpoint = <&ipu1_di1_disp1>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			tft_bus_out: endpoint {
+				remote-endpoint = <&lcd_panel_in>;
+			};
+		};
+	};
+
 	/*
 	 * LCD Panel
 	 */
@@ -243,17 +271,16 @@
 	};
 };
 
+/*
+ * Display subsystem
+ */
 &hdmi	{	status = "okay";	};
 
 /*
- * TFT Display subsystem
+ * IPU to TFT bus connector
  */
-&tft_display_bus {
-	status = "okay";
-};
-
-&tft_bus_out {
-	remote-endpoint = <&lcd_panel_in>;
+&ipu1_di1_disp1 {
+	remote-endpoint = <&tft_bus_in>;
 };
 
 /*
