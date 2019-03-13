@@ -117,11 +117,37 @@
 		regulator-always-on;
 	};
 
-	reg_usb_otg_vbus: regulator-usb-otg-vbus {
+	/*
+	 * reg_usb_otg_vbus virtual regulator on Toradex Colibri SOM
+	 * If disabled, soDimm pin 137 via enable 3-state buffer and
+	 * 5V Level Shifter connected to USB_OTG_VBUS ball on I.MX6,
+	 * else 5V Level Shifter generate on USB_OTG_VBUS ball 0V or
+	 * 5V volategr;
+	 */
+	req_usb_otg_vbus: regulator-usb-otg-vbus {
+		compatible = "regulator-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_regulator_usb_otg_vbus>;
+		regulator-name = "usb_otg_vbus";
+		regulator-type = "voltage";
+		regulator-min-microvolt = <0>;
+		regulator-max-microvolt = <5000000>;
+
+		enable-gpio = <&gpio6 26 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		gpios = <&gpio6 30 GPIO_ACTIVE_HIGH>;
+		gpios-state = <1>;
+		states = <	5000000	0x1
+				0	0x0	>;
+
+		regulator-always-on;
+	};
+
+	reg_usb_otg_pen: regulator-usb-otg-pen {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_regulator_usb_otg_pwr>;
-		regulator-name = "usb_otg_vbus";
+		pinctrl-0 = <&pinctrl_regulator_usb_otg_pen>;
+		regulator-name = "usb_otg_pen";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
@@ -427,7 +453,7 @@
  * USB Host/Device switcahble (OTG)
  */
 &usbotg {
-	vbus-supply = <&reg_usb_otg_vbus>;
+	vbus-supply = <&reg_usb_otg_pen>;
 	disable-over-current;
 	/*
 	 * FixMe:
@@ -654,7 +680,14 @@
 		>;
 	};
 
-	pinctrl_regulator_usb_otg_pwr: gpioregusbopwrgrp {
+	pinctrl_regulator_usb_otg_vbus: gpioregusbovbusgrp {
+		fsl,pins = <
+			MX6QDL_PAD_RGMII_TX_CTL__GPIO6_IO26	0x0f058 /* Internal: USB_OTG_VBUS_3STATE_BUFF */
+			MX6QDL_PAD_RGMII_RXC__GPIO6_IO30	0x0f058 /* Internal: USB_OTG_VBUS_OUT */
+		>;
+	};
+
+	pinctrl_regulator_usb_otg_pen: gpioregusbopengrp {
 		fsl,pins = <
 			MX6QDL_PAD_EIM_D31__GPIO3_IO31	0x0f058	/* SODIMM 129 - USBO_PEN */
 		>;
