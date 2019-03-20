@@ -1,6 +1,8 @@
 #!/bin/sh
 
-export CROSS_COMPILE=arm-linux-gnueabihf-
+if [ -z $CROSS_COMPILE ]; then
+    export CROSS_COMPILE=arm-linux-gnueabihf-
+fi
 export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp
