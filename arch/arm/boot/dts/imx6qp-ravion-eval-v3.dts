@@ -9,14 +9,16 @@
  *
  */
 
-#include "imx6qp.dtsi"
-#include <dt-bindings/input/input.h>
-#include <dt-bindings/gpio/gpio.h>
+/dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6qp.dtsi"
 
 / {
-	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 module";
-	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
+	model = "ravion:eval-v3";
+	compatible = "ravion,eval-v3", "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Power sources
@@ -39,32 +41,14 @@
 		regulator-always-on;
 	};
 
-	reg_usb_otg_vbus: regulator-usb-otg-vbus {
+	reg_usb_host_vbus: regulator-usb-host-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_regulator_usb_otg_pwr>;
-		regulator-name = "usb_otg_vbus";
+		pinctrl-0 = <&pinctrl_regulator_usb_host_pwr>;
+		regulator-name = "usb_host_vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-		enable-active-high;
 		gpio = <&gpio1 0 GPIO_ACTIVE_HIGH>; /* USBO_PEN : soDimm 129 */
-	};
-
-	/*
-	 * All ravion board have power key on soDimm pin 45
-	 */
-	gpio-keys {
-		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_keys>;
-
-		power {
-			label = "Power";
-			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm 45 */
-			linux,code = <KEY_POWER>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
 	};
 
 	/*
@@ -83,13 +67,13 @@
 	};
 
 	/*
-	 * All ravion board have power-off output on soDimm pin 133
+	 * All ravion board have non-standart USB OTG control pins
 	 */
-	gpio-poweroff {
+	extcon_usb: pin_usb {
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_poweroff>;
-		compatible = "gpio-poweroff";
-		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+		pinctrl-0 = <&pinctrl_extcon_otg_vbus>;
+		compatible = "linux,extcon-usb-gpio";
+		vbus-gpio = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* SODIMM 137 */
 	};
 
 	/*
@@ -119,7 +103,7 @@
 	pinctrl-0 = <&pinctrl_uart1>;
 	uart-has-rtscts;
 	uart-has-dtrdsr;
-	status = "disabled";
+	status = "okay";
 };
 
 &uart2 {
@@ -131,13 +115,13 @@
 	cts-gpios = <&gpio3 28 GPIO_ACTIVE_LOW>;
 	rts-gpios = <&gpio3 29 GPIO_ACTIVE_LOW>;
 #endif
-	status = "disabled";
+	status = "okay";
 };
 
 &uart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
-	status = "disabled";
+	status = "okay";
 };
 
 /*
@@ -269,7 +253,7 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2>;
-	status = "disabled";
+	status = "okay";
 
 };
 
@@ -300,7 +284,7 @@
 /*	cd-gpios = <&gpio5 2 GPIO_ACTIVE_LOW>;	* soDimm 43 */
 	bus-width = <4>;
 	no-1-8-v;
-	status = "disabled";
+	status = "okay";
 };
 
 &usdhc2 { /* externed */
@@ -347,6 +331,7 @@
  * USB Subsystem
  */
 &usbh1 {
+	vbus-supply = <&reg_usb_host_vbus>;
 	disable-over-current;
 	status = "okay";
 };
@@ -354,9 +339,8 @@
 &usbotg {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
-	vbus-supply = <&reg_usb_otg_vbus>;
-	disable-over-current;
 
+	disable-over-current;
 	dr_mode = "otg";
 	status = "okay";
 };
@@ -382,7 +366,7 @@
 &hdmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi>;
-	status = "disabled";
+	status = "okay";
 };
 
 /*
@@ -409,24 +393,7 @@
 	pinctrl-0 = <&pinctrl_hog>;
 
 	pinctrl_hog: hoggrp {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm137 */
-		>;
-	};
-
-	/*
-	 * Power control
-	 */
-	pinctrl_gpio_poweroff: gpio-poweroff {
-		fsl,pins = <
-			MX6QDL_PAD_SD4_DAT3__GPIO2_IO11		0x0f058 /* soDimm133 */
-		>;
-	};
-
-	pinctrl_gpio_keys: gpio-keys {
-		fsl,pins = <	/* Power button */
-			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* soDimm45 */
-		>;
+		fsl,pins = < /*ToDo: place unused soDimm200 gpio(s) here */ >;
 	};
 
 	pinctrl_gpio_leds: gpio-leds {
@@ -438,14 +405,15 @@
 	/*
 	 * USB subsystem
 	 */
-	pinctrl_regulator_usb_otg_pwr: gpioregusbopwrgrp {
+	pinctrl_regulator_usb_host_pwr: gpioregusbhpwrgrp {
 		fsl,pins = <
 			MX6QDL_PAD_GPIO_0__GPIO1_IO00		0x0f058	/* soDimm129 */
 		>;
 	};
 
-	pinctrl_extcon_otg_vbus: gpiootgvbus {
+	pinctrl_extcon_otg_vbus: gpiootgvbus { /* Not used */
 		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm137 */
 		>;
 	};
 
@@ -672,6 +640,7 @@
 			MX6QDL_PAD_EIM_D27__IPU1_DISP1_DATA23	0x61	/* soDimm146 TFT_DAT23 */
 		>;
 	};
+
 
 	/*
 	 * USB OTG
