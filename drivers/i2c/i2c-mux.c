@@ -347,8 +347,8 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 	 */
 	if (muxc->dev->of_node) {
 		struct device_node *dev_node = muxc->dev->of_node;
-		struct device_node *mux_node, *child = NULL;
-		u32 reg;
+		struct device_node *mux_node;
+		u32 ch_num = chan_id;
 
 		if (muxc->arbitrator)
 			mux_node = of_get_child_by_name(dev_node, "i2c-arb");
@@ -357,30 +357,17 @@ int i2c_mux_add_adapter(struct i2c_mux_core *muxc,
 		else
 			mux_node = of_get_child_by_name(dev_node, "i2c-mux");
 
-		if (mux_node) {
-			/* A "reg" property indicates an old-style DT entry */
-			if (!of_property_read_u32(mux_node, "reg", &reg)) {
-				of_node_put(mux_node);
-				mux_node = NULL;
-			}
-		}
+		/*
+		 * Find channel in device tree
+		 */
+		while(ch_num--) {
+			/* read next chld node */
+			of_node_put(mux_node);
+			mux_node = of_get_next_child(dev_node, mux_node);
+			if(!mux_node) break;
+		};
 
-		if (!mux_node)
-			mux_node = of_node_get(dev_node);
-		else if (muxc->arbitrator || muxc->gate)
-			child = of_node_get(mux_node);
-
-		if (!child) {
-			for_each_child_of_node(mux_node, child) {
-				ret = of_property_read_u32(child, "reg", &reg);
-				if (ret)
-					continue;
-				if (chan_id == reg)
-					break;
-			}
-		}
-
-		priv->adap.dev.of_node = child;
+		priv->adap.dev.of_node = mux_node;
 		of_node_put(mux_node);
 	}
 

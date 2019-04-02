@@ -794,6 +794,31 @@ static const struct panel_desc boe_hv070wsa = {
 	},
 };
 
+static const struct drm_display_mode bolimin_bt35sn7g1e0_mode = {
+	.clock = 6410,
+	.hdisplay = 320,
+	.hsync_start = 320 + 20,
+	.hsync_end = 320 + 20 + 30,
+	.htotal = 320 + 20 + 30 + 38,
+	.vdisplay = 240,
+	.vsync_start = 240 + 4,
+	.vsync_end = 240 + 4 + 3,
+	.vtotal = 240 + 4 + 3 + 15,
+	.vrefresh = 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc bolimin_bt35sn7g1e0 = {
+	.modes = &bolimin_bt35sn7g1e0_mode,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 70,
+		.height = 53,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+};
+
 static const struct drm_display_mode boe_nv101wxmn51_modes[] = {
 	{
 		.clock = 71900,
@@ -1413,6 +1438,32 @@ static const struct panel_desc innolux_zj070na_01p = {
 	},
 };
 
+static const struct drm_display_mode koe_tx09d200vm0baa_timing = {
+	.clock = 6500,
+	.hdisplay = 240,
+	.hsync_start = 240 + 16,
+	.hsync_end = 240 + 16 + 16,
+	.htotal = 240 + 16 + 16 + 48,
+	.vdisplay = 320,
+	.vsync_start = 320 + 6,
+	.vsync_end = 320 + 6 + 6,
+	.vtotal = 320 + 6 + 6 + 6,
+	.vrefresh = 60,
+	.flags =  DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc koe_tx09d200vm0baa = {
+	.modes = &koe_tx09d200vm0baa_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 53,
+		.height = 71,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
 static const struct display_timing koe_tx31d200vm0baa_timing = {
 	.pixelclock = { 39600000, 43200000, 48000000 },
 	.hactive = { 1280, 1280, 1280 },
@@ -1606,6 +1657,96 @@ static const struct panel_desc mitsubishi_aa070mc01 = {
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
 	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+};
+
+static const struct drm_display_mode mitsubishi_ac043na11_02_00_timing = {
+	.name = "480x272",
+	.clock = 9400,
+	.hdisplay = 480,
+	.hsync_start = 480 + 48,
+	.hsync_end = 480 + 48 + 16,
+	.htotal = 480 + 48 + 16 + 60,
+	.vdisplay = 272,
+	.vsync_start = 272 + 16,
+	.vsync_end = 272 + 16 + 2,
+	.vtotal = 272 + 16 + 2 + 12,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc mitsubishi_ac043na11_02_00 = {
+	.modes = &mitsubishi_ac043na11_02_00_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 95,
+		.height = 54,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
+static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
+	.name = "800x480",
+	.clock = 30400,
+	.hdisplay = 800,
+	.hsync_start = 800 + 60,
+	.hsync_end = 800 + 60 + 60,
+	.htotal = 800 + 60 + 60 + 40,
+	.vdisplay = 480,
+	.vsync_start = 480 + 15,
+	.vsync_end = 480 + 15 + 15,
+	.vtotal = 480 + 15 + 15 + 15,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc mitsubishi_aa050mh01_da1 = {
+	.modes = &mitsubishi_aa050mh01_da1_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 109,
+		.height = 65,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+};
+
+static const struct panel_desc mitsubishi_aa070me11ada11 = {
+	.modes = &mitsubishi_aa050mh01_da1_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 153,
+		.height = 92,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
+};
+
+static const struct drm_display_mode mitsubishi_aa104xf02_de2_timing = {
+	.name = "1024x768",
+	.clock = 65000,
+	.hdisplay = 1024,
+	.hsync_start = 1024 + 150,
+	.hsync_end = 1024 + 150 + 150,
+	.htotal = 1024 + 150 + 150 + 20,
+	.vdisplay = 768,
+	.vsync_start = 768 + 15,
+	.vsync_end = 768 + 15 + 15,
+	.vtotal = 768 + 15 + 15 + 8,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc mitsubishi_aa104xf12_de2 = {
+	.modes = &mitsubishi_aa104xf02_de2_timing,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 153,
+		.height = 92,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
 };
 
 static const struct display_timing nec_nl12880bc20_05_timing = {
@@ -2376,6 +2517,9 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "boe,nv101wxmn51",
 		.data = &boe_nv101wxmn51,
 	}, {
+		.compatible = "bolimin,bt35sn7g1e0",
+		.data = &bolimin_bt35sn7g1e0,
+	}, {
 		.compatible = "chunghwa,claa070wp03xg",
 		.data = &chunghwa_claa070wp03xg,
 	}, {
@@ -2451,6 +2595,9 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "innolux,zj070na-01p",
 		.data = &innolux_zj070na_01p,
 	}, {
+		.compatible = "koe,tx09d200vm0baa",
+		.data = &koe_tx09d200vm0baa,
+	}, {
 		.compatible = "koe,tx31d200vm0baa",
 		.data = &koe_tx31d200vm0baa,
 	}, {
@@ -2472,8 +2619,20 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "lg,lp129qe",
 		.data = &lg_lp129qe,
 	}, {
+		.compatible = "mitsubishi,ac043na11_02_00",
+		.data = &mitsubishi_ac043na11_02_00,
+	}, {
+		.compatible = "mitsubishi,aa050mh01-da1",
+		.data = &mitsubishi_aa050mh01_da1,
+	}, {
 		.compatible = "mitsubishi,aa070mc01-ca1",
 		.data = &mitsubishi_aa070mc01,
+	}, {
+		.compatible = "mitsubishi,aa070me11ada11",
+		.data = &mitsubishi_aa070me11ada11
+	}, {
+		.compatible = "mitsubishi,aa104xf12-de2",
+		.data = &mitsubishi_aa104xf12_de2,
 	}, {
 		.compatible = "nec,nl12880bc20-05",
 		.data = &nec_nl12880bc20_05,

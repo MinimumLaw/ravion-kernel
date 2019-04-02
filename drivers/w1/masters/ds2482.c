@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
+#include <linux/of_device.h>
 #include <asm/delay.h>
 
 #include <linux/w1.h>
@@ -541,6 +542,12 @@ static int ds2482_remove(struct i2c_client *client)
 /**
  * Driver data (common to all clients)
  */
+static const struct of_device_id ds2482_of_match[] = {
+	{ .compatible = "maxim,ds2482", },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, ds2482_of_match);
+
 static const struct i2c_device_id ds2482_id[] = {
 	{ "ds2482", 0 },
 	{ }
@@ -550,6 +557,7 @@ MODULE_DEVICE_TABLE(i2c, ds2482_id);
 static struct i2c_driver ds2482_driver = {
 	.driver = {
 		.name	= "ds2482",
+		.of_match_table = of_match_ptr(ds2482_of_match),
 	},
 	.probe		= ds2482_probe,
 	.remove		= ds2482_remove,

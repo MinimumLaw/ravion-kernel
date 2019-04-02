@@ -122,11 +122,14 @@ static int imx_pd_encoder_atomic_check(struct drm_encoder *encoder,
 	struct imx_parallel_display *imxpd = enc_to_imxpd(encoder);
 
 	if (!imxpd->bus_format && di->num_bus_formats) {
-		imx_crtc_state->bus_flags = di->bus_flags;
 		imx_crtc_state->bus_format = di->bus_formats[0];
 	} else {
-		imx_crtc_state->bus_flags = imxpd->bus_flags;
 		imx_crtc_state->bus_format = imxpd->bus_format;
+	}
+	if (di->bus_flags) {
+		imx_crtc_state->bus_flags = di->bus_flags;
+	} else {
+		imx_crtc_state->bus_flags = imxpd->bus_flags;
 	}
 	imx_crtc_state->di_hsync_pin = 2;
 	imx_crtc_state->di_vsync_pin = 3;

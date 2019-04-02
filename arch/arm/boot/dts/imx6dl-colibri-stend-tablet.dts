@@ -1,0 +1,407 @@
+/*
+ * Copyright 2014-2016 Toradex AG
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License
+ *     version 2 as published by the Free Software Foundation.
+ *
+ *     This file is distributed in the hope that it will be useful
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED , WITHOUT WARRANTY OF ANY KIND
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6dl.dtsi"
+#include "imx6qdl-colibri-ravion.dtsi"
+
+/ {
+	model = "colibri:stend-tablet";
+	compatible = "toradex,mcp", "toradex,colibri_imx6dl-eval",
+		"toradex,colibri_imx6dl", "fsl,imx6dl";
+
+	/*
+	 * Device specific clocks
+	 */
+	clocks {
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		 };
+	};
+
+	/*
+	 * Device specific regulators
+	 */
+	bt_vio_reg: bt_vio {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_reg_bt_cif>;
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio3 2 GPIO_ACTIVE_LOW>;
+			regulator-always-on;
+			vin-supply = <&reg_3p3v>;
+	};
+
+	/*
+	 * Device specific leds
+	 */
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_leds>;
+
+		w1 {
+			label = "W1";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		nreset {
+			label = "nRESET";
+			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		wifi_en {
+			label = "wifi_enable";
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; /* SODIMM 122 */
+			default-state = "on";
+		};
+
+		disp_en {
+			label = "display_enable";
+			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>; /* SODIMM 124 */
+			default-state = "on";
+		};
+
+		scan_dir {
+			label = "disp_scan_direction";
+			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>; /* SODIMM 184 */
+			default-state = "on";
+		};
+
+		ts_ckw {
+			label = "ts_ckw";
+			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>; /* SODIMM 186 */
+			default-state = "off";
+		};
+
+		ts_sc {
+			label = "ts_sc";
+			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>; /* SODIMM 188 */
+			default-state = "off";
+		};
+	};
+
+	/*
+	 * Device specific keys
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_keys>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio2 22 GPIO_ACTIVE_LOW>; /* SODIMM 45 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		hp_tangenta {
+			label = "HP tangenta";
+			gpios = <&gpio2 01 GPIO_ACTIVE_LOW>; /* SODIMM 134 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+		};
+
+		sw_1 {
+			label = "SW1";
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+		};
+
+		sw_2 {
+			label = "SW2";
+			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
+			linux,code = <KEY_F4>;
+			debounce-interval = <100>;
+		};
+
+		sw_3 {
+			label = "SW3";
+			gpios = <&gpio3 11 GPIO_ACTIVE_LOW>; /* SODIMM 116 */
+			linux,code = <KEY_F5>;
+			debounce-interval = <100>;
+		};
+	};
+
+	/*
+	 * PPS pin from SNS receiver
+	 */
+	pps {
+		compatible = "pps-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pps_gpio>;
+
+		gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
+		assert-falling-edge;
+		status = "okay";
+	};
+
+	/*
+	 * LCD Panel
+	 */
+	panel {
+		compatible = "mitsubishi,aa050mh01-da1";
+		backlight = <&backlight>;
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&tft_display_bus_out>;
+			};
+		};
+	};
+
+	backlight: backlight {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio3 04 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+		pwms = <&pwm1 0 2000>; /* FixMe: frequency !!! */
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <5>;
+		status = "okay";
+	};
+};
+
+/*
+ * Display subsystem
+ */
+&tft_display_bus {
+	interface-pix-fmt = "bgr666";
+	status = "okay";
+};
+
+&tft_display_bus_out {
+	remote-endpoint = <&lcd_panel_in>;
+};
+
+&hdmi {	status = "okay"; };
+
+/*
+ * Colibri I2C: I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
+ */
+&i2c3 {
+	status = "okay";
+
+	/* Composite video capture interface */
+	cvbs: adv7280@20 {
+		reg = <0x20>;
+		compatible = "adv7280", "adi,adv7280";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7280>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <26 IRQ_TYPE_LEVEL_LOW>;
+		powerdown-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+		input-names = "Ain1","Ain2","Ain3","Ain4";
+		inputs = <0x00 0x01 0x02 0x03>;
+		status = "okay";
+
+		port {
+			adv7280_ep: endpoint {
+				remote-endpoint = <&ipu1_csi1_mux_from_parallel_sensor>;
+				bus-width = <8>;
+			};
+		};
+	};
+
+	i2c_bus_mux: mux@70 { /* I2C bus multiplexer/switch */
+		status = "okay";
+		compatible = "nxp,pca9540";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
+
+		i2c-mux@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <4>;
+			status = "okay";
+
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery1@0b {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <10>;
+			};
+		};
+
+		i2c-mux@5 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <5>;
+			status = "okay";
+
+			/* Texas Instruments SBS-compatible Fuel Gauge Controller */
+			battery2@0b {
+				status = "okay";
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <10>;
+			};
+		};
+	};
+
+	/* DS2484: I2C to OneWire Converter */
+	owc: ds2482@18 {
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+/*
+ * Composite video capture
+ */
+&ipu1_csi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ipu1_csi1>;
+};
+
+&ipu1_csi1_from_ipu1_csi1_mux {
+};
+
+&ipu1_csi1_mux_from_parallel_sensor {
+	remote-endpoint = <&adv7280_ep>;
+};
+
+/* Only pwm1 used as bright contol, all other - disabled  */
+&pwm1 { status = "okay";	}; /* soDimm 28 - LCD bright */
+
+/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
+&uart1 { status = "okay"; }; /* default full feature uart */
+&uart2 { /* default have CTS/RTS pins */
+	status = "okay";
+
+	bluetooth {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_bluetooth>;
+
+		enable-gpios	= <&gpio3 3 GPIO_ACTIVE_HIGH>;
+		compatible	= "ti,wl1271-st";
+		clocks		= <&clk_32k_bt 0>;
+		clock-names	= "ext_clock";
+		max-speed	= <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 */
+		current-speed	= <115200>;
+		vio-supply	= <&bt_vio_reg>;
+		vbat-supply	= <&reg_3p3v>;
+		status = "okay";
+	};
+};
+&uart3 { status = "okay"; }; /* default 3-wire uart */
+
+/* external mmc card */
+&usdhc1 { status = "okay"; };
+
+/* Board specific io muxing */
+&iomuxc {
+	pinctrl_gpio_bl_on: gpioblon {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA4__GPIO3_IO04	0x1b0b0 /* soDimm 119 */
+		>;
+	};
+
+	pinctrl_adv7280: gpio-adv7280 {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
+			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
+		>;
+	};
+
+	pinctrl_bluetooth: gpio-bluetooth {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA3__GPIO3_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
+		>;
+	};
+
+	pinctrl_reg_bt_cif: gpio-reg-bt-cif {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_DA2__GPIO3_IO02	0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
+		>;
+	};
+
+	pinctrl_gpio_leds: gpio-leds {
+		fsl,pins = <
+			MX6QDL_PAD_RGMII_RD1__GPIO6_IO27 0xf058 /* PU_22K interal RGMII_RD1 - nRESET OUT */
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06  0xf058 /* PU_22K soDImm 127: SLPZ@DS2484R   */
+			MX6QDL_PAD_EIM_DA14__GPIO3_IO14  0xf058 /* PU_22K - soDimm 122. WIFI EN */
+			MX6QDL_PAD_EIM_DA15__GPIO3_IO15  0xf058 /* PU_22K - soDimm 124. DISP EN */
+			MX6QDL_PAD_KEY_COL2__GPIO4_IO10  0xf058 /* PU_22K - soDimm 184. DISP SD */
+			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11  0xf058 /* PU_22K - soDimm 186. TS CKW */
+			MX6QDL_PAD_KEY_ROW4__GPIO4_IO15	 0xf058 /* PU_22K - soDimm 188. TS_SC */
+		>;
+	};
+
+	pinctrl_gpio_keys: gpiokeys {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_A16__GPIO2_IO22		0x1b0b0	/* Power button */
+			MX6QDL_PAD_EIM_DA11__GPIO3_IO11		0x1b0b0	/* soDimm 116 */
+			MX6QDL_PAD_EIM_DA12__GPIO3_IO12		0x1b0b0	/* soDimm 118 */
+			MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x1b0b0	/* soDimm 120 */
+			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0x1b0b0 /* Tangenta soDimm 134 */
+		>;
+	};
+
+	pinctrl_pps_gpio: gpiopps {
+		fsl,pins = <
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm 55 */
+		>;
+	};
+};
