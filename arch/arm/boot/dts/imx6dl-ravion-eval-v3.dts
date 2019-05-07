@@ -18,7 +18,7 @@
 
 / {
 	model = "ravion:eval-v3";
-	compatible = "ravion,eval-v3", "ravion,imx6qp", "fsl,imx6qp";
+	compatible = "ravion,eval-v3", "ravion,imx6dl", "fsl,imx6dl";
 
 	/*
 	 * Power sources

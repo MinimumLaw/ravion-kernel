@@ -9,7 +9,6 @@
  *
  */
 
-#include "imx6qp.dtsi"
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
 
@@ -341,7 +340,9 @@
  * High-speed serial bus
  */
 &pcie {		status = "disabled";	};
+#ifndef IMX6DL /* only quad have SATA interface */
 &sata {		status = "disabled";	};
+#endif
 
 /*
  * USB Subsystem
