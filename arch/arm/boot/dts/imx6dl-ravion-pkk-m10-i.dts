@@ -1,54 +1,16 @@
-/*
- * Copyright 2018 Radioavionica Corp
- *
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
- *
- *  a) This file is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License
- *     version 2 as published by the Free Software Foundation.
- *
- *     This file is distributed in the hope that it will be useful
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- * Or, alternatively
- *
- *  b) Permission is hereby granted, free of charge, to any person
- *     obtaining a copy of this software and associated documentation
- *     files (the "Software"), to deal in the Software without
- *     restriction, including without limitation the rights to use
- *     copy, modify, merge, publish, distribute, sublicense, and/or
- *     sell copies of the Software, and to permit persons to whom the
- *     Software is furnished to do so, subject to the following
- *     conditions:
- *
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *
- *     THE SOFTWARE IS PROVIDED , WITHOUT WARRANTY OF ANY KIND
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
- *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *     OTHER DEALINGS IN THE SOFTWARE.
- */
 
 /dts-v1/;
 
+#define IMX6DL
+
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include "imx6qp.dtsi"
+#include "imx6dl.dtsi"
 #include "imx6qdl-ravion.dtsi"
 
 / {
 	model = "ravion:pkk-m10";
-	compatible = "ravion,mcp", "ravion,raviom_imx6qp", "fsl,imx6qp";
+	compatible = "ravion,pkk-m10", "ravion,imx6dl", "fsl,imx6dl";
 
 	/*
 	 * Device specific clocks
@@ -188,43 +150,30 @@
 		status = "okay";
 	};
 
-	/*
-	 * Graphics and video subsystem (TFT interface)
-	 */
-	tft_display_bus: parallel-display {
-		compatible = "fsl,imx-parallel-display";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		interface-pix-fmt = "brg666";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ipu1_di1>;
-		status = "okay";
 
-		port@0 {
-			reg = <0>;
-			tft_bus_in: endpoint {
-				remote-endpoint = <&ipu1_di1_disp1>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			tft_bus_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-	};
-
-	/*
-	 * LCD Panel
-	 */
 	panel {
-		compatible = "mitsubishi,aa104xf12-de2";
+		compatible = "mitsubishi,AA10XF02-DE2", "panel-lvds";
 		backlight = <&backlight>;
+		data-mapping = "jeida-24"; /* "jeida-18", "vesa-24" */
+
+		width-mm = <210>;
+		height-mm = <158>;
+
+		panel-timing {
+			clock-frequency = <65000000>;
+			hactive = <1024>;
+			vactive = <768>;
+			hsync-len = <20>;
+			hfront-porch = <150>;
+			hback-porch = <150>;
+			vfront-porch = <15>;
+			vback-porch = <15>;
+			vsync-len = <8>;
+		};
 
 		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&tft_bus_out>;
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds0_out>;
 			};
 		};
 	};
@@ -242,15 +191,16 @@
 };
 
 /*
- * IPU to TFT bus connector
+ * LVDS display bridge
  */
-&ipu1_di1_disp1 {
-	remote-endpoint = <&tft_bus_in>;
+&ldb {		status = "okay";	};
+&lvds0_chan {
+	fsl,data-mappings = "jeida"; /* "spwg" */
+	fsl,data-width = <24>;
+	status = "okay";
 };
+&lvds0_out { remote-endpoint = <&lvds_panel_in>; };
 
-/*
- * Display subsystem
- */
 &hdmi {	status = "okay"; };
 
 /*
@@ -336,10 +286,8 @@
 	pinctrl-0 = <&pinctrl_ipu1_csi0>;
 };
 
-/*
 &ipu1_csi0_from_ipu1_csi0_mux {
 };
-*/
 
 &ipu1_csi0_mux_from_parallel_sensor {
 	remote-endpoint = <&adv7280_ep>;
@@ -375,6 +323,11 @@
 
 /* external mmc card */
 &usdhc1 { status = "okay"; };
+
+/*
+ * High-speed serial bus
+ */
+&pcie {	status = "okay";	};
 
 /* Board specific io muxing */
 &iomuxc {

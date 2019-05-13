@@ -1,14 +1,16 @@
 
 /dts-v1/;
 
+#define IMX6DL
+
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include "imx6qp.dtsi"
+#include "imx6dl.dtsi"
 #include "imx6qdl-ravion.dtsi"
 
 / {
-	model = "ravion:cimc-lite";
-	compatible = "ravion,cimc-lite", "ravion,imx6qp", "fsl,imx6qp";
+	model = "ravion:cimc";
+	compatible = "ravion,cimc", "ravion,imx6dl", "fsl,imx6dl";
 
 	/*
 	 * Device specific clocks
@@ -25,18 +27,6 @@
 	/*
 	 * Device specific regulators
 	 */
-	bt_vio_reg: bt_vio {
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_bt>;
-			compatible = "regulator-fixed";
-			regulator-name = "VIO_BT";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* SODIMM 115 */
-			regulator-always-on;
-			vin-supply = <&p3v3_reg>;
-	};
-
 	cif_vio_reg: cif_vio {
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_reg_cif>;
@@ -44,7 +34,7 @@
 			regulator-name = "VIO_CIF";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 6 GPIO_ACTIVE_LOW>; /* SODIMM 123 */
+			gpio = <&gpio2 6 GPIO_ACTIVE_LOW>; /* SODIMM 123*/
 			regulator-always-on;
 			vin-supply = <&p3v3_reg>;
 	};
@@ -217,7 +207,6 @@
 		status = "okay";
 	};
 
-
 	/*
 	 * Graphics and video subsystem (TFT interface)
 	 */
@@ -246,11 +235,11 @@
 	};
 
 	/*
-	 * LCD Panel
+	 * TFT LCD Panel
 	 */
-	panel {
+	koe_lcd: panel {
 		compatible = "koe,tx09d200vm0baa";
-		backlight = <&backlight>;
+		status = "okay";
 
 		port {
 			lcd_panel_in: endpoint {
@@ -258,23 +247,7 @@
 			};
 		};
 	};
-
-	backlight: backlight {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
-		compatible = "pwm-backlight";
-		enable-gpios = <&gpio2 07 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
-		pwms = <&pwm3 0 500>;
-		brightness-levels = <0 31 63 95 127 159 191 223 255>;
-		default-brightness-level = <4>;
-		status = "okay";
-	};
 };
-
-/*
- * Display subsystem
- */
-&hdmi	{	status = "okay";	};
 
 /*
  * IPU to TFT bus connector
@@ -282,6 +255,11 @@
 &ipu1_di1_disp1 {
 	remote-endpoint = <&tft_bus_in>;
 };
+
+/*
+ * Display subsystem
+ */
+&hdmi	{	status = "okay";	};
 
 /*
  * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
@@ -333,29 +311,10 @@
 /* Only pwm1 used as bright contol, all other - disabled  */
 &pwm3 { status = "okay";	}; /* soDimm 28 - LCD bright */
 
-/* uart1 - sys (3w), uart2 - bluetoth (H3), uart3 disabled by default */
+/* Uarts */
 &uart1 { status = "okay"; }; /* default full feature uart */
-&uart2 { /* default have CTS/RTS pins */
-	status = "okay";
-
-	bluetooth {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_bluetooth>;
-
-		enable-gpios	= <&gpio2 3 GPIO_ACTIVE_HIGH>; /* SODIMM 117 */
-		compatible	= "ti,wl1271-st";
-		clocks		= <&clk_32k_bt 0>;
-		clock-names	= "ext_clock";
-		max-speed	= <3686400>;
-		/*
-		 * Params not found in source, but described in documentation
-		 */
-		current-speed	= <115200>;
-		vio-supply	= <&bt_vio_reg>;
-		vbat-supply	= <&p3v3_reg>;
-		status = "okay";
-	};
-};
+&uart2 { status = "okay"; }; /* default CTS/RTS uart */
+&uart3 { status = "okay"; }; /* default 3-wire uart */
 
 /* external (compatible) mmc card */
 &usdhc1 { status = "okay"; };
@@ -372,18 +331,6 @@
 		fsl,pins = <
 			MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
 			MX6QDL_PAD_DISP0_DAT10__GPIO4_IO31	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
-		>;
-	};
-
-	pinctrl_bluetooth: gpio-bluetooth {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D3__GPIO2_IO03	0x0f058 /* PU_22K soDimm 117 - nBT_PDN */
-		>;
-	};
-
-	pinctrl_reg_bt: gpio-reg-bt {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D2__GPIO2_IO02	0x0f058 /* PU_22K soDimm 115: BT_PWR */
 		>;
 	};
 
