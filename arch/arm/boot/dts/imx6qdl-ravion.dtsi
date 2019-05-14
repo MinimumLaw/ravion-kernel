@@ -314,6 +314,8 @@
 &usdhc3 { /* eMMC */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
+	vmmc-supply = <&p3v3_reg>;
+	vqmmc-supply = <&vgen3_reg>;
 	bus-width = <8>;
 	non-removable;
 	status = "okay";
