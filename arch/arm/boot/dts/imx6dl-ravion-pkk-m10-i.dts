@@ -117,14 +117,14 @@
 
 		brightness_down  {
 			label = "BRIGHTNESS_DOWN";
-			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
 			linux,code = <KEY_BRIGHTNESSDOWN>;
 			debounce-interval = <100>;
 		};
 
 		brightness_up  {
 			label = "BRIGHTNESS_UP";
-			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>; /* SODIMM 118 */
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>; /* SODIMM 120 */
 			linux,code = <KEY_BRIGHTNESSUP>;
 			debounce-interval = <100>;
 		};
