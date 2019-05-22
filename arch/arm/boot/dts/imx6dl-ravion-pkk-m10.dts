@@ -156,7 +156,7 @@
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		interface-pix-fmt = "brg666";
+		interface-pix-fmt = "bgr666";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ipu1_di1>;
 		status = "okay";
