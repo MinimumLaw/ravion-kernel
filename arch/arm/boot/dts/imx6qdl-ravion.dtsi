@@ -350,6 +350,7 @@
  * USB Subsystem
  */
 &usbh1 {
+	vbus-supply = <&swbst_reg>;
 	disable-over-current;
 	status = "okay";
 };
