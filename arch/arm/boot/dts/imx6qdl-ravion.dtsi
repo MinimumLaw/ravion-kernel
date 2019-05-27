@@ -413,7 +413,13 @@
 	pinctrl-0 = <&pinctrl_hog>;
 
 	pinctrl_hog: hoggrp {
-		fsl,pins = <
+		fsl,pins = < /* se unused pins to GPIO input */
+			/* Unused I2S interface on pins 2,4,6,8 */
+			MX6QDL_PAD_DISP0_DAT16__GPIO5_IO10	0x1b0b0 /* soDimm2 */
+			MX6QDL_PAD_DISP0_DAT18__GPIO5_IO12	0x1b0b0 /* soDimm4 */
+			MX6QDL_PAD_DISP0_DAT17__GPIO5_IO11	0x1b0b0 /* soDimm6 */
+			MX6QDL_PAD_DISP0_DAT19__GPIO5_IO13	0x1b0b0 /* soDimm8 */
+			/* Unused OTG VBus detector (MX6QDL_PAD_GPIO_7__USB_OTG_HOST_MODE) */
 			MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x1b0b0 /* soDimm137 */
 		>;
 	};
