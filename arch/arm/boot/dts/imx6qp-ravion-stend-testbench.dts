@@ -10,7 +10,7 @@
 
 / {
 	model = "ravion:testbench";
-	compatible = "ravion,cimc-i", "ravion,imx6qp", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Device specific clocks

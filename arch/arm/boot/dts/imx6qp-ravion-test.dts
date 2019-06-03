@@ -16,7 +16,7 @@
 
 / {
 	model = "ravion:test";
-	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Power sources

@@ -8,7 +8,7 @@
 
 / {
 	model = "ravion:pkk-m10";
-	compatible = "ravion,mcp", "ravion,raviom_imx6qp", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Device specific clocks

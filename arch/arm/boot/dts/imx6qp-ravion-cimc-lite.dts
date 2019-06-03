@@ -8,7 +8,7 @@
 
 / {
 	model = "ravion:cimc-lite";
-	compatible = "ravion,cimc-lite", "ravion,imx6qp", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Device specific clocks
