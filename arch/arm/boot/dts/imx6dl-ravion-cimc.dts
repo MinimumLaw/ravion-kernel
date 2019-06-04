@@ -247,6 +247,16 @@
 			};
 		};
 	};
+
+	/*
+	 *     Ravion200 boards without i index have Primary parrallel RGB.
+	 * display connected to ipu1_di1, secondary HDMI display connected
+	 * to ipu1_di0.
+	 */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di1>, <&ipu1_di0>;
+	};
 };
 
 /*
@@ -259,6 +269,8 @@
 /*
  * Display subsystem
  */
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &hdmi	{	status = "okay";	};
 
 /*
