@@ -8,7 +8,7 @@
 
 / {
 	model = "ravion:pkk-m7";
-	compatible = "ravion,mcp", "ravion,raviom_imx6qp", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Device specific clocks
@@ -27,12 +27,24 @@
 	 */
 	bt_vio_reg: bt_vio {
 			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_bt_cif>;
+			pinctrl-0 = <&pinctrl_reg_bt>;
 			compatible = "regulator-fixed";
 			regulator-name = "VIO_BT";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>;
+			regulator-always-on;
+			vin-supply = <&p3v3_reg>;
+	};
+
+	cif_vio_reg: cif_vio {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_reg_cif>;
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_CIF";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio2 6 GPIO_ACTIVE_LOW>;
 			regulator-always-on;
 			vin-supply = <&p3v3_reg>;
 	};
@@ -177,7 +189,11 @@
 	 * LCD Panel
 	 */
 	panel {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_panel>;
 		compatible = "mitsubishi,aa070me11ada11";
+		enable-gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;	/* soDimm 110 */
+		 
 		backlight = <&backlight>;
 
 		port {
@@ -197,6 +213,16 @@
 		default-brightness-level = <5>;
 		status = "okay";
 	};
+
+	/*
+	 *     Ravion200 boards without i index have Primary parrallel RGB.
+	 * display connected to ipu1_di1, secondary HDMI display connected
+	 * to ipu1_di0.
+	 */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di1>, <&ipu1_di0>;
+	};
 };
 
 /*
@@ -209,6 +235,8 @@
 /*
  * Display subsystem
  */
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &hdmi {	status = "okay"; };
 
 /*
@@ -334,9 +362,21 @@
 
 /* Board specific io muxing */
 &iomuxc {
-	pinctrl_reg_bt_cif: gpio-reg-bt-cif {
+	pinctrl_reg_bt: gpio-reg-bt {
 		fsl,pins = <
 			MX6QDL_PAD_NANDF_D2__GPIO2_IO02		0x0f058 /* PU_22K soDimm 115: CIF_BT_PWR */
+		>;
+	};
+
+	pinctrl_reg_cif: gpio-reg-cif {
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06		0x0f058 /* PU_22K soDimm 123: CIF_BT_PWR */
+		>;
+	};
+
+	pinctrl_panel: gpio-panel {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_OE__GPIO2_IO25		0x0f058 /* PU_22K soDimm 110: LVDS_EN */
 		>;
 	};
 

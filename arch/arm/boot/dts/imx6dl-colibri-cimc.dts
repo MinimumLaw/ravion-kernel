@@ -132,7 +132,7 @@
 		status = "okay";
 	};
 
-
+	/delete-node/stmpe811;
 #if 0 /* bad codec on USB audio - revert classic codec */
 	/* Workaround: On CIMC board we use USB-based sound
 	/delete-node/sound; */
