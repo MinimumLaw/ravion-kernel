@@ -14,9 +14,6 @@
 
 
 / {
-	model = "Radioavionica Corp. i.MX6 QuadPlus soDimm200 module";
-	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
-
 	/*
 	 * Power sources
 	 */

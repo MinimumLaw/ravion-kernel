@@ -16,7 +16,7 @@
 
 / {
 	model = "ravion:test";
-	compatible = "fsl,imx6qp-ravion", "fsl,imx6qp";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
 	 * Power sources
@@ -217,6 +217,16 @@
 		brightness-levels = <0 31 63 95 127 159 191 223 255>;
 		default-brightness-level = <5>;
 		status = "okay";
+	};
+
+	/*
+	 *     Ravion200 boards without i index have Primary parrallel RGB.
+	 * display connected to ipu1_di1, secondary HDMI display connected
+	 * to ipu1_di0.
+	 */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di1>, <&ipu1_di0>;
 	};
 
 	/*
@@ -554,6 +564,8 @@
 /*
  * Video subsystems
  */
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &hdmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi>;
