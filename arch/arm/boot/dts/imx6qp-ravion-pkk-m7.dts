@@ -193,7 +193,7 @@
 		pinctrl-0 = <&pinctrl_panel>;
 		compatible = "mitsubishi,aa070me11ada11";
 		enable-gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;	/* soDimm 110 */
-		 
+
 		backlight = <&backlight>;
 
 		port {
