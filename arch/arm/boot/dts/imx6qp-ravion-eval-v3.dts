@@ -92,8 +92,74 @@
 		mux-int-port = <1>;
 		mux-ext-port = <4>;
 	};
-};
 
+	lcd_display: disp0 {
+		compatible = "fsl,imx-parallel-display";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interface-pix-fmt = "bgr666";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ipu1_di1>;
+		status = "okay";
+
+		port@0 {
+			reg = <0>;
+
+			lcd_display_in: endpoint {
+				remote-endpoint = <&ipu1_di1_disp1>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+
+			tft_bus_out: endpoint {
+				remote-endpoint = <&adv7123_in>;
+			};
+		};
+	};
+
+	adv7123: encoder@0 {
+		compatible = "adi,adv7123";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_adv7123>;
+		psave-gpios = <&gpio3 26 GPIO_ACTIVE_LOW>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				adv7123_in: endpoint@0 {
+					remote-endpoint = <&tft_bus_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				adv7123_out: endpoint@0 {
+					remote-endpoint = <&vga_connector_in>;
+				};
+			};
+		};
+	};
+
+	vga0: connector@0 {
+		compatible = "vga-connector";
+		label = "vga";
+
+		/* ddc-i2c-bus = <&i2c3>; */
+
+		port {
+			vga_connector_in: endpoint {
+				remote-endpoint = <&adv7123_out>;
+			};
+		};
+	};
+};
 
 /*
  * Serial ports
@@ -184,6 +250,8 @@
 			swbst_reg: swbst {
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5150000>;
+				regulator-boot-on;
+				regulator-always-on;
 			};
 
 			snvs_reg: vsnvs {
@@ -367,6 +435,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hdmi>;
 	status = "okay";
+};
+
+&ipu1_di1_disp1 {
+	remote-endpoint = <&lcd_display_in>;
 };
 
 /*
@@ -632,15 +704,22 @@
 			MX6QDL_PAD_EIM_A20__IPU1_DISP1_DATA15	0x61	/* soDimm64  TFT_DAT15 */
 			MX6QDL_PAD_EIM_A21__IPU1_DISP1_DATA16	0x61	/* soDimm57  TFT_DAT16 */
 			MX6QDL_PAD_EIM_A22__IPU1_DISP1_DATA17	0x61	/* soDimm61  TFT_DAT17 */
+#if 0 /* eval-v3 use 18 bit interface */
 			MX6QDL_PAD_EIM_A23__IPU1_DISP1_DATA18	0x61	/* soDimm136 TFT_DAT18 */
 			MX6QDL_PAD_EIM_A24__IPU1_DISP1_DATA19	0x61	/* soDimm138 TFT_DAT19 */
 			MX6QDL_PAD_EIM_D31__IPU1_DISP1_DATA20	0x61	/* soDimm140 TFT_DAT20 */
 			MX6QDL_PAD_EIM_D30__IPU1_DISP1_DATA21	0x61	/* soDimm142 TFT_DAT21 */
 			MX6QDL_PAD_EIM_D26__IPU1_DISP1_DATA22	0x61	/* soDimm144 TFT_DAT22 */
 			MX6QDL_PAD_EIM_D27__IPU1_DISP1_DATA23	0x61	/* soDimm146 TFT_DAT23 */
+#endif /* 0 */
 		>;
 	};
 
+	pinctrl_adv7123: gpio-adv7123 {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D26__GPIO3_IO26		0x1b0b0 /* soDimm71: BL_ON */
+		>;
+	};
 
 	/*
 	 * USB OTG
