@@ -451,11 +451,6 @@
 		>;
 	};
 
-	pinctrl_extcon_otg_vbus: gpiootgvbus {
-		fsl,pins = <
-		>;
-	};
-
 	/*
 	 * Uart serial interfaces
 	 */
