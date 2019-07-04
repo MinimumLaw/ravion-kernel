@@ -1,0 +1,58 @@
+/*
+ * Just for test hardware and software
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include "imx6dl.dtsi"
+#include "imx6qdl-colibri.dtsi"
+
+/ {
+	model = "colibri:test";
+	compatible = "toradex,colibri_imx6dl", "fsl,imx6dl";
+};
+
+
+/* Colibri SSP */
+&ecspi4 {
+	status = "okay";
+
+	si4463@0 {
+		compatible = "siliconlabs,si446x";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_si4463x>;
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		spi-cpha;
+		interrupt-parent = <&gpio2>;
+		interrupts = <3 IRQ_TYPE_EDGE_RISING>;
+		sdn-gpio = <&gpio1 15 GPIO_ACTIVE_LOW>;
+		gp0-gpio = <&gpio2 21 GPIO_ACTIVE_LOW>;
+		gp1-gpio = <&gpio2 20 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+};
+
+
+&hdmi { status = "okay"; };
+&uart1 { status = "okay"; }; /* default full feature uart */
+&uart2 { status = "okay"; }; /* default have CTS/RTS pins */
+&uart3 { status = "okay"; }; /* default 3-wire uart */
+
+/* external mmc card */
+&usdhc1 { status = "okay"; };
+
+/* Board specific io muxing */
+&iomuxc {
+	pinctrl_si4463x: gpio-si4463x {
+		fsl,pins = <
+			MX6QDL_PAD_SD2_DAT0__GPIO1_IO15 0x1b0b0 /* soDimm098 - nSHDN */
+			MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x1b0b0 /* soDimm133 - nIRQ */
+			MX6QDL_PAD_EIM_A17__GPIO2_IO21	0x1b0b0 /* soDimm101 - GPIO0 */
+			MX6QDL_PAD_EIM_A18__GPIO2_IO20  0x1b0b0 /* soDimm103 - GPIO1 */
+		>;
+	};
+
+};
