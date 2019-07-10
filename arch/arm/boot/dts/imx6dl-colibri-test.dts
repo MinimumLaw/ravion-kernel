@@ -24,13 +24,12 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_si4463x>;
 		reg = <0>;
-		spi-max-frequency = <1000000>;
-		spi-cpha;
+		spi-max-frequency = <100000>;
 		interrupt-parent = <&gpio2>;
-		interrupts = <3 IRQ_TYPE_EDGE_RISING>;
-		sdn-gpio = <&gpio1 15 GPIO_ACTIVE_LOW>;
-		gp0-gpio = <&gpio2 21 GPIO_ACTIVE_LOW>;
-		gp1-gpio = <&gpio2 20 GPIO_ACTIVE_LOW>;
+		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+		sdn-gpio = <&gpio1 15 GPIO_ACTIVE_HIGH>;
+		gp0-gpio = <&gpio2 21 GPIO_ACTIVE_HIGH>;
+		gp1-gpio = <&gpio2 20 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
