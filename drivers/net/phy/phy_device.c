@@ -948,6 +948,9 @@ int phy_connect_direct(struct net_device *dev, struct phy_device *phydev,
 {
 	int rc;
 
+	if (!dev)
+		return -EINVAL;
+
 	rc = phy_attach_direct(dev, phydev, phydev->dev_flags, interface);
 	if (rc)
 		return rc;
@@ -1289,6 +1292,9 @@ struct phy_device *phy_attach(struct net_device *dev, const char *bus_id,
 	struct phy_device *phydev;
 	struct device *d;
 	int rc;
+
+	if (!dev)
+		return ERR_PTR(-EINVAL);
 
 	/* Search the list of PHY devices on the mdio bus for the
 	 * PHY with the requested name
@@ -1723,6 +1729,12 @@ int genphy_update_link(struct phy_device *phydev)
 done:
 	phydev->link = status & BMSR_LSTATUS ? 1 : 0;
 	phydev->autoneg_complete = status & BMSR_ANEGCOMPLETE ? 1 : 0;
+
+	/* Consider the case that autoneg was started and "aneg complete"
+	 * bit has been reset, but "link up" bit not yet.
+	 */
+	if (phydev->autoneg == AUTONEG_ENABLE && !phydev->autoneg_complete)
+		phydev->link = 0;
 
 	return 0;
 }
