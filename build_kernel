@@ -15,7 +15,7 @@
 ####################################################################
 # Use arm-fsl-linux-gnueabi crosscompiler, like Freescale LTIB tools
 # gcc 4.4.4 (<4.4.5), binutils 2.20.1 (<2.21),  glibc 2.11.3 (<2.12)
-export CROSS_COMPILE=arm-fsl-linux-gnueabi-
+export CROSS_COMPILE=arm-linux-gnueabi-
 export LOADADDR=0x90800000
 export STARTADDR=0x90800040
 export ARCH=arm
