@@ -314,6 +314,8 @@
 		VDDD-supply = <&vgen2_reg>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
+		micbias-resistor-k-ohms = <2>;
+		micbias-voltage-m-volts = <2250>;
 	};
 };
 

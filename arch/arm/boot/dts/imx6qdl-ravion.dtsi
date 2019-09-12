@@ -256,6 +256,8 @@
 		VDDA-supply = <&avcc_reg>;
 		VDDIO-supply = <&p3v3_reg>;
 		VDDD-supply = <&vgen2_reg>;
+		micbias-resistor-k-ohms = <2>;
+		micbias-voltage-m-volts = <2250>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
 	};
