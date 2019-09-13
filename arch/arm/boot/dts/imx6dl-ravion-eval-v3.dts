@@ -93,6 +93,14 @@
 		mux-ext-port = <4>;
 	};
 
+	/*     Ravion200 module have Primary parrallel RGB display
+	 * connected to ipu1_di1, secondary HDMI display connected
+	 * to ipu1_di0. */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di1>, <&ipu1_di0>;
+	};
+
 	lcd_display: disp0 {
 		compatible = "fsl,imx-parallel-display";
 		#address-cells = <1>;
@@ -452,6 +460,8 @@
 	status = "okay";
 };
 
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &ipu1_di1_disp1 {
 	remote-endpoint = <&lcd_display_in>;
 };
