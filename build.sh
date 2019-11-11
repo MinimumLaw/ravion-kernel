@@ -14,7 +14,7 @@ export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-mtu.dtb imx6dl-colibri-pkk-m7.dt
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-stend-main.dtb imx6dl-colibri-stend-tablet.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-stend-testbench.dtb"
 # Ravion200 quad
-export DEF_TARGET="${DEF_TARGET} imx6qp-ravion-test.dtb"
+export DEF_TARGET="${DEF_TARGET} imx6qp-ravion-test.dtb imx6qp-ravion-evaltest.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6qp-ravion-cimc-lite.dtb imx6qp-ravion-cimc.dtb  imx6qp-ravion-router.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6qp-ravion-mtu.dtb imx6qp-ravion-pkk-m7.dtb imx6qp-ravion-pkk-m10.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6qp-ravion-pkk-m7-i.dtb imx6qp-ravion-pkk-m10-i.dtb imx6qp-ravion-cimc-i.dtb"
@@ -56,6 +56,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7-i.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-router.dtb ${ROOT_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-evaltest.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-test.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-stend-testbench.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-eval-v3.dtb ${ROOT_FS_PATH}/boot/
@@ -91,6 +92,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-pkk-m7-i.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-router.dtb ${TFTP_FS_PATH}/boot/
+    ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-evaltest.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-test.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-stend-testbench.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6qp-ravion-eval-v3.dtb ${TFTP_FS_PATH}/boot/
