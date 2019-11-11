@@ -83,7 +83,7 @@
  */
 &usdhc1 {	status = "okay";	}; /* compatible */
 &usdhc2 {	status = "okay";	}; /* externed */
-/* &usdhc3 {	status = "okay";	}; +> eMMC allways enabled */
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
 
 /*
  * Ethernet controller
