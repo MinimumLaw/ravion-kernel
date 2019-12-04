@@ -103,6 +103,7 @@
 &sata	{	status = "okay";	};
 /* &usbh1  {	status = "okay";	}; => Allways enabled */
 /* &usbotg`{	status = "okay";	}; => Allways enabled */
+&usbh3	{	status = "okay";	}; /* HSIC */
 
 /*
  * PWMs

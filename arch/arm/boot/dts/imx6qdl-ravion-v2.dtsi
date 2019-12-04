@@ -323,6 +323,13 @@
 	status = "okay";
 };
 
+&usbh3 { /* HSIC interface */
+	pinctrl-names = "idle", "active";
+	pinctrl-0 = <&pinctrl_usbhsic_idle>;
+	pinctrl-1 = <&pinctrl_usbhsic_active>;
+	status = "disabled";
+};
+
 &usbotg { /* ITG interface - default enabled */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
@@ -538,9 +545,9 @@
 
 	pinctrl_usbotg: usbotggrp {
 	    fsl,pins = <
-/* 129 */	MX6QDL_PAD_EIM_D22__USB_OTG_PWR		0x1b0b1
-/* 131 */	MX6QDL_PAD_EIM_D21__USB_OTG_OC		0x1b0b1
-/* 135 */	MX6QDL_PAD_GPIO_1__USB_OTG_ID		0x1b0b1
+/* 129 */	MX6QDL_PAD_EIM_D22__USB_OTG_PWR		0x1b0b0
+/* 131 */	MX6QDL_PAD_EIM_D21__USB_OTG_OC		0x1b0b0
+/* 135 */	MX6QDL_PAD_GPIO_1__USB_OTG_ID		0x1b0b0
 /* 143 */	/* USB_OTG_D+ */			/*---*/
 /* 145 */	/* USB_OTG_D- */			/*---*/
 	    >;
@@ -553,10 +560,17 @@
 /*	    >; */
 /*	}; */
 
-	pinctrl_usbhsic: usbhsicgrp {
-	    fsl,pins = <
-/* 022 */	MX6QDL_PAD_RGMII_RXC__USB_H3_STROBE	0x1b0b1
-/* 024 */	MX6QDL_PAD_RGMII_RX_CTL__USB_H3_DATA	0x1b0b1
+	pinctrl_usbhsic_idle: usbhsicgrpidle {
+	    fsl,pins = < /* IDLE: STROBE & DATA 100K PULLDOWN */
+/* 022 */	MX6QDL_PAD_RGMII_RXC__USB_H3_STROBE	0x13030
+/* 024 */	MX6QDL_PAD_RGMII_RX_CTL__USB_H3_DATA	0x13030
+	    >;
+    };
+
+	pinctrl_usbhsic_active: usbhsicgrpactive {
+	    fsl,pins = < /* ACTIVE: STROBE 100K PULLUP */
+		MX6QDL_PAD_RGMII_RXC__USB_H3_STROBE	0x1b030
+		MX6QDL_PAD_RGMII_RX_CTL__USB_H3_DATA	0x13030
 	    >;
     };
 
