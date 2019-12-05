@@ -17,6 +17,10 @@
 	model = "ravion:evaltest";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
+	chosen {
+		stdout-path = &uart1;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 

@@ -13,6 +13,15 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
+	aliases { /* renumbering SD/MMC cards and eMMC chip */
+		mmc0 = &usdhc3;
+		mmc1 = &usdhc2;
+		mmc2 = &usdhc1;
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart3;
+	};
+
 	/* Power sources */
 
 	avcc_reg: avcc_regulator {
@@ -728,22 +737,22 @@
 
 	pinctrl_i2c_ext: i2c_extgrp {
 	    fsl,pins = <
-/* 128 */	MX6QDL_PAD_EIM_D17__I2C3_SCL		0x1b0b0
-/* 130 */	MX6QDL_PAD_EIM_D18__I2C3_SDA		0x1b0b0
+/* 128 */	MX6QDL_PAD_EIM_D17__I2C3_SCL		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
+/* 130 */	MX6QDL_PAD_EIM_D18__I2C3_SDA		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
 	    >;
 	};
 
 	pinctrl_i2c: i2cgrp {
 	    fsl,pins = <
-/* 194 */	MX6QDL_PAD_EIM_D16__I2C2_SDA		0x1b0b0
-/* 196 */	MX6QDL_PAD_EIM_EB2__I2C2_SCL		0x1b0b0
+/* 194 */	MX6QDL_PAD_EIM_D16__I2C2_SDA		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
+/* 196 */	MX6QDL_PAD_EIM_EB2__I2C2_SCL		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
 	    >;
 	};
 
 	pinctrl_i2c_int: i2c_intgrp {
 	    fsl,pins = <
-/* int */	MX6QDL_PAD_CSI0_DAT9__I2C1_SCL		0x1b0b0
-/* int */	MX6QDL_PAD_CSI0_DAT8__I2C1_SDA		0x1b0b0
+/* int */	MX6QDL_PAD_CSI0_DAT9__I2C1_SCL		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
+/* int */	MX6QDL_PAD_CSI0_DAT8__I2C1_SDA		0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
 	    >;
 	};
 
@@ -755,7 +764,7 @@
 /* int */	MX6QDL_PAD_ENET_MDC__ENET_MDC		0x1b0b0
 /* int */	MX6QDL_PAD_ENET_MDIO__ENET_MDIO		0x1b0b0
 /* Receive path */
-/* int */	MX6QDL_PAD_GPIO_16__ENET_REF_CLK	((1<<30) | 0x1b0b0) /* 0x1b0b0 in NXP IOMUX??? */
+/* int */	MX6QDL_PAD_GPIO_16__ENET_REF_CLK	0x4001b0b0 /* 0x1b0b0 in NXP IOMUX??? */
 /* int */	MX6QDL_PAD_ENET_RXD0__ENET_RX_DATA0	0x1b0b0
 /* int */	MX6QDL_PAD_ENET_RXD1__ENET_RX_DATA1	0x1b0b0
 /* int */	MX6QDL_PAD_ENET_CRS_DV__ENET_RX_EN	0x1b0b0
