@@ -1,2 +1,0 @@
-lib/crc-ccitt.o
-

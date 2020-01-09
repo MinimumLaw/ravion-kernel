@@ -1,2 +1,0 @@
-net/can/gw.o
-
