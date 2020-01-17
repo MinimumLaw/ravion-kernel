@@ -14,7 +14,7 @@
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:evaltest";
+	model = "ravion:kitsbimx6";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	chosen {
@@ -60,20 +60,69 @@
 /*
  * I2C Busses
  */
-/* &i2c1 {	status = "okay";	}; => Allways enabled */
-
 &i2c2 {	/* Compatible I2C: soDimm 194, 196 */
 	status = "okay";
 
-	/* M41T0M6 real time clock on carrier board */
-	rtc_i2c: rtc@68 {
-		compatible = "st,m41t0";
-		reg = <0x68>;
+	/* DD6 - MUX */
+	i2c-switch@74 {
+		compatible = "nxp,pca9548";
+		reg = <0x74>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c@0 {
+			reg = <0>;
+		};
+		i2c@1 {
+			reg = <1>;
+
+			/* DD16: DS1342u+ */
+			rtc_i2c: rtc@68 {
+				#address-cells = <2>;
+				#size-cells = <1>;
+				compatible = "st,m41t0";
+				reg = <0x68>;
+			};
+		};
+		i2c@2 {
+			reg = <2>;
+		};
+		i2c@3 {
+			reg = <3>;
+		};
 	};
+
 };
 
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
 	status = "okay";
+
+	/* DD7 - MUX */
+	i2c-switch@74 {
+		compatible = "nxp,pca9548";
+		reg = <0x74>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c@0 {
+			reg = <0>;
+		};
+		i2c@1 {
+			reg = <1>;
+		};
+		i2c@2 {
+			reg = <2>;
+		};
+		i2c@3 {
+			reg = <3>;
+
+			/* DD5: M24C08-RDW6 */
+			eeprom@53 {
+				compatible = "microchip,24c08";
+				reg = <0x52>;
+			};
+		};
+	};
 };
 
 /*
