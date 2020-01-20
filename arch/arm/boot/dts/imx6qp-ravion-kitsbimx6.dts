@@ -47,8 +47,65 @@
 		compatible = "gpio-poweroff";
 		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
+
+	/* External sound subsystem (codec #2) */
+	ext_sound {
+		compatible = "fsl,imx6-ravion-sgtl5000",
+			    "fsl,imx-audio-sgtl5000";
+		model = "imx6-ravion-sgtl5000";
+		ssi-controller = <&ssi2>;
+		audio-codec = <&ext_sgtl5000>;
+		audio-routing =
+		    "MIC_IN", "Mic Jack",
+		    "Mic Jack", "Mic Bias",
+		    "Headphone Jack", "HP_OUT";
+		mux-int-port = <2>;
+		mux-ext-port = <5>;
+	};
+
+	avd7123: encoder@0 {
+		compatible = "adi,adv7123";
+		/* psave-gpios not used. Replaceced with XP32 "VGA_PWRDN" */
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				adv7123_in: endpoint@0 {
+					remote-endpoint = <&tft_bus_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				adv7123_out: endpoint@0 {
+					remote-endpoint = <&vga_connector_in>;
+				};
+			};
+		};
+	};
+
+	vga0: connector@0 {
+		compatible = "vga-connector";
+		label = "VGA";
+
+		ddc-i2c-bus = <&vga_ddc>;
+
+		port {
+			vga_connector_in: endpoint {
+				remote-endpoint = <&adv7123_out>;
+			};
+		};
+	};
 };
 
+&ssi2	{	status = "okay";	};
+
+&tft_bus_out {
+	remote-endpoint = <&adv7123_in>;
+};
 
 /*
  * Serial ports
@@ -64,31 +121,62 @@
 	status = "okay";
 
 	/* DD6 - MUX */
-	i2c-switch@74 {
-		compatible = "nxp,pca9548";
-		reg = <0x74>;
+	i2c-switch@70 {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		/* XP34, 2-3: use, 1-2: off, removed: force on */
+		reset-gpios = <&gpio4 8 GPIO_ACTIVE_HIGH>; /* LED24 */
 
 		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <0>;
-		};
-		i2c@1 {
-			reg = <1>;
 
 			/* DD16: DS1342u+ */
 			rtc_i2c: rtc@68 {
-				#address-cells = <2>;
-				#size-cells = <1>;
 				compatible = "st,m41t0";
 				reg = <0x68>;
 			};
 		};
-		i2c@2 {
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			/* External codec */
+			ext_sgtl5000: codec@a {
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_ext_aud5>, <&pinctrl_clkext>;
+				compatible = "fsl,sgtl5000";
+				reg = <0x0a>;
+				VDDA-supply = <&avcc_reg>;
+				VDDIO-supply = <&vcc_reg>;
+				VDDD-supply = <&vgen2_reg>;
+				clocks = <&clks IMX6QDL_CLK_CKO2>; /* FixMe: CCM_CKO2 pin??? */
+				lrclk-strength = <3>;
+			};
+		};
+
+		pcie_i2c@2 { /* PCI-e connector I2C */
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <2>;
 		};
+
 		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <3>;
+
+			usb-hub@2d {
+				compatible = "smsc,usb4604";
+				reg = <0x2d>;
+				reset-gpios = <&gpio4 10  GPIO_ACTIVE_HIGH>;
+				initial-mode = <1>;
+			};
 		};
 	};
 
@@ -98,28 +186,41 @@
 	status = "okay";
 
 	/* DD7 - MUX */
-	i2c-switch@74 {
-		compatible = "nxp,pca9548";
-		reg = <0x74>;
+	i2c-switch@70 {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		compatible = "nxp,pca9546";
+		reg = <0x70>;
+		/* XP35, 2-3: use, 1-2: off, removed: force on */
+		reset-gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>; /* LED25 */
 
-		i2c@0 {
+		vga_ddc: i2c@0 { /* VGA connector */
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <0>;
 		};
-		i2c@1 {
+
+		i2c@1 { /* CSI camera */
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <1>;
 		};
-		i2c@2 {
+
+		i2c@2 { /* LVDS EDID */
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <2>;
 		};
+
 		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			reg = <3>;
 
 			/* DD5: M24C08-RDW6 */
-			eeprom@53 {
-				compatible = "microchip,24c08";
-				reg = <0x52>;
+			eeprom@50 {
+				compatible = "atmel,24c08";
+				reg = <0x50>;
 			};
 		};
 	};
@@ -128,8 +229,17 @@
 /*
  * SPI Bus
  */
-&ecspi1 {	status = "okay";	};
+&ecspi1 {
+	status = "okay";
 
+	spi_flash: s25fl256@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		compatible = "atmel,sst25lf";	/* FixMe: bad value!!! */
+		spi-max-frequency = <10000000>;	/* 10MHz */
+	};
+};
 
 /*
  * SD/MMC and eMMC controllers
