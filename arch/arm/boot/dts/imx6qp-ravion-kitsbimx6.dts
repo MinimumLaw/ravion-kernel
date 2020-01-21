@@ -52,7 +52,7 @@
 	ext_sound {
 		compatible = "fsl,imx6-ravion-sgtl5000",
 			    "fsl,imx-audio-sgtl5000";
-		model = "imx6-ravion-sgtl5000";
+		model = "kit-sgtl5000";
 		ssi-controller = <&ssi2>;
 		audio-codec = <&ext_sgtl5000>;
 		audio-routing =
@@ -99,12 +99,63 @@
 			};
 		};
 	};
+
+	/* LVDS */
+	panel {
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+/*		backlight = <&backlight>; */
+		data-mapping = "jeida-24"; /* "jeida-18", "vesa-24" */
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds0_out>;
+			};
+		};
+	};
+#if 0
+	backlight: backlight {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_bl_on>;
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm 119 */
+		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <5>;
+		status = "okay";
+	};
+#endif
 };
 
 &ssi2	{	status = "okay";	};
 
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;
+};
+
+&ldb {	status = "okay";	};
+&lvds0_chan {
+	fsl,data-mappings = "jeida"; /* "spwg" */
+	fsl,data-width = <24>;
+	status = "okay";
+};
+&lvds0_out {
+	remote-endpoint = <&lvds_panel_in>;
 };
 
 /*
@@ -127,9 +178,9 @@
 		compatible = "nxp,pca9546";
 		reg = <0x70>;
 		/* XP34, 2-3: use, 1-2: off, removed: force on */
-		reset-gpios = <&gpio4 8 GPIO_ACTIVE_HIGH>; /* LED24 */
+		reset-gpios = <&gpio4 8 GPIO_ACTIVE_LOW>; /* LED24 */
 
-		i2c@0 {
+		i2c-mux@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
@@ -141,7 +192,7 @@
 			};
 		};
 
-		i2c@1 {
+		i2c-mux@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
@@ -160,13 +211,13 @@
 			};
 		};
 
-		pcie_i2c@2 { /* PCI-e connector I2C */
+		pcie_i2c: i2c-mux@2 { /* PCI-e connector I2C */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
 		};
 
-		i2c@3 {
+		i2c-mux@3 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
@@ -192,27 +243,27 @@
 		compatible = "nxp,pca9546";
 		reg = <0x70>;
 		/* XP35, 2-3: use, 1-2: off, removed: force on */
-		reset-gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>; /* LED25 */
+		reset-gpios = <&gpio4 9 GPIO_ACTIVE_LOW>; /* LED25 */
 
-		vga_ddc: i2c@0 { /* VGA connector */
+		vga_ddc: i2c-mux@0 { /* VGA connector */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 		};
 
-		i2c@1 { /* CSI camera */
+		csi_i2c: i2c-mux@1 { /* CSI camera */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
 		};
 
-		i2c@2 { /* LVDS EDID */
+		lvds_ddc: i2c-mux@2 { /* LVDS EDID */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
 		};
 
-		i2c@3 {
+		i2c-mux@3 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
@@ -264,9 +315,20 @@
  */
 &pcie	{	status = "okay";	};
 &sata	{	status = "okay";	};
-/* &usbh1  {	status = "okay";	}; => Allways enabled */
-/* &usbotg`{	status = "okay";	}; => Allways enabled */
-&usbh3	{	status = "okay";	}; /* HSIC */
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+&usbotg	{ /* OTG */
+	power-active-high;
+	status = "okay";
+};
+&usbh3	{ /* HSIC */
+	hsic-supply = <&vgen1_reg>;
+	disable-over-current;
+	status = "okay";
+};
+&vgen1_reg { /* Enable 1.2V to NVCC_RGMII for HSIC IP Block */
+	regulator-always-on;
+	regulator-boot-on;
+};
 
 /*
  * PWMs
