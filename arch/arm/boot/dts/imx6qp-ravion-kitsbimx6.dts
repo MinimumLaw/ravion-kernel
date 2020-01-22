@@ -63,6 +63,8 @@
 		mux-ext-port = <5>;
 	};
 
+	/* VGA */
+
 	avd7123: encoder@0 {
 		compatible = "adi,adv7123";
 		/* psave-gpios not used. Replaceced with XP32 "VGA_PWRDN" */
@@ -142,13 +144,25 @@
 #endif
 };
 
+/*
+ * Sound subsystem
+ */
 &ssi2	{	status = "okay";	};
 
+/*
+ * Video subsystem (select one - TFT or LVDS)
+ */
+/* VGA */
+&tft_display_bus {
+	status = "disabled";
+};
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;
 };
-
-&ldb {	status = "okay";	};
+/* LVDS */
+&ldb {
+	status = "okay";
+};
 &lvds0_chan {
 	fsl,data-mappings = "jeida"; /* "spwg" */
 	fsl,data-width = <24>;
@@ -157,7 +171,6 @@
 &lvds0_out {
 	remote-endpoint = <&lvds_panel_in>;
 };
-
 /*
  * Serial ports
  */
