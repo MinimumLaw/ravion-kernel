@@ -113,6 +113,13 @@
 	status = "disabled";
 };
 
+/* Controller Area Network */
+&can1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_can>;
+	status = "disabled";
+};
+
 /* Inter-Integrated Circuit Communications */
 
 &i2c1 { /* Internal I2C - default OK */

@@ -21,6 +21,95 @@
 		stdout-path = &uart1;
 	};
 
+	/*
+	 * Device specific clocks
+	 */
+	clocks {
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		 };
+	};
+
+	/*
+	 * Device specific regulators
+	 */
+	pwr_src: pwr_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P15V_IN";
+			regulator-min-microvolt = <12800000>;
+			regulator-max-microvolt = <25000000>;
+			regulator-always-on;
+	};
+
+	p5v_reg: p5v_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p3v3_reg: p3v3_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p3v3_lcd_reg: p3v3_lcd_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3_LCD";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&p3v3_reg>;
+			gpio = <&gpio6 1 GPIO_ACTIVE_LOW>;
+			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	};
+
+	p3v3_cam_reg: p3v3_cam_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3_LCD";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&p3v3_reg>;
+			gpio = <&gpio2 25 GPIO_ACTIVE_LOW>;
+			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	};
+
+	p12v_reg: p12v_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P12V";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on; /* XP61: enable/disable reg. */
+	};
+
+	p12v_lcd_reg: p12v_lcd_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P12V_LCD";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			vin-supply = <&p12v_reg>;
+			regulator-always-on; /* XP62: enable/disable reg. */
+	};
+
+	p1v8_bt_reg: p1v8_bt_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* XP48 - removed: force enable */
+			regulator-always-on;
+			vin-supply = <&p3v3_reg>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -105,7 +194,7 @@
 	/* LVDS */
 	panel {
 		compatible = "sharp,LQ121K1LG52", "panel-lvds";
-/*		backlight = <&backlight>; */
+		backlight = <&backlight>;
 		data-mapping = "jeida-24"; /* "jeida-18", "vesa-24" */
 
 		width-mm = <261>;
@@ -130,18 +219,16 @@
 			};
 		};
 	};
-#if 0
+
 	backlight: backlight {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm 119 */
+		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
 		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
-		brightness-levels = <0 31 63 95 127 159 191 223 255>;
-		default-brightness-level = <5>;
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <9>;
 		status = "okay";
 	};
-#endif
+
 };
 
 /*
@@ -171,12 +258,39 @@
 &lvds0_out {
 	remote-endpoint = <&lvds_panel_in>;
 };
+
 /*
  * Serial ports
  */
 /* &uart1 {	status = "okay";	}; => Allways enabled */
-&uart2 {	status = "okay";	};
-&uart3 {	status = "okay";	};
+&uart2 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		compatible = "ti,wl1271-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 */
+		current-speed = <115200>;
+		vio-supply = <&p1v8_bt_reg>;
+		vbat-supply = <&p3v3_reg>;
+		status = "okay";
+	};
+};
+&uart3 {
+	status = "okay";
+};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {
+	status = "okay";
+};
 
 /*
  * I2C Busses
@@ -338,6 +452,7 @@
 	disable-over-current;
 	status = "okay";
 };
+
 &vgen1_reg { /* Enable 1.2V to NVCC_RGMII for HSIC IP Block */
 	regulator-always-on;
 	regulator-boot-on;
