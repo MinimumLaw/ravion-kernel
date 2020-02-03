@@ -343,6 +343,8 @@
 	pinctrl-names = "idle", "active";
 	pinctrl-0 = <&pinctrl_usbhsic_idle>;
 	pinctrl-1 = <&pinctrl_usbhsic_active>;
+	hsic-supply = <&vgen1_reg>;
+	disable-over-current;
 	status = "disabled";
 };
 

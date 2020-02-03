@@ -39,8 +39,9 @@
 	pwr_src: pwr_regulator {
 			compatible = "regulator-fixed";
 			regulator-name = "P15V_IN";
-			regulator-min-microvolt = <12800000>;
-			regulator-max-microvolt = <25000000>;
+			/* FixMe: 12.8...25V input voltage */
+			regulator-min-microvolt = <15000000>;
+			regulator-max-microvolt = <15000000>;
 			regulator-always-on;
 	};
 
@@ -74,7 +75,7 @@
 
 	p3v3_cam_reg: p3v3_cam_regulator {
 			compatible = "regulator-fixed";
-			regulator-name = "P3V3_LCD";
+			regulator-name = "P3V3_CAM";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
 			vin-supply = <&p3v3_reg>;
@@ -115,7 +116,7 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
+			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 			wakeup-source;
@@ -134,7 +135,7 @@
 
 	gpio-poweroff {
 		compatible = "gpio-poweroff";
-		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
+		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
 	};
 
 	/* External sound subsystem (codec #2) */
@@ -353,7 +354,7 @@
 				compatible = "smsc,usb4604";
 				reg = <0x2d>;
 				reset-gpios = <&gpio4 10  GPIO_ACTIVE_HIGH>;
-				initial-mode = <1>;
+				initial-mode = <1>; /* 1 for HUB, 2 for STANDBY  */
 			};
 		};
 	};
@@ -440,22 +441,24 @@
 /*
  * High-speed serial bus
  */
-&pcie	{	status = "okay";	};
-&sata	{	status = "okay";	};
+&pcie {
+	reset-gpio = <&gpio2 24 GPIO_ACTIVE_LOW>; /* soDimm 106 */
+	status = "okay";
+};
+
+&sata {
+	status = "okay";
+};
+
 /* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+
 &usbotg	{ /* OTG */
 	power-active-high;
 	status = "okay";
 };
-&usbh3	{ /* HSIC */
-	hsic-supply = <&vgen1_reg>;
-	disable-over-current;
-	status = "okay";
-};
 
-&vgen1_reg { /* Enable 1.2V to NVCC_RGMII for HSIC IP Block */
-	regulator-always-on;
-	regulator-boot-on;
+&usbh3 { /* HSIC */
+	status = "okay";
 };
 
 /*
