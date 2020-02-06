@@ -517,8 +517,9 @@
 
 	pinctrl_uart2: uart2grp {
 	    fsl,pins = <
-/* 032 */	MX6QDL_PAD_EIM_D28__UART2_RTS_B		0x1b0b0
-/* 034 */	MX6QDL_PAD_EIM_D29__UART2_CTS_B		0x1b0b0
+	/* Freescale idea about CTS/RTS name and direction - wtf??? */
+/* 032 */	MX6QDL_PAD_EIM_D28__UART2_DTE_CTS_B	0x1b0b0
+/* 034 */	MX6QDL_PAD_EIM_D29__UART2_RTS_B		0x1b0b0
 /* 036 */	MX6QDL_PAD_SD4_DAT4__UART2_RX_DATA	0x1b0b0
 /* 038 */	MX6QDL_PAD_SD4_DAT7__UART2_TX_DATA	0x1b0b0
 	    >;
