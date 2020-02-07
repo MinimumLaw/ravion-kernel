@@ -25,15 +25,6 @@ struct usb4604 {
 	struct gpio_desc	*gpio_reset;
 };
 
-static void usb4604_reset(struct usb4604 *hub, int state)
-{
-	gpiod_set_value_cansleep(hub->gpio_reset, state);
-
-	/* Wait for i2c logic to come up */
-	if (state)
-		msleep(250);
-}
-
 static int usb4604_connect(struct usb4604 *hub)
 {
 	struct device *dev = hub->dev;
@@ -41,16 +32,11 @@ static int usb4604_connect(struct usb4604 *hub)
 	int err;
 	u8 connect_cmd[] = { 0xaa, 0x55, 0x00 };
 
-	usb4604_reset(hub, 1);
-
 	err = i2c_master_send(client, connect_cmd, ARRAY_SIZE(connect_cmd));
 	if (err < 0) {
-		usb4604_reset(hub, 0);
+		dev_err(hub->dev,"Connect command failed (%d)!\n", err);
 		return err;
 	}
-
-	hub->mode = USB4604_MODE_HUB;
-	dev_dbg(dev, "switched to HUB mode\n");
 
 	return 0;
 }
@@ -62,15 +48,26 @@ static int usb4604_switch_mode(struct usb4604 *hub, enum usb4604_mode mode)
 
 	switch (mode) {
 	case USB4604_MODE_HUB:
+		gpiod_set_value_cansleep(hub->gpio_reset, 1);
+		msleep(250);
 		err = usb4604_connect(hub);
+		if(err) {
+			dev_err(dev, "Fail switch to HUB mode (%d)\n0", err);
+		} else {
+			hub->mode = USB4604_MODE_HUB;
+			dev_dbg(dev, "switched to HUB mode\n");
+		};
 		break;
-
 	case USB4604_MODE_STANDBY:
-		usb4604_reset(hub, 0);
+		gpiod_set_value_cansleep(hub->gpio_reset, 0);
+		msleep(50);
+		hub->mode = USB4604_MODE_STANDBY;
 		dev_dbg(dev, "switched to STANDBY mode\n");
 		break;
 
 	default:
+		gpiod_set_value_cansleep(hub->gpio_reset, 1);
+		msleep(250);
 		dev_err(dev, "unknown mode is requested\n");
 		err = -EINVAL;
 		break;
@@ -84,17 +81,31 @@ static int usb4604_probe(struct usb4604 *hub)
 	struct device *dev = hub->dev;
 	struct device_node *np = dev->of_node;
 	struct gpio_desc *gpio;
-	u32 mode = USB4604_MODE_HUB;
+	int ret;
+	u32 mode;
 
-	gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
-	if (IS_ERR(gpio))
+	gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(gpio)) {
+		dev_err(hub->dev, "No reset gpio defined!\n");
 		return PTR_ERR(gpio);
+	}
 	hub->gpio_reset = gpio;
 
-	if (of_property_read_u32(np, "initial-mode", &hub->mode))
-		hub->mode = mode;
+	ret = usb4604_switch_mode(hub, USB4604_MODE_STANDBY);
+	if (ret) {
+		dev_err(hub->dev, "Reset hub failed!\n");
+	}
 
-	return usb4604_switch_mode(hub, hub->mode);
+	ret = of_property_read_u32(np, "initial-mode", &mode);
+	if (!ret) {
+		ret = usb4604_switch_mode(hub, mode);
+		dev_info(hub->dev, "Set hub state %d %s!\n",
+			mode, ret ? "failed" : "done");
+	} else {
+		dev_err(hub->dev,"Prop initial-mode not found! Skipping...\n");
+	}
+
+	return ret;
 }
 
 static int usb4604_i2c_probe(struct i2c_client *i2c,
