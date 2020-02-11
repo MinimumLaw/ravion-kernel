@@ -463,7 +463,7 @@
 	#size-cells = <0>;
 
 	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
-		compatible = "usv0424,4604";
+		compatible = "usb0424,4604";
 		reg = <1>;
 	};
 };
