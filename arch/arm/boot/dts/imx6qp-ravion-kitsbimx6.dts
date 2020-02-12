@@ -242,14 +242,14 @@
  */
 /* VGA */
 &tft_display_bus {
-	status = "okay";
+	status = "disabled";
 };
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;
 };
 /* LVDS */
 &ldb {
-	status = "disabled";
+	status = "okay";
 };
 &lvds0_chan {
 	fsl,data-mappings = "jeida"; /* "spwg" */
