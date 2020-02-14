@@ -31,6 +31,14 @@
 			clock-frequency = <32768>;
 			clock-accuracy = <100>;
 		 };
+
+		/* undisable clock on camera module */
+		ov5647_xclk: cam_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <25000000>;
+			clock-accuracy = <100>;
+		};
 	};
 
 	/*
@@ -383,6 +391,17 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
+			/* Raspberry Camera V1.3 */
+			ov: camera@36 {
+				compatible = "ovti,ov5647";
+				reg = <0x36>;
+				clocks = <&ov5647_xclk>;
+				port {
+					csi_out: endpoint {
+						remote-endpoint = <&csi_in>;
+					};
+				};
+			};
 		};
 
 		lvds_ddc: i2c-mux@2 { /* LVDS EDID */
@@ -401,6 +420,16 @@
 				compatible = "atmel,24c08";
 				reg = <0x50>;
 			};
+		};
+	};
+};
+
+&mipi_csi {
+	status = "okay";
+
+	port {
+		csi_in: endpoint {
+			remote-endpoint = <&csi_out>;
 		};
 	};
 };
