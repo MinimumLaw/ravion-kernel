@@ -728,7 +728,7 @@ static int adv7180_set_pad_format(struct v4l2_subdev *sd,
 			break;
 		/* fall through */
 	default:
-		format->format.field = format->format.field;
+		format->format.field = V4L2_FIELD_ALTERNATE;
 		break;
 	}
 
@@ -747,6 +747,17 @@ static int adv7180_set_pad_format(struct v4l2_subdev *sd,
 	}
 
 	return ret;
+}
+
+static int adv7180_init_cfg(struct v4l2_subdev *sd,
+			    struct v4l2_subdev_pad_config *cfg)
+{
+	struct v4l2_subdev_format fmt = {
+		.which = cfg ? V4L2_SUBDEV_FORMAT_TRY
+			: V4L2_SUBDEV_FORMAT_ACTIVE,
+	};
+
+	return adv7180_set_pad_format(sd, cfg, &fmt);
 }
 
 static int adv7180_g_mbus_config(struct v4l2_subdev *sd,
@@ -854,6 +865,7 @@ static const struct v4l2_subdev_core_ops adv7180_core_ops = {
 };
 
 static const struct v4l2_subdev_pad_ops adv7180_pad_ops = {
+	.init_cfg = adv7180_init_cfg,
 	.enum_mbus_code = adv7180_enum_mbus_code,
 	.set_fmt = adv7180_set_pad_format,
 	.get_fmt = adv7180_get_pad_format,
@@ -1314,7 +1326,7 @@ static int adv7180_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	state->client = client;
-	state->field = V4L2_FIELD_INTERLACED;
+	state->field = V4L2_FIELD_ALTERNATE;
 	state->chip_info = (struct adv7180_chip_info *)id->driver_data;
 
 	state->pwdn_gpio = devm_gpiod_get_optional(&client->dev, "powerdown",
@@ -1343,7 +1355,7 @@ static int adv7180_probe(struct i2c_client *client,
 
 	state->irq = client->irq;
 	mutex_init(&state->mutex);
-	state->curr_norm = V4L2_STD_PAL;
+	state->curr_norm = V4L2_STD_NTSC;
 	if (state->chip_info->flags & ADV7180_FLAG_RESET_POWERED)
 		state->powered = true;
 	else
