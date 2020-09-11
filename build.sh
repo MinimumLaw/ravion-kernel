@@ -7,6 +7,8 @@ export ARCH=arm
 export ROOT_FS_PATH=/cimc/root/colibri-imx6
 export TFTP_FS_PATH=/cimc/exporttftp
 export DEF_TARGET="zImage modules"
+# UTSVU board (I.MX511)
+export DEF_TARGET="${DEF_TARGET} imx51-ravion-utsvu.dtb"
 # Toradex Colibri
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-eval-v3.dtb imx6dl-colibri-test.dtb"
 export DEF_TARGET="${DEF_TARGET} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-cimc.dtb imx6dl-colibri-router.dtb"
@@ -36,6 +38,7 @@ if [ -z "$*" ]; then
     ${SUDO} make ${DEF_ARGS} modules_install
     echo install kernel into rootfs and tftp
     ${SUDO} cp -f arch/arm/boot/zImage ${ROOT_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/imx51-ravion-utsvu.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-test.dtb ${ROOT_FS_PATH}/boot/
@@ -73,6 +76,7 @@ if [ -z "$*" ]; then
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-ravion-stend-testbench.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-ravion-eval-v3.dtb ${ROOT_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/zImage ${TFTP_FS_PATH}/boot/zImage
+    ${SUDO} cp -f arch/arm/boot/dts/imx51-ravion-utsvu.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc-lite.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-cimc.dtb ${TFTP_FS_PATH}/boot/
     ${SUDO} cp -f arch/arm/boot/dts/imx6dl-colibri-test.dtb ${TFTP_FS_PATH}/boot/
