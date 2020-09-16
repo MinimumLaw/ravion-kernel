@@ -1,10 +1,10 @@
 /*****************************************************************************
 ******************************************************************************
-** OAO Radioavionica, 
+** OAO Radioavionica,
 ** Ravion200 CPU module rev: 0.7.1
 **
 ** (c) 2019, OAO Radiovionica,
-**     190105, Russia, St-Petersburg, Troitskiy pr. 4 liter B. 
+**     190105, Russia, St-Petersburg, Troitskiy pr. 4 liter B.
 ** (c) 2019, Alex A. Mihaylov <minimumlaw@rambler.ru>
 ******************************************************************************
 *****************************************************************************/
@@ -132,7 +132,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pmic>; /* ToDo: CCM_PMIC_READY - Where??? */
 		compatible = "fsl,pfuze100";
- 		reg = <0x08>;
+		reg = <0x08>;
 
 		regulators {
 			sw1a_reg: sw1ab {
@@ -806,7 +806,7 @@
 /* 020 */	/* SATA_RX- */				/*---*/
 /*	    >; */
 /*	}; */
- 
+
 /* Peripherial Comminication Interface - express  */
 
 /*	pinctrl_pcie: pciegrp { */

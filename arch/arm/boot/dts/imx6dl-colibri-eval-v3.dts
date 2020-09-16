@@ -13,7 +13,7 @@
 #include "imx6qdl-colibri.dtsi"
 
 / {
-	model = "colibri:eval-v3";
+	model = "Toradex Colibri iMX6DL/S on Colibri Evaluation Board V3";
 	compatible = "toradex,colibri_imx6dl-eval-v3", "toradex,colibri_imx6dl",
 		     "fsl,imx6dl";
 
@@ -111,7 +111,6 @@
 &ecspi4 {
 	status = "okay";
 
-#if 0 /* SPI interface disconnected by jumpers for SPI Flash chips */
 	mcp251x0: mcp251x@0 {
 		compatible = "microchip,mcp2515";
 		reg = <0>;
@@ -121,14 +120,6 @@
 		spi-max-frequency = <10000000>;
 		status = "okay";
 	};
-#else
-	flash: sst25l@0 {
-		compatible = "microchip,sst25vf";
-		reg = <0>;
-		spi-max-frequency = <1000000>;
-		status = "okay";
-	};
-#endif
 };
 
 &hdmi {

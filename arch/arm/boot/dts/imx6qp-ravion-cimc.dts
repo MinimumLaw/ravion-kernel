@@ -1,391 +1,297 @@
-
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
 /dts-v1/;
-
-#include <dt-bindings/input/input.h>
-#include <dt-bindings/interrupt-controller/irq.h>
 #include "imx6qp.dtsi"
-#include "imx6qdl-ravion.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:cimc";
+	model = "ravion:kitsbimx6";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
-	/*
-	 * Device specific clocks
-	 */
-	clocks {
-		clk_32k_bt: bt_clk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <32768>;
-			clock-accuracy = <100>;
-		 };
+	chosen {
+		stdout-path = &uart1;
 	};
 
 	/*
 	 * Device specific regulators
 	 */
-	cif_vio_reg: cif_vio {
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_reg_cif>;
+	pwr_src: pwr_regulator {
 			compatible = "regulator-fixed";
-			regulator-name = "VIO_CIF";
+			regulator-name = "P15V_IN";
+			/* FixMe: 12.8...25V input voltage */
+			regulator-min-microvolt = <15000000>;
+			regulator-max-microvolt = <15000000>;
+			regulator-always-on;
+	};
+
+	p5v_reg: p5v_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p3v3_reg: p3v3_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p3v3_lcd_reg: p3v3_lcd_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3_LCD";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&p3v3_reg>;
+			gpio = <&gpio6 1 GPIO_ACTIVE_LOW>;
+			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	};
+
+	p3v3_cam_reg: p3v3_cam_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3_CAM";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&p3v3_reg>;
+			gpio = <&gpio2 25 GPIO_ACTIVE_LOW>;
+			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	};
+
+	p12v_reg: p12v_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P12V";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on; /* XP61: enable/disable reg. */
+	};
+
+	p12v_lcd_reg: p12v_lcd_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P12V_LCD";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			vin-supply = <&p12v_reg>;
+			regulator-always-on; /* XP62: enable/disable reg. */
+	};
+
+	p1v8_bt_reg: p1v8_bt_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 6 GPIO_ACTIVE_LOW>; /* SODIMM 123*/
+			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* XP48 - removed: force enable */
 			regulator-always-on;
 			vin-supply = <&p3v3_reg>;
 	};
 
-	/*
-	 * Device specific leds
-	 */
-	gpio-leds {
-		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_leds>;
-
-		reset_out {
-			label = "nRESET_OUT";
-			gpios = <&gpio5 7 GPIO_ACTIVE_HIGH>; /* SODIMM  87 */
-			default-state = "on";
-		};
-
-		w1 {
-			label = "W1";
-			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>; /* SODIMM 127 */
-			default-state = "on";
-		};
-
-		/* KOE display SPI-bitband control lines */
-		spi_cs {
-			label = "bb-CS";
-			gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>; /* SODIMM 111 */
-			default-state = "on";
-		};
-		spi_sck {
-			label = "bb-SCK";
-			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>; /* SODIMM 112 */
-			default-state = "on";
-		};
-		spi_mosi {
-			label = "bb-MOSI";
-			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>; /* SODIMM 113 */
-			default-state = "on";
-		};
-		/* SODIMM 114 - bb-MISO - not used input */
-	};
-
-	/*
-	 * Device specific keys
-	 */
 	gpio-keys {
 		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_keys>;
 
 		power {
 			label = "Power";
-			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>; /* soDimm 45 */
+			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+	};
 
-		enter {
-			label = "Enter";
-			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>; /* SODIMM 154 */
-			linux,code = <KEY_ENTER>;
-			debounce-interval = <100>;
-		};
-		up {
-			label = "Up";
-			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>; /* SODIMM 156 */
-			linux,code = <KEY_UP>;
-			debounce-interval = <100>;
-		};
-		escape {
-			label = "Escape";
-			gpios = <&gpio4 15 GPIO_ACTIVE_LOW>; /* SODIMM 158 */
-			linux,code = <KEY_ESC>;
-			debounce-interval = <100>;
-		};
-		left {
-			label = "Left";
-			gpios = <&gpio4 16 GPIO_ACTIVE_LOW>; /* SODIMM 160 */
-			linux,code = <KEY_LEFT>;
-			debounce-interval = <100>;
-		};
-		down {
-			label = "Down";
-			gpios = <&gpio4 17 GPIO_ACTIVE_LOW>; /* SODIMM 162 */
-			linux,code = <KEY_DOWN>;
-			debounce-interval = <100>;
-		};
-		right {
-			label = "Right";
-			gpios = <&gpio4 18 GPIO_ACTIVE_LOW>; /* SODIMM 164 */
-			linux,code = <KEY_RIGHT>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-		hp_tangenta {
-			label = "HP tangenta";
-			gpios = <&gpio4 26 GPIO_ACTIVE_LOW>; /* SODIMM 180 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-		};
-		tangenta {
-			label = "Tangenta";
-			gpios = <&gpio4 19 GPIO_ACTIVE_LOW>; /* SODIMM 166 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-		};
-		function {
-			label = "Function";
-			gpios = <&gpio4 23 GPIO_ACTIVE_LOW>; /* SODIMM 174 */
-			linux,code = <KEY_F3>;
-			debounce-interval = <100>;
-		};
-		request {
-			label = "Request";
-			gpios = <&gpio4 20 GPIO_ACTIVE_LOW>; /* SODIMM 168 */
-			linux,code = <KEY_F4>;
-			debounce-interval = <100>;
-		};
-		rsp {
-			label = "Rsp";
-			gpios = <&gpio4 24 GPIO_ACTIVE_LOW>; /* SODIMM 176 */
-			linux,code = <KEY_F5>;
-			debounce-interval = <100>;
-		};
-		abonent {
-			label = "Abonent";
-			gpios = <&gpio4 21 GPIO_ACTIVE_LOW>; /* SODIMM 170 */
-			linux,code = <KEY_F6>;
-			debounce-interval = <100>;
-		};
-		transmit {
-			label = "Transmit";
-			gpios = <&gpio4 25 GPIO_ACTIVE_LOW>; /* SODIMM 178 */
-			linux,code = <KEY_F7>;
-			debounce-interval = <100>;
-		};
-		alarm {
-			label = "Alarm";
-			gpios = <&gpio4 22 GPIO_ACTIVE_LOW>; /* SODIMM 172 */
-			linux,code = <KEY_F8>;
-			debounce-interval = <100>;
-		};
-		/* temporary unused buttons */
-		fm1 {
-			label = "PROG1";
-			gpios = <&gpio4 8 GPIO_ACTIVE_LOW>; /* SODIMM 150 */
-			linux,code = <KEY_F11>;
-			debounce-interval = <100>;
-		};
-		fm2 {
-			label = "PROG2";
-			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>; /* SODIMM 152 */
-			linux,code = <KEY_F12>;
-			debounce-interval = <100>;
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
+			default-state = "on";
 		};
 	};
 
-	/*
-	 * PPS pin from SNS receiver
-	 */
-	pps {
-		compatible = "pps-gpio";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_pps_gpio>;
-
-		gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>; /* soDimm 55 */
-		assert-falling-edge;
-		status = "okay";
-	};
-
-	/*
-	 * Graphics and video subsystem (TFT interface)
-	 */
-	tft_display_bus: parallel-display {
-		compatible = "fsl,imx-parallel-display";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		interface-pix-fmt = "rgb24";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_ipu1_di1>;
-		status = "okay";
-
-		port@0 {
-			reg = <0>;
-			tft_bus_in: endpoint {
-				remote-endpoint = <&ipu1_di1_disp1>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			tft_bus_out: endpoint {
-				remote-endpoint = <&lcd_panel_in>;
-			};
-		};
-	};
-
-	/*
-	 * TFT LCD Panel
-	 */
-	koe_lcd: panel {
-		compatible = "koe,tx09d200vm0baa";
-		status = "okay";
-
-		port {
-			lcd_panel_in: endpoint {
-				remote-endpoint = <&tft_bus_out>;
-			};
-		};
-	};
-
-	/*
-	 *     Ravion200 boards without i index have Primary parrallel RGB.
-	 * display connected to ipu1_di1, secondary HDMI display connected
-	 * to ipu1_di0.
-	 */
-	display-subsystem {
-		compatible = "fsl,imx-display-subsystem";
-		ports = <&ipu1_di1>, <&ipu1_di0>;
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
 	};
 };
 
 /*
- * IPU to TFT bus connector
+ * Sound subsystem
  */
-&ipu1_di1_disp1 {
-	remote-endpoint = <&tft_bus_in>;
-};
+&ssi2	{	status = "okay";	};
 
 /*
- * Display subsystem
+ * Video subsystem (select one - TFT or LVDS)
  */
-/delete-node/&ipu1_di1_hdmi;
-/delete-node/&hdmi_mux_1;
-&hdmi	{	status = "okay";	};
-
+/* VGA */
+&tft_display_bus {	status = "disabled";	};
+/* LVDS */
+&ldb {	status = "disabled";	};
 /*
- * Colibri I2C: I2C2_SDA/SCL on SODIMM 194/196 (compatible)
+ * Serial ports
  */
-&i2c2 {
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
 	status = "okay";
 
-	/* Composite video capture interface - encoder cip */
-	cvbs: adv7280@20 {
-		reg = <0x20>;
-		compatible = "adv7280", "adi,adv7280";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_adv7280>;
-		interrupt-parent = <&gpio4>;
-		interrupts = <30 IRQ_TYPE_LEVEL_LOW>;
-		powerdown-gpios = <&gpio4 31 GPIO_ACTIVE_LOW>;
-		input-names = "Ain1","Ain2","Ain3","Ain4";
-		inputs = <0x00 0x01 0x02 0x03>;
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		compatible = "ti,wl1271-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 */
+		current-speed = <115200>;
+		vio-supply = <&p1v8_bt_reg>;
+		vbat-supply = <&p3v3_reg>;
 		status = "okay";
 
-		port {
-			adv7280_ep: endpoint {
-				remote-endpoint = <&ipu1_csi0_mux_from_parallel_sensor>;
-				bus-width = <8>;
-			};
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
 		};
 	};
+};
+&uart3 {
+	status = "okay";
+};
 
-	/* DS2484: I2C to OneWire Converter */
-	owc: ds2482@18 {
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {
+	status = "okay";
+};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
 		status = "okay";
 		compatible = "maxim,ds2482";
 		reg = <0x18>;
 	};
 };
 
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	status = "okay";
+
+	clock@11 { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "fixme:isl12020";
+		reg = <0x11>;
+	};
+
+	tftmux@12 { /* DS92LV2411S - TFT bus to one diff-pair multiplexer */
+		compatible = "fixme:ds92lv2411s";
+		reg = <0x12>;
+	};
+
+	cif-mipi@13 { /*ADV7280BCPZ - Composite video capture with MIPI interface */
+		compatible = "fixme:adv7280BCPZ-M";
+		reg = <0x13>;
+	};
+
+	usb-hub@2d {
+		compatible = "smsc,usb4604";
+		reg = <0x2d>;
+		reset-gpios = <&gpio4 10  GPIO_ACTIVE_HIGH>;
+		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY  */
+	};
+};
+
+&mipi_csi {
+	status = "okay";
+
+	port@0 {
+		reg = <0>;
+		csi_port_in: endpoint {
+/*			remote-endpoint = <&csi_sensor_out>; */
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+
 /*
- * Composite video capture interface
+ * SPI Bus
  */
-&ipu1_csi0_mux_from_parallel_sensor {
-	remote-endpoint = <&adv7280_ep>;
+&ecspi1 {	status = "disabled"; };
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	}; /* compatible */
+&usdhc2 {	status = "disabled";	}; /* externed */
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/*
+ * High-speed serial bus
+ */
+&pcie {
+	status = "okay";
+	/* Child Device LAN7430i connected to this interface */
 };
 
-&ipu1_csi0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ipu1_csi0>;
+&sata {
+	status = "okay";
 };
 
-/* Only pwm1 used as bright contol, all other - disabled  */
-&pwm3 { status = "okay";	}; /* soDimm 28 - LCD bright */
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
 
-/* Uarts */
-&uart1 { status = "okay"; }; /* default full feature uart */
-&uart2 { status = "okay"; }; /* default CTS/RTS uart */
-&uart3 { status = "okay"; }; /* default 3-wire uart */
+&usbotg	{ /* OTG */
+	power-active-high;
+	status = "okay";
+};
 
-/* external (compatible) mmc card */
-&usdhc1 { status = "okay"; };
+&usbh3 { /* HSIC */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
 
-/* Board specific io muxing */
-&iomuxc {
-	pinctrl_gpio_bl_on: gpioblon {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D7__GPIO2_IO07	0x1b0b0 /* soDimm 125 */
-		>;
-	};
-
-	pinctrl_adv7280: gpio-adv7280 {
-		fsl,pins = <
-			MX6QDL_PAD_DISP0_DAT9__GPIO4_IO30	0x1b0b0 /* soDimm 71: CIF_D0/CIF_IRQn */
-			MX6QDL_PAD_DISP0_DAT10__GPIO4_IO31	0x0f058 /* soDimm 98: CIF_D1/CIF_nPDN */
-		>;
-	};
-
-	pinctrl_reg_cif: gpio-reg-cif {
-		fsl,pins = <
-			MX6QDL_PAD_NANDF_D6__GPIO2_IO06	0x0f058 /* PU_22K soDimm 123: CIF_PWR */
-		>;
-	};
-
-	pinctrl_gpio_leds: gpio-leds {
-		fsl,pins = <
-			MX6QDL_PAD_DISP0_DAT13__GPIO5_IO07	0xf058 /* soDimm87: nRESET_OUT  */
-			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0xf058 /* soDImm127: SLPZ@DS2484R */
-			MX6QDL_PAD_NANDF_D0__GPIO2_IO00		0xf058 /* KOE CS   - soDimm 111 */
-			MX6QDL_PAD_EIM_RW__GPIO2_IO26		0xf058 /* KOE SCK  - soDimm 112 */
-			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0xf058 /* KOE MOSI - soDimm 113 */
-			MX6QDL_PAD_EIM_LBA__GPIO2_IO27		0x1b0b0 /* KOE MISO - soDimm 114 - stay input, not used */
-		>;
-	};
-
-	pinctrl_gpio_keys: gpio-keys {
-		fsl,pins = <
-			MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20	0x1b0b0	/* Power Button soDimm  45 */
-			MX6QDL_PAD_KEY_COL1__GPIO4_IO08		0x1b0b0	/* FM1:		soDimm 150 */
-			MX6QDL_PAD_KEY_ROW1__GPIO4_IO09		0x1b0b0	/* FM2:		soDimm 152 */
-			MX6QDL_PAD_KEY_COL2__GPIO4_IO10		0x1b0b0	/* Enter:	soDimm 154 */
-			MX6QDL_PAD_KEY_COL4__GPIO4_IO14		0x1b0b0	/* Up:		soDimm 156 */
-			MX6QDL_PAD_KEY_ROW4__GPIO4_IO15		0x1b0b0	/* Escape	soDimm 158 */
-			MX6QDL_PAD_DI0_DISP_CLK__GPIO4_IO16	0x1b0b0	/* Left:	soDimm 160 */
-			MX6QDL_PAD_DI0_PIN15__GPIO4_IO17	0x1b0b0	/* Down:	soDimm 162 */
-			MX6QDL_PAD_DI0_PIN2__GPIO4_IO18		0x1b0b0	/* Rigth:	soDimm 164 */
-			MX6QDL_PAD_DI0_PIN3__GPIO4_IO19		0x1b0b0	/* Tangenta:	soDimm 166 */
-			MX6QDL_PAD_DI0_PIN4__GPIO4_IO20		0x1b0b0	/* Request:	soDimm 168 */
-			MX6QDL_PAD_DISP0_DAT0__GPIO4_IO21	0x1b0b0	/* Abonent:	soDimm 170 */
-			MX6QDL_PAD_DISP0_DAT1__GPIO4_IO22	0x1b0b0	/* Alarm:	soDimm 172 */
-			MX6QDL_PAD_DISP0_DAT2__GPIO4_IO23	0x1b0b0	/* Function:	soDimm 174 */
-			MX6QDL_PAD_DISP0_DAT3__GPIO4_IO24	0x1b0b0	/* RSP:		soDimm 176 */
-			MX6QDL_PAD_DISP0_DAT4__GPIO4_IO25	0x1b0b0	/* Transmit:	soDimm 178 */
-			MX6QDL_PAD_DISP0_DAT5__GPIO4_IO26	0x1b0b0	/* HP Tangenta:	soDimm 180 */
-		>;
-	};
-
-	pinctrl_pps_gpio: gpiopps {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x1b0b0 /* soDimm 55 */
-		>;
+	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
+		compatible = "usb0424,4604";
+		reg = <1>;
 	};
 };
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "disabled";	};
+&pwm4	{	status = "disabled";	};
+
+/*
+ * Video subsystems
+ */
+&hdmi	{	status = "okay";	};
