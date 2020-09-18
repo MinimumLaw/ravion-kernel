@@ -24,94 +24,206 @@
 	/*
 	 * Device specific regulators
 	 */
-	pwr_src: pwr_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P15V_IN";
-			/* FixMe: 12.8...25V input voltage */
-			regulator-min-microvolt = <15000000>;
-			regulator-max-microvolt = <15000000>;
-			regulator-always-on;
+	pwr_src: regulator_power {
+		compatible = "regulator-fixed";
+		regulator-name = "BATT_IN";
+		/* FixMe: 5...8.4V input voltage */
+		regulator-min-microvolt = <8400000>;
+		regulator-max-microvolt = <8400000>;
+		regulator-boot-on;
+		regulator-always-on;
 	};
 
-	p5v_reg: p5v_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P5V";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			vin-supply = <&pwr_src>;
-			regulator-always-on;
+	p5v_reg: regulator_5v0 {
+		compatible = "regulator-fixed";
+		regulator-name = "P5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
 	};
 
-	p3v3_reg: p3v3_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P3V3";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			vin-supply = <&pwr_src>;
-			regulator-always-on;
+	p3v3_reg: regulator_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "P3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
 	};
 
-	p3v3_lcd_reg: p3v3_lcd_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P3V3_LCD";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			vin-supply = <&p3v3_reg>;
-			gpio = <&gpio6 1 GPIO_ACTIVE_LOW>;
-			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	p12v_reg: regulator_12v {
+		compatible = "regulator-fixed";
+		regulator-name = "P12V";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on; /* XP61: enable/disable reg. */
 	};
 
-	p3v3_cam_reg: p3v3_cam_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P3V3_CAM";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			vin-supply = <&p3v3_reg>;
-			gpio = <&gpio2 25 GPIO_ACTIVE_LOW>;
-			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	va3v3_reg: regulator_3v3va {
+		compatible = "regulator-fixed";
+		regulator-name = "VA3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
 	};
 
-	p12v_reg: p12v_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P12V";
-			regulator-min-microvolt = <12000000>;
-			regulator-max-microvolt = <12000000>;
-			vin-supply = <&pwr_src>;
-			regulator-always-on; /* XP61: enable/disable reg. */
+	/*
+	 * Switchable HVCC consumers
+	 */
+	regulator_mirs {
+		compatible = "regulator-fixed";
+		regulator-name = "MIRS_HVCC";
+		gpio = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm 023 */
+		vin-sunnpy = <&pwr_src>;
+	};
+	
+	switch_mirs {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "MIRS_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "MIRS_HVCC";
 	};
 
-	p12v_lcd_reg: p12v_lcd_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "P12V_LCD";
-			regulator-min-microvolt = <12000000>;
-			regulator-max-microvolt = <12000000>;
-			vin-supply = <&p12v_reg>;
-			regulator-always-on; /* XP62: enable/disable reg. */
+	regulator_vu {
+		compatible = "regulator-fixed";
+		regulator-name = "VU_HVCC";
+		gpio = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 025 */
+		vin-sunnpy = <&pwr_src>;
 	};
 
-	p1v8_bt_reg: p1v8_bt_regulator {
-			compatible = "regulator-fixed";
-			regulator-name = "VIO_BT";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			gpio = <&gpio2 2 GPIO_ACTIVE_LOW>; /* XP48 - removed: force enable */
-			regulator-always-on;
-			vin-supply = <&p3v3_reg>;
+	switch_vu {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "VU_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "VU_HVCC";
 	};
 
-#if 0
-pps	= <&gpio1  2 GPIO_ACTIVE_LOW>;	/* soDimm 055 */
-pen1	= <&gpio6  3 GPIO_ACTIVE_LOW>;	/* soDimm 059 */
-oc1	= <&gpio6  4 GPIO_ACTIVE_LOW>;	/* soDimm 085 */
-pen2	= <&gpio2 24 GPIO_ACTIVE_LOW>;	/* soDimm 106 */
-oc2	= <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
-pen3	= <&gpio2  0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
-oc3	= <&gpio2 26 GPIO_ACTIVE_LOW>;	/* soDimm 112 */
-pen4	= <&gpio4  9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
-oc4	= <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
-pwr_video = <&gpio2 11 GPIO_ACTIVE_LOW>;	/* soDimm 133 */
-stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
-#endif
+	regulator_mfpou {
+		compatible = "regulator-fixed";
+		regulator-name = "MFPOU_HVCC";
+		gpio = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm 027 */
+		vin-sunnpy = <&pwr_src>;
+	};
+
+	switch_mfpou {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "MFPOU_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "MFPOU_HVCC";
+	};
+
+	regulator_msns {
+		compatible = "regulator-fixed";
+		regulator-name = "MSNS_HVCC";
+		gpio = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 029 */
+		vin-sunnpy = <&pwr_src>;
+	};
+
+	switch_msns {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "MSNS_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "MSNS_HVCC";
+	};
+
+	regulator_vu1 {
+		compatible = "regulator-fixed";
+		regulator-name = "VU1_HVCC";
+		gpio = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 037 */
+		vin-sunnpy = <&pwr_src>;
+	};
+
+	switch_vu1 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "VU1_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "VU1_HVCC";
+	};
+
+	regulator_vu2 {
+		compatible = "regulator-fixed";
+		regulator-name = "VU2_HVCC";
+		gpio = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 031 */
+		vin-sunnpy = <&pwr_src>;
+	};
+
+	switch_vu2 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "VU2_SWITCH";
+		regulator-boot-on;
+		regulator-supplies = "VU2_HVCC";
+	};
+
+	/*
+	 * 5V 2A switchable consumer
+	 */
+	regulator_5v0ext1 {
+		compatible = "regulator-fixed";
+		regulator-name = "EXT1_5V";
+		gpio = <&gpio6  3 GPIO_ACTIVE_LOW>;	/* soDimm 059 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_5v0ext1 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW1_5V";
+		regulator-boot-on;
+		regulator-supplies = "EXT1_5V";
+	};
+
+	regulator_5v0ext2 {
+		compatible = "regulator-fixed";
+		regulator-name = "EXT2_5V";
+		gpio = <&gpio2 24 GPIO_ACTIVE_LOW>;	/* soDimm 106 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_5v0ext2 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW2_5V";
+		regulator-boot-on;
+		regulator-supplies = "EXT2_5V";
+	};
+
+	regulator_5v0ext3 {
+		compatible = "regulator-fixed";
+		regulator-name = "EXT3_5V";
+		gpio = <&gpio2  0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_5v0ext3 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW3_5V";
+		regulator-boot-on;
+		regulator-supplies = "EXT3_5V";
+	};
+
+	regulator_5v0ext4 {
+		compatible = "regulator-fixed";
+		regulator-name = "EXT4_5V";
+		gpio = <&gpio4  9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_5v0ext4 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW4_5V";
+		regulator-boot-on;
+		regulator-supplies = "EXT4_5V";
+	};
+
+	pps {
+		compatible = "pps-gpio";
+		gpios	= <&gpio1  2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
+	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -131,6 +243,37 @@ stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+
+		/*
+		 * MACRO[1..4] key code point to overcurrent@5v consumer
+		 */
+		oc1 {
+			label = "OC1";
+			gpios = <&gpio6  4 GPIO_ACTIVE_LOW>;	/* soDimm 085 */
+			linux,code = <KEY_MACRO1>;
+			wakeup-source;
+		};
+
+		oc2 {
+			label = "OC2";
+			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
+			linux,code = <KEY_MACRO2>;
+			wakeup-source;
+		};
+
+		oc3 {
+			label = "OC3";
+			gpios = <&gpio2 26 GPIO_ACTIVE_LOW>;	/* soDimm 112 */
+			linux,code = <KEY_MACRO3>;
+			wakeup-source;
+		};
+
+		oc4 {
+			label = "OC4";
+			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
+			linux,code = <KEY_MACRO4>;
+			wakeup-source;
+		};
 	};
 
 	gpio-leds {
@@ -144,39 +287,9 @@ stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
 			default-state = "on";
 		};
 
-		gpio23 {
-			label = "gpio23";
-			gpio = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
-			default-state = "off";
-		};
-
-		gpio25 {
-			label = "gpio25";
-			gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
-			default-state = "off";
-		};
-
-		gpio27 {
-			label = "gpio27";
-			gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
-			default-state = "off";
-		};
-
-		gpio29 {
-			label = "gpio29";
-			gpio = <&gpio3 25 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
-			default-state = "off";
-		};
-
-		gpio31 {
-			label = "gpio31";
-			gpio = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
-			default-state = "off";
-		};
-
-		gpio37 {
-			label = "gpio37";
-			gpio = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+		stby_can {
+			label = "STBY_CAN";
+			gpios = <&gpio4  8 GPIO_ACTIVE_HIGH>;	/* soDimm 150 */
 			default-state = "off";
 		};
 	};
@@ -213,11 +326,6 @@ stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
 		max-speed = <3686400>;
-		/*
-		 * Params not found in source, but described in documentation
-		 */
-		vio-supply = <&p1v8_bt_reg>;
-		vbat-supply = <&p3v3_reg>;
 		current-speed = <115200>;
 		status = "okay";
 
@@ -266,9 +374,16 @@ stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
 		reg = <0x6a>;
 	};
 
-	adv7280m@20 { /*ADV7280BCPZ - Composite video capture with MIPI interface */
+	adv7280m@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
 		compatible = "adi,adv7280-m";
+		powerdown-gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;	/* soDimm 133 */
 		reg = <0x20>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&csi_port_in>;
+			};
+		};
 	};
 
 	usb-hub@2d {
@@ -285,7 +400,7 @@ stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
 	port@0 {
 		reg = <0>;
 		csi_port_in: endpoint {
-/*			remote-endpoint = <&csi_sensor_out>; */
+			remote-endpoint = <&csi_sensor_out>;
 			clock-lanes = <0>;
 			data-lanes = <1 2>;
 		};
