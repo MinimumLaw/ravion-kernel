@@ -14,7 +14,7 @@
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:kitsbimx6";
+	model = "ravion:cimc";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	chosen {
@@ -99,31 +99,91 @@
 			vin-supply = <&p3v3_reg>;
 	};
 
+#if 0
+pps	= <&gpio1  2 GPIO_ACTIVE_LOW>;	/* soDimm 055 */
+pen1	= <&gpio6  3 GPIO_ACTIVE_LOW>;	/* soDimm 059 */
+oc1	= <&gpio6  4 GPIO_ACTIVE_LOW>;	/* soDimm 085 */
+pen2	= <&gpio2 24 GPIO_ACTIVE_LOW>;	/* soDimm 106 */
+oc2	= <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
+pen3	= <&gpio2  0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
+oc3	= <&gpio2 26 GPIO_ACTIVE_LOW>;	/* soDimm 112 */
+pen4	= <&gpio4  9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
+oc4	= <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
+pwr_video = <&gpio2 11 GPIO_ACTIVE_LOW>;	/* soDimm 133 */
+stby_can= <&gpio4  8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
+#endif
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
+			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
 			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
+			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 	};
 
 	gpio-leds {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_uart1gpio>;
 		compatible = "gpio-leds";
 
-		reset_out {
-			label = "nRESET_OUT";
-			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
+		pwr_ow {
+			label = "PWR_OW";
+			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;	/* soDimm 124 */
 			default-state = "on";
+		};
+
+		gpio23 {
+			label = "gpio23";
+			gpio = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
+		};
+
+		gpio25 {
+			label = "gpio25";
+			gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
+		};
+
+		gpio27 {
+			label = "gpio27";
+			gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
+		};
+
+		gpio29 {
+			label = "gpio29";
+			gpio = <&gpio3 25 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
+		};
+
+		gpio31 {
+			label = "gpio31";
+			gpio = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
+		};
+
+		gpio37 {
+			label = "gpio37";
+			gpio = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "off";
 		};
 	};
 
 	gpio-poweroff {
 		compatible = "gpio-poweroff";
-		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
 };
 
@@ -148,7 +208,7 @@
 
 
 	bluetooth { /* DD19: CC2564CRVM */
-		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio2 2  GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
 		compatible = "ti,wl1271-st";
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
@@ -156,9 +216,9 @@
 		/*
 		 * Params not found in source, but described in documentation
 		 */
-		current-speed = <115200>;
 		vio-supply = <&p1v8_bt_reg>;
 		vbat-supply = <&p3v3_reg>;
+		current-speed = <115200>;
 		status = "okay";
 
 		clk_32k_bt: bt_clk {
@@ -196,25 +256,25 @@
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
 	status = "okay";
 
-	clock@11 { /* ISL12020: I2C Real Time Clock (battery backup) */
-		compatible = "fixme:isl12020";
-		reg = <0x11>;
+	rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
 	};
 
-	tftmux@12 { /* DS92LV2411S - TFT bus to one diff-pair multiplexer */
-		compatible = "fixme:ds92lv2411s";
-		reg = <0x12>;
+	tftmux@6a { /* DS92LV2411S - TFT bus to one diff-pair multiplexer */
+		compatible = "ti,ds92lv2411s";
+		reg = <0x6a>;
 	};
 
-	cif-mipi@13 { /*ADV7280BCPZ - Composite video capture with MIPI interface */
-		compatible = "fixme:adv7280BCPZ-M";
-		reg = <0x13>;
+	adv7280m@20 { /*ADV7280BCPZ - Composite video capture with MIPI interface */
+		compatible = "adi,adv7280-m";
+		reg = <0x20>;
 	};
 
 	usb-hub@2d {
 		compatible = "smsc,usb4604";
 		reg = <0x2d>;
-		reset-gpios = <&gpio4 10  GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
 		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY  */
 	};
 };
