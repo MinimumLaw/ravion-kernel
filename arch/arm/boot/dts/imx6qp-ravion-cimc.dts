@@ -105,7 +105,7 @@
 		regulator-supplies = "VU_HVCC";
 	};
 
-	regulator_mfpou {
+	mfpoupwr: regulator_mfpou {
 		compatible = "regulator-fixed";
 		regulator-name = "MFPOU_HVCC";
 		gpio = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm 027 */
@@ -298,6 +298,38 @@
 		compatible = "gpio-poweroff";
 		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
+
+	panel {
+		power-supply = <&mfpoupwr>;
+		compatible = "mitsubishi,ac043na11_02_00"; 
+/****** Alternative record (without panel-simple patches ******
+		compatible = "panel-dpi";
+		height-mm = <54>;
+		width-mm = <95>;
+
+		panel-timing {
+			clock-frequency = <9400000>;
+			hactive = <480>;
+			vactive = <272>;
+			hfront-porch = <63>;
+			hsync-len = <1>;
+			hback-porch = <16>;
+			vfront-porch = <16>;
+			vsync-len = <1>;
+			vback-porch = <19>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <1>;
+			pixelclk-active = <0>;
+		};
+****** Alternative record (without panel-simple patches ******/
+
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&tft_bus_out>;
+			};
+		};
+	};
 };
 
 /*
@@ -305,13 +337,25 @@
  */
 &ssi2	{	status = "okay";	};
 
+
 /*
- * Video subsystem (select one - TFT or LVDS)
+ * Video subsystems
  */
-/* VGA */
-&tft_display_bus {	status = "disabled";	};
+/* HDMI */
+&hdmi {		status = "okay";	};
+
+/* TFT */
+&tft_display_bus {
+	status = "okay";
+};
+
+&tft_bus_out {
+	remote-endpoint = <&lcd_panel_in>;
+};
+
 /* LVDS */
-&ldb {	status = "disabled";	};
+&ldb {		status = "disabled";	};
+
 /*
  * Serial ports
  */
@@ -321,7 +365,7 @@
 
 
 	bluetooth { /* DD19: CC2564CRVM */
-		enable-gpios = <&gpio2 2  GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
+		enable-gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
 		compatible = "ti,wl1271-st";
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
@@ -376,12 +420,13 @@
 
 	adv7280m@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
 		compatible = "adi,adv7280-m";
-		powerdown-gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;	/* soDimm 133 */
+		powerdown-gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;	/* soDimm 133 */
 		reg = <0x20>;
 
 		port {
 			csi_sensor_out: endpoint {
 				remote-endpoint = <&csi_port_in>;
+				data-lanes = <1>;
 			};
 		};
 	};
@@ -390,7 +435,7 @@
 		compatible = "smsc,usb4604";
 		reg = <0x2d>;
 		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
-		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY  */
+		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
 	};
 };
 
@@ -401,8 +446,7 @@
 		reg = <0>;
 		csi_port_in: endpoint {
 			remote-endpoint = <&csi_sensor_out>;
-			clock-lanes = <0>;
-			data-lanes = <1 2>;
+			data-lanes = <1>;
 		};
 	};
 };
@@ -442,7 +486,7 @@
 	status = "okay";
 };
 
-/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+/* &usbh1 {	status = "okay";	}; HOST => Allways enabled */
 
 &usbotg	{ /* OTG */
 	power-active-high;
@@ -466,7 +510,3 @@
 &pwm3	{	status = "disabled";	};
 &pwm4	{	status = "disabled";	};
 
-/*
- * Video subsystems
- */
-&hdmi	{	status = "okay";	};

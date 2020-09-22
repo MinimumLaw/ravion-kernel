@@ -269,11 +269,11 @@
 &ssi2	{	status = "okay";	};
 
 /*
- * Video subsystem (select one - TFT or LVDS)
+ * Video subsystem
  */
 /* VGA */
 &tft_display_bus {
-	status = "disabled";
+	status = "okay";
 };
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;

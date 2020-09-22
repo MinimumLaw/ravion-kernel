@@ -1,0 +1,278 @@
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:mtu";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	chosen {
+		stdout-path = &uart1;
+	};
+
+	/*
+	 * Device specific regulators
+	 */
+	vin_reg: regulator_vin {
+			compatible = "regulator-fixed";
+			regulator-name = "VIN";
+			/* FixMe: 5.0...8.4V input voltage */
+			regulator-min-microvolt = <7200000>;
+			regulator-max-microvolt = <7200000>;
+			regulator-always-on;
+	};
+
+	p5v_reg: regulator_5v {
+			compatible = "regulator-fixed";
+			regulator-name = "+5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&vin_reg>;
+			regulator-always-on;
+	};
+
+	p3v3_reg: regulator_3v3 {
+			compatible = "regulator-fixed";
+			regulator-name = "+3.3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&vin_reg>;
+			regulator-always-on;
+	};
+
+	p3v0va_reg: regulator_3v0va {
+			compatible = "regulator-fixed";
+			regulator-name = "+3.0VA";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			vin-supply = <&p3v3_reg>;
+			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		power {
+			label = "Power";
+			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		reset_out {
+			label = "nRESET_OUT";
+			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
+			default-state = "on";
+		};
+	};
+
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+	};
+
+	panel {
+		power-supply = <&p3v3_reg>;
+		baclight = <&backlight>;
+		compatible = "mitsubishi,aa050mh01-da1";
+/****** Alternative record (without panel-simple patches ******
+		compatible = "panel-dpi";
+		width-mm = <109>;
+		height-mm = <65>;
+
+		panel-timing {
+			clock-frequency = <30400000>;
+			hactive = <800>;
+			vactive = <480>;
+			hfront-porch = <60>;
+			hsync-len = <40>;
+			hback-porch = <60>;
+			vfront-porch = <15>;
+			vsync-len = <15>;
+			vback-porch = <15>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <1>;
+			pixelclk-active = <1>;
+		};
+****** Alternative record (without panel-simple patches ******/
+	};
+
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
+		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <9>;
+		status = "okay";
+	};
+
+};
+
+/*
+ * Sound subsystem
+ */
+&ssi2	{	status = "okay";	};
+
+/*
+ * Video subsystem
+ */
+/* VGA */
+&tft_display_bus {
+	status = "okay";
+};
+&tft_bus_out {
+/*	remote-endpoint = <&adv7123_in>; */
+};
+/* LVDS */
+&ldb {
+	status = "disabled";
+};
+
+/*
+ * Serial ports
+ */
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
+	status = "okay";
+
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		compatible = "ti,wl1271-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 *
+		current-speed = <115200>;
+		vio-supply = <&p1v8_bt_reg>;
+		vbat-supply = <&p3v3_reg>;
+		status = "okay";
+		 */
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+&uart3 {
+	status = "okay";
+};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {
+	status = "okay";
+};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+};
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	status = "okay";
+};
+
+&mipi_csi {
+	status = "okay";
+
+	port@0 {
+		reg = <0>;
+		csi_port_in: endpoint {
+/*			remote-endpoint = <&csi_sensor_out>; */
+			clock-lanes = <0>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+
+/*
+ * SPI Bus
+ */
+&ecspi1 {
+	status = "okay";
+};
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	}; /* compatible */
+&usdhc2 {	status = "okay";	}; /* externed */
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/*
+ * High-speed serial bus
+ */
+&pcie {
+	reset-gpio = <&gpio2 24 GPIO_ACTIVE_LOW>; /* soDimm 106 */
+	status = "okay";
+};
+
+&sata {
+	status = "okay";
+};
+
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{ /* OTG */
+	power-active-high;
+	status = "okay";
+};
+
+&usbh3 { /* HSIC */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
+		compatible = "usb0424,4604";
+		reg = <1>;
+	};
+};
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
+
+/*
+ * Video subsystems
+ */
+&hdmi	{	status = "okay";	};
