@@ -57,7 +57,64 @@
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3000000>;
 			vin-supply = <&p3v3_reg>;
-			regulator-always-on; /* XP25: force on (1-2)/normal (2-3) */
+			regulator-always-on;
+	};
+
+	dcin_reg: regulator_dcin {
+		regulator-name = "DCIN";
+		gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_dcin {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_DCIN";
+		regulator-boot-on;
+		regulator-supplies = "DCIN";
+	};
+
+	nav_reg: regulator_nav {
+		regulator-name = "NAV";
+		gpio = <&gpio2 26 GPIO_ACTIVE_LOW>;		/* soDimm 112 */
+		vin-sunnpy = <&p3v3_reg>;
+	};
+
+	switch_nav {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_NAV";
+		regulator-boot-on;
+		regulator-supplies = "NAV";
+	};
+
+	abs_reg: regulator_abs {
+		regulator-name = "ABS";
+		gpio = <&gpio5  9 GPIO_ACTIVE_LOW>;		/* soDimm 122 */
+		vin-sunnpy = <&p3v3_reg>;
+	};
+
+	switch_abs {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_ABS";
+		regulator-boot-on;
+		regulator-supplies = "ABS";
+	};
+
+	cell_reg: regulator_cell {
+		regulator-name = "CELL";
+		gpio = <&gpio6  5 GPIO_ACTIVE_LOW>;		/* soDimm 162 */
+		vin-sunnpy = <&vin_reg>;
+	};
+
+	switch_cell {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_CELL";
+		regulator-boot-on;
+		regulator-supplies = "CELL";
+	};
+
+	pps {
+		compatible = "pps-gpio";
+		gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
 	};
 
 	gpio-keys {
@@ -65,9 +122,47 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
+			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		oc1 {
+			label = "DCIN_OC";
+			gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;	/* soDimm 160 */
+			linux,code = <KEY_MACRO1>;
+			wakeup-source;
+		};
+
+		oc2 {
+			label = "NAV_ANT_OC";
+			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>;	/* soDimm 114 */
+			linux,code = <KEY_MACRO1>;
+			wakeup-source;
+		};
+
+
+		unk_stat {
+			label = "UNK_STATUS";
+			gpios = <&gpio6  4 GPIO_ACTIVE_LOW>;	/* soDimm 085 */
+			linux,code = <KEY_MACRO9>;
+			wakeup-source;
+		};
+
+
+		cell_scat {
+			label = "CELL_STATUS";
+			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm 164 */
+			linux,code = <KEY_MACRO10>;
 			wakeup-source;
 		};
 	};
@@ -75,21 +170,45 @@
 	gpio-leds {
 		compatible = "gpio-leds";
 
-		reset_out {
-			label = "nRESET_OUT";
-			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
-			default-state = "on";
+		lcd_disp {
+			label = "LCD_DISP";
+			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm 116 */
+			default-state = "off";
+		};
+
+		lcd_sc {
+			label = "LCD_CS";
+			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm 158 */
+			default-state = "off";
+		};
+
+		touch_sc {
+			label = "TOUCH_CS";
+			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
+			default-state = "off";
+		};
+
+		touch_ckw {
+			label = "TOUCH_CKW";
+			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
+			default-state = "off";
+		};
+
+		cell_fly {
+			label = "CELL_FLY";
+			gpios = <&gpio6  2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
+			default-state = "off";
 		};
 	};
 
 	gpio-poweroff {
 		compatible = "gpio-poweroff";
-		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
+		gpios = <&gpio2 18 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
 
 	panel {
 		power-supply = <&p3v3_reg>;
-		baclight = <&backlight>;
+		backlight = <&backlight>;
 		compatible = "mitsubishi,aa050mh01-da1";
 /****** Alternative record (without panel-simple patches ******
 		compatible = "panel-dpi";
@@ -112,12 +231,17 @@
 			pixelclk-active = <1>;
 		};
 ****** Alternative record (without panel-simple patches ******/
-	};
 
+		port {
+			lcd_panel_in: endpoint {
+				remote-endpoint = <&tft_bus_out>;
+			};
+		};
+	};
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
+		enable-gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>; /* soDimm  119 */
 		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
@@ -139,7 +263,7 @@
 	status = "okay";
 };
 &tft_bus_out {
-/*	remote-endpoint = <&adv7123_in>; */
+	remote-endpoint = <&lcd_panel_in>;
 };
 /* LVDS */
 &ldb {
@@ -155,19 +279,14 @@
 
 
 	bluetooth { /* DD19: CC2564CRVM */
-		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
 		compatible = "ti,wl1271-st";
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
 		max-speed = <3686400>;
-		/*
-		 * Params not found in source, but described in documentation
-		 *
 		current-speed = <115200>;
-		vio-supply = <&p1v8_bt_reg>;
-		vbat-supply = <&p3v3_reg>;
+
 		status = "okay";
-		 */
 		clk_32k_bt: bt_clk {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
@@ -192,37 +311,62 @@
  */
 &i2c2 {	/* Compatible I2C: soDimm 194, 196 */
 	status = "okay";
+
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
 };
 
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
 	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
+	};
+
+	bmg160@69 {
+		compatible = "bosch,bmg160";
+		reg = <0x69>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <6 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm 123 */
+	};
+
+	light@44 {
+		compatible = "isil,isl29035";
+		reg = <0x44>;
+		interrupt-parent = <&gpio6>;
+		interrups = <3 (IRQ_TYPE_LEVEL_HIGH)>;		/* soDimm 059 */
+	};
+
+	usb-hub@2d {
+		compatible = "smsc,usb4604";
+		reg = <0x2d>;
+		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
+		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
+	};
 };
 
 &mipi_csi {
-	status = "okay";
-
-	port@0 {
-		reg = <0>;
-		csi_port_in: endpoint {
-/*			remote-endpoint = <&csi_sensor_out>; */
-			clock-lanes = <0>;
-			data-lanes = <1 2>;
-		};
-	};
+	status = "disabled";
 };
 
 /*
  * SPI Bus
  */
 &ecspi1 {
-	status = "okay";
+	status = "disabled";
 };
 
 /*
  * SD/MMC and eMMC controllers
  */
 &usdhc1 {	status = "okay";	}; /* compatible */
-&usdhc2 {	status = "okay";	}; /* externed */
+&usdhc2 {	status = "disabled";	}; /* externed */
 /* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
 
 /*
@@ -240,12 +384,11 @@
  * High-speed serial bus
  */
 &pcie {
-	reset-gpio = <&gpio2 24 GPIO_ACTIVE_LOW>; /* soDimm 106 */
-	status = "okay";
+	status = "disabled";
 };
 
 &sata {
-	status = "okay";
+	status = "disabled";
 };
 
 /* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
@@ -270,9 +413,9 @@
  * PWMs
  */
 &pwm3	{	status = "okay";	};
-&pwm4	{	status = "okay";	};
+&pwm4	{	status = "disabled";	};
 
 /*
  * Video subsystems
  */
-&hdmi	{	status = "okay";	};
+&hdmi	{	status = "disabled";	};
