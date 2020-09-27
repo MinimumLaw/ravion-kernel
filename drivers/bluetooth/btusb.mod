@@ -1,2 +1,0 @@
-drivers/bluetooth/btusb.o
-
