@@ -173,7 +173,7 @@
 		lcd_disp {
 			label = "LCD_DISP";
 			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm 116 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		lcd_sc {
@@ -203,7 +203,7 @@
 
 	gpio-poweroff {
 		compatible = "gpio-poweroff";
-		gpios = <&gpio2 18 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
+		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
 
 	panel {
@@ -241,7 +241,7 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>; /* soDimm  119 */
+		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm  119 */
 		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
