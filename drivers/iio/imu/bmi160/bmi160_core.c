@@ -733,7 +733,7 @@ static int bmi160_chip_init(struct bmi160_data *data, bool use_spi)
 	if (val != BMI160_CHIP_ID_VAL) {
 		dev_err(dev, "Wrong chip id, got %x expected %x\n",
 			val, BMI160_CHIP_ID_VAL);
-		return -ENODEV;
+/*		return -ENODEV; */
 	}
 
 	ret = bmi160_set_mode(data, BMI160_ACCEL, true);

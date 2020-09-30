@@ -329,18 +329,22 @@
 		reg = <0x6f>;
 	};
 
-	bmg160@69 {
-		compatible = "bosch,bmg160";
-		reg = <0x69>;
+	bmg160@68 {
+		compatible = "bosch,bmi160";
+		reg = <0x68>;
+		vdd-supply = <&p3v3_reg>;
+		vddio-supply = <&p3v3_reg>;
 		interrupt-parent = <&gpio2>;
 		interrupts = <6 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm 123 */
+		interrupt-names = "INT1";
 	};
 
 	light@44 {
 		compatible = "isil,isl29035";
+		vcc-supply = <&p3v3_reg>;
 		reg = <0x44>;
 		interrupt-parent = <&gpio6>;
-		interrups = <3 (IRQ_TYPE_LEVEL_HIGH)>;		/* soDimm 059 */
+		interrups = <3 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 059 */
 	};
 
 	usb-hub@2d {
