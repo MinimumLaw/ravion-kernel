@@ -5,7 +5,7 @@ export ARCH=arm
 export DTBS="${DTBS} imx51-ravion-utsvu.dtb"
 # Ravion200 quad (Ravion v2)
 export DTBS="${DTBS} imx6qp-ravion-kitsbimx6.dtb	imx6qp-ravion-cimc.dtb"
-export DTBS="${DTBS} imx6qp-ravion-mtu.dtb"
+export DTBS="${DTBS} imx6qp-ravion-mtu.dtb		imx6qp-ravion-pkk-m7.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     export DEFCONFIG=ravion_imx6_defconfig

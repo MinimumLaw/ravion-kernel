@@ -1,0 +1,71 @@
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+#include "imx6qdl-ravion-v2.dtsi"
+#include "imx6qp-ravion-pkk.dtsi"
+
+/ {
+	model = "ravion:pkk-m7";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	chosen {
+		stdout-path = &uart1;
+	};
+
+	panel {
+		power-supply = <&p3v3_reg>;
+		backlight = <&backlight>;
+		compatible = "mitsubishi,aa070mc01-ca1";
+/****** Alternative record (without panel-simple patches ******
+		compatible = "panel-dpi";
+		width-mm = <152>;
+		height-mm = <91>;
+
+		panel-timing {
+			clock-frequency = <30400000>;
+			hactive = <800>;
+			vactive = <480>;
+			hfront-porch = <60>;
+			hsync-len = <40>;
+			hback-porch = <60>;
+			vfront-porch = <15>;
+			vsync-len = <15>;
+			vback-porch = <15>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <1>;
+			pixelclk-active = <1>;
+		};
+****** Alternative record (without panel-simple patches ******/
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds0_out>;
+			};
+		};
+	};
+};
+
+/* LVDS */
+&ldb {
+	status = "okay";
+};
+
+&lvds0_chan {
+	fsl,data-mappings = "spwg"; /* "jeida" */
+	fsl,data-width = <24>;
+	status = "okay";
+};
+
+&lvds0_out {
+	remote-endpoint = <&lvds_panel_in>;
+};
