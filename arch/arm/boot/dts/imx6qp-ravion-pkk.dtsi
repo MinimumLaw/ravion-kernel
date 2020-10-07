@@ -14,52 +14,113 @@
 	 * Device specific regulators
 	 */
 	vin_reg: regulator_vin {
-			compatible = "regulator-fixed";
-			regulator-name = "VIN";
-			/* FixMe: 5.0...8.4V input voltage */
-			regulator-min-microvolt = <7200000>;
-			regulator-max-microvolt = <7200000>;
-			regulator-always-on;
+		compatible = "regulator-fixed";
+		regulator-name = "VIN";
+		/* FixMe: 5.0...8.4V input voltage */
+		regulator-min-microvolt = <7200000>;
+		regulator-max-microvolt = <7200000>;
+		regulator-always-on;
 	};
 
 	p5v_reg: regulator_5v {
-			compatible = "regulator-fixed";
-			regulator-name = "+5V";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			vin-supply = <&vin_reg>;
-			regulator-always-on;
+		compatible = "regulator-fixed";
+		regulator-name = "+5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vin_reg>;
+		regulator-always-on;
 	};
 
 	p3v3_reg: regulator_3v3 {
-			compatible = "regulator-fixed";
-			regulator-name = "+3.3V";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			vin-supply = <&vin_reg>;
-			regulator-always-on;
+		compatible = "regulator-fixed";
+		regulator-name = "+3.3V";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vin_reg>;
+		regulator-always-on;
 	};
 
 	p3v0va_reg: regulator_3v0va {
-			compatible = "regulator-fixed";
-			regulator-name = "+3.0VA";
-			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
-			vin-supply = <&p3v3_reg>;
-			regulator-always-on;
+		compatible = "regulator-fixed";
+		regulator-name = "+3.0VA";
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		vin-supply = <&p3v3_reg>;
+		regulator-always-on;
 	};
 
-	dcin_reg: regulator_dcin {
-		regulator-name = "DCIN";
+	bt_reg: regulator_bt {
+		regulator-name = "BT";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&p3v3_reg>;
+		gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;		/* soDimm 117 */
+		regulator-always-on;
+	};
+
+	ext1_reg: regulator_ext1 {
+		regulator-name = "EXT1";
+		gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>;		/* soDimm 111 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_ext1 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_EXT1";
+		regulator-boot-on;
+		regulator-supplies = "EXT1";
+	};
+
+	ext2_reg: regulator_ext2 {
+		regulator-name = "EXT2";
 		gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
 		vin-sunnpy = <&p5v_reg>;
 	};
 
-	switch_dcin {
+	switch_ext2 {
 		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_DCIN";
+		regulator-name = "SW_EXT2";
 		regulator-boot-on;
-		regulator-supplies = "DCIN";
+		regulator-supplies = "EXT2";
+	};
+
+	ext3_reg: regulator_ext3 {
+		regulator-name = "EXT3";
+		gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;		/* soDimm 160 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_ext3 {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_EXT3";
+		regulator-boot-on;
+		regulator-supplies = "EXT3";
+	};
+
+	lcd_reg: regulator_lcd {
+		regulator-name = "LCD";
+		gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;		/* soDimm 116 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_lcd {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_LDC";
+		regulator-boot-on;
+		regulator-supplies = "LCD";
+	};
+
+	apd_reg: regulator_apd {
+		regulator-name = "APD";
+		gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;		/* soDimm 118 */
+		vin-sunnpy = <&p5v_reg>;
+	};
+
+	switch_apd {
+		compatible = "reg-userspace-consumer";
+		regulator-name = "SW_APD";
+		regulator-boot-on;
+		regulator-supplies = "APD";
 	};
 
 	nav_reg: regulator_nav {
@@ -88,19 +149,6 @@
 		regulator-supplies = "ABS";
 	};
 
-	cell_reg: regulator_cell {
-		regulator-name = "CELL";
-		gpio = <&gpio6  5 GPIO_ACTIVE_LOW>;		/* soDimm 162 */
-		vin-sunnpy = <&vin_reg>;
-	};
-
-	switch_cell {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_CELL";
-		regulator-boot-on;
-		regulator-supplies = "CELL";
-	};
-
 	pps {
 		compatible = "pps-gpio";
 		gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
@@ -125,20 +173,44 @@
 			wakeup-source;
 		};
 
-		oc1 {
-			label = "DCIN_OC";
-			gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;	/* soDimm 160 */
-			linux,code = <KEY_MACRO1>;
+		fck1 {
+			label = "FCK1";
+			gpios = <&gpio4 8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
 			wakeup-source;
 		};
 
-		oc2 {
-			label = "NAV_ANT_OC";
+		fck2 {
+			label = "FCK2";
+			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		fck3 {
+			label = "FCK3";
+			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		fck4 {
+			label = "FCK4";
+			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>;	/* soDimm 156 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		nav_oc {
+			label = "NAV_OC";
 			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>;	/* soDimm 114 */
-			linux,code = <KEY_MACRO1>;
+			linux,code = <KEY_MACRO8>;
 			wakeup-source;
 		};
-
 
 		unk_stat {
 			label = "UNK_STATUS";
@@ -147,45 +219,31 @@
 			wakeup-source;
 		};
 
-
-		cell_scat {
-			label = "CELL_STATUS";
-			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm 164 */
-			linux,code = <KEY_MACRO10>;
+		sw_dock {
+			label = "DOCK";
+			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;	/* soDimm 133 */
+			linux,code = <SW_DOCK>;
 			wakeup-source;
 		};
 	};
 
 	gpio-leds {
 		compatible = "gpio-leds";
-
-		lcd_disp {
-			label = "LCD_DISP";
-			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm 116 */
-			default-state = "on";
+		nreset {
+			label = "sys::nReset";
+			gpio = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
+			default-state = "off";
 		};
 
 		lcd_sc {
-			label = "LCD_CS";
+			label = "lcd::CS";
 			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm 158 */
 			default-state = "off";
 		};
 
 		touch_sc {
-			label = "TOUCH_CS";
+			label = "touch::CS";
 			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
-			default-state = "off";
-		};
-
-		touch_ckw {
-			label = "TOUCH_CKW";
-			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
-			default-state = "off";
-		};
-
-		cell_fly {
-			label = "CELL_FLY";
-			gpios = <&gpio6  2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
 			default-state = "off";
 		};
 	};
@@ -296,12 +354,6 @@
 		interrups = <3 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 059 */
 	};
 
-	usb-hub@2d {
-		compatible = "smsc,usb4604";
-		reg = <0x2d>;
-		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
-		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
-	};
 };
 
 &mipi_csi {

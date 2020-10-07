@@ -171,31 +171,31 @@
 		compatible = "gpio-leds";
 
 		lcd_disp {
-			label = "LCD_DISP";
+			label = "lcd::DISP";
 			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm 116 */
 			default-state = "on";
 		};
 
 		lcd_sc {
-			label = "LCD_CS";
+			label = "lcd::CS";
 			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm 158 */
 			default-state = "off";
 		};
 
 		touch_sc {
-			label = "TOUCH_CS";
+			label = "touch::CS";
 			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
 			default-state = "off";
 		};
 
 		touch_ckw {
-			label = "TOUCH_CKW";
+			label = "touch::CKW";
 			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
 			default-state = "off";
 		};
 
 		cell_fly {
-			label = "CELL_FLY";
+			label = "cell::FLY";
 			gpios = <&gpio6  2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
 			default-state = "off";
 		};
