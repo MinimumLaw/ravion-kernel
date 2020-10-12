@@ -1323,7 +1323,6 @@ static const struct drm_display_mode bolimin_bt35sn7g1e0_mode = {
 	.vsync_start = 240 + 4,
 	.vsync_end = 240 + 4 + 3,
 	.vtotal = 240 + 4 + 3 + 15,
-	.vrefresh = 60,
 	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
@@ -2293,7 +2292,6 @@ static const struct drm_display_mode koe_tx09d200vm0baa_timing = {
 	.vsync_start = 320 + 6,
 	.vsync_end = 320 + 6 + 6,
 	.vtotal = 320 + 6 + 6 + 6,
-	.vrefresh = 60,
 	.flags =  DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
@@ -2306,7 +2304,7 @@ static const struct panel_desc koe_tx09d200vm0baa = {
 		.height = 71,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
-	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
 };
 
 static const struct display_timing koe_tx14d24vm1bpa_timing = {
@@ -2604,19 +2602,6 @@ static const struct panel_desc logictechno_lt170410_2whc = {
 	.connector_type = DRM_MODE_CONNECTOR_LVDS,
 };
 
-static const struct drm_display_mode mitsubishi_aa070mc01_mode = {
-	.clock = 30400,
-	.hdisplay = 800,
-	.hsync_start = 800 + 0,
-	.hsync_end = 800 + 1,
-	.htotal = 800 + 0 + 1 + 160,
-	.vdisplay = 480,
-	.vsync_start = 480 + 0,
-	.vsync_end = 480 + 48 + 1,
-	.vtotal = 480 + 48 + 1 + 0,
-	.flags = DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
-};
-
 static const struct drm_display_mode logicpd_type_28_mode = {
 	.clock = 9107,
 	.hdisplay = 480,
@@ -2651,6 +2636,19 @@ static const struct panel_desc logicpd_type_28 = {
 	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
+static const struct drm_display_mode mitsubishi_aa070mc01_mode = {
+	.clock = 30400,
+	.hdisplay = 800,
+	.hsync_start = 800 + 0,
+	.hsync_end = 800 + 1,
+	.htotal = 800 + 0 + 1 + 160,
+	.vdisplay = 480,
+	.vsync_start = 480 + 0,
+	.vsync_end = 480 + 48 + 1,
+	.vtotal = 480 + 48 + 1 + 0,
+	.flags = DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
+};
+
 static const struct panel_desc mitsubishi_aa070mc01 = {
 	.modes = &mitsubishi_aa070mc01_mode,
 	.num_modes = 1,
@@ -2681,7 +2679,6 @@ static const struct drm_display_mode mitsubishi_ac043na11_02_00_timing = {
 	.vsync_start = 272 + 16,
 	.vsync_end = 272 + 16 + 2,
 	.vtotal = 272 + 16 + 2 + 12,
-	.vrefresh = 60,
 };
 
 static const struct panel_desc mitsubishi_ac043na11_02_00 = {
@@ -2693,7 +2690,7 @@ static const struct panel_desc mitsubishi_ac043na11_02_00 = {
 		.height = 54,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
 };
 
 static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
@@ -2707,7 +2704,6 @@ static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
 	.vsync_start = 480 + 15,
 	.vsync_end = 480 + 15 + 15,
 	.vtotal = 480 + 15 + 15 + 15,
-	.vrefresh = 60,
 };
 
 static const struct panel_desc mitsubishi_aa050mh01_da1 = {
@@ -2719,7 +2715,7 @@ static const struct panel_desc mitsubishi_aa050mh01_da1 = {
 		.height = 65,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_POSEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
 };
 
 static const struct panel_desc mitsubishi_aa070me11ada11 = {
@@ -2731,7 +2727,7 @@ static const struct panel_desc mitsubishi_aa070me11ada11 = {
 		.height = 92,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE,
 };
 
 static const struct drm_display_mode mitsubishi_aa104xf02_de2_timing = {
@@ -2745,7 +2741,6 @@ static const struct drm_display_mode mitsubishi_aa104xf02_de2_timing = {
 	.vsync_start = 768 + 15,
 	.vsync_end = 768 + 15 + 15,
 	.vtotal = 768 + 15 + 15 + 8,
-	.vrefresh = 60,
 };
 
 static const struct panel_desc mitsubishi_aa104xf12_de2 = {
@@ -2757,7 +2752,7 @@ static const struct panel_desc mitsubishi_aa104xf12_de2 = {
 		.height = 92,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
-	.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
+	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE,
 };
 
 static const struct display_timing nec_nl12880bc20_05_timing = {
