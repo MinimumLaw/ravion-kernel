@@ -255,7 +255,7 @@
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
-		pwms = <&pwm3 0 2000>; /* FixMe: frequency !!! */
+		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
 		status = "okay";
@@ -273,7 +273,7 @@
  */
 /* VGA */
 &tft_display_bus {
-	status = "okay";
+	status = "disabled";
 };
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;
