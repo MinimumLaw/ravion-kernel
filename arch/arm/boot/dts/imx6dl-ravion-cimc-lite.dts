@@ -266,7 +266,7 @@
 		pinctrl-0 = <&pinctrl_gpio_bl_on>;
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio2 07 GPIO_ACTIVE_HIGH>;	/* soDimm 125 */
-		pwms = <&pwm3 0 500>;
+		pwms = <&pwm3 0 500 0>;
 		brightness-levels = <0 31 63 95 127 159 191 223 255>;
 		default-brightness-level = <4>;
 		status = "okay";
