@@ -20,28 +20,23 @@
 	panel {
 		power-supply = <&p3v3_reg>;
 		backlight = <&backlight>;
-		compatible = "mitsubishi,aa070mc01-ca1";
-/****** Alternative record (without panel-simple patches ******
-		compatible = "panel-dpi";
+		data-mapping = "jeida-24";
+		compatible = "mitsubish,aa070ta01ada11", "panel-lvds";
 		width-mm = <152>;
 		height-mm = <91>;
 
 		panel-timing {
-			clock-frequency = <30400000>;
-			hactive = <800>;
-			vactive = <480>;
-			hfront-porch = <60>;
-			hsync-len = <40>;
-			hback-porch = <60>;
-			vfront-porch = <15>;
-			vsync-len = <15>;
-			vback-porch = <15>;
-			hsync-active = <0>;
-			vsync-active = <0>;
+			clock-frequency = <62800000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len = <10>;
+			hfront-porch = <11>;
+			hback-porch = <11>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <10>;
 			de-active = <1>;
-			pixelclk-active = <1>;
 		};
-****** Alternative record (without panel-simple patches ******/
 
 		port {
 			lvds_panel_in: endpoint {
