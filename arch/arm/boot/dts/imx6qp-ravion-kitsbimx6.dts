@@ -18,10 +18,6 @@
 	model = "ravion:kitsbimx6";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
-	chosen {
-		stdout-path = &uart1;
-	};
-
 	/*
 	 * Device specific regulators
 	 */
