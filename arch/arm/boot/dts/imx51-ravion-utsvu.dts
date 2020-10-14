@@ -7,8 +7,8 @@
 #include "imx51.dtsi"
 
 /* FixMe: Legacy NAND must be checked later */
-#define LEGACY_NAND
-/* FixMe: enable VGA or TFT_LVDS break seed on serial ports */
+#undef  LEGACY_NAND
+/* FixMe: enable VGA or TFT_LVDS break speed on serial ports */
 #undef	ENABLE_TFT_LVDS
 #undef	ENABLE_VGA
 
@@ -17,7 +17,7 @@
 	compatible = "dalamant,imx51-utsvu", "fsl,imx51";
 
 	chosen {
-		stdout-path = &uart1;
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory@90000000 {
@@ -47,9 +47,16 @@
 		status = "okay";
 	};
 
-	clk_26mhz: clk_26mhz {
+	gen_26mhz: gen_26mhz {
+		compatible = "fixed-clock";
 		clock-frequency = <26000000>;
+		#clock-cells = <0>;
+		clock-output-names = "gen_26mhz";
+	};
+
+	clk_26mhz: clk_26mhz {
 		compatible = "gpio-gate-clock";
+		clocks = <&gen_26mhz>;
 		#clock-cells = <0>;
 		enable-gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
 		clock-output-names = "clk_26mhz";
@@ -151,7 +158,7 @@
 		compatible = "fsl,imx51-utsvu-sgtl5000",
 			     "fsl,imx-audio-sgtl5000";
 		model = "imx51-utsvu-sgtl5000";
-		ssi-controller = <&ssi2>;
+		ssi-controller = <&ssi1>;
 		audio-codec = <&sgtl5000>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
@@ -484,7 +491,7 @@
 	status = "okay";
 };
 
-&ssi2 {
+&ssi1 {
 	status = "okay";
 };
 
