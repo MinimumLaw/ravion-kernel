@@ -393,7 +393,7 @@
 };
 
 &sata {
-	status = "disabled";
+	status = "okay";
 };
 
 /* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
