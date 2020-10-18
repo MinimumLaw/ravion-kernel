@@ -237,10 +237,10 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm  119 */
+		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
 		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
-		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
-		default-brightness-level = <9>;
+		brightness-levels = <0 31 63 95 127 159 191 223 255>;
+		default-brightness-level = <5>;
 		status = "okay";
 	};
 
