@@ -451,6 +451,12 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
+
+	ds2782@34 {
+		status = "okay";
+		compatible = "maxim,ds2782";
+		reg = <0x34>;
+	};
 };
 
 &i2c2 {
