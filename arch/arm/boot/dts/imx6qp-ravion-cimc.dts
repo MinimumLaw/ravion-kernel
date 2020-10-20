@@ -422,6 +422,7 @@
 		port {
 			csi_sensor_out: endpoint {
 				remote-endpoint = <&csi_port_in>;
+				clock-lanes = <0>;
 				data-lanes = <1>;
 			};
 		};
@@ -442,6 +443,7 @@
 		reg = <0>;
 		csi_port_in: endpoint {
 			remote-endpoint = <&csi_sensor_out>;
+			clock-lanes = <0>;
 			data-lanes = <1>;
 		};
 	};
