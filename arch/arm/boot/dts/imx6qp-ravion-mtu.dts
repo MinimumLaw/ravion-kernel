@@ -186,7 +186,7 @@
 
 		touch_ckw {
 			label = "touch::CKW";
-			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
+			gpios = <&gpio2  0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
 			default-state = "off";
 		};
 
