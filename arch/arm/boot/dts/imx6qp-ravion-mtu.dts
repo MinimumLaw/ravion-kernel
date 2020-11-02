@@ -11,6 +11,8 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
+#undef HSIC_HUB_WITH_I2C
+
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -195,6 +197,15 @@
 			gpios = <&gpio6  2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
 			default-state = "off";
 		};
+#ifdef HSIC_HUB_WITH_I2C
+		/* Do nothing here */
+#else
+		sys_reset {
+			label = "sys::nRESET";
+			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
+			default-state = "off";
+		};
+#endif
 	};
 
 	gpio-poweroff {
@@ -342,13 +353,16 @@
 		interrupt-parent = <&gpio6>;
 		interrups = <3 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 059 */
 	};
-
+#ifdef HSIC_HUB_WITH_I2C
 	usb-hub@2d {
 		compatible = "smsc,usb4604";
 		reg = <0x2d>;
 		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
 		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
 	};
+#else
+	/* Do nothing here */
+#endif
 };
 
 &mipi_csi {
