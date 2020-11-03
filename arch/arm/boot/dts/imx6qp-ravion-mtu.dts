@@ -12,6 +12,7 @@
 #include "imx6qp.dtsi"
 
 #undef HSIC_HUB_WITH_I2C
+#undef USE_USERSPACE_REG_CONSUMER
 
 #include "imx6qdl-ravion-v2.dtsi"
 
@@ -57,7 +58,7 @@
 			vin-supply = <&p3v3_reg>;
 			regulator-always-on;
 	};
-
+#ifdef USE_USERSPACE_REG_CONSUMER
 	dcin_reg: regulator_dcin {
 		regulator-name = "DCIN";
 		gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
@@ -109,7 +110,7 @@
 		regulator-boot-on;
 		regulator-supplies = "CELL";
 	};
-
+#endif /* USE_USERSPACE_REG_CONSUMER */
 	pps {
 		compatible = "pps-gpio";
 		gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
@@ -197,15 +198,40 @@
 			gpios = <&gpio6  2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
 			default-state = "off";
 		};
-#ifdef HSIC_HUB_WITH_I2C
-		/* Do nothing here */
-#else
+
+#ifndef HSIC_HUB_WITH_I2C
 		sys_reset {
 			label = "sys::nRESET";
 			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
 			default-state = "off";
 		};
-#endif
+#endif /* HSIC_HUB_WITH_I2C */
+
+#ifndef USE_USERSPACE_REG_CONSUMER
+		ext_dcin {
+			label = "ext::DCIN";
+			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
+			default-state = "on";
+		};
+
+		ext_nav {
+			label = "ext::NAV";
+			gpios = <&gpio2 26 GPIO_ACTIVE_LOW>;		/* soDimm 112 */
+			default-state = "on";
+		};
+
+		ext_abs {
+			label = "ext::ABS";
+			gpios = <&gpio5  9 GPIO_ACTIVE_LOW>;		/* soDimm 122 */
+			default-state = "on";
+		};
+
+		ext_cell {
+			label = "ext::CELL";
+			gpios = <&gpio6  5 GPIO_ACTIVE_LOW>;		/* soDimm 162 */
+			default-state = "on";
+		};
+#endif /* USE_USERSPACE_REG_CONSUMER */
 	};
 
 	gpio-poweroff {
@@ -360,9 +386,7 @@
 		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
 		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
 	};
-#else
-	/* Do nothing here */
-#endif
+#endif /* HSIC_HUB_WITH_I2C */
 };
 
 &mipi_csi {
@@ -417,10 +441,12 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
+#ifdef HSIC_HUB_WITH_I2C
 	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
 		compatible = "usb0424,4604";
 		reg = <1>;
 	};
+#endif /* HSIC_HUB_WITH_I2C */
 };
 
 /*
