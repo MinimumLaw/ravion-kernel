@@ -210,25 +210,25 @@
 #ifndef USE_USERSPACE_REG_CONSUMER
 		ext_dcin {
 			label = "ext::DCIN";
-			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
+			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;		/* soDimm 113 */
 			default-state = "on";
 		};
 
 		ext_nav {
 			label = "ext::NAV";
-			gpios = <&gpio2 26 GPIO_ACTIVE_LOW>;		/* soDimm 112 */
+			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;		/* soDimm 112 */
 			default-state = "on";
 		};
 
 		ext_abs {
 			label = "ext::ABS";
-			gpios = <&gpio5  9 GPIO_ACTIVE_LOW>;		/* soDimm 122 */
+			gpios = <&gpio5  9 GPIO_ACTIVE_HIGH>;		/* soDimm 122 */
 			default-state = "on";
 		};
 
 		ext_cell {
 			label = "ext::CELL";
-			gpios = <&gpio6  5 GPIO_ACTIVE_LOW>;		/* soDimm 162 */
+			gpios = <&gpio6  5 GPIO_ACTIVE_HIGH>;		/* soDimm 162 */
 			default-state = "on";
 		};
 #endif /* USE_USERSPACE_REG_CONSUMER */
