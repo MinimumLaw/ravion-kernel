@@ -11,7 +11,10 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
-#undef HSIC_HUB_WITH_I2C
+/*
+ * We need nRESET pulse on every boot, but only this way can make them
+ */
+#define HSIC_HUB_WITH_I2C
 #undef USE_USERSPACE_REG_CONSUMER
 
 #include "imx6qdl-ravion-v2.dtsi"

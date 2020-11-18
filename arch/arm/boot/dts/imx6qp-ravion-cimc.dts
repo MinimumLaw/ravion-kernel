@@ -11,6 +11,11 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
+/*
+ * We need nRESET pulse on every boot, but only this way can make them
+ */ 
+#define HSIC_WITH_I2C
+
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -288,6 +293,15 @@
 			gpios = <&gpio4  8 GPIO_ACTIVE_HIGH>;	/* soDimm 150 */
 			default-state = "off";
 		};
+#ifdef HSIC_WITH_I2C
+		/* sys::nRESET toggled by HSIC HUB */
+#else
+		sys_reset {
+			label = "sys::nRESET";
+			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
+			default-state = "off";
+		};
+#endif
 	};
 
 	gpio-poweroff {
@@ -427,13 +441,14 @@
 			};
 		};
 	};
-
+#ifdef HSIC_WITH_I2C
 	usb-hub@2d {
 		compatible = "smsc,usb4604";
 		reg = <0x2d>;
 		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
 		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
 	};
+#endif
 };
 
 &mipi_csi {
@@ -495,11 +510,6 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
-		compatible = "usb0424,4604";
-		reg = <1>;
-	};
 };
 
 /*
