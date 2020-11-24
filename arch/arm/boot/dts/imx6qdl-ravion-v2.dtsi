@@ -14,7 +14,9 @@
 
 / {
 	chosen {
+#ifdef DEBUG
 		stdout-path = "serial0:115200n8";
+#endif
 	};
 
 	aliases { /* renumbering SD/MMC cards and eMMC chip */
@@ -24,6 +26,7 @@
 		serial0 = &uart1;
 		serial1 = &uart2;
 		serial2 = &uart3;
+		ethernet0 = &fec;
 	};
 
 	/* Power sources */
