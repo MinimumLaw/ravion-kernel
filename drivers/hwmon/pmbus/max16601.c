@@ -239,7 +239,8 @@ static void max16601_remove(void *_data)
 	i2c_unregister_device(data->vsa);
 }
 
-static int max16601_probe(struct i2c_client *client)
+static int max16601_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	u8 buf[I2C_SMBUS_BLOCK_MAX + 1];
@@ -287,7 +288,7 @@ static int max16601_probe(struct i2c_client *client)
 
 	data->info = max16601_info;
 
-	return pmbus_do_probe(client, &data->info);
+	return pmbus_do_probe(client, id, &data->info);
 }
 
 static const struct i2c_device_id max16601_id[] = {
@@ -301,7 +302,7 @@ static struct i2c_driver max16601_driver = {
 	.driver = {
 		   .name = "max16601",
 		   },
-	.probe_new = max16601_probe,
+	.probe = max16601_probe,
 	.remove = pmbus_do_remove,
 	.id_table = max16601_id,
 };

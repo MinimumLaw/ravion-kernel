@@ -18,16 +18,16 @@ struct return_address_data {
 	void *addr;
 };
 
-static bool save_return_addr(void *d, unsigned long pc)
+static int save_return_addr(struct stackframe *frame, void *d)
 {
 	struct return_address_data *data = d;
 
 	if (!data->level) {
-		data->addr = (void *)pc;
-		return false;
+		data->addr = (void *)frame->pc;
+		return 1;
 	} else {
 		--data->level;
-		return true;
+		return 0;
 	}
 }
 NOKPROBE_SYMBOL(save_return_addr);

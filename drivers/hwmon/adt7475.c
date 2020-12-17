@@ -1539,7 +1539,8 @@ static int adt7475_set_pwm_polarity(struct i2c_client *client)
 	return 0;
 }
 
-static int adt7475_probe(struct i2c_client *client)
+static int adt7475_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	enum chips chip;
 	static const char * const names[] = {
@@ -1553,7 +1554,6 @@ static int adt7475_probe(struct i2c_client *client)
 	struct device *hwmon_dev;
 	int i, ret = 0, revision, group_num = 0;
 	u8 config3;
-	const struct i2c_device_id *id = i2c_match_id(adt7475_id, client);
 
 	data = devm_kzalloc(&client->dev, sizeof(*data), GFP_KERNEL);
 	if (data == NULL)
@@ -1728,7 +1728,7 @@ static struct i2c_driver adt7475_driver = {
 		.name	= "adt7475",
 		.of_match_table = of_match_ptr(adt7475_of_match),
 	},
-	.probe_new	= adt7475_probe,
+	.probe		= adt7475_probe,
 	.id_table	= adt7475_id,
 	.detect		= adt7475_detect,
 	.address_list	= normal_i2c,

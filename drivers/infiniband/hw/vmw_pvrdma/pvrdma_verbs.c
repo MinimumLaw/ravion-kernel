@@ -479,9 +479,9 @@ err:
  * @pd: the protection domain to be released
  * @udata: user data or null for kernel object
  *
- * @return: Always 0
+ * @return: 0 on success, otherwise errno.
  */
-int pvrdma_dealloc_pd(struct ib_pd *pd, struct ib_udata *udata)
+void pvrdma_dealloc_pd(struct ib_pd *pd, struct ib_udata *udata)
 {
 	struct pvrdma_dev *dev = to_vdev(pd->device);
 	union pvrdma_cmd_req req = {};
@@ -498,14 +498,14 @@ int pvrdma_dealloc_pd(struct ib_pd *pd, struct ib_udata *udata)
 			 ret);
 
 	atomic_dec(&dev->num_pds);
-	return 0;
 }
 
 /**
  * pvrdma_create_ah - create an address handle
- * @ibah: the IB address handle
- * @init_attr: the attributes of the AH
- * @udata: pointer to user data
+ * @pd: the protection domain
+ * @ah_attr: the attributes of the AH
+ * @udata: user data blob
+ * @flags: create address handle flags (see enum rdma_create_ah_flags)
  *
  * @return: 0 on success, otherwise errno.
  */
@@ -548,10 +548,9 @@ int pvrdma_create_ah(struct ib_ah *ibah, struct rdma_ah_init_attr *init_attr,
  * @flags: destroy address handle flags (see enum rdma_destroy_ah_flags)
  *
  */
-int pvrdma_destroy_ah(struct ib_ah *ah, u32 flags)
+void pvrdma_destroy_ah(struct ib_ah *ah, u32 flags)
 {
 	struct pvrdma_dev *dev = to_vdev(ah->device);
 
 	atomic_dec(&dev->num_ahs);
-	return 0;
 }

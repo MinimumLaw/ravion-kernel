@@ -54,8 +54,6 @@ required:
   - clocks
   - clock-names
 
-unevaluatedProperties: false
-
 examples:
   - |
     aliases {

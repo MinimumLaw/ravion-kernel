@@ -309,6 +309,11 @@ static const struct hantro_ctrl controls[] = {
 	}, {
 		.codec = HANTRO_H264_DECODER,
 		.cfg = {
+			.id = V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS,
+		},
+	}, {
+		.codec = HANTRO_H264_DECODER,
+		.cfg = {
 			.id = V4L2_CID_MPEG_VIDEO_H264_SPS,
 			.ops = &hantro_ctrl_ops,
 		},

@@ -10,8 +10,6 @@
 #include <asm/reg.h>
 #include <asm/cputable.h>
 
-#include "internal.h"
-
 /*
  * Bits in event code for POWER5+ (POWER5 GS) and POWER5++ (POWER5 GS DD3)
  */

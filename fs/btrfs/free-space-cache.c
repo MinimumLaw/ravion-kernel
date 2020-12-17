@@ -413,6 +413,8 @@ static int io_ctl_prepare_pages(struct btrfs_io_ctl *io_ctl, bool uptodate)
 
 static void io_ctl_set_generation(struct btrfs_io_ctl *io_ctl, u64 generation)
 {
+	__le64 *val;
+
 	io_ctl_map_page(io_ctl, 1);
 
 	/*
@@ -427,13 +429,14 @@ static void io_ctl_set_generation(struct btrfs_io_ctl *io_ctl, u64 generation)
 		io_ctl->size -= sizeof(u64) * 2;
 	}
 
-	put_unaligned_le64(generation, io_ctl->cur);
+	val = io_ctl->cur;
+	*val = cpu_to_le64(generation);
 	io_ctl->cur += sizeof(u64);
 }
 
 static int io_ctl_check_generation(struct btrfs_io_ctl *io_ctl, u64 generation)
 {
-	u64 cache_gen;
+	__le64 *gen;
 
 	/*
 	 * Skip the crc area.  If we don't check crcs then we just have a 64bit
@@ -448,11 +451,11 @@ static int io_ctl_check_generation(struct btrfs_io_ctl *io_ctl, u64 generation)
 		io_ctl->size -= sizeof(u64) * 2;
 	}
 
-	cache_gen = get_unaligned_le64(io_ctl->cur);
-	if (cache_gen != generation) {
+	gen = io_ctl->cur;
+	if (le64_to_cpu(*gen) != generation) {
 		btrfs_err_rl(io_ctl->fs_info,
 			"space cache generation (%llu) does not match inode (%llu)",
-				cache_gen, generation);
+				*gen, generation);
 		io_ctl_unmap_page(io_ctl);
 		return -EIO;
 	}
@@ -522,8 +525,8 @@ static int io_ctl_add_entry(struct btrfs_io_ctl *io_ctl, u64 offset, u64 bytes,
 		return -ENOSPC;
 
 	entry = io_ctl->cur;
-	put_unaligned_le64(offset, &entry->offset);
-	put_unaligned_le64(bytes, &entry->bytes);
+	entry->offset = cpu_to_le64(offset);
+	entry->bytes = cpu_to_le64(bytes);
 	entry->type = (bitmap) ? BTRFS_FREE_SPACE_BITMAP :
 		BTRFS_FREE_SPACE_EXTENT;
 	io_ctl->cur += sizeof(struct btrfs_free_space_entry);
@@ -596,8 +599,8 @@ static int io_ctl_read_entry(struct btrfs_io_ctl *io_ctl,
 	}
 
 	e = io_ctl->cur;
-	entry->offset = get_unaligned_le64(&e->offset);
-	entry->bytes = get_unaligned_le64(&e->bytes);
+	entry->offset = le64_to_cpu(e->offset);
+	entry->bytes = le64_to_cpu(e->bytes);
 	*type = e->type;
 	io_ctl->cur += sizeof(struct btrfs_free_space_entry);
 	io_ctl->size -= sizeof(struct btrfs_free_space_entry);
@@ -1350,7 +1353,7 @@ static int __btrfs_write_out_cache(struct btrfs_root *root, struct inode *inode,
 
 	/*
 	 * at this point the pages are under IO and we're happy,
-	 * The caller is responsible for waiting on them and updating
+	 * The caller is responsible for waiting on them and updating the
 	 * the cache and the inode
 	 */
 	io_ctl->entries = entries;

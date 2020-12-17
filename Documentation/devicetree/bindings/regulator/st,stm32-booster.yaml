@@ -34,8 +34,6 @@ required:
   - st,syscfg
   - vdda-supply
 
-unevaluatedProperties: false
-
 examples:
   - |
     regulator-booster {

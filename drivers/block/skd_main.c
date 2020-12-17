@@ -25,6 +25,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/completion.h>
 #include <linux/scatterlist.h>
+#include <linux/version.h>
 #include <linux/err.h>
 #include <linux/aer.h>
 #include <linux/wait.h>

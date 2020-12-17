@@ -50,8 +50,6 @@ required:
   - '#size-cells'
   - dma-ranges
 
-unevaluatedProperties: false
-
 examples:
   - |
     mlahb: ahb@38000000 {

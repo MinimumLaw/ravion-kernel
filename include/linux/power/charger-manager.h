@@ -31,16 +31,22 @@ enum polling_modes {
 	CM_POLL_CHARGING_ONLY,
 };
 
-enum cm_batt_temp {
-	CM_BATT_OK = 0,
-	CM_BATT_OVERHEAT,
-	CM_BATT_COLD,
+enum cm_event_types {
+	CM_EVENT_UNKNOWN = 0,
+	CM_EVENT_BATT_FULL,
+	CM_EVENT_BATT_IN,
+	CM_EVENT_BATT_OUT,
+	CM_EVENT_BATT_OVERHEAT,
+	CM_EVENT_BATT_COLD,
+	CM_EVENT_EXT_PWR_IN_OUT,
+	CM_EVENT_CHG_START_STOP,
+	CM_EVENT_OTHERS,
 };
 
 /**
  * struct charger_cable
  * @extcon_name: the name of extcon device.
- * @name: the name of the cable connector
+ * @name: the name of charger cable(external connector).
  * @extcon_dev: the extcon device.
  * @wq: the workqueue to control charger according to the state of
  *	charger cable. If charger cable is attached, enable charger.
@@ -56,10 +62,9 @@ enum cm_batt_temp {
 struct charger_cable {
 	const char *extcon_name;
 	const char *name;
-	struct extcon_dev *extcon_dev;
-	u64 extcon_type;
 
 	/* The charger-manager use Extcon framework */
+	struct extcon_specific_cable_nb extcon_dev;
 	struct work_struct wq;
 	struct notifier_block nb;
 
@@ -126,10 +131,11 @@ struct charger_regulator {
  * @psy_name: the name of power-supply-class for charger manager
  * @polling_mode:
  *	Determine which polling mode will be used
+ * @fullbatt_vchkdrop_ms:
  * @fullbatt_vchkdrop_uV:
  *	Check voltage drop after the battery is fully charged.
- *	If it has dropped more than fullbatt_vchkdrop_uV
- *	CM will restart charging.
+ *	If it has dropped more than fullbatt_vchkdrop_uV after
+ *	fullbatt_vchkdrop_ms, CM will restart charging.
  * @fullbatt_uV: voltage in microvolt
  *	If VBATT >= fullbatt_uV, it is assumed to be full.
  * @fullbatt_soc: state of Charge in %
@@ -166,6 +172,7 @@ struct charger_desc {
 	enum polling_modes polling_mode;
 	unsigned int polling_interval_ms;
 
+	unsigned int fullbatt_vchkdrop_ms;
 	unsigned int fullbatt_vchkdrop_uV;
 	unsigned int fullbatt_uV;
 	unsigned int fullbatt_soc;
@@ -204,6 +211,9 @@ struct charger_desc {
  * @charger_stat: array of power_supply for chargers
  * @tzd_batt : thermal zone device for battery
  * @charger_enabled: the state of charger
+ * @fullbatt_vchk_jiffies_at:
+ *	jiffies at the time full battery check will occur.
+ * @fullbatt_vchk_work: work queue for full battery check
  * @emergency_stop:
  *	When setting true, stop charging
  * @psy_name_buf: the name of power-supply-class for charger manager
@@ -214,7 +224,6 @@ struct charger_desc {
  *	saved status of battery before entering suspend-to-RAM
  * @charging_start_time: saved start time of enabling charging
  * @charging_end_time: saved end time of disabling charging
- * @battery_status: Current battery status
  */
 struct charger_manager {
 	struct list_head entry;
@@ -226,6 +235,9 @@ struct charger_manager {
 #endif
 	bool charger_enabled;
 
+	unsigned long fullbatt_vchk_jiffies_at;
+	struct delayed_work fullbatt_vchk_work;
+
 	int emergency_stop;
 
 	char psy_name_buf[PSY_NAME_MAX + 1];
@@ -234,8 +246,13 @@ struct charger_manager {
 
 	u64 charging_start_time;
 	u64 charging_end_time;
-
-	int battery_status;
 };
 
+#if IS_ENABLED(CONFIG_CHARGER_MANAGER)
+extern void cm_notify_event(struct power_supply *psy,
+				enum cm_event_types type, char *msg);
+#else
+static inline void cm_notify_event(struct power_supply *psy,
+				enum cm_event_types type, char *msg) { }
+#endif
 #endif /* _CHARGER_MANAGER_H */

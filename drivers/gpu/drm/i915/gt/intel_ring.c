@@ -21,13 +21,7 @@ unsigned int intel_ring_update_space(struct intel_ring *ring)
 	return space;
 }
 
-void __intel_ring_pin(struct intel_ring *ring)
-{
-	GEM_BUG_ON(!atomic_read(&ring->pin_count));
-	atomic_inc(&ring->pin_count);
-}
-
-int intel_ring_pin(struct intel_ring *ring, struct i915_gem_ww_ctx *ww)
+int intel_ring_pin(struct intel_ring *ring)
 {
 	struct i915_vma *vma = ring->vma;
 	unsigned int flags;
@@ -45,7 +39,7 @@ int intel_ring_pin(struct intel_ring *ring, struct i915_gem_ww_ctx *ww)
 	else
 		flags |= PIN_HIGH;
 
-	ret = i915_ggtt_pin(vma, ww, 0, flags);
+	ret = i915_ggtt_pin(vma, 0, flags);
 	if (unlikely(ret))
 		goto err_unpin;
 

@@ -189,7 +189,7 @@ static void group_adjust_blocks(struct super_block *sb, int group_no,
 
 /**
  * __rsv_window_dump() -- Dump the filesystem block allocation reservation map
- * @root:		root of per-filesystem reservation rb tree
+ * @rb_root:		root of per-filesystem reservation rb tree
  * @verbose:		verbose mode
  * @fn:			function which wishes to dump the reservation map
  *
@@ -282,7 +282,7 @@ goal_in_my_reservation(struct ext2_reserve_window *rsv, ext2_grpblk_t grp_goal,
 
 /**
  * search_reserve_window()
- * @root:		root of reservation tree
+ * @rb_root:		root of reservation tree
  * @goal:		target allocation block
  *
  * Find the reserved window which includes the goal, or the previous one
@@ -859,7 +859,7 @@ static int find_next_reservable_window(
  *
  *	failed: we failed to find a reservation window in this group
  *
- *	@my_rsv: the reservation
+ *	@rsv: the reservation
  *
  *	@grp_goal: The goal (group-relative).  It is where the search for a
  *		free reservable space should start from.

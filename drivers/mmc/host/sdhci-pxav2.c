@@ -226,7 +226,6 @@ free:
 static struct platform_driver sdhci_pxav2_driver = {
 	.driver		= {
 		.name	= "sdhci-pxav2",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table = of_match_ptr(sdhci_pxav2_of_match),
 		.pm	= &sdhci_pltfm_pmops,
 	},

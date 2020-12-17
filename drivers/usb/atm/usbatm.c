@@ -511,10 +511,9 @@ static unsigned int usbatm_write_cells(struct usbatm_data *instance,
 **  receive  **
 **************/
 
-static void usbatm_rx_process(struct tasklet_struct *t)
+static void usbatm_rx_process(unsigned long data)
 {
-	struct usbatm_data *instance = from_tasklet(instance, t,
-						    rx_channel.tasklet);
+	struct usbatm_data *instance = (struct usbatm_data *)data;
 	struct urb *urb;
 
 	while ((urb = usbatm_pop_urb(&instance->rx_channel))) {
@@ -565,10 +564,9 @@ static void usbatm_rx_process(struct tasklet_struct *t)
 **  send  **
 ***********/
 
-static void usbatm_tx_process(struct tasklet_struct *t)
+static void usbatm_tx_process(unsigned long data)
 {
-	struct usbatm_data *instance = from_tasklet(instance, t,
-						    tx_channel.tasklet);
+	struct usbatm_data *instance = (struct usbatm_data *)data;
 	struct sk_buff *skb = instance->current_skb;
 	struct urb *urb = NULL;
 	const unsigned int buf_size = instance->tx_channel.buf_size;
@@ -1071,8 +1069,8 @@ int usbatm_usb_probe(struct usb_interface *intf, const struct usb_device_id *id,
 
 	usbatm_init_channel(&instance->rx_channel);
 	usbatm_init_channel(&instance->tx_channel);
-	tasklet_setup(&instance->rx_channel.tasklet, usbatm_rx_process);
-	tasklet_setup(&instance->tx_channel.tasklet, usbatm_tx_process);
+	tasklet_init(&instance->rx_channel.tasklet, usbatm_rx_process, (unsigned long)instance);
+	tasklet_init(&instance->tx_channel.tasklet, usbatm_tx_process, (unsigned long)instance);
 	instance->rx_channel.stride = ATM_CELL_SIZE + driver->rx_padding;
 	instance->tx_channel.stride = ATM_CELL_SIZE + driver->tx_padding;
 	instance->rx_channel.usbatm = instance->tx_channel.usbatm = instance;

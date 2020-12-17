@@ -45,9 +45,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/if_vlan.h>
 #include <linux/vmalloc.h>
-#include <rdma/ib_verbs.h>
-#include <rdma/ib_umem.h>
-
 #include "roce_hsi.h"
 #include "qplib_res.h"
 #include "qplib_sp.h"
@@ -90,11 +87,12 @@ static void __free_pbl(struct bnxt_qplib_res *res, struct bnxt_qplib_pbl *pbl,
 static void bnxt_qplib_fill_user_dma_pages(struct bnxt_qplib_pbl *pbl,
 					   struct bnxt_qplib_sg_info *sginfo)
 {
-	struct ib_block_iter biter;
+	struct scatterlist *sghead = sginfo->sghead;
+	struct sg_dma_page_iter sg_iter;
 	int i = 0;
 
-	rdma_umem_for_each_dma_block(sginfo->umem, &biter, sginfo->pgsize) {
-		pbl->pg_map_arr[i] = rdma_block_iter_dma_address(&biter);
+	for_each_sg_dma_page(sghead, &sg_iter, sginfo->nmap, 0) {
+		pbl->pg_map_arr[i] = sg_page_iter_dma_address(&sg_iter);
 		pbl->pg_arr[i] = NULL;
 		pbl->pg_count++;
 		i++;
@@ -106,16 +104,15 @@ static int __alloc_pbl(struct bnxt_qplib_res *res,
 		       struct bnxt_qplib_sg_info *sginfo)
 {
 	struct pci_dev *pdev = res->pdev;
+	struct scatterlist *sghead;
 	bool is_umem = false;
 	u32 pages;
 	int i;
 
 	if (sginfo->nopte)
 		return 0;
-	if (sginfo->umem)
-		pages = ib_umem_num_dma_blocks(sginfo->umem, sginfo->pgsize);
-	else
-		pages = sginfo->npages;
+	pages = sginfo->npages;
+	sghead = sginfo->sghead;
 	/* page ptr arrays */
 	pbl->pg_arr = vmalloc(pages * sizeof(void *));
 	if (!pbl->pg_arr)
@@ -130,7 +127,7 @@ static int __alloc_pbl(struct bnxt_qplib_res *res,
 	pbl->pg_count = 0;
 	pbl->pg_size = sginfo->pgsize;
 
-	if (!sginfo->umem) {
+	if (!sghead) {
 		for (i = 0; i < pages; i++) {
 			pbl->pg_arr[i] = dma_alloc_coherent(&pdev->dev,
 							    pbl->pg_size,
@@ -186,12 +183,14 @@ int bnxt_qplib_alloc_init_hwq(struct bnxt_qplib_hwq *hwq,
 	struct bnxt_qplib_sg_info sginfo = {};
 	u32 depth, stride, npbl, npde;
 	dma_addr_t *src_phys_ptr, **dst_virt_ptr;
+	struct scatterlist *sghead = NULL;
 	struct bnxt_qplib_res *res;
 	struct pci_dev *pdev;
 	int i, rc, lvl;
 
 	res = hwq_attr->res;
 	pdev = res->pdev;
+	sghead = hwq_attr->sginfo->sghead;
 	pg_size = hwq_attr->sginfo->pgsize;
 	hwq->level = PBL_LVL_MAX;
 
@@ -205,7 +204,7 @@ int bnxt_qplib_alloc_init_hwq(struct bnxt_qplib_hwq *hwq,
 			aux_pages++;
 	}
 
-	if (!hwq_attr->sginfo->umem) {
+	if (!sghead) {
 		hwq->is_user = false;
 		npages = (depth * stride) / pg_size + aux_pages;
 		if ((depth * stride) % pg_size)
@@ -214,14 +213,11 @@ int bnxt_qplib_alloc_init_hwq(struct bnxt_qplib_hwq *hwq,
 			return -EINVAL;
 		hwq_attr->sginfo->npages = npages;
 	} else {
-		unsigned long sginfo_num_pages = ib_umem_num_dma_blocks(
-			hwq_attr->sginfo->umem, hwq_attr->sginfo->pgsize);
-
 		hwq->is_user = true;
-		npages = sginfo_num_pages;
+		npages = hwq_attr->sginfo->npages;
 		npages = (npages * PAGE_SIZE) /
 			  BIT_ULL(hwq_attr->sginfo->pgshft);
-		if ((sginfo_num_pages * PAGE_SIZE) %
+		if ((hwq_attr->sginfo->npages * PAGE_SIZE) %
 		     BIT_ULL(hwq_attr->sginfo->pgshft))
 			if (!npages)
 				npages++;

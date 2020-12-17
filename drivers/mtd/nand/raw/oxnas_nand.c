@@ -144,7 +144,8 @@ static int oxnas_nand_probe(struct platform_device *pdev)
 		if (err)
 			goto err_cleanup_nand;
 
-		oxnas->chips[oxnas->nchips++] = chip;
+		oxnas->chips[oxnas->nchips] = chip;
+		++oxnas->nchips;
 	}
 
 	/* Exit if no chips found */

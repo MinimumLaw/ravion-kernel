@@ -244,7 +244,8 @@ static struct attribute *atxp1_attrs[] = {
 };
 ATTRIBUTE_GROUPS(atxp1);
 
-static int atxp1_probe(struct i2c_client *client)
+static int atxp1_probe(struct i2c_client *client,
+		       const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct atxp1_data *data;
@@ -287,7 +288,7 @@ static struct i2c_driver atxp1_driver = {
 	.driver = {
 		.name	= "atxp1",
 	},
-	.probe_new	= atxp1_probe,
+	.probe		= atxp1_probe,
 	.id_table	= atxp1_id,
 };
 

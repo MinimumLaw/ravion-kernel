@@ -119,8 +119,7 @@ static ssize_t phys_index_show(struct device *dev,
 	unsigned long phys_index;
 
 	phys_index = mem->start_section_nr / sections_per_block;
-
-	return sysfs_emit(buf, "%08lx\n", phys_index);
+	return sprintf(buf, "%08lx\n", phys_index);
 }
 
 /*
@@ -130,7 +129,7 @@ static ssize_t phys_index_show(struct device *dev,
 static ssize_t removable_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
-	return sysfs_emit(buf, "%d\n", (int)IS_ENABLED(CONFIG_MEMORY_HOTREMOVE));
+	return sprintf(buf, "%d\n", (int)IS_ENABLED(CONFIG_MEMORY_HOTREMOVE));
 }
 
 /*
@@ -140,7 +139,7 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 			  char *buf)
 {
 	struct memory_block *mem = to_memory_block(dev);
-	const char *output;
+	ssize_t len = 0;
 
 	/*
 	 * We can probably put these states in a nice little array
@@ -148,20 +147,22 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	 */
 	switch (mem->state) {
 	case MEM_ONLINE:
-		output = "online";
+		len = sprintf(buf, "online\n");
 		break;
 	case MEM_OFFLINE:
-		output = "offline";
+		len = sprintf(buf, "offline\n");
 		break;
 	case MEM_GOING_OFFLINE:
-		output = "going-offline";
+		len = sprintf(buf, "going-offline\n");
 		break;
 	default:
+		len = sprintf(buf, "ERROR-UNKNOWN-%ld\n",
+				mem->state);
 		WARN_ON(1);
-		return sysfs_emit(buf, "ERROR-UNKNOWN-%ld\n", mem->state);
+		break;
 	}
 
-	return sysfs_emit(buf, "%s\n", output);
+	return len;
 }
 
 int memory_notify(unsigned long val, void *v)
@@ -302,22 +303,21 @@ static ssize_t phys_device_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct memory_block *mem = to_memory_block(dev);
-
-	return sysfs_emit(buf, "%d\n", mem->phys_device);
+	return sprintf(buf, "%d\n", mem->phys_device);
 }
 
 #ifdef CONFIG_MEMORY_HOTREMOVE
-static int print_allowed_zone(char *buf, int len, int nid,
-			      unsigned long start_pfn, unsigned long nr_pages,
-			      int online_type, struct zone *default_zone)
+static void print_allowed_zone(char *buf, int nid, unsigned long start_pfn,
+		unsigned long nr_pages, int online_type,
+		struct zone *default_zone)
 {
 	struct zone *zone;
 
 	zone = zone_for_pfn_range(online_type, nid, start_pfn, nr_pages);
-	if (zone == default_zone)
-		return 0;
-
-	return sysfs_emit_at(buf, len, " %s", zone->name);
+	if (zone != default_zone) {
+		strcat(buf, " ");
+		strcat(buf, zone->name);
+	}
 }
 
 static ssize_t valid_zones_show(struct device *dev,
@@ -327,7 +327,6 @@ static ssize_t valid_zones_show(struct device *dev,
 	unsigned long start_pfn = section_nr_to_pfn(mem->start_section_nr);
 	unsigned long nr_pages = PAGES_PER_SECTION * sections_per_block;
 	struct zone *default_zone;
-	int len = 0;
 	int nid;
 
 	/*
@@ -342,23 +341,24 @@ static ssize_t valid_zones_show(struct device *dev,
 		default_zone = test_pages_in_a_zone(start_pfn,
 						    start_pfn + nr_pages);
 		if (!default_zone)
-			return sysfs_emit(buf, "%s\n", "none");
-		len += sysfs_emit_at(buf, len, "%s", default_zone->name);
+			return sprintf(buf, "none\n");
+		strcat(buf, default_zone->name);
 		goto out;
 	}
 
 	nid = mem->nid;
 	default_zone = zone_for_pfn_range(MMOP_ONLINE, nid, start_pfn,
 					  nr_pages);
+	strcat(buf, default_zone->name);
 
-	len += sysfs_emit_at(buf, len, "%s", default_zone->name);
-	len += print_allowed_zone(buf, len, nid, start_pfn, nr_pages,
-				  MMOP_ONLINE_KERNEL, default_zone);
-	len += print_allowed_zone(buf, len, nid, start_pfn, nr_pages,
-				  MMOP_ONLINE_MOVABLE, default_zone);
+	print_allowed_zone(buf, nid, start_pfn, nr_pages, MMOP_ONLINE_KERNEL,
+			default_zone);
+	print_allowed_zone(buf, nid, start_pfn, nr_pages, MMOP_ONLINE_MOVABLE,
+			default_zone);
 out:
-	len += sysfs_emit_at(buf, len, "\n");
-	return len;
+	strcat(buf, "\n");
+
+	return strlen(buf);
 }
 static DEVICE_ATTR_RO(valid_zones);
 #endif
@@ -374,7 +374,7 @@ static DEVICE_ATTR_RO(removable);
 static ssize_t block_size_bytes_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
-	return sysfs_emit(buf, "%lx\n", memory_block_size_bytes());
+	return sprintf(buf, "%lx\n", memory_block_size_bytes());
 }
 
 static DEVICE_ATTR_RO(block_size_bytes);
@@ -386,8 +386,8 @@ static DEVICE_ATTR_RO(block_size_bytes);
 static ssize_t auto_online_blocks_show(struct device *dev,
 				       struct device_attribute *attr, char *buf)
 {
-	return sysfs_emit(buf, "%s\n",
-			  online_type_to_str[memhp_default_online_type]);
+	return sprintf(buf, "%s\n",
+		       online_type_to_str[memhp_default_online_type]);
 }
 
 static ssize_t auto_online_blocks_store(struct device *dev,
@@ -432,8 +432,7 @@ static ssize_t probe_store(struct device *dev, struct device_attribute *attr,
 
 	nid = memory_add_physaddr_to_nid(phys_addr);
 	ret = __add_memory(nid, phys_addr,
-			   MIN_MEMORY_BLOCK_SIZE * sections_per_block,
-			   MHP_NONE);
+			   MIN_MEMORY_BLOCK_SIZE * sections_per_block);
 
 	if (ret)
 		goto out;

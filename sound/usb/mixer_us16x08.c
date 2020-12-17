@@ -1109,7 +1109,7 @@ static const struct snd_us16x08_control_params eq_controls[] = {
 		.control_id = SND_US16X08_ID_EQLOWFREQ,
 		.type = USB_MIXER_U8,
 		.num_channels = 16,
-		.name = "EQ Low Frequency",
+		.name = "EQ Low Frequence",
 	},
 	{ /* EQ mid low gain */
 		.kcontrol_new = &snd_us16x08_eq_gain_ctl,
@@ -1123,7 +1123,7 @@ static const struct snd_us16x08_control_params eq_controls[] = {
 		.control_id = SND_US16X08_ID_EQLOWMIDFREQ,
 		.type = USB_MIXER_U8,
 		.num_channels = 16,
-		.name = "EQ MidLow Frequency",
+		.name = "EQ MidLow Frequence",
 	},
 	{ /* EQ mid low Q */
 		.kcontrol_new = &snd_us16x08_eq_mid_width_ctl,
@@ -1144,7 +1144,7 @@ static const struct snd_us16x08_control_params eq_controls[] = {
 		.control_id = SND_US16X08_ID_EQHIGHMIDFREQ,
 		.type = USB_MIXER_U8,
 		.num_channels = 16,
-		.name = "EQ MidHigh Frequency",
+		.name = "EQ MidHigh Frequence",
 	},
 	{ /* EQ mid high Q */
 		.kcontrol_new = &snd_us16x08_eq_mid_width_ctl,
@@ -1165,7 +1165,7 @@ static const struct snd_us16x08_control_params eq_controls[] = {
 		.control_id = SND_US16X08_ID_EQHIGHFREQ,
 		.type = USB_MIXER_U8,
 		.num_channels = 16,
-		.name = "EQ High Frequency",
+		.name = "EQ High Frequence",
 	},
 };
 

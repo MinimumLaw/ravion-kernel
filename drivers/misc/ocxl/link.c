@@ -6,7 +6,6 @@
 #include <linux/mmu_context.h>
 #include <asm/copro.h>
 #include <asm/pnv-ocxl.h>
-#include <asm/xive.h>
 #include <misc/ocxl.h>
 #include "ocxl_internal.h"
 #include "trace.h"
@@ -683,21 +682,23 @@ unlock:
 }
 EXPORT_SYMBOL_GPL(ocxl_link_remove_pe);
 
-int ocxl_link_irq_alloc(void *link_handle, int *hw_irq)
+int ocxl_link_irq_alloc(void *link_handle, int *hw_irq, u64 *trigger_addr)
 {
 	struct ocxl_link *link = (struct ocxl_link *) link_handle;
-	int irq;
+	int rc, irq;
+	u64 addr;
 
 	if (atomic_dec_if_positive(&link->irq_available) < 0)
 		return -ENOSPC;
 
-	irq = xive_native_alloc_irq();
-	if (!irq) {
+	rc = pnv_ocxl_alloc_xive_irq(&irq, &addr);
+	if (rc) {
 		atomic_inc(&link->irq_available);
-		return -ENXIO;
+		return rc;
 	}
 
 	*hw_irq = irq;
+	*trigger_addr = addr;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ocxl_link_irq_alloc);
@@ -706,7 +707,7 @@ void ocxl_link_free_irq(void *link_handle, int hw_irq)
 {
 	struct ocxl_link *link = (struct ocxl_link *) link_handle;
 
-	xive_native_free_irq(hw_irq);
+	pnv_ocxl_free_xive_irq(hw_irq);
 	atomic_inc(&link->irq_available);
 }
 EXPORT_SYMBOL_GPL(ocxl_link_free_irq);

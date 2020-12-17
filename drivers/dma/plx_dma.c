@@ -241,9 +241,9 @@ static void plx_dma_stop(struct plx_dma_dev *plxdev)
 	rcu_read_unlock();
 }
 
-static void plx_dma_desc_task(struct tasklet_struct *t)
+static void plx_dma_desc_task(unsigned long data)
 {
-	struct plx_dma_dev *plxdev = from_tasklet(plxdev, t, desc_task);
+	struct plx_dma_dev *plxdev = (void *)data;
 
 	plx_dma_process_desc(plxdev);
 }
@@ -513,7 +513,8 @@ static int plx_dma_create(struct pci_dev *pdev)
 	}
 
 	spin_lock_init(&plxdev->ring_lock);
-	tasklet_setup(&plxdev->desc_task, plx_dma_desc_task);
+	tasklet_init(&plxdev->desc_task, plx_dma_desc_task,
+		     (unsigned long)plxdev);
 
 	RCU_INIT_POINTER(plxdev->pdev, pdev);
 	plxdev->bar = pcim_iomap_table(pdev)[0];

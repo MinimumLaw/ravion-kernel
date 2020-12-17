@@ -67,12 +67,7 @@ typedef struct {
 	void* co_name; // PyCodeObject.co_name
 } FrameData;
 
-#ifdef SUBPROGS
-__noinline
-#else
-__always_inline
-#endif
-static void *get_thread_state(void *tls_base, PidData *pidData)
+static __always_inline void *get_thread_state(void *tls_base, PidData *pidData)
 {
 	void* thread_state;
 	int key;
@@ -160,9 +155,7 @@ struct {
 } stackmap SEC(".maps");
 
 #ifdef GLOBAL_FUNC
-__noinline
-#elif defined(SUBPROGS)
-static __noinline
+__attribute__((noinline))
 #else
 static __always_inline
 #endif

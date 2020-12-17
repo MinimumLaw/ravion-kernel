@@ -12,7 +12,6 @@ Linux PCI Bus Subsystem
    pciebus-howto
    pci-iov-howto
    msi-howto
-   sysfs-pci
    acpi-info
    pci-error-recovery
    pcieaer-howto

@@ -33,8 +33,6 @@ required:
   - compatible
   - reg
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/imx6qdl-clock.h>

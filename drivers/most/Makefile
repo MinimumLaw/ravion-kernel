@@ -4,4 +4,3 @@ most_core-y :=	core.o \
 		configfs.o
 
 obj-$(CONFIG_MOST_USB_HDM) += most_usb.o
-obj-$(CONFIG_MOST_CDEV) += most_cdev.o

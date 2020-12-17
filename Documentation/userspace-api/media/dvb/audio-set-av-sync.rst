@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.audio
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _AUDIO_SET_AV_SYNC:
 
@@ -17,9 +23,9 @@ AUDIO_SET_AV_SYNC
 Synopsis
 --------
 
-.. c:macro:: AUDIO_SET_AV_SYNC
+.. c:function:: int  ioctl(int fd, AUDIO_SET_AV_SYNC, boolean state)
+    :name: AUDIO_SET_AV_SYNC
 
-``int ioctl(int fd, AUDIO_SET_AV_SYNC, boolean state)``
 
 Arguments
 ---------
@@ -27,6 +33,7 @@ Arguments
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -
 
@@ -44,11 +51,13 @@ Arguments
 
           FALSE: AV-sync OFF
 
+
 Description
 -----------
 
 This ioctl call asks the Audio Device to turn ON or OFF A/V
 synchronization.
+
 
 Return Value
 ------------

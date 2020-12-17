@@ -40,12 +40,12 @@
 struct acpi_exception_info {
 	char *name;
 
-#if defined (ACPI_HELP_APP) || defined (ACPI_ASL_COMPILER)
+#ifdef ACPI_HELP_APP
 	char *description;
 #endif
 };
 
-#if defined (ACPI_HELP_APP) || defined (ACPI_ASL_COMPILER)
+#ifdef ACPI_HELP_APP
 #define EXCEP_TXT(name,description)     {name, description}
 #else
 #define EXCEP_TXT(name,description)     {name}

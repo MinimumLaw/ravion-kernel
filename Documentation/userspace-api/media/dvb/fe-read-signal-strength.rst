@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.fe
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _FE_READ_SIGNAL_STRENGTH:
 
@@ -17,18 +23,19 @@ FE_READ_SIGNAL_STRENGTH
 Synopsis
 ========
 
-.. c:macro:: FE_READ_SIGNAL_STRENGTH
+.. c:function:: int ioctl( int fd, FE_READ_SIGNAL_STRENGTH, uint16_t *strength)
+    :name: FE_READ_SIGNAL_STRENGTH
 
-``int ioctl(int fd, FE_READ_SIGNAL_STRENGTH, uint16_t *strength)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :c:func:`open() <dvb-fe-open>`.
 
 ``strength``
     The signal strength value is stored into \*strength.
+
 
 Description
 ===========
@@ -36,6 +43,7 @@ Description
 This ioctl call returns the signal strength value for the signal
 currently received by the front-end. For this command, read-only access
 to the device is sufficient.
+
 
 Return Value
 ============

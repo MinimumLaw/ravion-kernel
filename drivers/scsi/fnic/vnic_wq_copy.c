@@ -79,6 +79,8 @@ int vnic_wq_copy_alloc(struct vnic_dev *vdev, struct vnic_wq_copy *wq,
 		       unsigned int index, unsigned int desc_count,
 		       unsigned int desc_size)
 {
+	int err;
+
 	wq->index = index;
 	wq->vdev = vdev;
 	wq->to_use_index = wq->to_clean_index = 0;
@@ -90,7 +92,11 @@ int vnic_wq_copy_alloc(struct vnic_dev *vdev, struct vnic_wq_copy *wq,
 
 	vnic_wq_copy_disable(wq);
 
-	return vnic_dev_alloc_desc_ring(vdev, &wq->ring, desc_count, desc_size);
+	err = vnic_dev_alloc_desc_ring(vdev, &wq->ring, desc_count, desc_size);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 void vnic_wq_copy_init(struct vnic_wq_copy *wq, unsigned int cq_index,

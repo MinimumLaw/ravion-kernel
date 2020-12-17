@@ -13,6 +13,8 @@
 
 #include "internal.h"
 
+#define _COMPONENT		ACPI_SYSTEM_COMPONENT
+ACPI_MODULE_NAME("custom_method");
 MODULE_LICENSE("GPL");
 
 static struct dentry *cm_dentry;

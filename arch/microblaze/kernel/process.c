@@ -149,5 +149,5 @@ int dump_fpu(struct pt_regs *regs, elf_fpregset_t *fpregs)
 
 void arch_cpu_idle(void)
 {
-       raw_local_irq_enable();
+       local_irq_enable();
 }

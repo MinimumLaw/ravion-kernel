@@ -32,16 +32,6 @@ ACPI_MODULE_NAME("evgpeinit")
  * kernel boot time as well.
  */
 
-#ifdef ACPI_GPE_USE_LOGICAL_ADDRESSES
-#define ACPI_FADT_GPE_BLOCK_ADDRESS(N)	\
-	acpi_gbl_FADT.xgpe##N##_block.space_id == \
-					ACPI_ADR_SPACE_SYSTEM_MEMORY ? \
-		(u64)acpi_gbl_xgpe##N##_block_logical_address : \
-		acpi_gbl_FADT.xgpe##N##_block.address
-#else
-#define ACPI_FADT_GPE_BLOCK_ADDRESS(N)	acpi_gbl_FADT.xgpe##N##_block.address
-#endif		/* ACPI_GPE_USE_LOGICAL_ADDRESSES */
-
 /*******************************************************************************
  *
  * FUNCTION:    acpi_ev_gpe_initialize
@@ -59,7 +49,6 @@ acpi_status acpi_ev_gpe_initialize(void)
 	u32 register_count1 = 0;
 	u32 gpe_number_max = 0;
 	acpi_status status;
-	u64 address;
 
 	ACPI_FUNCTION_TRACE(ev_gpe_initialize);
 
@@ -96,9 +85,8 @@ acpi_status acpi_ev_gpe_initialize(void)
 	 * If EITHER the register length OR the block address are zero, then that
 	 * particular block is not supported.
 	 */
-	address = ACPI_FADT_GPE_BLOCK_ADDRESS(0);
-
-	if (acpi_gbl_FADT.gpe0_block_length && address) {
+	if (acpi_gbl_FADT.gpe0_block_length &&
+	    acpi_gbl_FADT.xgpe0_block.address) {
 
 		/* GPE block 0 exists (has both length and address > 0) */
 
@@ -109,6 +97,7 @@ acpi_status acpi_ev_gpe_initialize(void)
 		/* Install GPE Block 0 */
 
 		status = acpi_ev_create_gpe_block(acpi_gbl_fadt_gpe_device,
+						  acpi_gbl_FADT.xgpe0_block.
 						  address,
 						  acpi_gbl_FADT.xgpe0_block.
 						  space_id, register_count0, 0,
@@ -121,9 +110,8 @@ acpi_status acpi_ev_gpe_initialize(void)
 		}
 	}
 
-	address = ACPI_FADT_GPE_BLOCK_ADDRESS(1);
-
-	if (acpi_gbl_FADT.gpe1_block_length && address) {
+	if (acpi_gbl_FADT.gpe1_block_length &&
+	    acpi_gbl_FADT.xgpe1_block.address) {
 
 		/* GPE block 1 exists (has both length and address > 0) */
 
@@ -149,6 +137,7 @@ acpi_status acpi_ev_gpe_initialize(void)
 
 			status =
 			    acpi_ev_create_gpe_block(acpi_gbl_fadt_gpe_device,
+						     acpi_gbl_FADT.xgpe1_block.
 						     address,
 						     acpi_gbl_FADT.xgpe1_block.
 						     space_id, register_count1,

@@ -1766,6 +1766,7 @@ static ssize_t o2hb_region_dev_store(struct config_item *item,
 	int sectsize;
 	char *p = (char *)page;
 	struct fd f;
+	struct inode *inode;
 	ssize_t ret = -EINVAL;
 	int live_threshold;
 
@@ -1792,16 +1793,20 @@ static ssize_t o2hb_region_dev_store(struct config_item *item,
 	    reg->hr_block_bytes == 0)
 		goto out2;
 
-	if (!S_ISBLK(f.file->f_mapping->host->i_mode))
+	inode = igrab(f.file->f_mapping->host);
+	if (inode == NULL)
 		goto out2;
 
-	reg->hr_bdev = blkdev_get_by_dev(f.file->f_mapping->host->i_rdev,
-					 FMODE_WRITE | FMODE_READ, NULL);
-	if (IS_ERR(reg->hr_bdev)) {
-		ret = PTR_ERR(reg->hr_bdev);
+	if (!S_ISBLK(inode->i_mode))
+		goto out3;
+
+	reg->hr_bdev = I_BDEV(f.file->f_mapping->host);
+	ret = blkdev_get(reg->hr_bdev, FMODE_WRITE | FMODE_READ, NULL);
+	if (ret) {
 		reg->hr_bdev = NULL;
-		goto out2;
+		goto out3;
 	}
+	inode = NULL;
 
 	bdevname(reg->hr_bdev, reg->hr_dev_name);
 
@@ -1904,13 +1909,16 @@ static ssize_t o2hb_region_dev_store(struct config_item *item,
 		       config_item_name(&reg->hr_item), reg->hr_dev_name);
 
 out3:
-	if (ret < 0) {
-		blkdev_put(reg->hr_bdev, FMODE_READ | FMODE_WRITE);
-		reg->hr_bdev = NULL;
-	}
+	iput(inode);
 out2:
 	fdput(f);
 out:
+	if (ret < 0) {
+		if (reg->hr_bdev) {
+			blkdev_put(reg->hr_bdev, FMODE_READ|FMODE_WRITE);
+			reg->hr_bdev = NULL;
+		}
+	}
 	return ret;
 }
 

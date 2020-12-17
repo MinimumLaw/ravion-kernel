@@ -8038,6 +8038,7 @@ static int __mlxsw_sp_router_init(struct mlxsw_sp *mlxsw_sp)
 	bool usp = net->ipv4.sysctl_ip_fwd_update_priority;
 	char rgcr_pl[MLXSW_REG_RGCR_LEN];
 	u64 max_rifs;
+	int err;
 
 	if (!MLXSW_CORE_RES_VALID(mlxsw_sp->core, MAX_RIFS))
 		return -EIO;
@@ -8046,7 +8047,10 @@ static int __mlxsw_sp_router_init(struct mlxsw_sp *mlxsw_sp)
 	mlxsw_reg_rgcr_pack(rgcr_pl, true, true);
 	mlxsw_reg_rgcr_max_router_interfaces_set(rgcr_pl, max_rifs);
 	mlxsw_reg_rgcr_usp_set(rgcr_pl, usp);
-	return mlxsw_reg_write(mlxsw_sp->core, MLXSW_REG(rgcr), rgcr_pl);
+	err = mlxsw_reg_write(mlxsw_sp->core, MLXSW_REG(rgcr), rgcr_pl);
+	if (err)
+		return err;
+	return 0;
 }
 
 static void __mlxsw_sp_router_fini(struct mlxsw_sp *mlxsw_sp)

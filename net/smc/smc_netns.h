@@ -16,6 +16,5 @@ extern unsigned int smc_net_id;
 /* per-network namespace private data */
 struct smc_net {
 	struct smc_pnettable pnettable;
-	struct smc_pnetids_ndev pnetids_ndev;
 };
 #endif

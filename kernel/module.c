@@ -18,7 +18,6 @@
 #include <linux/fs.h>
 #include <linux/sysfs.h>
 #include <linux/kernel.h>
-#include <linux/kernel_read_file.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/elf.h>
@@ -2098,11 +2097,8 @@ static int module_enforce_rwx_sections(Elf_Ehdr *hdr, Elf_Shdr *sechdrs,
 	int i;
 
 	for (i = 0; i < hdr->e_shnum; i++) {
-		if ((sechdrs[i].sh_flags & shf_wx) == shf_wx) {
-			pr_err("%s: section %s (index %d) has invalid WRITE|EXEC flags\n",
-				mod->name, secstrings + sechdrs[i].sh_name, i);
+		if ((sechdrs[i].sh_flags & shf_wx) == shf_wx)
 			return -ENOEXEC;
-		}
 	}
 
 	return 0;
@@ -3018,7 +3014,7 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 	if (info->len < sizeof(*(info->hdr)))
 		return -ENOEXEC;
 
-	err = security_kernel_load_data(LOADING_MODULE, true);
+	err = security_kernel_load_data(LOADING_MODULE);
 	if (err)
 		return err;
 
@@ -3028,17 +3024,11 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 		return -ENOMEM;
 
 	if (copy_chunked_from_user(info->hdr, umod, info->len) != 0) {
-		err = -EFAULT;
-		goto out;
+		vfree(info->hdr);
+		return -EFAULT;
 	}
 
-	err = security_kernel_post_load_data((char *)info->hdr, info->len,
-					     LOADING_MODULE, "init_module");
-out:
-	if (err)
-		vfree(info->hdr);
-
-	return err;
+	return 0;
 }
 
 static void free_copy(struct load_info *info)
@@ -3285,11 +3275,6 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	mod->kprobe_blacklist = section_objs(info, "_kprobe_blacklist",
 						sizeof(unsigned long),
 						&mod->num_kprobe_blacklist);
-#endif
-#ifdef CONFIG_HAVE_STATIC_CALL_INLINE
-	mod->static_call_sites = section_objs(info, ".static_call_sites",
-					      sizeof(*mod->static_call_sites),
-					      &mod->num_static_call_sites);
 #endif
 	mod->extable = section_objs(info, "__ex_table",
 				    sizeof(*mod->extable), &mod->num_exentries);
@@ -3800,13 +3785,9 @@ static int prepare_coming_module(struct module *mod)
 	if (err)
 		return err;
 
-	err = blocking_notifier_call_chain_robust(&module_notify_list,
-			MODULE_STATE_COMING, MODULE_STATE_GOING, mod);
-	err = notifier_to_errno(err);
-	if (err)
-		klp_module_going(mod);
-
-	return err;
+	blocking_notifier_call_chain(&module_notify_list,
+				     MODULE_STATE_COMING, mod);
+	return 0;
 }
 
 static int unknown_module_param_cb(char *param, char *val, const char *modname,
@@ -3837,10 +3818,8 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	char *after_dashes;
 
 	err = elf_header_check(info);
-	if (err) {
-		pr_err("Module has invalid ELF header\n");
+	if (err)
 		goto free_copy;
-	}
 
 	err = setup_load_info(info, flags);
 	if (err)
@@ -3848,7 +3827,6 @@ static int load_module(struct load_info *info, const char __user *uargs,
 
 	if (blacklisted(info->name)) {
 		err = -EPERM;
-		pr_err("Module %s is blacklisted\n", info->name);
 		goto free_copy;
 	}
 
@@ -4049,6 +4027,7 @@ SYSCALL_DEFINE3(init_module, void __user *, umod,
 SYSCALL_DEFINE3(finit_module, int, fd, const char __user *, uargs, int, flags)
 {
 	struct load_info info = { };
+	loff_t size;
 	void *hdr = NULL;
 	int err;
 
@@ -4062,12 +4041,12 @@ SYSCALL_DEFINE3(finit_module, int, fd, const char __user *, uargs, int, flags)
 		      |MODULE_INIT_IGNORE_VERMAGIC))
 		return -EINVAL;
 
-	err = kernel_read_file_from_fd(fd, 0, &hdr, INT_MAX, NULL,
+	err = kernel_read_file_from_fd(fd, &hdr, &size, INT_MAX,
 				       READING_MODULE);
-	if (err < 0)
+	if (err)
 		return err;
 	info.hdr = hdr;
-	info.len = err;
+	info.len = size;
 
 	return load_module(&info, uargs, flags);
 }

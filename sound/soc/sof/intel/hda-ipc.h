@@ -48,8 +48,4 @@
 #define HDA_PM_PG_STREAMING	BIT(1)
 #define HDA_PM_PG_RSVD		BIT(0)
 
-irqreturn_t cnl_ipc_irq_thread(int irq, void *context);
-int cnl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg);
-void cnl_ipc_dump(struct snd_sof_dev *sdev);
-
 #endif

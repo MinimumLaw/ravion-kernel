@@ -545,12 +545,6 @@ int restore_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	return err ?: protected_restore_fp_context(sc);
 }
 
-#ifdef CONFIG_WAR_ICACHE_REFILLS
-#define SIGMASK		~(cpu_icache_line_size()-1)
-#else
-#define SIGMASK		ALMASK
-#endif
-
 void __user *get_sigframe(struct ksignal *ksig, struct pt_regs *regs,
 			  size_t frame_size)
 {
@@ -571,7 +565,7 @@ void __user *get_sigframe(struct ksignal *ksig, struct pt_regs *regs,
 
 	sp = sigsp(sp, ksig);
 
-	return (void __user *)((sp - frame_size) & SIGMASK);
+	return (void __user *)((sp - frame_size) & (ICACHE_REFILLS_WORKAROUND_WAR ? ~(cpu_icache_line_size()-1) : ALMASK));
 }
 
 /*
@@ -907,6 +901,7 @@ asmlinkage void do_notify_resume(struct pt_regs *regs, void *unused,
 		do_signal(regs);
 
 	if (thread_info_flags & _TIF_NOTIFY_RESUME) {
+		clear_thread_flag(TIF_NOTIFY_RESUME);
 		tracehook_notify_resume(regs);
 		rseq_handle_notify_resume(NULL, regs);
 	}

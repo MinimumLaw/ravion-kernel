@@ -39,17 +39,16 @@
 		pwm0 = &pwm0;
 	};
 	cpus {
-		#address-cells = <1>;
+		#address-cells = <0>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		cpu {
 			compatible = "arm,arm926ej-s";
 			device_type = "cpu";
-			reg = <0>;
 		};
 	};
 
-	memory@20000000 {
+	memory {
 		device_type = "memory";
 		reg = <0x20000000 0x10000000>;
 	};
@@ -77,9 +76,6 @@
 	sram: sram@300000 {
 		compatible = "mmio-sram";
 		reg = <0x00300000 0x8000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x00300000 0x8000>;
 	};
 
 	ahb {
@@ -651,6 +647,7 @@
 				interrupts = <12 IRQ_TYPE_LEVEL_HIGH 0>;
 				dmas = <&dma0 1 AT91_DMA_CFG_PER_ID(0)>;
 				dma-names = "rxtx";
+				pinctrl-names = "default";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 12>;
 				clock-names = "mci_clk";
 				#address-cells = <1>;
@@ -664,6 +661,7 @@
 				interrupts = <26 IRQ_TYPE_LEVEL_HIGH 0>;
 				dmas = <&dma1 1 AT91_DMA_CFG_PER_ID(0)>;
 				dma-names = "rxtx";
+				pinctrl-names = "default";
 				clocks = <&pmc PMC_TYPE_PERIPHERAL 26>;
 				clock-names = "mci_clk";
 				#address-cells = <1>;

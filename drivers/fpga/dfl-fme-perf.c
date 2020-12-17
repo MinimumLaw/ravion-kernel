@@ -148,7 +148,7 @@ struct fme_perf_priv {
 	struct device *dev;
 	void __iomem *ioaddr;
 	struct pmu pmu;
-	u16 id;
+	u64 id;
 
 	u32 fab_users;
 	u32 fab_port_id;

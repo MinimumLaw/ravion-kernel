@@ -202,8 +202,8 @@ DEFINE_EVENT(kvm_mmu_page_class, kvm_mmu_prepare_zap_page,
 
 TRACE_EVENT(
 	mark_mmio_spte,
-	TP_PROTO(u64 *sptep, gfn_t gfn, u64 spte),
-	TP_ARGS(sptep, gfn, spte),
+	TP_PROTO(u64 *sptep, gfn_t gfn, unsigned access, unsigned int gen),
+	TP_ARGS(sptep, gfn, access, gen),
 
 	TP_STRUCT__entry(
 		__field(void *, sptep)
@@ -215,8 +215,8 @@ TRACE_EVENT(
 	TP_fast_assign(
 		__entry->sptep = sptep;
 		__entry->gfn = gfn;
-		__entry->access = spte & ACC_ALL;
-		__entry->gen = get_mmio_spte_generation(spte);
+		__entry->access = access;
+		__entry->gen = gen;
 	),
 
 	TP_printk("sptep:%p gfn %llx access %x gen %x", __entry->sptep,
@@ -244,11 +244,14 @@ TRACE_EVENT(
 		  __entry->access)
 );
 
+#define __spte_satisfied(__spte)				\
+	(__entry->retry && is_writable_pte(__entry->__spte))
+
 TRACE_EVENT(
 	fast_page_fault,
 	TP_PROTO(struct kvm_vcpu *vcpu, gpa_t cr2_or_gpa, u32 error_code,
-		 u64 *sptep, u64 old_spte, int ret),
-	TP_ARGS(vcpu, cr2_or_gpa, error_code, sptep, old_spte, ret),
+		 u64 *sptep, u64 old_spte, bool retry),
+	TP_ARGS(vcpu, cr2_or_gpa, error_code, sptep, old_spte, retry),
 
 	TP_STRUCT__entry(
 		__field(int, vcpu_id)
@@ -257,7 +260,7 @@ TRACE_EVENT(
 		__field(u64 *, sptep)
 		__field(u64, old_spte)
 		__field(u64, new_spte)
-		__field(int, ret)
+		__field(bool, retry)
 	),
 
 	TP_fast_assign(
@@ -267,7 +270,7 @@ TRACE_EVENT(
 		__entry->sptep = sptep;
 		__entry->old_spte = old_spte;
 		__entry->new_spte = *sptep;
-		__entry->ret = ret;
+		__entry->retry = retry;
 	),
 
 	TP_printk("vcpu %d gva %llx error_code %s sptep %p old %#llx"
@@ -275,7 +278,7 @@ TRACE_EVENT(
 		  __entry->cr2_or_gpa, __print_flags(__entry->error_code, "|",
 		  kvm_mmu_trace_pferr_flags), __entry->sptep,
 		  __entry->old_spte, __entry->new_spte,
-		  __entry->ret == RET_PF_SPURIOUS, __entry->ret == RET_PF_FIXED
+		  __spte_satisfied(old_spte), __spte_satisfied(new_spte)
 	)
 );
 

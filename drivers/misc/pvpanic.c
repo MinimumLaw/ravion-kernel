@@ -143,7 +143,13 @@ static void pvpanic_unregister_acpi_driver(void) {}
 
 static int pvpanic_mmio_probe(struct platform_device *pdev)
 {
-	base = devm_platform_ioremap_resource(pdev, 0);
+	struct resource *mem;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mem)
+		return -EINVAL;
+
+	base = devm_ioremap_resource(&pdev->dev, mem);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 

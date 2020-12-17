@@ -23,6 +23,7 @@
 #include <asm/platform_sst_audio.h>
 #include "../sst-mfld-platform.h"
 #include "sst.h"
+#include "../../common/sst-dsp.h"
 
 int sst_alloc_stream_mrfld(struct intel_sst_drv *sst_drv_ctx, void *params)
 {

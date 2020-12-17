@@ -121,8 +121,6 @@ required:
   - interrupts
   - interrupt-names
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gcc-sdm845.h>

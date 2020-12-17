@@ -232,7 +232,8 @@ struct ib_qp *pvrdma_create_qp(struct ib_pd *pd,
 	switch (init_attr->qp_type) {
 	case IB_QPT_GSI:
 		if (init_attr->port_num == 0 ||
-		    init_attr->port_num > pd->device->phys_port_cnt) {
+		    init_attr->port_num > pd->device->phys_port_cnt ||
+		    udata) {
 			dev_warn(&dev->pdev->dev, "invalid queuepair attrs\n");
 			ret = -EINVAL;
 			goto err_qp;
@@ -297,11 +298,9 @@ struct ib_qp *pvrdma_create_qp(struct ib_pd *pd,
 				goto err_qp;
 			}
 
-			qp->npages_send =
-				ib_umem_num_dma_blocks(qp->sumem, PAGE_SIZE);
+			qp->npages_send = ib_umem_page_count(qp->sumem);
 			if (!is_srq)
-				qp->npages_recv = ib_umem_num_dma_blocks(
-					qp->rumem, PAGE_SIZE);
+				qp->npages_recv = ib_umem_page_count(qp->rumem);
 			else
 				qp->npages_recv = 0;
 			qp->npages = qp->npages_send + qp->npages_recv;

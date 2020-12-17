@@ -11,11 +11,14 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 
 #include <sound/soc.h>
 
+#include <mach/gpio-samsung.h>
+#include <asm/mach-types.h>
 #include "regs-iis.h"
+
 #include "../codecs/wm8753.h"
 #include "s3c24xx-i2s.h"
 
@@ -163,7 +166,6 @@ static struct snd_soc_ops neo1973_voice_ops = {
 	.hw_free = neo1973_voice_hw_free,
 };
 
-static struct gpio_desc *gpiod_hp_in, *gpiod_amp_shut;
 static int gta02_speaker_enabled;
 
 static int lm4853_set_spk(struct snd_kcontrol *kcontrol,
@@ -171,7 +173,7 @@ static int lm4853_set_spk(struct snd_kcontrol *kcontrol,
 {
 	gta02_speaker_enabled = ucontrol->value.integer.value[0];
 
-	gpiod_set_value(gpiod_hp_in, !gta02_speaker_enabled);
+	gpio_set_value(S3C2410_GPJ(2), !gta02_speaker_enabled);
 
 	return 0;
 }
@@ -186,7 +188,7 @@ static int lm4853_get_spk(struct snd_kcontrol *kcontrol,
 static int lm4853_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *k, int event)
 {
-	gpiod_set_value(gpiod_amp_shut, SND_SOC_DAPM_EVENT_OFF(event));
+	gpio_set_value(S3C2410_GPJ(1), SND_SOC_DAPM_EVENT_OFF(event));
 
 	return 0;
 }
@@ -306,8 +308,13 @@ static struct snd_soc_codec_conf neo1973_codec_conf[] = {
 	},
 };
 
+static const struct gpio neo1973_gta02_gpios[] = {
+	{ S3C2410_GPJ(2), GPIOF_OUT_INIT_HIGH, "GTA02_HP_IN" },
+	{ S3C2410_GPJ(1), GPIOF_OUT_INIT_HIGH, "GTA02_AMP_SHUT" },
+};
+
 static struct snd_soc_card neo1973 = {
-	.name = "neo1973gta02",
+	.name = "neo1973",
 	.owner = THIS_MODULE,
 	.dai_link = neo1973_dai,
 	.num_links = ARRAY_SIZE(neo1973_dai),
@@ -325,36 +332,62 @@ static struct snd_soc_card neo1973 = {
 	.fully_routed = true,
 };
 
-static int neo1973_probe(struct platform_device *pdev)
+static struct platform_device *neo1973_snd_device;
+
+static int __init neo1973_init(void)
 {
-	struct device *dev = &pdev->dev;
+	int ret;
 
-	gpiod_hp_in = devm_gpiod_get(dev, "hp", GPIOD_OUT_HIGH);
-	if (IS_ERR(gpiod_hp_in)) {
-		dev_err(dev, "missing gpio %s\n", "hp");
-		return PTR_ERR(gpiod_hp_in);
-	}
-	gpiod_amp_shut = devm_gpiod_get(dev, "amp-shut", GPIOD_OUT_HIGH);
-	if (IS_ERR(gpiod_amp_shut)) {
-		dev_err(dev, "missing gpio %s\n", "amp-shut");
-		return PTR_ERR(gpiod_amp_shut);
+	if (!machine_is_neo1973_gta02())
+		return -ENODEV;
+
+	if (machine_is_neo1973_gta02()) {
+		neo1973.name = "neo1973gta02";
+		neo1973.num_aux_devs = 1;
+
+		ret = gpio_request_array(neo1973_gta02_gpios,
+				ARRAY_SIZE(neo1973_gta02_gpios));
+		if (ret)
+			return ret;
 	}
 
-	neo1973.dev = dev;
-	return devm_snd_soc_register_card(dev, &neo1973);
+	neo1973_snd_device = platform_device_alloc("soc-audio", -1);
+	if (!neo1973_snd_device) {
+		ret = -ENOMEM;
+		goto err_gpio_free;
+	}
+
+	platform_set_drvdata(neo1973_snd_device, &neo1973);
+	ret = platform_device_add(neo1973_snd_device);
+
+	if (ret)
+		goto err_put_device;
+
+	return 0;
+
+err_put_device:
+	platform_device_put(neo1973_snd_device);
+err_gpio_free:
+	if (machine_is_neo1973_gta02()) {
+		gpio_free_array(neo1973_gta02_gpios,
+				ARRAY_SIZE(neo1973_gta02_gpios));
+	}
+	return ret;
 }
+module_init(neo1973_init);
 
-struct platform_driver neo1973_audio = {
-	.driver = {
-		.name = "neo1973-audio",
-		.pm = &snd_soc_pm_ops,
-	},
-	.probe = neo1973_probe,
-};
-module_platform_driver(neo1973_audio);
+static void __exit neo1973_exit(void)
+{
+	platform_device_unregister(neo1973_snd_device);
+
+	if (machine_is_neo1973_gta02()) {
+		gpio_free_array(neo1973_gta02_gpios,
+				ARRAY_SIZE(neo1973_gta02_gpios));
+	}
+}
+module_exit(neo1973_exit);
 
 /* Module information */
 MODULE_AUTHOR("Graeme Gregory, graeme@openmoko.org, www.openmoko.org");
 MODULE_DESCRIPTION("ALSA SoC WM8753 Neo1973 and Frerunner");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:neo1973-audio");

@@ -349,9 +349,7 @@ static int versatile_panel_probe(struct platform_device *pdev)
 	drm_panel_init(&vpanel->panel, dev, &versatile_panel_drm_funcs,
 		       DRM_MODE_CONNECTOR_DPI);
 
-	drm_panel_add(&vpanel->panel);
-
-	return 0;
+	return drm_panel_add(&vpanel->panel);
 }
 
 static const struct of_device_id versatile_panel_match[] = {

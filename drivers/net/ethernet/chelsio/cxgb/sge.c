@@ -239,10 +239,8 @@ struct sched {
 	unsigned int	num;		/* num skbs in per port queues */
 	struct sched_port p[MAX_NPORTS];
 	struct tasklet_struct sched_tsk;/* tasklet used to run scheduler */
-	struct sge *sge;
 };
-
-static void restart_sched(struct tasklet_struct *t);
+static void restart_sched(unsigned long);
 
 
 /*
@@ -380,8 +378,7 @@ static int tx_sched_init(struct sge *sge)
 		return -ENOMEM;
 
 	pr_debug("tx_sched_init\n");
-	tasklet_setup(&s->sched_tsk, restart_sched);
-	s->sge = sge;
+	tasklet_init(&s->sched_tsk, restart_sched, (unsigned long) sge);
 	sge->tx_sched = s;
 
 	for (i = 0; i < MAX_NPORTS; i++) {
@@ -512,8 +509,9 @@ static void free_freelQ_buffers(struct pci_dev *pdev, struct freelQ *q)
 	while (q->credits--) {
 		struct freelQ_ce *ce = &q->centries[cidx];
 
-		dma_unmap_single(&pdev->dev, dma_unmap_addr(ce, dma_addr),
-				 dma_unmap_len(ce, dma_len), DMA_FROM_DEVICE);
+		pci_unmap_single(pdev, dma_unmap_addr(ce, dma_addr),
+				 dma_unmap_len(ce, dma_len),
+				 PCI_DMA_FROMDEVICE);
 		dev_kfree_skb(ce->skb);
 		ce->skb = NULL;
 		if (++cidx == q->size)
@@ -531,8 +529,8 @@ static void free_rx_resources(struct sge *sge)
 
 	if (sge->respQ.entries) {
 		size = sizeof(struct respQ_e) * sge->respQ.size;
-		dma_free_coherent(&pdev->dev, size, sge->respQ.entries,
-				  sge->respQ.dma_addr);
+		pci_free_consistent(pdev, size, sge->respQ.entries,
+				    sge->respQ.dma_addr);
 	}
 
 	for (i = 0; i < SGE_FREELQ_N; i++) {
@@ -544,8 +542,8 @@ static void free_rx_resources(struct sge *sge)
 		}
 		if (q->entries) {
 			size = sizeof(struct freelQ_e) * q->size;
-			dma_free_coherent(&pdev->dev, size, q->entries,
-					  q->dma_addr);
+			pci_free_consistent(pdev, size, q->entries,
+					    q->dma_addr);
 		}
 	}
 }
@@ -566,8 +564,7 @@ static int alloc_rx_resources(struct sge *sge, struct sge_params *p)
 		q->size = p->freelQ_size[i];
 		q->dma_offset = sge->rx_pkt_pad ? 0 : NET_IP_ALIGN;
 		size = sizeof(struct freelQ_e) * q->size;
-		q->entries = dma_alloc_coherent(&pdev->dev, size,
-						&q->dma_addr, GFP_KERNEL);
+		q->entries = pci_alloc_consistent(pdev, size, &q->dma_addr);
 		if (!q->entries)
 			goto err_no_mem;
 
@@ -604,8 +601,7 @@ static int alloc_rx_resources(struct sge *sge, struct sge_params *p)
 	sge->respQ.credits = 0;
 	size = sizeof(struct respQ_e) * sge->respQ.size;
 	sge->respQ.entries =
-		dma_alloc_coherent(&pdev->dev, size, &sge->respQ.dma_addr,
-				   GFP_KERNEL);
+		pci_alloc_consistent(pdev, size, &sge->respQ.dma_addr);
 	if (!sge->respQ.entries)
 		goto err_no_mem;
 	return 0;
@@ -628,10 +624,9 @@ static void free_cmdQ_buffers(struct sge *sge, struct cmdQ *q, unsigned int n)
 	ce = &q->centries[cidx];
 	while (n--) {
 		if (likely(dma_unmap_len(ce, dma_len))) {
-			dma_unmap_single(&pdev->dev,
-					 dma_unmap_addr(ce, dma_addr),
+			pci_unmap_single(pdev, dma_unmap_addr(ce, dma_addr),
 					 dma_unmap_len(ce, dma_len),
-					 DMA_TO_DEVICE);
+					 PCI_DMA_TODEVICE);
 			if (q->sop)
 				q->sop = 0;
 		}
@@ -668,8 +663,8 @@ static void free_tx_resources(struct sge *sge)
 		}
 		if (q->entries) {
 			size = sizeof(struct cmdQ_e) * q->size;
-			dma_free_coherent(&pdev->dev, size, q->entries,
-					  q->dma_addr);
+			pci_free_consistent(pdev, size, q->entries,
+					    q->dma_addr);
 		}
 	}
 }
@@ -694,8 +689,7 @@ static int alloc_tx_resources(struct sge *sge, struct sge_params *p)
 		q->stop_thres = 0;
 		spin_lock_init(&q->lock);
 		size = sizeof(struct cmdQ_e) * q->size;
-		q->entries = dma_alloc_coherent(&pdev->dev, size,
-						&q->dma_addr, GFP_KERNEL);
+		q->entries = pci_alloc_consistent(pdev, size, &q->dma_addr);
 		if (!q->entries)
 			goto err_no_mem;
 
@@ -843,8 +837,8 @@ static void refill_free_list(struct sge *sge, struct freelQ *q)
 			break;
 
 		skb_reserve(skb, q->dma_offset);
-		mapping = dma_map_single(&pdev->dev, skb->data, dma_len,
-					 DMA_FROM_DEVICE);
+		mapping = pci_map_single(pdev, skb->data, dma_len,
+					 PCI_DMA_FROMDEVICE);
 		skb_reserve(skb, sge->rx_pkt_pad);
 
 		ce->skb = skb;
@@ -1055,15 +1049,15 @@ static inline struct sk_buff *get_packet(struct adapter *adapter,
 			goto use_orig_buf;
 
 		skb_put(skb, len);
-		dma_sync_single_for_cpu(&pdev->dev,
-					dma_unmap_addr(ce, dma_addr),
-					dma_unmap_len(ce, dma_len),
-					DMA_FROM_DEVICE);
+		pci_dma_sync_single_for_cpu(pdev,
+					    dma_unmap_addr(ce, dma_addr),
+					    dma_unmap_len(ce, dma_len),
+					    PCI_DMA_FROMDEVICE);
 		skb_copy_from_linear_data(ce->skb, skb->data, len);
-		dma_sync_single_for_device(&pdev->dev,
-					   dma_unmap_addr(ce, dma_addr),
-					   dma_unmap_len(ce, dma_len),
-					   DMA_FROM_DEVICE);
+		pci_dma_sync_single_for_device(pdev,
+					       dma_unmap_addr(ce, dma_addr),
+					       dma_unmap_len(ce, dma_len),
+					       PCI_DMA_FROMDEVICE);
 		recycle_fl_buf(fl, fl->cidx);
 		return skb;
 	}
@@ -1074,8 +1068,8 @@ use_orig_buf:
 		return NULL;
 	}
 
-	dma_unmap_single(&pdev->dev, dma_unmap_addr(ce, dma_addr),
-			 dma_unmap_len(ce, dma_len), DMA_FROM_DEVICE);
+	pci_unmap_single(pdev, dma_unmap_addr(ce, dma_addr),
+			 dma_unmap_len(ce, dma_len), PCI_DMA_FROMDEVICE);
 	skb = ce->skb;
 	prefetch(skb->data);
 
@@ -1097,9 +1091,8 @@ static void unexpected_offload(struct adapter *adapter, struct freelQ *fl)
 	struct freelQ_ce *ce = &fl->centries[fl->cidx];
 	struct sk_buff *skb = ce->skb;
 
-	dma_sync_single_for_cpu(&adapter->pdev->dev,
-				dma_unmap_addr(ce, dma_addr),
-				dma_unmap_len(ce, dma_len), DMA_FROM_DEVICE);
+	pci_dma_sync_single_for_cpu(adapter->pdev, dma_unmap_addr(ce, dma_addr),
+			    dma_unmap_len(ce, dma_len), PCI_DMA_FROMDEVICE);
 	pr_err("%s: unexpected offload packet, cmd %u\n",
 	       adapter->name, *skb->data);
 	recycle_fl_buf(fl, fl->cidx);
@@ -1216,8 +1209,8 @@ static inline void write_tx_descs(struct adapter *adapter, struct sk_buff *skb,
 	e = e1 = &q->entries[pidx];
 	ce = &q->centries[pidx];
 
-	mapping = dma_map_single(&adapter->pdev->dev, skb->data,
-				 skb_headlen(skb), DMA_TO_DEVICE);
+	mapping = pci_map_single(adapter->pdev, skb->data,
+				 skb_headlen(skb), PCI_DMA_TODEVICE);
 
 	desc_mapping = mapping;
 	desc_len = skb_headlen(skb);
@@ -1308,10 +1301,9 @@ static inline void reclaim_completed_tx(struct sge *sge, struct cmdQ *q)
  * Called from tasklet. Checks the scheduler for any
  * pending skbs that can be sent.
  */
-static void restart_sched(struct tasklet_struct *t)
+static void restart_sched(unsigned long arg)
 {
-	struct sched *s = from_tasklet(s, t, sched_tsk);
-	struct sge *sge = s->sge;
+	struct sge *sge = (struct sge *) arg;
 	struct adapter *adapter = sge->adapter;
 	struct cmdQ *q = &sge->cmdQ[0];
 	struct sk_buff *skb;

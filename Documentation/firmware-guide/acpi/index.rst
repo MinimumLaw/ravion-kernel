@@ -26,4 +26,3 @@ ACPI Support
    lpit
    video_extension
    extcon-intel-int3496
-   intel-pmc-mux

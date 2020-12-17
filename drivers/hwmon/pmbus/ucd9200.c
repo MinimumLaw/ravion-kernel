@@ -71,7 +71,8 @@ static const struct of_device_id __maybe_unused ucd9200_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, ucd9200_of_match);
 
-static int ucd9200_probe(struct i2c_client *client)
+static int ucd9200_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1];
 	struct pmbus_driver_info *info;
@@ -105,12 +106,12 @@ static int ucd9200_probe(struct i2c_client *client)
 	if (client->dev.of_node)
 		chip = (enum chips)of_device_get_match_data(&client->dev);
 	else
-		chip = mid->driver_data;
+		chip = id->driver_data;
 
-	if (chip != ucd9200 && strcmp(client->name, mid->name) != 0)
+	if (chip != ucd9200 && chip != mid->driver_data)
 		dev_notice(&client->dev,
 			   "Device mismatch: Configured %s, detected %s\n",
-			   client->name, mid->name);
+			   id->name, mid->name);
 
 	info = devm_kzalloc(&client->dev, sizeof(struct pmbus_driver_info),
 			    GFP_KERNEL);
@@ -191,7 +192,7 @@ static int ucd9200_probe(struct i2c_client *client)
 	if (mid->driver_data == ucd9240)
 		info->func[0] |= PMBUS_HAVE_FAN12 | PMBUS_HAVE_STATUS_FAN12;
 
-	return pmbus_do_probe(client, info);
+	return pmbus_do_probe(client, mid, info);
 }
 
 /* This is the driver that will be inserted */
@@ -200,7 +201,7 @@ static struct i2c_driver ucd9200_driver = {
 		.name = "ucd9200",
 		.of_match_table = of_match_ptr(ucd9200_of_match),
 	},
-	.probe_new = ucd9200_probe,
+	.probe = ucd9200_probe,
 	.remove = pmbus_do_remove,
 	.id_table = ucd9200_id,
 };

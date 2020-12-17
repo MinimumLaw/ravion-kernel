@@ -580,6 +580,8 @@ int lx_blank_display(struct fb_info *info, int blank_mode)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+
 static void lx_save_regs(struct lxfb_par *par)
 {
 	uint32_t filt;
@@ -835,3 +837,5 @@ int lx_powerup(struct fb_info *info)
 	par->powered_down = 0;
 	return 0;
 }
+
+#endif

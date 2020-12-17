@@ -1736,12 +1736,6 @@ static int shmem_swapin_page(struct inode *inode, pgoff_t index,
 	}
 	wait_on_page_writeback(page);
 
-	/*
-	 * Some architectures may have to restore extra metadata to the
-	 * physical page after reading from swap.
-	 */
-	arch_swap_restore(swap, page);
-
 	if (shmem_should_replace_page(page, gfp)) {
 		error = shmem_replace_page(&page, gfp, info, index);
 		if (error)
@@ -1830,8 +1824,6 @@ repeat:
 		return error;
 	}
 
-	if (page)
-		hindex = page->index;
 	if (page && sgp == SGP_WRITE)
 		mark_page_accessed(page);
 
@@ -1842,10 +1834,11 @@ repeat:
 		unlock_page(page);
 		put_page(page);
 		page = NULL;
-		hindex = index;
 	}
-	if (page || sgp == SGP_READ)
-		goto out;
+	if (page || sgp == SGP_READ) {
+		*pagep = page;
+		return 0;
+	}
 
 	/*
 	 * Fast cache lookup did not find it:
@@ -1970,13 +1963,14 @@ clear:
 	 * it now, lest undo on failure cancel our earlier guarantee.
 	 */
 	if (sgp != SGP_WRITE && !PageUptodate(page)) {
+		struct page *head = compound_head(page);
 		int i;
 
-		for (i = 0; i < compound_nr(page); i++) {
-			clear_highpage(page + i);
-			flush_dcache_page(page + i);
+		for (i = 0; i < compound_nr(head); i++) {
+			clear_highpage(head + i);
+			flush_dcache_page(head + i);
 		}
-		SetPageUptodate(page);
+		SetPageUptodate(head);
 	}
 
 	/* Perhaps the file has been truncated since we checked */
@@ -1992,7 +1986,6 @@ clear:
 		error = -EINVAL;
 		goto unlock;
 	}
-out:
 	*pagep = page + index - hindex;
 	return 0;
 
@@ -2275,9 +2268,6 @@ static int shmem_mmap(struct file *file, struct vm_area_struct *vma)
 		if (vma->vm_flags & VM_SHARED)
 			vma->vm_flags &= ~(VM_MAYWRITE);
 	}
-
-	/* arm64 - allow memory tagging on RAM-based files */
-	vma->vm_flags |= VM_MTE_ALLOWED;
 
 	file_accessed(file);
 	vma->vm_ops = &shmem_vm_ops;
@@ -3984,7 +3974,7 @@ static struct file_system_type shmem_fs_type = {
 	.parameters	= shmem_fs_parameters,
 #endif
 	.kill_sb	= kill_litter_super,
-	.fs_flags	= FS_USERNS_MOUNT | FS_THP_SUPPORT,
+	.fs_flags	= FS_USERNS_MOUNT,
 };
 
 int __init shmem_init(void)

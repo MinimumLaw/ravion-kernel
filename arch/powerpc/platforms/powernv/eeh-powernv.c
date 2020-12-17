@@ -38,10 +38,58 @@
 
 static int eeh_event_irq = -EINVAL;
 
-static void pnv_pcibios_bus_add_device(struct pci_dev *pdev)
+void pnv_pcibios_bus_add_device(struct pci_dev *pdev)
 {
 	dev_dbg(&pdev->dev, "EEH: Setting up device\n");
 	eeh_probe_device(pdev);
+}
+
+static int pnv_eeh_init(void)
+{
+	struct pci_controller *hose;
+	struct pnv_phb *phb;
+	int max_diag_size = PNV_PCI_DIAG_BUF_SIZE;
+
+	if (!firmware_has_feature(FW_FEATURE_OPAL)) {
+		pr_warn("%s: OPAL is required !\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	/* Set probe mode */
+	eeh_add_flag(EEH_PROBE_MODE_DEV);
+
+	/*
+	 * P7IOC blocks PCI config access to frozen PE, but PHB3
+	 * doesn't do that. So we have to selectively enable I/O
+	 * prior to collecting error log.
+	 */
+	list_for_each_entry(hose, &hose_list, list_node) {
+		phb = hose->private_data;
+
+		if (phb->model == PNV_PHB_MODEL_P7IOC)
+			eeh_add_flag(EEH_ENABLE_IO_FOR_LOG);
+
+		if (phb->diag_data_size > max_diag_size)
+			max_diag_size = phb->diag_data_size;
+
+		/*
+		 * PE#0 should be regarded as valid by EEH core
+		 * if it's not the reserved one. Currently, we
+		 * have the reserved PE#255 and PE#127 for PHB3
+		 * and P7IOC separately. So we should regard
+		 * PE#0 as valid for PHB3 and P7IOC.
+		 */
+		if (phb->ioda.reserved_pe_idx != 0)
+			eeh_add_flag(EEH_VALID_PE_ZERO);
+
+		break;
+	}
+
+	eeh_set_pe_aux_size(max_diag_size);
+	ppc_md.pcibios_bus_add_device = pnv_pcibios_bus_add_device;
+
+	return 0;
 }
 
 static irqreturn_t pnv_eeh_event(int irq, void *data)
@@ -87,7 +135,7 @@ static ssize_t pnv_eeh_ei_write(struct file *filp,
 		return -EINVAL;
 
 	/* Retrieve PE */
-	pe = eeh_pe_get(hose, pe_no);
+	pe = eeh_pe_get(hose, pe_no, 0);
 	if (!pe)
 		return -ENODEV;
 
@@ -142,7 +190,7 @@ PNV_EEH_DBGFS_ENTRY(inbB, 0xE10);
 
 #endif /* CONFIG_DEBUG_FS */
 
-static void pnv_eeh_enable_phbs(void)
+void pnv_eeh_enable_phbs(void)
 {
 	struct pci_controller *hose;
 	struct pnv_phb *phb;
@@ -306,7 +354,7 @@ static struct eeh_pe *pnv_eeh_get_upstream_pe(struct pci_dev *pdev)
 	if (parent) {
 		struct pnv_ioda_pe *ioda_pe = pnv_ioda_get_pe(parent);
 
-		return eeh_pe_get(phb->hose, ioda_pe->pe_number);
+		return eeh_pe_get(phb->hose, ioda_pe->pe_number, 0);
 	}
 
 	return NULL;
@@ -1358,7 +1406,7 @@ static int pnv_eeh_get_pe(struct pci_controller *hose,
 	}
 
 	/* Find the PE according to PE# */
-	dev_pe = eeh_pe_get(hose, pe_no);
+	dev_pe = eeh_pe_get(hose, pe_no, 0);
 	if (!dev_pe)
 		return -EEXIST;
 
@@ -1626,6 +1674,7 @@ static int pnv_eeh_restore_config(struct eeh_dev *edev)
 
 static struct eeh_ops pnv_eeh_ops = {
 	.name                   = "powernv",
+	.init                   = pnv_eeh_init,
 	.probe			= pnv_eeh_probe,
 	.set_option             = pnv_eeh_set_option,
 	.get_state              = pnv_eeh_get_state,
@@ -1666,44 +1715,9 @@ DECLARE_PCI_FIXUP_HEADER(PCI_ANY_ID, PCI_ANY_ID, pnv_pci_fixup_vf_mps);
  */
 static int __init eeh_powernv_init(void)
 {
-	int max_diag_size = PNV_PCI_DIAG_BUF_SIZE;
-	struct pci_controller *hose;
-	struct pnv_phb *phb;
 	int ret = -EINVAL;
 
-	if (!firmware_has_feature(FW_FEATURE_OPAL)) {
-		pr_warn("%s: OPAL is required !\n", __func__);
-		return -EINVAL;
-	}
-
-	/* Set probe mode */
-	eeh_add_flag(EEH_PROBE_MODE_DEV);
-
-	/*
-	 * P7IOC blocks PCI config access to frozen PE, but PHB3
-	 * doesn't do that. So we have to selectively enable I/O
-	 * prior to collecting error log.
-	 */
-	list_for_each_entry(hose, &hose_list, list_node) {
-		phb = hose->private_data;
-
-		if (phb->model == PNV_PHB_MODEL_P7IOC)
-			eeh_add_flag(EEH_ENABLE_IO_FOR_LOG);
-
-		if (phb->diag_data_size > max_diag_size)
-			max_diag_size = phb->diag_data_size;
-
-		break;
-	}
-
-	/*
-	 * eeh_init() allocates the eeh_pe and its aux data buf so the
-	 * size needs to be set before calling eeh_init().
-	 */
-	eeh_set_pe_aux_size(max_diag_size);
-	ppc_md.pcibios_bus_add_device = pnv_pcibios_bus_add_device;
-
-	ret = eeh_init(&pnv_eeh_ops);
+	ret = eeh_ops_register(&pnv_eeh_ops);
 	if (!ret)
 		pr_info("EEH: PowerNV platform initialized\n");
 	else
@@ -1711,4 +1725,4 @@ static int __init eeh_powernv_init(void)
 
 	return ret;
 }
-machine_arch_initcall(powernv, eeh_powernv_init);
+machine_early_initcall(powernv, eeh_powernv_init);

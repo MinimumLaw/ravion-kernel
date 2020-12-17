@@ -94,8 +94,6 @@ required:
   - resets
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/mfd/stm32f7-rcc.h>

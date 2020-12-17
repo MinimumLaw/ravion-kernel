@@ -285,7 +285,9 @@ static irqreturn_t zx_dma_int_handler(int irq, void *dev_id)
 		p = &d->phy[i];
 		c = p->vchan;
 		if (c) {
-			spin_lock(&c->vc.lock);
+			unsigned long flags;
+
+			spin_lock_irqsave(&c->vc.lock, flags);
 			if (c->cyclic) {
 				vchan_cyclic_callback(&p->ds_run->vd);
 			} else {
@@ -293,7 +295,7 @@ static irqreturn_t zx_dma_int_handler(int irq, void *dev_id)
 				p->ds_done = p->ds_run;
 				task = 1;
 			}
-			spin_unlock(&c->vc.lock);
+			spin_unlock_irqrestore(&c->vc.lock, flags);
 			irq_chan |= BIT(i);
 		}
 	}

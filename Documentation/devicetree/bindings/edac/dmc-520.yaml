@@ -49,8 +49,6 @@ required:
   - interrupts
   - interrupt-names
 
-additionalProperties: false
-
 examples:
   - |
     dmc0: dmc@200000 {

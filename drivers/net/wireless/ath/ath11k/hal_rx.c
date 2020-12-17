@@ -256,8 +256,6 @@ int ath11k_hal_reo_cmd_send(struct ath11k_base *ab, struct hal_srng *srng,
 		break;
 	}
 
-	ath11k_dp_shadow_start_timer(ab, srng, &ab->dp.reo_cmd_timer);
-
 out:
 	ath11k_hal_srng_access_end(ab, srng);
 	spin_unlock_bh(&srng->lock);
@@ -788,7 +786,7 @@ void ath11k_hal_reo_init_cmd_ring(struct ath11k_base *ab,
 
 	memset(&params, 0, sizeof(params));
 
-	entry_size = ath11k_hal_srng_get_entrysize(ab, HAL_REO_CMD);
+	entry_size = ath11k_hal_srng_get_entrysize(HAL_REO_CMD);
 	ath11k_hal_srng_get_params(ab, srng, &params);
 	entry = (u8 *)params.ring_base_vaddr;
 
@@ -815,13 +813,13 @@ void ath11k_hal_reo_hw_setup(struct ath11k_base *ab, u32 ring_hash_map)
 	       FIELD_PREP(HAL_REO1_GEN_ENABLE_AGING_FLUSH_ENABLE, 1);
 	ath11k_hif_write32(ab, reo_base + HAL_REO1_GEN_ENABLE, val);
 
-	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_0(ab),
+	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_0,
 			   HAL_DEFAULT_REO_TIMEOUT_USEC);
-	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_1(ab),
+	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_1,
 			   HAL_DEFAULT_REO_TIMEOUT_USEC);
-	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_2(ab),
+	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_2,
 			   HAL_DEFAULT_REO_TIMEOUT_USEC);
-	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_3(ab),
+	ath11k_hif_write32(ab, reo_base + HAL_REO1_AGING_THRESH_IX_3,
 			   HAL_DEFAULT_REO_TIMEOUT_USEC);
 
 	ath11k_hif_write32(ab, reo_base + HAL_REO1_DEST_RING_CTRL_IX_0,
@@ -1197,7 +1195,7 @@ ath11k_hal_rx_parse_mon_status(struct ath11k_base *ab,
 
 void ath11k_hal_rx_reo_ent_buf_paddr_get(void *rx_desc, dma_addr_t *paddr,
 					 u32 *sw_cookie, void **pp_buf_addr,
-					 u8 *rbm, u32 *msdu_cnt)
+					 u32  *msdu_cnt)
 {
 	struct hal_reo_entrance_ring *reo_ent_ring =
 		(struct hal_reo_entrance_ring *)rx_desc;
@@ -1219,8 +1217,6 @@ void ath11k_hal_rx_reo_ent_buf_paddr_get(void *rx_desc, dma_addr_t *paddr,
 
 	*sw_cookie = FIELD_GET(BUFFER_ADDR_INFO1_SW_COOKIE,
 			       buf_addr_info->info1);
-	*rbm = FIELD_GET(BUFFER_ADDR_INFO1_RET_BUF_MGR,
-			 buf_addr_info->info1);
 
 	*pp_buf_addr = (void *)buf_addr_info;
 }

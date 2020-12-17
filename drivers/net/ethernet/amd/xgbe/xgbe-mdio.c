@@ -688,9 +688,9 @@ static void xgbe_an73_isr(struct xgbe_prv_data *pdata)
 	}
 }
 
-static void xgbe_an_isr_task(struct tasklet_struct *t)
+static void xgbe_an_isr_task(unsigned long data)
 {
-	struct xgbe_prv_data *pdata = from_tasklet(pdata, t, tasklet_an);
+	struct xgbe_prv_data *pdata = (struct xgbe_prv_data *)data;
 
 	netif_dbg(pdata, intr, pdata->netdev, "AN interrupt received\n");
 
@@ -715,14 +715,14 @@ static irqreturn_t xgbe_an_isr(int irq, void *data)
 	if (pdata->isr_as_tasklet)
 		tasklet_schedule(&pdata->tasklet_an);
 	else
-		xgbe_an_isr_task(&pdata->tasklet_an);
+		xgbe_an_isr_task((unsigned long)pdata);
 
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t xgbe_an_combined_isr(struct xgbe_prv_data *pdata)
 {
-	xgbe_an_isr_task(&pdata->tasklet_an);
+	xgbe_an_isr_task((unsigned long)pdata);
 
 	return IRQ_HANDLED;
 }
@@ -1414,7 +1414,8 @@ static int xgbe_phy_start(struct xgbe_prv_data *pdata)
 
 	/* If we have a separate AN irq, enable it */
 	if (pdata->dev_irq != pdata->an_irq) {
-		tasklet_setup(&pdata->tasklet_an, xgbe_an_isr_task);
+		tasklet_init(&pdata->tasklet_an, xgbe_an_isr_task,
+			     (unsigned long)pdata);
 
 		ret = devm_request_irq(pdata->dev, pdata->an_irq,
 				       xgbe_an_isr, 0, pdata->an_name,

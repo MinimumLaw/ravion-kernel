@@ -333,7 +333,7 @@ EXPORT_SYMBOL(memchr);
  * memcmp - Compare two areas of memory
  * @s1: One area of memory
  * @s2: Another area of memory
- * @n: The size of the area.
+ * @count: The size of the area.
  */
 #ifdef __HAVE_ARCH_MEMCMP
 int memcmp(const void *s1, const void *s2, size_t n)

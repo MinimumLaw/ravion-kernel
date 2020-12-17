@@ -566,7 +566,7 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 
 	port {
 		dpi_out: endpoint {
@@ -577,12 +577,12 @@
 };
 
 &dsi2 {
-	status = "okay";
+	status = "ok";
 	vdd-supply = <&vcxio>;
 };
 
 &hdmi {
-	status = "okay";
+	status = "ok";
 	vdda-supply = <&vdac>;
 
 	port {

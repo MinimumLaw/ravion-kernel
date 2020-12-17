@@ -838,7 +838,7 @@ static int load_copro_firmware(struct fsi_master_acf *master)
 	rc = request_firmware(&fw, FW_FILE_NAME, master->dev);
 	if (rc) {
 		dev_err(
-			master->dev, "Error %d to load firmware '%s' !\n",
+			master->dev, "Error %d to load firwmare '%s' !\n",
 			rc, FW_FILE_NAME);
 		return rc;
 	}
@@ -1039,8 +1039,7 @@ static void fsi_master_acf_setup_external(struct fsi_master_acf *master)
 	gpiod_direction_input(master->gpio_data);
 }
 
-static int fsi_master_acf_link_enable(struct fsi_master *_master, int link,
-				      bool enable)
+static int fsi_master_acf_link_enable(struct fsi_master *_master, int link)
 {
 	struct fsi_master_acf *master = to_fsi_master_acf(_master);
 	int rc = -EBUSY;
@@ -1050,7 +1049,7 @@ static int fsi_master_acf_link_enable(struct fsi_master *_master, int link,
 
 	mutex_lock(&master->lock);
 	if (!master->external_mode) {
-		gpiod_set_value(master->gpio_enable, enable ? 1 : 0);
+		gpiod_set_value(master->gpio_enable, 1);
 		rc = 0;
 	}
 	mutex_unlock(&master->lock);

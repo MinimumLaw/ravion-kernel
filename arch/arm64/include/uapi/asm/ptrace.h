@@ -51,7 +51,6 @@
 #define PSR_PAN_BIT	0x00400000
 #define PSR_UAO_BIT	0x00800000
 #define PSR_DIT_BIT	0x01000000
-#define PSR_TCO_BIT	0x02000000
 #define PSR_V_BIT	0x10000000
 #define PSR_C_BIT	0x20000000
 #define PSR_Z_BIT	0x40000000
@@ -76,9 +75,6 @@
 /* syscall emulation path in ptrace */
 #define PTRACE_SYSEMU		  31
 #define PTRACE_SYSEMU_SINGLESTEP  32
-/* MTE allocation tag access */
-#define PTRACE_PEEKMTETAGS	  33
-#define PTRACE_POKEMTETAGS	  34
 
 #ifndef __ASSEMBLY__
 

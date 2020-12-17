@@ -282,7 +282,8 @@ static int omfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	buf->f_blocks = sbi->s_num_blocks;
 	buf->f_files = sbi->s_num_blocks;
 	buf->f_namelen = OMFS_NAMELEN;
-	buf->f_fsid = u64_to_fsid(id);
+	buf->f_fsid.val[0] = (u32)id;
+	buf->f_fsid.val[1] = (u32)(id >> 32);
 
 	buf->f_bfree = buf->f_bavail = buf->f_ffree =
 		omfs_count_free(s);
@@ -362,11 +363,12 @@ static int omfs_get_imap(struct super_block *sb)
 		bh = sb_bread(sb, block++);
 		if (!bh)
 			goto nomem_free;
-		*ptr = kmemdup(bh->b_data, sb->s_blocksize, GFP_KERNEL);
+		*ptr = kmalloc(sb->s_blocksize, GFP_KERNEL);
 		if (!*ptr) {
 			brelse(bh);
 			goto nomem_free;
 		}
+		memcpy(*ptr, bh->b_data, sb->s_blocksize);
 		if (count < sb->s_blocksize)
 			memset((void *)*ptr + count, 0xff,
 				sb->s_blocksize - count);

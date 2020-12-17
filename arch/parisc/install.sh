@@ -43,7 +43,7 @@ fi
 
 # Default install
 
-if [ "$(basename $2)" = "vmlinuz" ]; then
+if [ "$(basename $2)" = "zImage" ]; then
 # Compressed install
   echo "Installing compressed kernel"
   base=vmlinuz

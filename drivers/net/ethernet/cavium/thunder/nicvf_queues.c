@@ -460,9 +460,9 @@ void nicvf_rbdr_work(struct work_struct *work)
 }
 
 /* In Softirq context, alloc rcv buffers in atomic mode */
-void nicvf_rbdr_task(struct tasklet_struct *t)
+void nicvf_rbdr_task(unsigned long data)
 {
-	struct nicvf *nic = from_tasklet(nic, t, rbdr_task);
+	struct nicvf *nic = (struct nicvf *)data;
 
 	nicvf_refill_rbdr(nic, GFP_ATOMIC);
 	if (nic->rb_alloc_fail) {

@@ -110,7 +110,7 @@ while (<IN>) {
 	    ) {
 		my $s = $1;
 
-		$structs{$s} = "struct $s\\ ";
+		$structs{$s} = "struct :c:type:`$s`\\ ";
 		next;
 	}
 }

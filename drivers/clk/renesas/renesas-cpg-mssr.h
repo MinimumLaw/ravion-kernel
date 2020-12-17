@@ -85,12 +85,6 @@ struct mssr_mod_clk {
 
 struct device_node;
 
-enum clk_reg_layout {
-	CLK_REG_LAYOUT_RCAR_GEN2_AND_GEN3 = 0,
-	CLK_REG_LAYOUT_RZ_A,
-	CLK_REG_LAYOUT_RCAR_V3U,
-};
-
     /**
      * SoC-specific CPG/MSSR Description
      *
@@ -111,7 +105,6 @@ enum clk_reg_layout {
      * @crit_mod_clks: Array with Module Clock IDs of critical clocks that
      *                 should not be disabled without a knowledgeable driver
      * @num_crit_mod_clks: Number of entries in crit_mod_clks[]
-     * @reg_layout: CPG/MSSR register layout from enum clk_reg_layout
      *
      * @core_pm_clks: Array with IDs of Core Clocks that are suitable for Power
      *                Management, in addition to Module Clocks
@@ -119,6 +112,10 @@ enum clk_reg_layout {
      *
      * @init: Optional callback to perform SoC-specific initialization
      * @cpg_clk_register: Optional callback to handle special Core Clock types
+     *
+     * @stbyctrl: This device has Standby Control Registers which are 8-bits
+     *            wide, no status registers (MSTPSR) and have different address
+     *            offsets.
      */
 
 struct cpg_mssr_info {
@@ -133,7 +130,7 @@ struct cpg_mssr_info {
 	unsigned int num_core_clks;
 	unsigned int last_dt_core_clk;
 	unsigned int num_total_core_clks;
-	enum clk_reg_layout reg_layout;
+	bool stbyctrl;
 
 	/* Module Clocks */
 	const struct mssr_mod_clk *mod_clks;
@@ -177,7 +174,6 @@ extern const struct cpg_mssr_info r8a77970_cpg_mssr_info;
 extern const struct cpg_mssr_info r8a77980_cpg_mssr_info;
 extern const struct cpg_mssr_info r8a77990_cpg_mssr_info;
 extern const struct cpg_mssr_info r8a77995_cpg_mssr_info;
-extern const struct cpg_mssr_info r8a779a0_cpg_mssr_info;
 
 void __init cpg_mssr_early_init(struct device_node *np,
 				const struct cpg_mssr_info *info);

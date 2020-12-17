@@ -901,8 +901,11 @@ static int brcmstb_dpfe_probe(struct platform_device *pdev)
 	}
 
 	ret = brcmstb_dpfe_download_firmware(priv);
-	if (ret)
-		return dev_err_probe(dev, ret, "Couldn't download firmware\n");
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Couldn't download firmware -- %d\n", ret);
+		return ret;
+	}
 
 	ret = sysfs_create_groups(&pdev->dev.kobj, priv->dpfe_api->sysfs_attrs);
 	if (!ret)

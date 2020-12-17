@@ -56,8 +56,6 @@ required:
   - clock-names
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gcc-sdm845.h>

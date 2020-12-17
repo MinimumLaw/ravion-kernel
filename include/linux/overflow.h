@@ -44,16 +44,6 @@
 #define is_non_negative(a) ((a) > 0 || (a) == 0)
 #define is_negative(a) (!(is_non_negative(a)))
 
-/*
- * Allows for effectively applying __must_check to a macro so we can have
- * both the type-agnostic benefits of the macros while also being able to
- * enforce that the return value is, in fact, checked.
- */
-static inline bool __must_check __must_check_overflow(bool overflow)
-{
-	return unlikely(overflow);
-}
-
 #ifdef COMPILER_HAS_GENERIC_BUILTIN_OVERFLOW
 /*
  * For simplicity and code hygiene, the fallback code below insists on
@@ -63,32 +53,32 @@ static inline bool __must_check __must_check_overflow(bool overflow)
  * alias for __builtin_add_overflow, but add type checks similar to
  * below.
  */
-#define check_add_overflow(a, b, d) __must_check_overflow(({	\
+#define check_add_overflow(a, b, d) ({		\
 	typeof(a) __a = (a);			\
 	typeof(b) __b = (b);			\
 	typeof(d) __d = (d);			\
 	(void) (&__a == &__b);			\
 	(void) (&__a == __d);			\
 	__builtin_add_overflow(__a, __b, __d);	\
-}))
+})
 
-#define check_sub_overflow(a, b, d) __must_check_overflow(({	\
+#define check_sub_overflow(a, b, d) ({		\
 	typeof(a) __a = (a);			\
 	typeof(b) __b = (b);			\
 	typeof(d) __d = (d);			\
 	(void) (&__a == &__b);			\
 	(void) (&__a == __d);			\
 	__builtin_sub_overflow(__a, __b, __d);	\
-}))
+})
 
-#define check_mul_overflow(a, b, d) __must_check_overflow(({	\
+#define check_mul_overflow(a, b, d) ({		\
 	typeof(a) __a = (a);			\
 	typeof(b) __b = (b);			\
 	typeof(d) __d = (d);			\
 	(void) (&__a == &__b);			\
 	(void) (&__a == __d);			\
 	__builtin_mul_overflow(__a, __b, __d);	\
-}))
+})
 
 #else
 
@@ -201,20 +191,21 @@ static inline bool __must_check __must_check_overflow(bool overflow)
 })
 
 
-#define check_add_overflow(a, b, d)	__must_check_overflow(		\
+#define check_add_overflow(a, b, d)					\
 	__builtin_choose_expr(is_signed_type(typeof(a)),		\
 			__signed_add_overflow(a, b, d),			\
-			__unsigned_add_overflow(a, b, d)))
+			__unsigned_add_overflow(a, b, d))
 
-#define check_sub_overflow(a, b, d)	__must_check_overflow(		\
+#define check_sub_overflow(a, b, d)					\
 	__builtin_choose_expr(is_signed_type(typeof(a)),		\
 			__signed_sub_overflow(a, b, d),			\
-			__unsigned_sub_overflow(a, b, d)))
+			__unsigned_sub_overflow(a, b, d))
 
-#define check_mul_overflow(a, b, d)	__must_check_overflow(		\
+#define check_mul_overflow(a, b, d)					\
 	__builtin_choose_expr(is_signed_type(typeof(a)),		\
 			__signed_mul_overflow(a, b, d),			\
-			__unsigned_mul_overflow(a, b, d)))
+			__unsigned_mul_overflow(a, b, d))
+
 
 #endif /* COMPILER_HAS_GENERIC_BUILTIN_OVERFLOW */
 
@@ -237,7 +228,7 @@ static inline bool __must_check __must_check_overflow(bool overflow)
  * '*d' will hold the results of the attempted shift, but is not
  * considered "safe for use" if false is returned.
  */
-#define check_shl_overflow(a, s, d) __must_check_overflow(({		\
+#define check_shl_overflow(a, s, d) ({					\
 	typeof(a) _a = a;						\
 	typeof(s) _s = s;						\
 	typeof(d) _d = d;						\
@@ -247,7 +238,7 @@ static inline bool __must_check __must_check_overflow(bool overflow)
 	*_d = (_a_full << _to_shift);					\
 	(_to_shift != _s || is_negative(*_d) || is_negative(_a) ||	\
 	(*_d >> _to_shift) != _a);					\
-}))
+})
 
 /**
  * array_size() - Calculate size of 2-dimensional array.

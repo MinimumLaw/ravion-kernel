@@ -14,9 +14,6 @@ description: |
   NWL MIPI-DSI host controller found on i.MX8 platforms. This is a dsi bridge for
   the SOCs NWL MIPI-DSI host controller.
 
-allOf:
-  - $ref: ../dsi-controller.yaml#
-
 properties:
   compatible:
     const: fsl,imx8mq-nwl-dsi
@@ -32,10 +29,6 @@ properties:
 
   '#size-cells':
     const: 0
-
-  assigned-clock-parents: true
-  assigned-clock-rates: true
-  assigned-clocks: true
 
   clocks:
     items:
@@ -147,6 +140,10 @@ properties:
 
     additionalProperties: false
 
+patternProperties:
+  "^panel@[0-9]+$":
+    type: object
+
 required:
   - '#address-cells'
   - '#size-cells'
@@ -162,7 +159,7 @@ required:
   - reset-names
   - resets
 
-unevaluatedProperties: false
+additionalProperties: false
 
 examples:
   - |
@@ -171,7 +168,7 @@ examples:
     #include <dt-bindings/interrupt-controller/arm-gic.h>
     #include <dt-bindings/reset/imx8mq-reset.h>
 
-    dsi@30a00000 {
+    mipi_dsi: mipi_dsi@30a00000 {
               #address-cells = <1>;
               #size-cells = <0>;
               compatible = "fsl,imx8mq-nwl-dsi";

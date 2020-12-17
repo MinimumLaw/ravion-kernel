@@ -509,7 +509,7 @@ struct saa7134_dmasound {
 	void			   *vaddr;
 	struct scatterlist	   *sglist;
 	int                        sglen;
-	unsigned long              nr_pages;
+	int                        nr_pages;
 	unsigned int               dma_blk;
 	unsigned int               read_offset;
 	unsigned int               read_count;

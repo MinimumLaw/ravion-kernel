@@ -64,7 +64,7 @@ int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 		return -EINVAL;
 
 	/* In case the discard request is in a partition */
-	if (bdev_is_partition(bdev))
+	if (bdev->bd_partno)
 		part_offset = bdev->bd_part->start_sect;
 
 	while (nr_sects) {

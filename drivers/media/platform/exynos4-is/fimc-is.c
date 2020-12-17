@@ -12,6 +12,7 @@
 #include <linux/device.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
+#include <linux/dma-contiguous.h>
 #include <linux/errno.h>
 #include <linux/firmware.h>
 #include <linux/interrupt.h>
@@ -755,12 +756,18 @@ static void fimc_is_debugfs_remove(struct fimc_is *is)
 	is->debugfs_entry = NULL;
 }
 
-static void fimc_is_debugfs_create(struct fimc_is *is)
+static int fimc_is_debugfs_create(struct fimc_is *is)
 {
+	struct dentry *dentry;
+
 	is->debugfs_entry = debugfs_create_dir("fimc_is", NULL);
 
-	debugfs_create_file("fw_log", S_IRUGO, is->debugfs_entry, is,
-			    &fimc_is_fops);
+	dentry = debugfs_create_file("fw_log", S_IRUGO, is->debugfs_entry,
+				     is, &fimc_is_fops);
+	if (!dentry)
+		fimc_is_debugfs_remove(is);
+
+	return is->debugfs_entry == NULL ? -EIO : 0;
 }
 
 static int fimc_is_runtime_resume(struct device *dev);
@@ -846,7 +853,9 @@ static int fimc_is_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_pm;
 
-	fimc_is_debugfs_create(is);
+	ret = fimc_is_debugfs_create(is);
+	if (ret < 0)
+		goto err_sd;
 
 	ret = fimc_is_request_firmware(is, FIMC_IS_FW_FILENAME);
 	if (ret < 0)
@@ -859,6 +868,7 @@ static int fimc_is_probe(struct platform_device *pdev)
 
 err_dfs:
 	fimc_is_debugfs_remove(is);
+err_sd:
 	fimc_is_unregister_subdevs(is);
 err_pm:
 	pm_runtime_put_noidle(dev);

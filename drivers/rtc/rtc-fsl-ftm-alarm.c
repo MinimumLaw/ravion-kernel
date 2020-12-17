@@ -3,7 +3,7 @@
  * Freescale FlexTimer Module (FTM) alarm device driver.
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2019-2020 NXP
+ * Copyright 2019 NXP
  *
  */
 
@@ -312,7 +312,7 @@ static const struct of_device_id ftm_rtc_match[] = {
 };
 
 static const struct acpi_device_id ftm_imx_acpi_ids[] = {
-	{"NXP0014",},
+	{"NXP0011",},
 	{ }
 };
 MODULE_DEVICE_TABLE(acpi, ftm_imx_acpi_ids);

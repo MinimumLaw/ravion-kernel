@@ -86,12 +86,13 @@ static inline bool is_kernel_in_hyp_mode(void)
 static __always_inline bool has_vhe(void)
 {
 	/*
-	 * Code only run in VHE/NVHE hyp context can assume VHE is present or
-	 * absent. Otherwise fall back to caps.
+	 * The following macros are defined for code specic to VHE/nVHE.
+	 * If has_vhe() is inlined into those compilation units, it can
+	 * be determined statically. Otherwise fall back to caps.
 	 */
-	if (is_vhe_hyp_code())
+	if (__is_defined(__KVM_VHE_HYPERVISOR__))
 		return true;
-	else if (is_nvhe_hyp_code())
+	else if (__is_defined(__KVM_NVHE_HYPERVISOR__))
 		return false;
 	else
 		return cpus_have_final_cap(ARM64_HAS_VIRT_HOST_EXTN);

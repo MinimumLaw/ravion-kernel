@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.fe
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _FE_DISEQC_SEND_MASTER_CMD:
 
@@ -12,22 +18,24 @@ Name
 
 FE_DISEQC_SEND_MASTER_CMD - Sends a DiSEqC command
 
+
 Synopsis
 ========
 
-.. c:macro:: FE_DISEQC_SEND_MASTER_CMD
+.. c:function:: int ioctl( int fd, FE_DISEQC_SEND_MASTER_CMD, struct dvb_diseqc_master_cmd *argp )
+    :name: FE_DISEQC_SEND_MASTER_CMD
 
-``int ioctl(int fd, FE_DISEQC_SEND_MASTER_CMD, struct dvb_diseqc_master_cmd *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <frontend_f_open>`.
 
 ``argp``
     pointer to struct
     :c:type:`dvb_diseqc_master_cmd`
+
 
 Description
 ===========

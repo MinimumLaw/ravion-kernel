@@ -67,9 +67,7 @@ static int dev_mce_log(struct notifier_block *nb, unsigned long val,
 unlock:
 	mutex_unlock(&mce_chrdev_read_mutex);
 
-	if (boot_cpu_data.x86_vendor != X86_VENDOR_AMD)
-		mce->kflags |= MCE_HANDLED_MCELOG;
-
+	mce->kflags |= MCE_HANDLED_MCELOG;
 	return NOTIFY_OK;
 }
 

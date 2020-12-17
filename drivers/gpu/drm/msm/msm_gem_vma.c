@@ -17,7 +17,6 @@ msm_gem_address_space_destroy(struct kref *kref)
 	drm_mm_takedown(&aspace->mm);
 	if (aspace->mmu)
 		aspace->mmu->funcs->destroy(aspace->mmu);
-	put_pid(aspace->pid);
 	kfree(aspace);
 }
 
@@ -26,15 +25,6 @@ void msm_gem_address_space_put(struct msm_gem_address_space *aspace)
 {
 	if (aspace)
 		kref_put(&aspace->kref, msm_gem_address_space_destroy);
-}
-
-struct msm_gem_address_space *
-msm_gem_address_space_get(struct msm_gem_address_space *aspace)
-{
-	if (!IS_ERR_OR_NULL(aspace))
-		kref_get(&aspace->kref);
-
-	return aspace;
 }
 
 /* Actually unmap memory for the vma */
@@ -88,10 +78,8 @@ msm_gem_map_vma(struct msm_gem_address_space *aspace,
 		ret = aspace->mmu->funcs->map(aspace->mmu, vma->iova, sgt,
 				size, prot);
 
-	if (ret) {
+	if (ret)
 		vma->mapped = false;
-		vma->inuse--;
-	}
 
 	return ret;
 }

@@ -516,8 +516,7 @@ static void iio_trig_subirqunmask(struct irq_data *d)
 	trig->subirqs[d->irq - trig->subirq_base].enabled = true;
 }
 
-static __printf(1, 0)
-struct iio_trigger *viio_trigger_alloc(const char *fmt, va_list vargs)
+static struct iio_trigger *viio_trigger_alloc(const char *fmt, va_list vargs)
 {
 	struct iio_trigger *trig;
 	int i;

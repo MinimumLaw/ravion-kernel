@@ -134,15 +134,6 @@ PHY Support
 .. kernel-doc:: drivers/net/phy/phy.c
    :internal:
 
-.. kernel-doc:: drivers/net/phy/phy-core.c
-   :export:
-
-.. kernel-doc:: drivers/net/phy/phy-c45.c
-   :export:
-
-.. kernel-doc:: include/linux/phy.h
-   :internal:
-
 .. kernel-doc:: drivers/net/phy/phy_device.c
    :export:
 

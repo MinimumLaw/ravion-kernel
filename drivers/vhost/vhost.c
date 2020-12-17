@@ -302,6 +302,7 @@ static void vhost_vring_call_reset(struct vhost_vring_call *call_ctx)
 {
 	call_ctx->ctx = NULL;
 	memset(&call_ctx->producer, 0x0, sizeof(struct irq_bypass_producer));
+	spin_lock_init(&call_ctx->ctx_lock);
 }
 
 bool vhost_vq_is_setup(struct vhost_virtqueue *vq)
@@ -1655,7 +1656,9 @@ long vhost_vring_ioctl(struct vhost_dev *d, unsigned int ioctl, void __user *arg
 			break;
 		}
 
+		spin_lock(&vq->call_ctx.ctx_lock);
 		swap(ctx, vq->call_ctx.ctx);
+		spin_unlock(&vq->call_ctx.ctx_lock);
 		break;
 	case VHOST_SET_VRING_ERR:
 		if (copy_from_user(&f, argp, sizeof f)) {
@@ -1900,7 +1903,7 @@ static int log_write_hva(struct vhost_virtqueue *vq, u64 hva, u64 len)
 
 static int log_used(struct vhost_virtqueue *vq, u64 used_offset, u64 len)
 {
-	struct iovec *iov = vq->log_iov;
+	struct iovec iov[64];
 	int i, ret;
 
 	if (!vq->iotlb)

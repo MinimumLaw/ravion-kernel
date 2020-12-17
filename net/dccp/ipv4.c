@@ -427,7 +427,7 @@ struct sock *dccp_v4_request_recv_sock(const struct sock *sk,
 
 	if (__inet_inherit_port(sk, newsk) < 0)
 		goto put_and_exit;
-	*own_req = inet_ehash_nolisten(newsk, req_to_sk(req_unhash), NULL);
+	*own_req = inet_ehash_nolisten(newsk, req_to_sk(req_unhash));
 	if (*own_req)
 		ireq->ireq_opt = NULL;
 	else
@@ -495,8 +495,7 @@ static int dccp_v4_send_response(const struct sock *sk, struct request_sock *req
 		rcu_read_lock();
 		err = ip_build_and_send_pkt(skb, sk, ireq->ir_loc_addr,
 					    ireq->ir_rmt_addr,
-					    rcu_dereference(ireq->ireq_opt),
-					    inet_sk(sk)->tos);
+					    rcu_dereference(ireq->ireq_opt));
 		rcu_read_unlock();
 		err = net_xmit_eval(err);
 	}
@@ -538,8 +537,7 @@ static void dccp_v4_ctl_send_reset(const struct sock *sk, struct sk_buff *rxskb)
 	local_bh_disable();
 	bh_lock_sock(ctl_sk);
 	err = ip_build_and_send_pkt(skb, ctl_sk,
-				    rxiph->daddr, rxiph->saddr, NULL,
-				    inet_sk(ctl_sk)->tos);
+				    rxiph->daddr, rxiph->saddr, NULL);
 	bh_unlock_sock(ctl_sk);
 
 	if (net_xmit_eval(err) == 0) {
@@ -733,7 +731,7 @@ int dccp_invalid_packet(struct sk_buff *skb)
 		return 1;
 	}
 	/*
-	 * If P.Data Offset is too large for packet, drop packet and return
+	 * If P.Data Offset is too too large for packet, drop packet and return
 	 */
 	if (!pskb_may_pull(skb, dccph_doff * sizeof(u32))) {
 		DCCP_WARN("P.Data Offset(%u) too large\n", dccph_doff);

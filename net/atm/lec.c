@@ -954,8 +954,9 @@ static void *lec_seq_next(struct seq_file *seq, void *v, loff_t *pos)
 {
 	struct lec_state *state = seq->private;
 
-	++*pos;
-	return lec_get_idx(state, 1);
+	v = lec_get_idx(state, 1);
+	*pos += !!PTR_ERR(v);
+	return v;
 }
 
 static int lec_seq_show(struct seq_file *seq, void *v)
@@ -1069,7 +1070,7 @@ module_exit(lane_module_cleanup);
 /*
  * LANE2: 3.1.3, LE_RESOLVE.request
  * Non force allocates memory and fills in *tlvs, fills in *sizeoftlvs.
- * If sizeoftlvs == NULL the default TLVs associated with this
+ * If sizeoftlvs == NULL the default TLVs associated with with this
  * lec will be used.
  * If dst_mac == NULL, targetless LE_ARP will be sent
  */

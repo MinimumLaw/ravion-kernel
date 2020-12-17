@@ -57,7 +57,6 @@ static const struct irq_bit_descr irqchip_flags[] = {
 	BIT_MASK_DESCR(IRQCHIP_EOI_THREADED),
 	BIT_MASK_DESCR(IRQCHIP_SUPPORTS_LEVEL_MSI),
 	BIT_MASK_DESCR(IRQCHIP_SUPPORTS_NMI),
-	BIT_MASK_DESCR(IRQCHIP_ENABLE_WAKEUP_ON_SUSPEND),
 };
 
 static void
@@ -126,8 +125,6 @@ static const struct irq_bit_descr irqdata_states[] = {
 	BIT_MASK_DESCR(IRQD_DEFAULT_TRIGGER_SET),
 
 	BIT_MASK_DESCR(IRQD_HANDLE_ENFORCE_IRQCTX),
-
-	BIT_MASK_DESCR(IRQD_IRQ_ENABLED_ON_SUSPEND),
 };
 
 static const struct irq_bit_descr irqdesc_states[] = {
@@ -139,7 +136,6 @@ static const struct irq_bit_descr irqdesc_states[] = {
 	BIT_MASK_DESCR(_IRQ_PER_CPU_DEVID),
 	BIT_MASK_DESCR(_IRQ_IS_POLLED),
 	BIT_MASK_DESCR(_IRQ_DISABLE_UNLAZY),
-	BIT_MASK_DESCR(_IRQ_HIDDEN),
 };
 
 static const struct irq_bit_descr irqdesc_istates[] = {

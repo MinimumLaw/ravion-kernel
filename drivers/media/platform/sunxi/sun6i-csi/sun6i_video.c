@@ -660,11 +660,13 @@ int sun6i_video_init(struct sun6i_video *video, struct sun6i_csi *csi,
 	if (ret < 0) {
 		v4l2_err(&csi->v4l2_dev,
 			 "video_register_device failed: %d\n", ret);
-		goto clean_entity;
+		goto release_vb2;
 	}
 
 	return 0;
 
+release_vb2:
+	vb2_queue_release(&video->vb2_vidq);
 clean_entity:
 	media_entity_cleanup(&video->vdev.entity);
 	mutex_destroy(&video->lock);
@@ -673,7 +675,8 @@ clean_entity:
 
 void sun6i_video_cleanup(struct sun6i_video *video)
 {
-	vb2_video_unregister_device(&video->vdev);
+	video_unregister_device(&video->vdev);
 	media_entity_cleanup(&video->vdev.entity);
+	vb2_queue_release(&video->vb2_vidq);
 	mutex_destroy(&video->lock);
 }

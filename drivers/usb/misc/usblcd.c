@@ -187,6 +187,7 @@ static long lcd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	default:
 		return -ENOTTY;
+		break;
 	}
 
 	return 0;

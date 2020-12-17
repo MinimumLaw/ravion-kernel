@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_SUBDEV_G_CROP:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_SUBDEV_G_CROP - VIDIOC_SUBDEV_S_CROP - Get or set the crop rectangle on a subdev pad
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_SUBDEV_G_CROP
+.. c:function:: int ioctl( int fd, VIDIOC_SUBDEV_G_CROP, struct v4l2_subdev_crop *argp )
+    :name: VIDIOC_SUBDEV_G_CROP
 
-``int ioctl(int fd, VIDIOC_SUBDEV_G_CROP, struct v4l2_subdev_crop *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_SUBDEV_S_CROP, const struct v4l2_subdev_crop *argp )
+    :name: VIDIOC_SUBDEV_S_CROP
 
-.. c:macro:: VIDIOC_SUBDEV_S_CROP
-
-``int ioctl(int fd, VIDIOC_SUBDEV_S_CROP, const struct v4l2_subdev_crop *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_subdev_crop`.
+
 
 Description
 ===========
@@ -76,6 +83,7 @@ rectangle doesn't match the device capabilities. They must instead
 modify the rectangle to match what the hardware can provide. The
 modified format should be as close as possible to the original request.
 
+
 .. c:type:: v4l2_subdev_crop
 
 .. tabularcolumns:: |p{4.4cm}|p{4.4cm}|p{8.7cm}|
@@ -99,6 +107,7 @@ modified format should be as close as possible to the original request.
       - ``reserved``\ [8]
       - Reserved for future extensions. Applications and drivers must set
 	the array to zero.
+
 
 Return Value
 ============

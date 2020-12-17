@@ -28,9 +28,10 @@ static struct sg_table *mock_map_dma_buf(struct dma_buf_attachment *attachment,
 		sg = sg_next(sg);
 	}
 
-	err = dma_map_sgtable(attachment->dev, st, dir, 0);
-	if (err)
+	if (!dma_map_sg(attachment->dev, st->sgl, st->nents, dir)) {
+		err = -ENOMEM;
 		goto err_st;
+	}
 
 	return st;
 
@@ -45,7 +46,7 @@ static void mock_unmap_dma_buf(struct dma_buf_attachment *attachment,
 			       struct sg_table *st,
 			       enum dma_data_direction dir)
 {
-	dma_unmap_sgtable(attachment->dev, st, dir, 0);
+	dma_unmap_sg(attachment->dev, st->sgl, st->nents, dir);
 	sg_free_table(st);
 	kfree(st);
 }

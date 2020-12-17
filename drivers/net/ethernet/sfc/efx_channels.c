@@ -151,7 +151,7 @@ static int efx_allocate_msix_channels(struct efx_nic *efx,
 	 */
 
 	n_xdp_tx = num_possible_cpus();
-	n_xdp_ev = DIV_ROUND_UP(n_xdp_tx, EFX_MAX_TXQ_PER_CHANNEL);
+	n_xdp_ev = DIV_ROUND_UP(n_xdp_tx, EFX_TXQ_TYPES);
 
 	vec_count = pci_msix_vec_count(efx->pci_dev);
 	if (vec_count < 0)
@@ -179,7 +179,7 @@ static int efx_allocate_msix_channels(struct efx_nic *efx,
 		efx->xdp_tx_queue_count = 0;
 	} else {
 		efx->n_xdp_channels = n_xdp_ev;
-		efx->xdp_tx_per_channel = EFX_MAX_TXQ_PER_CHANNEL;
+		efx->xdp_tx_per_channel = EFX_TXQ_TYPES;
 		efx->xdp_tx_queue_count = n_xdp_tx;
 		n_channels += n_xdp_ev;
 		netif_dbg(efx, drv, efx->net_dev,
@@ -505,7 +505,8 @@ static void efx_filter_rfs_expire(struct work_struct *data)
 #endif
 
 /* Allocate and initialise a channel structure. */
-static struct efx_channel *efx_alloc_channel(struct efx_nic *efx, int i)
+struct efx_channel *
+efx_alloc_channel(struct efx_nic *efx, int i, struct efx_channel *old_channel)
 {
 	struct efx_rx_queue *rx_queue;
 	struct efx_tx_queue *tx_queue;
@@ -520,7 +521,7 @@ static struct efx_channel *efx_alloc_channel(struct efx_nic *efx, int i)
 	channel->channel = i;
 	channel->type = &efx_default_channel_type;
 
-	for (j = 0; j < EFX_MAX_TXQ_PER_CHANNEL; j++) {
+	for (j = 0; j < EFX_TXQ_TYPES; j++) {
 		tx_queue = &channel->tx_queue[j];
 		tx_queue->efx = efx;
 		tx_queue->queue = -1;
@@ -544,7 +545,7 @@ int efx_init_channels(struct efx_nic *efx)
 	unsigned int i;
 
 	for (i = 0; i < EFX_MAX_CHANNELS; i++) {
-		efx->channel[i] = efx_alloc_channel(efx, i);
+		efx->channel[i] = efx_alloc_channel(efx, i, NULL);
 		if (!efx->channel[i])
 			return -ENOMEM;
 		efx->msi_context[i].efx = efx;
@@ -594,7 +595,7 @@ struct efx_channel *efx_copy_channel(const struct efx_channel *old_channel)
 	channel->napi_str.state = 0;
 	memset(&channel->eventq, 0, sizeof(channel->eventq));
 
-	for (j = 0; j < EFX_MAX_TXQ_PER_CHANNEL; j++) {
+	for (j = 0; j < EFX_TXQ_TYPES; j++) {
 		tx_queue = &channel->tx_queue[j];
 		if (tx_queue->channel)
 			tx_queue->channel = channel;
@@ -894,7 +895,7 @@ int efx_set_channels(struct efx_nic *efx)
 						  xdp_queue_number, tx_queue->queue);
 					/* We may have a few left-over XDP TX
 					 * queues owing to xdp_tx_queue_count
-					 * not dividing evenly by EFX_MAX_TXQ_PER_CHANNEL.
+					 * not dividing evenly by EFX_TXQ_TYPES.
 					 * We still allocate and probe those
 					 * TXQs, but never use them.
 					 */

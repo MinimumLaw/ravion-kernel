@@ -364,7 +364,7 @@ static int w840_probe1(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	irq = pdev->irq;
 
-	if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
+	if (pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		pr_warn("Device %s disabled due to DMA limitations\n",
 			pci_name(pdev));
 		return -EIO;
@@ -630,10 +630,9 @@ static int netdev_open(struct net_device *dev)
 		goto out_err;
 
 	if (debug > 1)
-		netdev_dbg(dev, "%s() irq %d\n", __func__, irq);
+		netdev_dbg(dev, "w89c840_open() irq %d\n", irq);
 
-	i = alloc_ringdesc(dev);
-	if (i)
+	if((i=alloc_ringdesc(dev)))
 		goto out_err;
 
 	spin_lock_irq(&np->lock);
@@ -643,7 +642,7 @@ static int netdev_open(struct net_device *dev)
 
 	netif_start_queue(dev);
 	if (debug > 2)
-		netdev_dbg(dev, "Done %s()\n", __func__);
+		netdev_dbg(dev, "Done netdev_open()\n");
 
 	/* Set the timer to check for link beat. */
 	timer_setup(&np->timer, netdev_timer, 0);
@@ -803,9 +802,8 @@ static void init_rxtx_rings(struct net_device *dev)
 		np->rx_skbuff[i] = skb;
 		if (skb == NULL)
 			break;
-		np->rx_addr[i] = dma_map_single(&np->pci_dev->dev, skb->data,
-						np->rx_buf_sz,
-						DMA_FROM_DEVICE);
+		np->rx_addr[i] = pci_map_single(np->pci_dev,skb->data,
+					np->rx_buf_sz,PCI_DMA_FROMDEVICE);
 
 		np->rx_ring[i].buffer1 = np->rx_addr[i];
 		np->rx_ring[i].status = DescOwned;
@@ -835,17 +833,20 @@ static void free_rxtx_rings(struct netdev_private* np)
 	for (i = 0; i < RX_RING_SIZE; i++) {
 		np->rx_ring[i].status = 0;
 		if (np->rx_skbuff[i]) {
-			dma_unmap_single(&np->pci_dev->dev, np->rx_addr[i],
-					 np->rx_skbuff[i]->len,
-					 DMA_FROM_DEVICE);
+			pci_unmap_single(np->pci_dev,
+						np->rx_addr[i],
+						np->rx_skbuff[i]->len,
+						PCI_DMA_FROMDEVICE);
 			dev_kfree_skb(np->rx_skbuff[i]);
 		}
 		np->rx_skbuff[i] = NULL;
 	}
 	for (i = 0; i < TX_RING_SIZE; i++) {
 		if (np->tx_skbuff[i]) {
-			dma_unmap_single(&np->pci_dev->dev, np->tx_addr[i],
-					 np->tx_skbuff[i]->len, DMA_TO_DEVICE);
+			pci_unmap_single(np->pci_dev,
+						np->tx_addr[i],
+						np->tx_skbuff[i]->len,
+						PCI_DMA_TODEVICE);
 			dev_kfree_skb(np->tx_skbuff[i]);
 		}
 		np->tx_skbuff[i] = NULL;
@@ -963,10 +964,10 @@ static int alloc_ringdesc(struct net_device *dev)
 
 	np->rx_buf_sz = (dev->mtu <= 1500 ? PKT_BUF_SZ : dev->mtu + 32);
 
-	np->rx_ring = dma_alloc_coherent(&np->pci_dev->dev,
-					 sizeof(struct w840_rx_desc) * RX_RING_SIZE +
-					 sizeof(struct w840_tx_desc) * TX_RING_SIZE,
-					 &np->ring_dma_addr, GFP_KERNEL);
+	np->rx_ring = pci_alloc_consistent(np->pci_dev,
+			sizeof(struct w840_rx_desc)*RX_RING_SIZE +
+			sizeof(struct w840_tx_desc)*TX_RING_SIZE,
+			&np->ring_dma_addr);
 	if(!np->rx_ring)
 		return -ENOMEM;
 	init_rxtx_rings(dev);
@@ -975,10 +976,10 @@ static int alloc_ringdesc(struct net_device *dev)
 
 static void free_ringdesc(struct netdev_private *np)
 {
-	dma_free_coherent(&np->pci_dev->dev,
-			  sizeof(struct w840_rx_desc) * RX_RING_SIZE +
-			  sizeof(struct w840_tx_desc) * TX_RING_SIZE,
-			  np->rx_ring, np->ring_dma_addr);
+	pci_free_consistent(np->pci_dev,
+			sizeof(struct w840_rx_desc)*RX_RING_SIZE +
+			sizeof(struct w840_tx_desc)*TX_RING_SIZE,
+			np->rx_ring, np->ring_dma_addr);
 
 }
 
@@ -993,8 +994,8 @@ static netdev_tx_t start_tx(struct sk_buff *skb, struct net_device *dev)
 	/* Calculate the next Tx descriptor entry. */
 	entry = np->cur_tx % TX_RING_SIZE;
 
-	np->tx_addr[entry] = dma_map_single(&np->pci_dev->dev, skb->data,
-					    skb->len, DMA_TO_DEVICE);
+	np->tx_addr[entry] = pci_map_single(np->pci_dev,
+				skb->data,skb->len, PCI_DMA_TODEVICE);
 	np->tx_skbuff[entry] = skb;
 
 	np->tx_ring[entry].buffer1 = np->tx_addr[entry];
@@ -1077,8 +1078,9 @@ static void netdev_tx_done(struct net_device *dev)
 			np->stats.tx_packets++;
 		}
 		/* Free the original skb. */
-		dma_unmap_single(&np->pci_dev->dev, np->tx_addr[entry],
-				 np->tx_skbuff[entry]->len, DMA_TO_DEVICE);
+		pci_unmap_single(np->pci_dev,np->tx_addr[entry],
+					np->tx_skbuff[entry]->len,
+					PCI_DMA_TODEVICE);
 		np->tx_q_bytes -= np->tx_skbuff[entry]->len;
 		dev_kfree_skb_irq(np->tx_skbuff[entry]);
 		np->tx_skbuff[entry] = NULL;
@@ -1215,21 +1217,18 @@ static int netdev_rx(struct net_device *dev)
 			if (pkt_len < rx_copybreak &&
 			    (skb = netdev_alloc_skb(dev, pkt_len + 2)) != NULL) {
 				skb_reserve(skb, 2);	/* 16 byte align the IP header */
-				dma_sync_single_for_cpu(&np->pci_dev->dev,
-							np->rx_addr[entry],
-							np->rx_skbuff[entry]->len,
-							DMA_FROM_DEVICE);
+				pci_dma_sync_single_for_cpu(np->pci_dev,np->rx_addr[entry],
+							    np->rx_skbuff[entry]->len,
+							    PCI_DMA_FROMDEVICE);
 				skb_copy_to_linear_data(skb, np->rx_skbuff[entry]->data, pkt_len);
 				skb_put(skb, pkt_len);
-				dma_sync_single_for_device(&np->pci_dev->dev,
-							   np->rx_addr[entry],
-							   np->rx_skbuff[entry]->len,
-							   DMA_FROM_DEVICE);
+				pci_dma_sync_single_for_device(np->pci_dev,np->rx_addr[entry],
+							       np->rx_skbuff[entry]->len,
+							       PCI_DMA_FROMDEVICE);
 			} else {
-				dma_unmap_single(&np->pci_dev->dev,
-						 np->rx_addr[entry],
-						 np->rx_skbuff[entry]->len,
-						 DMA_FROM_DEVICE);
+				pci_unmap_single(np->pci_dev,np->rx_addr[entry],
+							np->rx_skbuff[entry]->len,
+							PCI_DMA_FROMDEVICE);
 				skb_put(skb = np->rx_skbuff[entry], pkt_len);
 				np->rx_skbuff[entry] = NULL;
 			}
@@ -1259,10 +1258,9 @@ static int netdev_rx(struct net_device *dev)
 			np->rx_skbuff[entry] = skb;
 			if (skb == NULL)
 				break;			/* Better luck next round. */
-			np->rx_addr[entry] = dma_map_single(&np->pci_dev->dev,
-							    skb->data,
-							    np->rx_buf_sz,
-							    DMA_FROM_DEVICE);
+			np->rx_addr[entry] = pci_map_single(np->pci_dev,
+							skb->data,
+							np->rx_buf_sz, PCI_DMA_FROMDEVICE);
 			np->rx_ring[entry].buffer1 = np->rx_addr[entry];
 		}
 		wmb();

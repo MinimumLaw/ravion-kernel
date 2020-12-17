@@ -346,9 +346,6 @@ struct crush_work_bucket {
 
 struct crush_work {
 	struct crush_work_bucket **work; /* Per-bucket working store */
-#ifdef __KERNEL__
-	struct list_head item;
-#endif
 };
 
 #ifdef __KERNEL__

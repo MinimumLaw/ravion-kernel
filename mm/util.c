@@ -69,8 +69,7 @@ EXPORT_SYMBOL(kstrdup);
  * @s: the string to duplicate
  * @gfp: the GFP mask used in the kmalloc() call when allocating memory
  *
- * Note: Strings allocated by kstrdup_const should be freed by kfree_const and
- * must not be passed to krealloc().
+ * Note: Strings allocated by kstrdup_const should be freed by kfree_const.
  *
  * Return: source string if it is in .rodata section otherwise
  * fallback to kstrdup.
@@ -958,7 +957,7 @@ out:
 	return res;
 }
 
-int __weak memcmp_pages(struct page *page1, struct page *page2)
+int memcmp_pages(struct page *page1, struct page *page2)
 {
 	char *addr1, *addr2;
 	int ret;

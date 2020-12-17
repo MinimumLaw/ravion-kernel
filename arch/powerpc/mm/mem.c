@@ -50,7 +50,6 @@
 #include <asm/rtas.h>
 #include <asm/kasan.h>
 #include <asm/svm.h>
-#include <asm/mmzone.h>
 
 #include <mm/mmu_decl.h>
 
@@ -186,16 +185,15 @@ void __init initmem_init(void)
 /* mark pages that don't exist as nosave */
 static int __init mark_nonram_nosave(void)
 {
-	unsigned long spfn, epfn, prev = 0;
-	int i;
+	struct memblock_region *reg, *prev = NULL;
 
-	for_each_mem_pfn_range(i, MAX_NUMNODES, &spfn, &epfn, NULL) {
-		if (prev && prev < spfn)
-			register_nosave_region(prev, spfn);
-
-		prev = epfn;
+	for_each_memblock(memory, reg) {
+		if (prev &&
+		    memblock_region_memory_end_pfn(prev) < memblock_region_memory_base_pfn(reg))
+			register_nosave_region(memblock_region_memory_end_pfn(prev),
+					       memblock_region_memory_base_pfn(reg));
+		prev = reg;
 	}
-
 	return 0;
 }
 #else /* CONFIG_NEED_MULTIPLE_NODES */
@@ -590,24 +588,20 @@ void flush_icache_user_page(struct vm_area_struct *vma, struct page *page,
  */
 static int __init add_system_ram_resources(void)
 {
-	phys_addr_t start, end;
-	u64 i;
+	struct memblock_region *reg;
 
-	for_each_mem_range(i, &start, &end) {
+	for_each_memblock(memory, reg) {
 		struct resource *res;
+		unsigned long base = reg->base;
+		unsigned long size = reg->size;
 
 		res = kzalloc(sizeof(struct resource), GFP_KERNEL);
 		WARN_ON(!res);
 
 		if (res) {
 			res->name = "System RAM";
-			res->start = start;
-			/*
-			 * In memblock, end points to the first byte after
-			 * the range while in resourses, end points to the
-			 * last byte in the range.
-			 */
-			res->end = end - 1;
+			res->start = base;
+			res->end = base + size - 1;
 			res->flags = IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
 			WARN_ON(request_resource(&iomem_resource, res) < 0);
 		}

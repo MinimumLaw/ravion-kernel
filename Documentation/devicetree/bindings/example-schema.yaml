@@ -81,8 +81,6 @@ properties:
     maxItems: 1
     description: bus clock. A description is only needed for a single item if
       there's something unique to add.
-      The items should have a fixed order, so pattern matching names are
-      discouraged.
 
   clock-names:
     items:
@@ -99,8 +97,6 @@ properties:
       A variable number of interrupts warrants a description of what conditions
       affect the number of interrupts. Otherwise, descriptions on standard
       properties are not necessary.
-      The items should have a fixed order, so pattern matching names are
-      discouraged.
 
   interrupt-names:
     # minItems must be specified here because the default would be 2
@@ -200,24 +196,14 @@ required:
 #
 # If the conditionals become too unweldy, then it may be better to just split
 # the binding into separate schema documents.
-allOf:
-  - if:
-      properties:
-        compatible:
-          contains:
-            const: vendor,soc2-ip
-    then:
-      required:
-        - foo-supply
-  # Altering schema depending on presence of properties is usually done by
-  # dependencies (see above), however some adjustments might require if:
-  - if:
-      required:
-        - vendor,bool-property
-    then:
-      properties:
-        vendor,int-property:
-          enum: [2, 4, 6]
+if:
+  properties:
+    compatible:
+      contains:
+        const: vendor,soc2-ip
+then:
+  required:
+    - foo-supply
 
 # Ideally, the schema should have this line otherwise any other properties
 # present are allowed. There's a few common properties such as 'status' and
@@ -225,9 +211,6 @@ allOf:
 #
 # This can't be used in cases where another schema is referenced
 # (i.e. allOf: [{$ref: ...}]).
-# If and only if another schema is referenced and arbitrary children nodes can
-# appear, "unevaluatedProperties: false" could be used.  A typical example is
-# an I2C controller where no name pattern matching for children can be added.
 additionalProperties: false
 
 examples:

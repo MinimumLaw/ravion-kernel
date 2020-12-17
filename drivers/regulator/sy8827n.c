@@ -156,7 +156,6 @@ static int sy8827n_i2c_probe(struct i2c_client *client)
 	return ret;
 }
 
-#ifdef CONFIG_OF
 static const struct of_device_id sy8827n_dt_ids[] = {
 	{
 		.compatible = "silergy,sy8827n",
@@ -164,7 +163,6 @@ static const struct of_device_id sy8827n_dt_ids[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sy8827n_dt_ids);
-#endif
 
 static const struct i2c_device_id sy8827n_id[] = {
 	{ "sy8827n", },

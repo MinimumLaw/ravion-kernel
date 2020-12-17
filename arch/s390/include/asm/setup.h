@@ -92,9 +92,7 @@ extern int memory_end_set;
 extern unsigned long memory_end;
 extern unsigned long vmalloc_size;
 extern unsigned long max_physmem_end;
-
-/* The Write Back bit position in the physaddr is given by the SLPC PCI */
-extern unsigned long mio_wb_bit_mask;
+extern unsigned long __swsusp_reset_dma;
 
 #define MACHINE_IS_VM		(S390_lowcore.machine_flags & MACHINE_FLAG_VM)
 #define MACHINE_IS_KVM		(S390_lowcore.machine_flags & MACHINE_FLAG_KVM)
@@ -120,6 +118,9 @@ extern unsigned long mio_wb_bit_mask;
 extern unsigned int console_mode;
 extern unsigned int console_devno;
 extern unsigned int console_irq;
+
+extern char vmhalt_cmd[];
+extern char vmpoff_cmd[];
 
 #define CONSOLE_IS_UNDEFINED	(console_mode == 0)
 #define CONSOLE_IS_SCLP		(console_mode == 1)

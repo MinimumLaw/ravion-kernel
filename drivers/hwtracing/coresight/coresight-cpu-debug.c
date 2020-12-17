@@ -665,8 +665,6 @@ static const struct amba_id debug_ids[] = {
 	{},
 };
 
-MODULE_DEVICE_TABLE(amba, debug_ids);
-
 static struct amba_driver debug_driver = {
 	.drv = {
 		.name   = "coresight-cpu-debug",

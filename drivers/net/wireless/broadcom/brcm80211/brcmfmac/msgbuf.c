@@ -536,8 +536,7 @@ static int brcmf_msgbuf_hdrpull(struct brcmf_pub *drvr, bool do_fws,
 	return -ENODEV;
 }
 
-static void brcmf_msgbuf_rxreorder(struct brcmf_if *ifp, struct sk_buff *skb,
-				   bool inirq)
+static void brcmf_msgbuf_rxreorder(struct brcmf_if *ifp, struct sk_buff *skb)
 {
 }
 
@@ -1129,7 +1128,7 @@ static void brcmf_msgbuf_process_event(struct brcmf_msgbuf *msgbuf, void *buf)
 
 	skb->protocol = eth_type_trans(skb, ifp->ndev);
 
-	brcmf_fweh_process_skb(ifp->drvr, skb, 0, GFP_KERNEL);
+	brcmf_fweh_process_skb(ifp->drvr, skb, 0);
 
 exit:
 	brcmu_pkt_buf_free_skb(skb);
@@ -1191,7 +1190,7 @@ brcmf_msgbuf_process_rx_complete(struct brcmf_msgbuf *msgbuf, void *buf)
 	}
 
 	skb->protocol = eth_type_trans(skb, ifp->ndev);
-	brcmf_netif_rx(ifp, skb, false);
+	brcmf_netif_rx(ifp, skb);
 }
 
 static void brcmf_msgbuf_process_gen_status(struct brcmf_msgbuf *msgbuf,

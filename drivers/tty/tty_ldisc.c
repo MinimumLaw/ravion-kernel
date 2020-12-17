@@ -79,6 +79,7 @@ EXPORT_SYMBOL(tty_register_ldisc);
 /**
  *	tty_unregister_ldisc	-	unload a line discipline
  *	@disc: ldisc number
+ *	@new_ldisc: pointer to the ldisc object
  *
  *	Remove a line discipline from the kernel providing it is not
  *	currently in use.
@@ -541,7 +542,7 @@ static void tty_ldisc_restore(struct tty_struct *tty, struct tty_ldisc *old)
 /**
  *	tty_set_ldisc		-	set line discipline
  *	@tty: the terminal to set
- *	@disc: the line discipline number
+ *	@ldisc: the line discipline
  *
  *	Set the discipline of a tty line. Must be called from a process
  *	context. The ldisc change logic has to protect itself against any

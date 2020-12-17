@@ -366,8 +366,7 @@ static int btree_lookup_raw(struct ro_spine *s, dm_block_t block, uint64_t key,
 	} while (!(flags & LEAF_NODE));
 
 	*result_key = le64_to_cpu(ro_node(s)->keys[i]);
-	if (v)
-		memcpy(v, value_ptr(ro_node(s), i), value_size);
+	memcpy(v, value_ptr(ro_node(s), i), value_size);
 
 	return 0;
 }

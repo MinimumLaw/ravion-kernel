@@ -230,10 +230,9 @@ static inline bool pkt_exceeds_tail(struct recv_priv *precvpriv,
 	return false;
 }
 
-static void rtl8723bs_recv_tasklet(struct tasklet_struct *t)
+static void rtl8723bs_recv_tasklet(unsigned long priv)
 {
-	struct adapter *padapter = from_tasklet(padapter, t,
-						recvpriv.recv_tasklet);
+	struct adapter *padapter;
 	struct hal_com_data *p_hal_data;
 	struct recv_priv *precvpriv;
 	struct recv_buf *precvbuf;
@@ -245,6 +244,7 @@ static void rtl8723bs_recv_tasklet(struct tasklet_struct *t)
 	_pkt *pkt_copy = NULL;
 	u8 shift_sz = 0, rx_report_sz = 0;
 
+	padapter = (struct adapter *)priv;
 	p_hal_data = GET_HAL_DATA(padapter);
 	precvpriv = &padapter->recvpriv;
 	recv_buf_queue = &precvpriv->recv_buf_pending_queue;
@@ -369,7 +369,7 @@ static void rtl8723bs_recv_tasklet(struct tasklet_struct *t)
 				}
 			}
 
-			pkt_offset = round_up(pkt_offset, 8);
+			pkt_offset = _RND8(pkt_offset);
 			precvbuf->pdata += pkt_offset;
 			ptr = precvbuf->pdata;
 			precvframe = NULL;
@@ -444,7 +444,8 @@ s32 rtl8723bs_init_recv_priv(struct adapter *padapter)
 		goto initbuferror;
 
 	/* 3 2. init tasklet */
-	tasklet_setup(&precvpriv->recv_tasklet, rtl8723bs_recv_tasklet);
+	tasklet_init(&precvpriv->recv_tasklet, rtl8723bs_recv_tasklet,
+		     (unsigned long)padapter);
 
 	goto exit;
 

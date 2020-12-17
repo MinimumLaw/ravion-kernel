@@ -50,7 +50,8 @@ static int efx_ethtool_phys_id(struct net_device *net_dev,
 		return 1;	/* cycle on/off once per second */
 	}
 
-	return efx_mcdi_set_id_led(efx, mode);
+	efx->type->set_id_led(efx, mode);
+	return 0;
 }
 
 static int efx_ethtool_get_regs_len(struct net_device *net_dev)

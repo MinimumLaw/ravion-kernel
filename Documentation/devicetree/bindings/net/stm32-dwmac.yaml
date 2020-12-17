@@ -88,8 +88,6 @@ required:
   - clock-names
   - st,syscon
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/interrupt-controller/arm-gic.h>

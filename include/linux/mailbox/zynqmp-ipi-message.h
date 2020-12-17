@@ -14,7 +14,7 @@
  */
 struct zynqmp_ipi_message {
 	size_t len;
-	u8 data[];
+	u8 data[0];
 };
 
 #endif /* _LINUX_ZYNQMP_IPI_MESSAGE_H_ */

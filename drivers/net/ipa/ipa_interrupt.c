@@ -237,16 +237,8 @@ struct ipa_interrupt *ipa_interrupt_setup(struct ipa *ipa)
 		goto err_kfree;
 	}
 
-	ret = enable_irq_wake(irq);
-	if (ret) {
-		dev_err(dev, "error %d enabling wakeup for \"ipa\" IRQ\n", ret);
-		goto err_free_irq;
-	}
-
 	return interrupt;
 
-err_free_irq:
-	free_irq(interrupt->irq, interrupt);
 err_kfree:
 	kfree(interrupt);
 
@@ -256,12 +248,6 @@ err_kfree:
 /* Tear down the IPA interrupt framework */
 void ipa_interrupt_teardown(struct ipa_interrupt *interrupt)
 {
-	struct device *dev = &interrupt->ipa->pdev->dev;
-	int ret;
-
-	ret = disable_irq_wake(interrupt->irq);
-	if (ret)
-		dev_err(dev, "error %d disabling \"ipa\" IRQ wakeup\n", ret);
 	free_irq(interrupt->irq, interrupt);
 	kfree(interrupt);
 }

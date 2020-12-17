@@ -9,7 +9,6 @@
 #include <drm/drm_file.h>
 
 #include "i915_drv.h"
-#include "i915_gem_context.h"
 #include "i915_gem_ioctls.h"
 #include "i915_gem_object.h"
 
@@ -36,10 +35,9 @@ int
 i915_gem_throttle_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file)
 {
-	const unsigned long recent_enough = jiffies - DRM_I915_THROTTLE_JIFFIES;
 	struct drm_i915_file_private *file_priv = file->driver_priv;
-	struct i915_gem_context *ctx;
-	unsigned long idx;
+	unsigned long recent_enough = jiffies - DRM_I915_THROTTLE_JIFFIES;
+	struct i915_request *request, *target = NULL;
 	long ret;
 
 	/* ABI: return -EIO if already wedged */
@@ -47,54 +45,27 @@ i915_gem_throttle_ioctl(struct drm_device *dev, void *data,
 	if (ret)
 		return ret;
 
-	rcu_read_lock();
-	xa_for_each(&file_priv->context_xa, idx, ctx) {
-		struct i915_gem_engines_iter it;
-		struct intel_context *ce;
+	spin_lock(&file_priv->mm.lock);
+	list_for_each_entry(request, &file_priv->mm.request_list, client_link) {
+		if (time_after_eq(request->emitted_jiffies, recent_enough))
+			break;
 
-		if (!kref_get_unless_zero(&ctx->ref))
-			continue;
-		rcu_read_unlock();
+		if (target && xchg(&target->file_priv, NULL))
+			list_del(&target->client_link);
 
-		for_each_gem_engine(ce,
-				    i915_gem_context_lock_engines(ctx),
-				    it) {
-			struct i915_request *rq, *target = NULL;
-
-			if (!ce->timeline)
-				continue;
-
-			mutex_lock(&ce->timeline->mutex);
-			list_for_each_entry_reverse(rq,
-						    &ce->timeline->requests,
-						    link) {
-				if (i915_request_completed(rq))
-					break;
-
-				if (time_after(rq->emitted_jiffies,
-					       recent_enough))
-					continue;
-
-				target = i915_request_get(rq);
-				break;
-			}
-			mutex_unlock(&ce->timeline->mutex);
-			if (!target)
-				continue;
-
-			ret = i915_request_wait(target,
-						I915_WAIT_INTERRUPTIBLE,
-						MAX_SCHEDULE_TIMEOUT);
-			i915_request_put(target);
-			if (ret < 0)
-				break;
-		}
-		i915_gem_context_unlock_engines(ctx);
-		i915_gem_context_put(ctx);
-
-		rcu_read_lock();
+		target = request;
 	}
-	rcu_read_unlock();
+	if (target)
+		i915_request_get(target);
+	spin_unlock(&file_priv->mm.lock);
+
+	if (!target)
+		return 0;
+
+	ret = i915_request_wait(target,
+				I915_WAIT_INTERRUPTIBLE,
+				MAX_SCHEDULE_TIMEOUT);
+	i915_request_put(target);
 
 	return ret < 0 ? ret : 0;
 }

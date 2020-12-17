@@ -7,7 +7,6 @@
 #include <linux/ptrace.h>
 
 #include <asm/reg.h>
-#include <asm/cacheflush.h>
 
 int machine_check_440A(struct pt_regs *regs)
 {

@@ -47,7 +47,7 @@ called USB Request Block, or URB for short.
 The URB structure
 =================
 
-Some of the fields in struct urb are::
+Some of the fields in struct :c:type:`urb` are::
 
   struct urb
   {

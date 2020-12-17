@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * QLogic iSCSI HBA Driver
  * Copyright (c)  2003-2013 QLogic Corporation
+ *
+ * See LICENSE.qla4xxx for copyright and licensing details.
  */
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -3225,7 +3226,7 @@ static void qla4_8xxx_uevent_emit(struct scsi_qla_host *ha, u32 code)
 
 	switch (code) {
 	case QL4_UEVENT_CODE_FW_DUMP:
-		snprintf(event_string, sizeof(event_string), "FW_DUMP=%lu",
+		snprintf(event_string, sizeof(event_string), "FW_DUMP=%ld",
 			 ha->host_no);
 		break;
 	default:

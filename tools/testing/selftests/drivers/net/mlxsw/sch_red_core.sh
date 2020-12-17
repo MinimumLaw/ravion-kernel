@@ -208,7 +208,6 @@ switch_create()
 	ip link set dev br2_11 up
 
 	local size=$(devlink_pool_size_thtype 0 | cut -d' ' -f 1)
-	devlink_port_pool_th_save $swp3 8
 	devlink_port_pool_th_set $swp3 8 $size
 }
 

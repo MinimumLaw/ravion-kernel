@@ -188,8 +188,6 @@ patternProperties:
 
     additionalProperties: false
 
-additionalProperties: true
-
 examples:
   - |
     xyzreg: regulator {

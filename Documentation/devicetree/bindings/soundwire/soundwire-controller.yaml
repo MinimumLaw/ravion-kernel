@@ -57,8 +57,6 @@ required:
   - "#address-cells"
   - "#size-cells"
 
-additionalProperties: true
-
 examples:
   - |
     soundwire@c2d0000 {

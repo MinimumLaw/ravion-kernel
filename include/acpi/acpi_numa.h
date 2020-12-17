@@ -17,26 +17,10 @@ extern int pxm_to_node(int);
 extern int node_to_pxm(int);
 extern int acpi_map_pxm_to_node(int);
 extern unsigned char acpi_srat_revision;
-extern void disable_srat(void);
+extern int acpi_numa __initdata;
 
 extern void bad_srat(void);
 extern int srat_disabled(void);
 
-#else				/* CONFIG_ACPI_NUMA */
-static inline void disable_srat(void)
-{
-}
-static inline int pxm_to_node(int pxm)
-{
-	return 0;
-}
 #endif				/* CONFIG_ACPI_NUMA */
-
-#ifdef CONFIG_ACPI_HMAT
-extern void disable_hmat(void);
-#else				/* CONFIG_ACPI_HMAT */
-static inline void disable_hmat(void)
-{
-}
-#endif				/* CONFIG_ACPI_HMAT */
 #endif				/* __ACP_NUMA_H */

@@ -185,6 +185,8 @@ static int mtk_dfe_dse_state_check(struct mtk_cryp *cryp)
 
 static int mtk_dfe_dse_reset(struct mtk_cryp *cryp)
 {
+	int err;
+
 	/* Reset DSE/DFE and correct system priorities for all rings. */
 	writel(MTK_DFSE_THR_CTRL_RESET, cryp->base + DFE_THR_CTRL);
 	writel(0, cryp->base + DFE_PRIO_0);
@@ -198,7 +200,11 @@ static int mtk_dfe_dse_reset(struct mtk_cryp *cryp)
 	writel(0, cryp->base + DSE_PRIO_2);
 	writel(0, cryp->base + DSE_PRIO_3);
 
-	return mtk_dfe_dse_state_check(cryp);
+	err = mtk_dfe_dse_state_check(cryp);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 static void mtk_cmd_desc_ring_setup(struct mtk_cryp *cryp,

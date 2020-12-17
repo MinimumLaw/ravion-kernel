@@ -1452,8 +1452,11 @@ static int mb86a16_set_fe(struct mb86a16_state *state)
 							wait_t = (786432 + state->srate / 2) / state->srate;
 						else
 							wait_t = (1572864 + state->srate / 2) / state->srate;
-
-						msleep_interruptible(wait_t);
+						if (state->srate < 5000)
+							/* FIXME ! , should be a long wait ! */
+							msleep_interruptible(wait_t);
+						else
+							msleep_interruptible(wait_t);
 
 						if (sync_chk(state, &junk) == 0) {
 							iq_vt_set(state, 1);

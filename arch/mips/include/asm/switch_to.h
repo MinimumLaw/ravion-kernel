@@ -117,8 +117,6 @@ do {									\
 		__restore_dsp(next);					\
 	}								\
 	if (cop2_present) {						\
-		u32 status = read_c0_status();				\
-									\
 		set_c0_status(ST0_CU2);					\
 		if ((KSTK_STATUS(prev) & ST0_CU2)) {			\
 			if (cop2_lazy_restore)				\
@@ -129,7 +127,7 @@ do {									\
 		    !cop2_lazy_restore) {				\
 			cop2_restore(next);				\
 		}							\
-		write_c0_status(status);				\
+		clear_c0_status(ST0_CU2);				\
 	}								\
 	__clear_r5_hw_ll_bit();						\
 	__clear_software_ll_bit();					\

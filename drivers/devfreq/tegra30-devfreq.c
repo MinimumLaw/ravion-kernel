@@ -822,6 +822,8 @@ static int tegra_devfreq_probe(struct platform_device *pdev)
 		return err;
 	}
 
+	reset_control_assert(tegra->reset);
+
 	err = clk_prepare_enable(tegra->clock);
 	if (err) {
 		dev_err(&pdev->dev,
@@ -829,11 +831,7 @@ static int tegra_devfreq_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	err = reset_control_reset(tegra->reset);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to reset hardware: %d\n", err);
-		goto disable_clk;
-	}
+	reset_control_deassert(tegra->reset);
 
 	rate = clk_round_rate(tegra->emc_clock, ULONG_MAX);
 	if (rate < 0) {

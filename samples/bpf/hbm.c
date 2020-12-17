@@ -40,7 +40,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/unistd.h>
-#include <linux/compiler.h>
 
 #include <linux/bpf.h>
 #include <bpf/bpf.h>
@@ -484,7 +483,7 @@ int main(int argc, char **argv)
 					"Option -%c requires an argument.\n\n",
 					optopt);
 		case 'h':
-			__fallthrough;
+			fallthrough;
 		default:
 			Usage();
 			return 0;

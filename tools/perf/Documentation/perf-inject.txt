@@ -24,12 +24,8 @@ information could make use of this facility.
 OPTIONS
 -------
 -b::
---build-ids::
+--build-ids=::
         Inject build-ids into the output stream
-
---buildid-all:
-	Inject build-ids of all DSOs into the output stream
-
 -v::
 --verbose::
 	Be more verbose.

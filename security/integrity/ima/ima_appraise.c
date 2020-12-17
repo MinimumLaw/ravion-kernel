@@ -19,29 +19,18 @@
 static int __init default_appraise_setup(char *str)
 {
 #ifdef CONFIG_IMA_APPRAISE_BOOTPARAM
-	bool sb_state = arch_ima_get_secureboot();
-	int appraisal_state = ima_appraise;
+	if (arch_ima_get_secureboot()) {
+		pr_info("Secure boot enabled: ignoring ima_appraise=%s boot parameter option",
+			str);
+		return 1;
+	}
 
 	if (strncmp(str, "off", 3) == 0)
-		appraisal_state = 0;
+		ima_appraise = 0;
 	else if (strncmp(str, "log", 3) == 0)
-		appraisal_state = IMA_APPRAISE_LOG;
+		ima_appraise = IMA_APPRAISE_LOG;
 	else if (strncmp(str, "fix", 3) == 0)
-		appraisal_state = IMA_APPRAISE_FIX;
-	else if (strncmp(str, "enforce", 7) == 0)
-		appraisal_state = IMA_APPRAISE_ENFORCE;
-	else
-		pr_err("invalid \"%s\" appraise option", str);
-
-	/* If appraisal state was changed, but secure boot is enabled,
-	 * keep its default */
-	if (sb_state) {
-		if (!(appraisal_state & IMA_APPRAISE_ENFORCE))
-			pr_info("Secure boot enabled: ignoring ima_appraise=%s option",
-				str);
-	} else {
-		ima_appraise = appraisal_state;
-	}
+		ima_appraise = IMA_APPRAISE_FIX;
 #endif
 	return 1;
 }

@@ -62,5 +62,3 @@ properties:
 
   dma-names:
     const: rx-tx
-
-additionalProperties: true

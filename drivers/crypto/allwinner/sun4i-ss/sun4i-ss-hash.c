@@ -9,7 +9,6 @@
  * You could find the datasheet in Documentation/arm/sunxi.rst
  */
 #include "sun4i-ss.h"
-#include <asm/unaligned.h>
 #include <linux/scatterlist.h>
 
 /* This is a totally arbitrary value */
@@ -197,7 +196,7 @@ static int sun4i_hash(struct ahash_request *areq)
 	struct sg_mapping_iter mi;
 	int in_r, err = 0;
 	size_t copied = 0;
-	u32 wb = 0;
+	__le32 wb = 0;
 
 	dev_dbg(ss->dev, "%s %s bc=%llu len=%u mode=%x wl=%u h0=%0x",
 		__func__, crypto_tfm_alg_name(areq->base.tfm),
@@ -409,7 +408,7 @@ hash_final:
 
 		nbw = op->len - 4 * nwait;
 		if (nbw) {
-			wb = le32_to_cpup((__le32 *)(op->buf + nwait * 4));
+			wb = cpu_to_le32(*(u32 *)(op->buf + nwait * 4));
 			wb &= GENMASK((nbw * 8) - 1, 0);
 
 			op->byte_count += nbw;
@@ -418,7 +417,7 @@ hash_final:
 
 	/* write the remaining bytes of the nbw buffer */
 	wb |= ((1 << 7) << (nbw * 8));
-	((__le32 *)bf)[j++] = cpu_to_le32(wb);
+	bf[j++] = le32_to_cpu(wb);
 
 	/*
 	 * number of space to pad to obtain 64o minus 8(size) minus 4 (final 1)
@@ -480,16 +479,16 @@ hash_final:
 	/* Get the hash from the device */
 	if (op->mode == SS_OP_SHA1) {
 		for (i = 0; i < 5; i++) {
-			v = readl(ss->base + SS_MD0 + i * 4);
 			if (ss->variant->sha1_in_be)
-				put_unaligned_le32(v, areq->result + i * 4);
+				v = cpu_to_le32(readl(ss->base + SS_MD0 + i * 4));
 			else
-				put_unaligned_be32(v, areq->result + i * 4);
+				v = cpu_to_be32(readl(ss->base + SS_MD0 + i * 4));
+			memcpy(areq->result + i * 4, &v, 4);
 		}
 	} else {
 		for (i = 0; i < 4; i++) {
-			v = readl(ss->base + SS_MD0 + i * 4);
-			put_unaligned_le32(v, areq->result + i * 4);
+			v = cpu_to_le32(readl(ss->base + SS_MD0 + i * 4));
+			memcpy(areq->result + i * 4, &v, 4);
 		}
 	}
 

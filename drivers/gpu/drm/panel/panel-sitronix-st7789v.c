@@ -382,7 +382,9 @@ static int st7789v_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	drm_panel_add(&ctx->panel);
+	ret = drm_panel_add(&ctx->panel);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }

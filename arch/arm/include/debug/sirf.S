@@ -29,10 +29,7 @@
 	.macro	busyuart,rd,rx
 	.endm
 
-	.macro	waituartcts,rd,rx
-	.endm
-
-	.macro	waituarttxrdy,rd,rx
+	.macro	waituart,rd,rx
 1001:	ldr	\rd, [\rx, #SIRF_LLUART_TXFIFO_STATUS]
 	tst	\rd, #SIRF_LLUART_TXFIFO_EMPTY
 	beq	1001b

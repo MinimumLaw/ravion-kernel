@@ -274,23 +274,14 @@ void br_multicast_flood(struct net_bridge_mdb_entry *mdst,
 	struct net_bridge *br = netdev_priv(dev);
 	struct net_bridge_port *prev = NULL;
 	struct net_bridge_port_group *p;
-	bool allow_mode_include = true;
 	struct hlist_node *rp;
 
 	rp = rcu_dereference(hlist_first_rcu(&br->router_list));
-	if (mdst) {
-		p = rcu_dereference(mdst->ports);
-		if (br_multicast_should_handle_mode(br, mdst->addr.proto) &&
-		    br_multicast_is_star_g(&mdst->addr))
-			allow_mode_include = false;
-	} else {
-		p = NULL;
-	}
-
+	p = mdst ? rcu_dereference(mdst->ports) : NULL;
 	while (p || rp) {
 		struct net_bridge_port *port, *lport, *rport;
 
-		lport = p ? p->key.port : NULL;
+		lport = p ? p->port : NULL;
 		rport = hlist_entry_safe(rp, struct net_bridge_port, rlist);
 
 		if ((unsigned long)lport > (unsigned long)rport) {
@@ -301,10 +292,6 @@ void br_multicast_flood(struct net_bridge_mdb_entry *mdst,
 						   local_orig);
 				goto delivered;
 			}
-			if ((!allow_mode_include &&
-			     p->filter_mode == MCAST_INCLUDE) ||
-			    (p->flags & MDB_PG_FLAGS_BLOCKED))
-				goto delivered;
 		} else {
 			port = rport;
 		}

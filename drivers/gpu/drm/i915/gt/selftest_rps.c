@@ -77,20 +77,20 @@ create_spin_counter(struct intel_engine_cs *engine,
 
 	vma = i915_vma_instance(obj, vm, NULL);
 	if (IS_ERR(vma)) {
-		err = PTR_ERR(vma);
-		goto err_put;
+		i915_gem_object_put(obj);
+		return vma;
 	}
 
 	err = i915_vma_pin(vma, 0, 0, PIN_USER);
-	if (err)
-		goto err_unlock;
-
-	i915_vma_lock(vma);
+	if (err) {
+		i915_vma_put(vma);
+		return ERR_PTR(err);
+	}
 
 	base = i915_gem_object_pin_map(obj, I915_MAP_WC);
 	if (IS_ERR(base)) {
-		err = PTR_ERR(base);
-		goto err_unpin;
+		i915_gem_object_put(obj);
+		return ERR_CAST(base);
 	}
 	cs = base;
 
@@ -134,14 +134,6 @@ create_spin_counter(struct intel_engine_cs *engine,
 	*cancel = base + loop;
 	*counter = srm ? memset32(base + end, 0, 1) : NULL;
 	return vma;
-
-err_unpin:
-	i915_vma_unpin(vma);
-err_unlock:
-	i915_vma_unlock(vma);
-err_put:
-	i915_gem_object_put(obj);
-	return ERR_PTR(err);
 }
 
 static u8 wait_for_freq(struct intel_rps *rps, u8 freq, int timeout_ms)
@@ -647,6 +639,7 @@ int live_rps_frequency_cs(void *arg)
 			goto err_vma;
 		}
 
+		i915_vma_lock(vma);
 		err = i915_request_await_object(rq, vma->obj, false);
 		if (!err)
 			err = i915_vma_move_to_active(vma, rq, 0);
@@ -654,6 +647,7 @@ int live_rps_frequency_cs(void *arg)
 			err = rq->engine->emit_bb_start(rq,
 							vma->node.start,
 							PAGE_SIZE, 0);
+		i915_vma_unlock(vma);
 		i915_request_add(rq);
 		if (err)
 			goto err_vma;
@@ -706,7 +700,7 @@ int live_rps_frequency_cs(void *arg)
 				f = act; /* may skip ahead [pcu granularity] */
 			}
 
-			err = -EINTR; /* ignore error, continue on with test */
+			err = -EINVAL;
 		}
 
 err_vma:
@@ -714,7 +708,6 @@ err_vma:
 		i915_gem_object_flush_map(vma->obj);
 		i915_gem_object_unpin_map(vma->obj);
 		i915_vma_unpin(vma);
-		i915_vma_unlock(vma);
 		i915_vma_put(vma);
 
 		st_engine_heartbeat_enable(engine);
@@ -788,6 +781,7 @@ int live_rps_frequency_srm(void *arg)
 			goto err_vma;
 		}
 
+		i915_vma_lock(vma);
 		err = i915_request_await_object(rq, vma->obj, false);
 		if (!err)
 			err = i915_vma_move_to_active(vma, rq, 0);
@@ -795,6 +789,7 @@ int live_rps_frequency_srm(void *arg)
 			err = rq->engine->emit_bb_start(rq,
 							vma->node.start,
 							PAGE_SIZE, 0);
+		i915_vma_unlock(vma);
 		i915_request_add(rq);
 		if (err)
 			goto err_vma;
@@ -846,7 +841,7 @@ int live_rps_frequency_srm(void *arg)
 				f = act; /* may skip ahead [pcu granularity] */
 			}
 
-			err = -EINTR; /* ignore error, continue on with test */
+			err = -EINVAL;
 		}
 
 err_vma:
@@ -854,7 +849,6 @@ err_vma:
 		i915_gem_object_flush_map(vma->obj);
 		i915_gem_object_unpin_map(vma->obj);
 		i915_vma_unpin(vma);
-		i915_vma_unlock(vma);
 		i915_vma_put(vma);
 
 		st_engine_heartbeat_enable(engine);

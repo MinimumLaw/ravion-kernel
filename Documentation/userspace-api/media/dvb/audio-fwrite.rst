@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.audio
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _audio_fwrite:
 
@@ -18,6 +24,8 @@ Synopsis
 --------
 
 .. c:function:: size_t write(int fd, const void *buf, size_t count)
+    :name: dvb-audio-write
+
 
 Arguments
 ---------
@@ -25,6 +33,7 @@ Arguments
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -  .. row 1
 
@@ -44,6 +53,7 @@ Arguments
 
        -  Size of buf.
 
+
 Description
 -----------
 
@@ -53,12 +63,14 @@ PES format. If O_NONBLOCK is not specified the function will block
 until buffer space is available. The amount of data to be transferred is
 implied by count.
 
+
 Return Value
 ------------
 
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -  .. row 1
 

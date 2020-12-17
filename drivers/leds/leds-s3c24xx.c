@@ -16,6 +16,8 @@
 #include <linux/module.h>
 #include <linux/platform_data/leds-s3c24xx.h>
 
+#include <mach/regs-gpio.h>
+
 /* our context */
 
 struct s3c24xx_gpio_led {

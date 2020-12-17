@@ -52,8 +52,8 @@
 #define MTK_IR_END(v, p)	  ((v) == MTK_MAX_SAMPLES && (p) == 0)
 /* Number of registers to record the pulse width */
 #define MTK_CHKDATA_SZ		  17
-/* Sample period in us */
-#define MTK_IR_SAMPLE		  46
+/* Sample period in ns */
+#define MTK_IR_SAMPLE		  46000
 
 enum mtk_fields {
 	/* Register to setting software sampling period */
@@ -151,12 +151,15 @@ static inline u32 mtk_chk_period(struct mtk_ir *ir)
 {
 	u32 val;
 
+	/* Period of raw software sampling in ns */
+	val = DIV_ROUND_CLOSEST(1000000000ul,
+				clk_get_rate(ir->bus) / ir->data->div);
+
 	/*
 	 * Period for software decoder used in the
 	 * unit of raw software sampling
 	 */
-	val = DIV_ROUND_CLOSEST(clk_get_rate(ir->bus),
-				USEC_PER_SEC * ir->data->div / MTK_IR_SAMPLE);
+	val = DIV_ROUND_CLOSEST(MTK_IR_SAMPLE, val);
 
 	dev_dbg(ir->dev, "@pwm clk  = \t%lu\n",
 		clk_get_rate(ir->bus) / ir->data->div);
@@ -409,7 +412,7 @@ static int mtk_ir_probe(struct platform_device *pdev)
 	mtk_irq_enable(ir, MTK_IRINT_EN);
 
 	dev_info(dev, "Initialized MT7623 IR driver, sample period = %dus\n",
-		 MTK_IR_SAMPLE);
+		 DIV_ROUND_CLOSEST(MTK_IR_SAMPLE, 1000));
 
 	return 0;
 

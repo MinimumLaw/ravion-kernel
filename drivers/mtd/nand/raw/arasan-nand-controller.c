@@ -980,10 +980,10 @@ static int anfc_init_hw_ecc_controller(struct arasan_nfc *nfc,
 		return -EINVAL;
 	}
 
-	mtd_set_ooblayout(mtd, nand_get_large_page_ooblayout());
+	mtd_set_ooblayout(mtd, &nand_ooblayout_lp_ops);
 
 	ecc->steps = mtd->writesize / ecc->size;
-	ecc->algo = NAND_ECC_ALGO_BCH;
+	ecc->algo = NAND_ECC_BCH;
 	anand->ecc_bits = bch_gf_mag * ecc->strength;
 	ecc->bytes = DIV_ROUND_UP(anand->ecc_bits, 8);
 	anand->ecc_total = DIV_ROUND_UP(anand->ecc_bits * ecc->steps, 8);
@@ -1056,17 +1056,17 @@ static int anfc_attach_chip(struct nand_chip *chip)
 	chip->ecc.read_page_raw = nand_monolithic_read_page_raw;
 	chip->ecc.write_page_raw = nand_monolithic_write_page_raw;
 
-	switch (chip->ecc.engine_type) {
-	case NAND_ECC_ENGINE_TYPE_NONE:
-	case NAND_ECC_ENGINE_TYPE_SOFT:
-	case NAND_ECC_ENGINE_TYPE_ON_DIE:
+	switch (chip->ecc.mode) {
+	case NAND_ECC_NONE:
+	case NAND_ECC_SOFT:
+	case NAND_ECC_ON_DIE:
 		break;
-	case NAND_ECC_ENGINE_TYPE_ON_HOST:
+	case NAND_ECC_HW:
 		ret = anfc_init_hw_ecc_controller(nfc, chip);
 		break;
 	default:
 		dev_err(nfc->dev, "Unsupported ECC mode: %d\n",
-			chip->ecc.engine_type);
+			chip->ecc.mode);
 		return -EINVAL;
 	}
 

@@ -24,13 +24,11 @@ static const char * const exception_stack_names[] = {
 		[ ESTACK_NMI	]	= "NMI",
 		[ ESTACK_DB	]	= "#DB",
 		[ ESTACK_MCE	]	= "#MC",
-		[ ESTACK_VC	]	= "#VC",
-		[ ESTACK_VC2	]	= "#VC2",
 };
 
 const char *stack_type_name(enum stack_type type)
 {
-	BUILD_BUG_ON(N_EXCEPTION_STACKS != 6);
+	BUILD_BUG_ON(N_EXCEPTION_STACKS != 4);
 
 	if (type == STACK_TYPE_IRQ)
 		return "IRQ";
@@ -81,18 +79,16 @@ struct estack_pages estack_pages[CEA_ESTACK_PAGES] ____cacheline_aligned = {
 	EPAGERANGE(NMI),
 	EPAGERANGE(DB),
 	EPAGERANGE(MCE),
-	EPAGERANGE(VC),
-	EPAGERANGE(VC2),
 };
 
-static __always_inline bool in_exception_stack(unsigned long *stack, struct stack_info *info)
+static bool in_exception_stack(unsigned long *stack, struct stack_info *info)
 {
 	unsigned long begin, end, stk = (unsigned long)stack;
 	const struct estack_pages *ep;
 	struct pt_regs *regs;
 	unsigned int k;
 
-	BUILD_BUG_ON(N_EXCEPTION_STACKS != 6);
+	BUILD_BUG_ON(N_EXCEPTION_STACKS != 4);
 
 	begin = (unsigned long)__this_cpu_read(cea_exception_stacks);
 	/*
@@ -126,7 +122,7 @@ static __always_inline bool in_exception_stack(unsigned long *stack, struct stac
 	return true;
 }
 
-static __always_inline bool in_irq_stack(unsigned long *stack, struct stack_info *info)
+static bool in_irq_stack(unsigned long *stack, struct stack_info *info)
 {
 	unsigned long *end   = (unsigned long *)this_cpu_read(hardirq_stack_ptr);
 	unsigned long *begin = end - (IRQ_STACK_SIZE / sizeof(long));
@@ -151,38 +147,32 @@ static __always_inline bool in_irq_stack(unsigned long *stack, struct stack_info
 	return true;
 }
 
-bool noinstr get_stack_info_noinstr(unsigned long *stack, struct task_struct *task,
-				    struct stack_info *info)
-{
-	if (in_task_stack(stack, task, info))
-		return true;
-
-	if (task != current)
-		return false;
-
-	if (in_exception_stack(stack, info))
-		return true;
-
-	if (in_irq_stack(stack, info))
-		return true;
-
-	if (in_entry_stack(stack, info))
-		return true;
-
-	return false;
-}
-
 int get_stack_info(unsigned long *stack, struct task_struct *task,
 		   struct stack_info *info, unsigned long *visit_mask)
 {
-	task = task ? : current;
-
 	if (!stack)
 		goto unknown;
 
-	if (!get_stack_info_noinstr(stack, task, info))
+	task = task ? : current;
+
+	if (in_task_stack(stack, task, info))
+		goto recursion_check;
+
+	if (task != current)
 		goto unknown;
 
+	if (in_exception_stack(stack, info))
+		goto recursion_check;
+
+	if (in_irq_stack(stack, info))
+		goto recursion_check;
+
+	if (in_entry_stack(stack, info))
+		goto recursion_check;
+
+	goto unknown;
+
+recursion_check:
 	/*
 	 * Make sure we don't iterate through any given stack more than once.
 	 * If it comes up a second time then there's something wrong going on:

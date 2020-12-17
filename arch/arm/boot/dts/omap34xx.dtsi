@@ -20,7 +20,6 @@
 			operating-points-v2 = <&cpu0_opp_table>;
 
 			clock-latency = <300000>; /* From legacy driver */
-			#cooling-cells = <2>;
 		};
 	};
 
@@ -183,7 +182,7 @@
 };
 
 &ssi {
-	status = "okay";
+	status = "ok";
 
 	clocks = <&ssi_ssr_fck>,
 		 <&ssi_sst_fck>,

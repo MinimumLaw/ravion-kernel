@@ -255,9 +255,7 @@ static int ocrdma_register_device(struct ocrdma_dev *dev)
 	if (ret)
 		return ret;
 
-	dma_set_max_seg_size(&dev->nic_info.pdev->dev, UINT_MAX);
-	return ib_register_device(&dev->ibdev, "ocrdma%d",
-				  &dev->nic_info.pdev->dev);
+	return ib_register_device(&dev->ibdev, "ocrdma%d");
 }
 
 static int ocrdma_alloc_resources(struct ocrdma_dev *dev)

@@ -25,10 +25,7 @@
 	beq	1002b
 	.endm
 
-	.macro	waituartcts,rd,rx
-	.endm
-
-	.macro	waituarttxrdy,rd,rx
+	.macro	waituart,rd,rx
 1001:	ldr	\rd, [\rx, #MESON_AO_UART_STATUS]
 	tst	\rd, #MESON_AO_UART_TX_FIFO_FULL
 	bne	1001b

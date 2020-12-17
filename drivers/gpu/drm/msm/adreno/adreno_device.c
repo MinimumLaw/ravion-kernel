@@ -282,7 +282,7 @@ struct msm_gpu *adreno_load_gpu(struct drm_device *dev)
 	int ret;
 
 	if (pdev)
-		gpu = dev_to_gpu(&pdev->dev);
+		gpu = platform_get_drvdata(pdev);
 
 	if (!gpu) {
 		dev_err_once(dev->dev, "no GPU device was found\n");
@@ -417,13 +417,15 @@ static int adreno_bind(struct device *dev, struct device *master, void *data)
 		return PTR_ERR(gpu);
 	}
 
+	dev_set_drvdata(dev, gpu);
+
 	return 0;
 }
 
 static void adreno_unbind(struct device *dev, struct device *master,
 		void *data)
 {
-	struct msm_gpu *gpu = dev_to_gpu(dev);
+	struct msm_gpu *gpu = dev_get_drvdata(dev);
 
 	pm_runtime_force_suspend(dev);
 	gpu->funcs->destroy(gpu);
@@ -488,14 +490,16 @@ static const struct of_device_id dt_match[] = {
 #ifdef CONFIG_PM
 static int adreno_resume(struct device *dev)
 {
-	struct msm_gpu *gpu = dev_to_gpu(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct msm_gpu *gpu = platform_get_drvdata(pdev);
 
 	return gpu->funcs->pm_resume(gpu);
 }
 
 static int adreno_suspend(struct device *dev)
 {
-	struct msm_gpu *gpu = dev_to_gpu(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct msm_gpu *gpu = platform_get_drvdata(pdev);
 
 	return gpu->funcs->pm_suspend(gpu);
 }

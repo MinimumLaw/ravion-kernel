@@ -100,7 +100,7 @@ ATTRIBUTE_GROUPS(integrator);
 
 static int __init integrator_soc_init(void)
 {
-	struct regmap *syscon_regmap;
+	static struct regmap *syscon_regmap;
 	struct soc_device *soc_dev;
 	struct soc_device_attribute *soc_dev_attr;
 	struct device_node *np;

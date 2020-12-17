@@ -4,7 +4,6 @@
  */
 
 #include <linux/io.h>
-#include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -73,12 +72,18 @@ struct qcom_apq8064_sata_phy {
 };
 
 /* Helper function to do poll and timeout */
-static int poll_timeout(void __iomem *addr, u32 mask)
+static int read_poll_timeout(void __iomem *addr, u32 mask)
 {
-	u32 val;
+	unsigned long timeout = jiffies + msecs_to_jiffies(TIMEOUT_MS);
 
-	return readl_relaxed_poll_timeout(addr, val, (val & mask),
-					DELAY_INTERVAL_US, TIMEOUT_MS * 1000);
+	do {
+		if (readl_relaxed(addr) & mask)
+			return 0;
+
+		usleep_range(DELAY_INTERVAL_US, DELAY_INTERVAL_US + 50);
+	} while (!time_after(jiffies, timeout));
+
+	return (readl_relaxed(addr) & mask) ? 0 : -ETIMEDOUT;
 }
 
 static int qcom_apq8064_sata_phy_init(struct phy *generic_phy)
@@ -132,21 +137,21 @@ static int qcom_apq8064_sata_phy_init(struct phy *generic_phy)
 	writel_relaxed(0x05, base + UNIPHY_PLL_LKDET_CFG2);
 
 	/* PLL Lock wait */
-	ret = poll_timeout(base + UNIPHY_PLL_STATUS, UNIPHY_PLL_LOCK);
+	ret = read_poll_timeout(base + UNIPHY_PLL_STATUS, UNIPHY_PLL_LOCK);
 	if (ret) {
 		dev_err(phy->dev, "poll timeout UNIPHY_PLL_STATUS\n");
 		return ret;
 	}
 
 	/* TX Calibration */
-	ret = poll_timeout(base + SATA_PHY_TX_IMCAL_STAT, SATA_PHY_TX_CAL);
+	ret = read_poll_timeout(base + SATA_PHY_TX_IMCAL_STAT, SATA_PHY_TX_CAL);
 	if (ret) {
 		dev_err(phy->dev, "poll timeout SATA_PHY_TX_IMCAL_STAT\n");
 		return ret;
 	}
 
 	/* RX Calibration */
-	ret = poll_timeout(base + SATA_PHY_RX_IMCAL_STAT, SATA_PHY_RX_CAL);
+	ret = read_poll_timeout(base + SATA_PHY_RX_IMCAL_STAT, SATA_PHY_RX_CAL);
 	if (ret) {
 		dev_err(phy->dev, "poll timeout SATA_PHY_RX_IMCAL_STAT\n");
 		return ret;

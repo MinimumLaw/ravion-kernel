@@ -67,8 +67,6 @@ patternProperties:
     required:
       - reg
 
-additionalProperties: true
-
 examples:
   - |
       #include <dt-bindings/gpio/gpio.h>

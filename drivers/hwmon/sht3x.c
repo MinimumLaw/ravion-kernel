@@ -662,9 +662,8 @@ static struct attribute *sts3x_attrs[] = {
 ATTRIBUTE_GROUPS(sht3x);
 ATTRIBUTE_GROUPS(sts3x);
 
-static const struct i2c_device_id sht3x_ids[];
-
-static int sht3x_probe(struct i2c_client *client)
+static int sht3x_probe(struct i2c_client *client,
+		       const struct i2c_device_id *id)
 {
 	int ret;
 	struct sht3x_data *data;
@@ -716,7 +715,7 @@ static int sht3x_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
-	if (i2c_match_id(sht3x_ids, client)->driver_data == sts3x)
+	if (id->driver_data == sts3x)
 		attribute_groups = sts3x_groups;
 	else
 		attribute_groups = sht3x_groups;
@@ -743,7 +742,7 @@ MODULE_DEVICE_TABLE(i2c, sht3x_ids);
 
 static struct i2c_driver sht3x_i2c_driver = {
 	.driver.name = "sht3x",
-	.probe_new   = sht3x_probe,
+	.probe       = sht3x_probe,
 	.id_table    = sht3x_ids,
 };
 

@@ -330,13 +330,12 @@ static void tls_sk_proto_close(struct sock *sk, long timeout)
 		tls_ctx_free(sk, ctx);
 }
 
-static int do_tls_getsockopt_conf(struct sock *sk, char __user *optval,
-				  int __user *optlen, int tx)
+static int do_tls_getsockopt_tx(struct sock *sk, char __user *optval,
+				int __user *optlen)
 {
 	int rc = 0;
 	struct tls_context *ctx = tls_get_ctx(sk);
 	struct tls_crypto_info *crypto_info;
-	struct cipher_context *cctx;
 	int len;
 
 	if (get_user(len, optlen))
@@ -353,13 +352,7 @@ static int do_tls_getsockopt_conf(struct sock *sk, char __user *optval,
 	}
 
 	/* get user crypto info */
-	if (tx) {
-		crypto_info = &ctx->crypto_send.info;
-		cctx = &ctx->tx;
-	} else {
-		crypto_info = &ctx->crypto_recv.info;
-		cctx = &ctx->rx;
-	}
+	crypto_info = &ctx->crypto_send.info;
 
 	if (!TLS_CRYPTO_INFO_READY(crypto_info)) {
 		rc = -EBUSY;
@@ -386,9 +379,9 @@ static int do_tls_getsockopt_conf(struct sock *sk, char __user *optval,
 		}
 		lock_sock(sk);
 		memcpy(crypto_info_aes_gcm_128->iv,
-		       cctx->iv + TLS_CIPHER_AES_GCM_128_SALT_SIZE,
+		       ctx->tx.iv + TLS_CIPHER_AES_GCM_128_SALT_SIZE,
 		       TLS_CIPHER_AES_GCM_128_IV_SIZE);
-		memcpy(crypto_info_aes_gcm_128->rec_seq, cctx->rec_seq,
+		memcpy(crypto_info_aes_gcm_128->rec_seq, ctx->tx.rec_seq,
 		       TLS_CIPHER_AES_GCM_128_REC_SEQ_SIZE);
 		release_sock(sk);
 		if (copy_to_user(optval,
@@ -410,9 +403,9 @@ static int do_tls_getsockopt_conf(struct sock *sk, char __user *optval,
 		}
 		lock_sock(sk);
 		memcpy(crypto_info_aes_gcm_256->iv,
-		       cctx->iv + TLS_CIPHER_AES_GCM_256_SALT_SIZE,
+		       ctx->tx.iv + TLS_CIPHER_AES_GCM_256_SALT_SIZE,
 		       TLS_CIPHER_AES_GCM_256_IV_SIZE);
-		memcpy(crypto_info_aes_gcm_256->rec_seq, cctx->rec_seq,
+		memcpy(crypto_info_aes_gcm_256->rec_seq, ctx->tx.rec_seq,
 		       TLS_CIPHER_AES_GCM_256_REC_SEQ_SIZE);
 		release_sock(sk);
 		if (copy_to_user(optval,
@@ -436,9 +429,7 @@ static int do_tls_getsockopt(struct sock *sk, int optname,
 
 	switch (optname) {
 	case TLS_TX:
-	case TLS_RX:
-		rc = do_tls_getsockopt_conf(sk, optval, optlen,
-					    optname == TLS_TX);
+		rc = do_tls_getsockopt_tx(sk, optval, optlen);
 		break;
 	default:
 		rc = -ENOPROTOOPT;
@@ -869,7 +860,7 @@ static int __init tls_register(void)
 
 	tls_sw_proto_ops = inet_stream_ops;
 	tls_sw_proto_ops.splice_read = tls_sw_splice_read;
-	tls_sw_proto_ops.sendpage_locked   = tls_sw_sendpage_locked;
+	tls_sw_proto_ops.sendpage_locked   = tls_sw_sendpage_locked,
 
 	tls_device_init();
 	tcp_register_ulp(&tcp_tls_ulp_ops);

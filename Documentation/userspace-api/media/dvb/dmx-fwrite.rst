@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.dmx
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _dmx_fwrite:
 
@@ -12,16 +18,18 @@ Name
 
 Digital TV demux write()
 
+
 Synopsis
 --------
 
 .. c:function:: ssize_t write(int fd, const void *buf, size_t count)
+    :name: dvb-dmx-write
 
 Arguments
 ---------
 
 ``fd``
-  File descriptor returned by a previous call to :c:func:`open()`.
+  File descriptor returned by a previous call to :c:func:`open() <dvb-ca-open>`.
 
 ``buf``
      Buffer with data to be written
@@ -38,6 +46,7 @@ provides the actual DVR functionality. It is used for replay of a
 digitally recorded Transport Stream. Matching filters have to be defined
 in the corresponding physical demux device, ``/dev/dvb/adapter?/demux?``.
 The amount of data to be transferred is implied by count.
+
 
 Return Value
 ------------

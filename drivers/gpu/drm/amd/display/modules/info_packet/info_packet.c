@@ -421,13 +421,15 @@ void mod_build_vsc_infopacket(const struct dc_stream_state *stream,
  *****************************************************************************
  */
 void mod_build_hf_vsif_infopacket(const struct dc_stream_state *stream,
-		struct dc_info_packet *info_packet)
+		struct dc_info_packet *info_packet, int ALLMEnabled, int ALLMValue)
 {
 		unsigned int length = 5;
 		bool hdmi_vic_mode = false;
 		uint8_t checksum = 0;
 		uint32_t i = 0;
 		enum dc_timing_3d_format format;
+		bool bALLM = (bool)ALLMEnabled;
+		bool bALLMVal = (bool)ALLMValue;
 
 		info_packet->valid = false;
 		format = stream->timing.timing_3d_format;
@@ -440,12 +442,19 @@ void mod_build_hf_vsif_infopacket(const struct dc_stream_state *stream,
 				&& format == TIMING_3D_FORMAT_NONE)
 			hdmi_vic_mode = true;
 
-		if ((format == TIMING_3D_FORMAT_NONE) && !hdmi_vic_mode)
+		if ((format == TIMING_3D_FORMAT_NONE) && !hdmi_vic_mode && !bALLM)
 			return;
 
 		info_packet->sb[1] = 0x03;
 		info_packet->sb[2] = 0x0C;
 		info_packet->sb[3] = 0x00;
+
+		if (bALLM) {
+			info_packet->sb[1] = 0xD8;
+			info_packet->sb[2] = 0x5D;
+			info_packet->sb[3] = 0xC4;
+			info_packet->sb[4] = HF_VSIF_VERSION;
+		}
 
 		if (format != TIMING_3D_FORMAT_NONE)
 			info_packet->sb[4] = (2 << 5);
@@ -480,6 +489,9 @@ void mod_build_hf_vsif_infopacket(const struct dc_stream_state *stream,
 		info_packet->hb0 = HDMI_INFOFRAME_TYPE_VENDOR;
 		info_packet->hb1 = 0x01;
 		info_packet->hb2 = (uint8_t) (length);
+
+		if (bALLM)
+			info_packet->sb[5] = (info_packet->sb[5] & ~0x02) | (bALLMVal << 1);
 
 		checksum += info_packet->hb0;
 		checksum += info_packet->hb1;

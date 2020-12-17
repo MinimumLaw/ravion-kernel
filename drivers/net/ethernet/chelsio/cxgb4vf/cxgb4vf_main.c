@@ -2017,14 +2017,33 @@ static void mboxlog_stop(struct seq_file *seq, void *v)
 {
 }
 
-static const struct seq_operations mboxlog_sops = {
+static const struct seq_operations mboxlog_seq_ops = {
 	.start = mboxlog_start,
 	.next  = mboxlog_next,
 	.stop  = mboxlog_stop,
 	.show  = mboxlog_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(mboxlog);
+static int mboxlog_open(struct inode *inode, struct file *file)
+{
+	int res = seq_open(file, &mboxlog_seq_ops);
+
+	if (!res) {
+		struct seq_file *seq = file->private_data;
+
+		seq->private = inode->i_private;
+	}
+	return res;
+}
+
+static const struct file_operations mboxlog_fops = {
+	.owner   = THIS_MODULE,
+	.open    = mboxlog_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
+
 /*
  * Show SGE Queue Set information.  We display QPL Queues Sets per line.
  */
@@ -2152,14 +2171,31 @@ static void *sge_queue_next(struct seq_file *seq, void *v, loff_t *pos)
 	return *pos < entries ? (void *)((uintptr_t)*pos + 1) : NULL;
 }
 
-static const struct seq_operations sge_qinfo_sops = {
+static const struct seq_operations sge_qinfo_seq_ops = {
 	.start = sge_queue_start,
 	.next  = sge_queue_next,
 	.stop  = sge_queue_stop,
 	.show  = sge_qinfo_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(sge_qinfo);
+static int sge_qinfo_open(struct inode *inode, struct file *file)
+{
+	int res = seq_open(file, &sge_qinfo_seq_ops);
+
+	if (!res) {
+		struct seq_file *seq = file->private_data;
+		seq->private = inode->i_private;
+	}
+	return res;
+}
+
+static const struct file_operations sge_qinfo_debugfs_fops = {
+	.owner   = THIS_MODULE,
+	.open    = sge_qinfo_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
 
 /*
  * Show SGE Queue Set statistics.  We display QPL Queues Sets per line.
@@ -2281,14 +2317,31 @@ static void *sge_qstats_next(struct seq_file *seq, void *v, loff_t *pos)
 	return *pos < entries ? (void *)((uintptr_t)*pos + 1) : NULL;
 }
 
-static const struct seq_operations sge_qstats_sops = {
+static const struct seq_operations sge_qstats_seq_ops = {
 	.start = sge_qstats_start,
 	.next  = sge_qstats_next,
 	.stop  = sge_qstats_stop,
 	.show  = sge_qstats_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(sge_qstats);
+static int sge_qstats_open(struct inode *inode, struct file *file)
+{
+	int res = seq_open(file, &sge_qstats_seq_ops);
+
+	if (res == 0) {
+		struct seq_file *seq = file->private_data;
+		seq->private = inode->i_private;
+	}
+	return res;
+}
+
+static const struct file_operations sge_qstats_proc_fops = {
+	.owner   = THIS_MODULE,
+	.open    = sge_qstats_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
 
 /*
  * Show PCI-E SR-IOV Virtual Function Resource Limits.
@@ -2362,14 +2415,31 @@ static void interfaces_stop(struct seq_file *seq, void *v)
 {
 }
 
-static const struct seq_operations interfaces_sops = {
+static const struct seq_operations interfaces_seq_ops = {
 	.start = interfaces_start,
 	.next  = interfaces_next,
 	.stop  = interfaces_stop,
 	.show  = interfaces_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(interfaces);
+static int interfaces_open(struct inode *inode, struct file *file)
+{
+	int res = seq_open(file, &interfaces_seq_ops);
+
+	if (res == 0) {
+		struct seq_file *seq = file->private_data;
+		seq->private = inode->i_private;
+	}
+	return res;
+}
+
+static const struct file_operations interfaces_proc_fops = {
+	.owner   = THIS_MODULE,
+	.open    = interfaces_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
 
 /*
  * /sys/kernel/debugfs/cxgb4vf/ files list.
@@ -2382,10 +2452,10 @@ struct cxgb4vf_debugfs_entry {
 
 static struct cxgb4vf_debugfs_entry debugfs_files[] = {
 	{ "mboxlog",    0444, &mboxlog_fops },
-	{ "sge_qinfo",  0444, &sge_qinfo_fops },
-	{ "sge_qstats", 0444, &sge_qstats_fops },
+	{ "sge_qinfo",  0444, &sge_qinfo_debugfs_fops },
+	{ "sge_qstats", 0444, &sge_qstats_proc_fops },
 	{ "resources",  0444, &resources_fops },
-	{ "interfaces", 0444, &interfaces_fops },
+	{ "interfaces", 0444, &interfaces_proc_fops },
 };
 
 /*

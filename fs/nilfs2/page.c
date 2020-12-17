@@ -69,6 +69,7 @@ struct buffer_head *nilfs_grab_buffer(struct inode *inode,
 
 /**
  * nilfs_forget_buffer - discard dirty state
+ * @inode: owner inode of the buffer
  * @bh: buffer head of the buffer to be discarded
  */
 void nilfs_forget_buffer(struct buffer_head *bh)

@@ -43,7 +43,7 @@
 			      0 7 0x04>;
 	};
 
-	L2: cache-controller {
+	L2: l2-cache {
 		    compatible = "arm,pl310-cache";
 		    reg = <0xed000000 0x1000>;
 		    cache-unified;

@@ -1489,8 +1489,12 @@ static ssize_t aio_setup_rw(int rw, const struct iocb *iocb,
 		*iovec = NULL;
 		return ret;
 	}
-
-	return __import_iovec(rw, buf, len, UIO_FASTIOV, iovec, iter, compat);
+#ifdef CONFIG_COMPAT
+	if (compat)
+		return compat_import_iovec(rw, buf, len, UIO_FASTIOV, iovec,
+				iter);
+#endif
+	return import_iovec(rw, buf, len, UIO_FASTIOV, iovec, iter);
 }
 
 static inline void aio_rw_done(struct kiocb *req, ssize_t ret)
@@ -1572,7 +1576,7 @@ static int aio_write(struct kiocb *req, const struct iocb *iocb,
 		 * we return to userspace.
 		 */
 		if (S_ISREG(file_inode(file)->i_mode)) {
-			sb_start_write(file_inode(file)->i_sb);
+			__sb_start_write(file_inode(file)->i_sb, SB_FREEZE_WRITE, true);
 			__sb_writers_release(file_inode(file)->i_sb, SB_FREEZE_WRITE);
 		}
 		req->ki_flags |= IOCB_WRITE;

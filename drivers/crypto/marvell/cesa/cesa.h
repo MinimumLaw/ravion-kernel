@@ -2,10 +2,12 @@
 #ifndef __MARVELL_CESA_H__
 #define __MARVELL_CESA_H__
 
+#include <crypto/algapi.h>
+#include <crypto/hash.h>
 #include <crypto/internal/hash.h>
 #include <crypto/internal/skcipher.h>
 
-#include <linux/dma-direction.h>
+#include <linux/crypto.h>
 #include <linux/dmapool.h>
 
 #define CESA_ENGINE_OFF(i)			(((i) * 0x2000))
@@ -237,7 +239,7 @@ struct mv_cesa_sec_accel_desc {
  * Context associated to a cipher operation.
  */
 struct mv_cesa_skcipher_op_ctx {
-	__le32 key[8];
+	u32 key[8];
 	u32 iv[4];
 };
 
@@ -250,7 +252,7 @@ struct mv_cesa_skcipher_op_ctx {
  */
 struct mv_cesa_hash_op_ctx {
 	u32 iv[16];
-	__le32 hash[8];
+	u32 hash[8];
 };
 
 /**
@@ -298,14 +300,8 @@ struct mv_cesa_op_ctx {
  */
 struct mv_cesa_tdma_desc {
 	__le32 byte_cnt;
-	union {
-		__le32 src;
-		dma_addr_t src_dma;
-	};
-	union {
-		__le32 dst;
-		dma_addr_t dst_dma;
-	};
+	__le32 src;
+	__le32 dst;
 	__le32 next_dma;
 
 	/* Software state */
@@ -510,7 +506,7 @@ struct mv_cesa_hash_ctx {
  */
 struct mv_cesa_hmac_ctx {
 	struct mv_cesa_ctx base;
-	__be32 iv[16];
+	u32 iv[16];
 };
 
 /**

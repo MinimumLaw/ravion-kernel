@@ -200,7 +200,8 @@ static const struct attribute_group ltc2990_group = {
 };
 __ATTRIBUTE_GROUPS(ltc2990);
 
-static int ltc2990_i2c_probe(struct i2c_client *i2c)
+static int ltc2990_i2c_probe(struct i2c_client *i2c,
+			     const struct i2c_device_id *id)
 {
 	int ret;
 	struct device *hwmon_dev;
@@ -268,7 +269,7 @@ static struct i2c_driver ltc2990_i2c_driver = {
 	.driver = {
 		.name = "ltc2990",
 	},
-	.probe_new = ltc2990_i2c_probe,
+	.probe    = ltc2990_i2c_probe,
 	.id_table = ltc2990_i2c_id,
 };
 

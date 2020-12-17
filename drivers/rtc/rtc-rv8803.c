@@ -454,7 +454,13 @@ static int rv8803_ioctl(struct device *dev, unsigned int cmd, unsigned long arg)
 static int rv8803_nvram_write(void *priv, unsigned int offset, void *val,
 			      size_t bytes)
 {
-	return rv8803_write_reg(priv, RV8803_RAM, *(u8 *)val);
+	int ret;
+
+	ret = rv8803_write_reg(priv, RV8803_RAM, *(u8 *)val);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static int rv8803_nvram_read(void *priv, unsigned int offset,

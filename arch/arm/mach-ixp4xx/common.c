@@ -29,7 +29,6 @@
 #include <linux/sched_clock.h>
 #include <linux/irqchip/irq-ixp4xx.h>
 #include <linux/platform_data/timer-ixp4xx.h>
-#include <linux/dma-map-ops.h>
 #include <mach/udc.h>
 #include <mach/hardware.h>
 #include <mach/io.h>

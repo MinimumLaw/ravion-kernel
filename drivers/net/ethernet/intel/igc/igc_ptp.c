@@ -8,7 +8,6 @@
 #include <linux/pci.h>
 #include <linux/ptp_classify.h>
 #include <linux/clocksource.h>
-#include <linux/ktime.h>
 
 #define INCVALUE_MASK		0x7fffffff
 #define ISGN			0x80000000
@@ -17,12 +16,17 @@
 #define IGC_PTP_TX_TIMEOUT		(HZ * 15)
 
 /* SYSTIM read access for I225 */
-void igc_ptp_read(struct igc_adapter *adapter, struct timespec64 *ts)
+static void igc_ptp_read_i225(struct igc_adapter *adapter,
+			      struct timespec64 *ts)
 {
 	struct igc_hw *hw = &adapter->hw;
 	u32 sec, nsec;
 
-	/* The timestamp is latched when SYSTIML is read. */
+	/* The timestamp latches on lowest register read. For I210/I211, the
+	 * lowest register is SYSTIMR. Since we only need to provide nanosecond
+	 * resolution, we can ignore it.
+	 */
+	rd32(IGC_SYSTIMR);
 	nsec = rd32(IGC_SYSTIML);
 	sec = rd32(IGC_SYSTIMH);
 
@@ -35,6 +39,9 @@ static void igc_ptp_write_i225(struct igc_adapter *adapter,
 {
 	struct igc_hw *hw = &adapter->hw;
 
+	/* Writing the SYSTIMR register is not necessary as it only
+	 * provides sub-nanosecond resolution.
+	 */
 	wr32(IGC_SYSTIML, ts->tv_nsec);
 	wr32(IGC_SYSTIMH, ts->tv_sec);
 }
@@ -74,7 +81,7 @@ static int igc_ptp_adjtime_i225(struct ptp_clock_info *ptp, s64 delta)
 
 	spin_lock_irqsave(&igc->tmreg_lock, flags);
 
-	igc_ptp_read(igc, &now);
+	igc_ptp_read_i225(igc, &now);
 	now = timespec64_add(now, then);
 	igc_ptp_write_i225(igc, (const struct timespec64 *)&now);
 
@@ -95,9 +102,10 @@ static int igc_ptp_gettimex64_i225(struct ptp_clock_info *ptp,
 	spin_lock_irqsave(&igc->tmreg_lock, flags);
 
 	ptp_read_system_prets(sts);
+	rd32(IGC_SYSTIMR);
+	ptp_read_system_postts(sts);
 	ts->tv_nsec = rd32(IGC_SYSTIML);
 	ts->tv_sec = rd32(IGC_SYSTIMH);
-	ptp_read_system_postts(sts);
 
 	spin_unlock_irqrestore(&igc->tmreg_lock, flags);
 
@@ -414,17 +422,24 @@ static void igc_ptp_tx_work(struct work_struct *work)
 	if (!test_bit(__IGC_PTP_TX_IN_PROGRESS, &adapter->state))
 		return;
 
-	tsynctxctl = rd32(IGC_TSYNCTXCTL);
-	if (WARN_ON_ONCE(!(tsynctxctl & IGC_TSYNCTXCTL_TXTT_0)))
+	if (time_is_before_jiffies(adapter->ptp_tx_start +
+				   IGC_PTP_TX_TIMEOUT)) {
+		igc_ptp_tx_timeout(adapter);
 		return;
+	}
 
-	igc_ptp_tx_hwtstamp(adapter);
+	tsynctxctl = rd32(IGC_TSYNCTXCTL);
+	if (tsynctxctl & IGC_TSYNCTXCTL_VALID)
+		igc_ptp_tx_hwtstamp(adapter);
+	else
+		/* reschedule to check later */
+		schedule_work(&adapter->ptp_tx_work);
 }
 
 /**
  * igc_ptp_set_ts_config - set hardware time stamping config
  * @netdev: network interface device structure
- * @ifr: interface request data
+ * @ifreq: interface request data
  *
  **/
 int igc_ptp_set_ts_config(struct net_device *netdev, struct ifreq *ifr)
@@ -451,7 +466,7 @@ int igc_ptp_set_ts_config(struct net_device *netdev, struct ifreq *ifr)
 /**
  * igc_ptp_get_ts_config - get hardware time stamping config
  * @netdev: network interface device structure
- * @ifr: interface request data
+ * @ifreq: interface request data
  *
  * Get the hwtstamp_config settings to return to the user. Rather than attempt
  * to deconstruct the settings from the registers, just return a shadow copy
@@ -500,9 +515,6 @@ void igc_ptp_init(struct igc_adapter *adapter)
 	adapter->tstamp_config.rx_filter = HWTSTAMP_FILTER_NONE;
 	adapter->tstamp_config.tx_type = HWTSTAMP_TX_OFF;
 
-	adapter->prev_ptp_time = ktime_to_timespec64(ktime_get_real());
-	adapter->ptp_reset_start = ktime_get();
-
 	adapter->ptp_clock = ptp_clock_register(&adapter->ptp_caps,
 						&adapter->pdev->dev);
 	if (IS_ERR(adapter->ptp_clock)) {
@@ -512,24 +524,6 @@ void igc_ptp_init(struct igc_adapter *adapter)
 		netdev_info(netdev, "PHC added\n");
 		adapter->ptp_flags |= IGC_PTP_ENABLED;
 	}
-}
-
-static void igc_ptp_time_save(struct igc_adapter *adapter)
-{
-	igc_ptp_read(adapter, &adapter->prev_ptp_time);
-	adapter->ptp_reset_start = ktime_get();
-}
-
-static void igc_ptp_time_restore(struct igc_adapter *adapter)
-{
-	struct timespec64 ts = adapter->prev_ptp_time;
-	ktime_t delta;
-
-	delta = ktime_sub(ktime_get(), adapter->ptp_reset_start);
-
-	timespec64_add_ns(&ts, ktime_to_ns(delta));
-
-	igc_ptp_write_i225(adapter, &ts);
 }
 
 /**
@@ -548,8 +542,6 @@ void igc_ptp_suspend(struct igc_adapter *adapter)
 	dev_kfree_skb_any(adapter->ptp_tx_skb);
 	adapter->ptp_tx_skb = NULL;
 	clear_bit_unlock(__IGC_PTP_TX_IN_PROGRESS, &adapter->state);
-
-	igc_ptp_time_save(adapter);
 }
 
 /**
@@ -599,7 +591,9 @@ void igc_ptp_reset(struct igc_adapter *adapter)
 
 	/* Re-initialize the timer. */
 	if (hw->mac.type == igc_i225) {
-		igc_ptp_time_restore(adapter);
+		struct timespec64 ts64 = ktime_to_timespec64(ktime_get_real());
+
+		igc_ptp_write_i225(adapter, &ts64);
 	} else {
 		timecounter_init(&adapter->tc, &adapter->cc,
 				 ktime_to_ns(ktime_get_real()));

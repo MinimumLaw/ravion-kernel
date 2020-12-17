@@ -29,8 +29,5 @@
 	beq	1001b			@ wait until transmit done
 	.endm
 
-	.macro	waituartcts,rd,rx
-	.endm
-
-	.macro	waituarttxrdy,rd,rx
+	.macro	waituart,rd,rx
 	.endm

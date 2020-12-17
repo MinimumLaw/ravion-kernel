@@ -2,6 +2,7 @@
 #ifndef _R819XU_PHYREG_H
 #define _R819XU_PHYREG_H
 
+
 #define   RF_DATA				0x1d4					/* FW will write RF data in the register.*/
 
 /* page8 */
@@ -80,6 +81,7 @@
 #define rOFDM0_XDTxIQImbalance		0xc98
 #define rOFDM0_XDTxAFE				0xc9c
 
+
 /* page d */
 #define rOFDM1_LSTF				0xd00
 #define rOFDM1_TRxPathEnable		0xd04
@@ -92,6 +94,7 @@
 #define rTxAGC_Mcs07_Mcs04			0xe14
 #define rTxAGC_Mcs11_Mcs08			0xe18
 #define rTxAGC_Mcs15_Mcs12			0xe1c
+
 
 /* RF
  * Zebra1

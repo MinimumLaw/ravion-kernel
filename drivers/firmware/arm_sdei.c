@@ -78,26 +78,11 @@ struct sdei_crosscall_args {
 	int first_error;
 };
 
-#define CROSSCALL_INIT(arg, event)		\
-	do {					\
-		arg.event = event;		\
-		arg.first_error = 0;		\
-		atomic_set(&arg.errors, 0);	\
-	} while (0)
+#define CROSSCALL_INIT(arg, event)	(arg.event = event, \
+					 arg.first_error = 0, \
+					 atomic_set(&arg.errors, 0))
 
-static inline int sdei_do_local_call(smp_call_func_t fn,
-				     struct sdei_event *event)
-{
-	struct sdei_crosscall_args arg;
-
-	CROSSCALL_INIT(arg, event);
-	fn(&arg);
-
-	return arg.first_error;
-}
-
-static inline int sdei_do_cross_call(smp_call_func_t fn,
-				     struct sdei_event *event)
+static inline int sdei_do_cross_call(void *fn, struct sdei_event * event)
 {
 	struct sdei_crosscall_args arg;
 
@@ -129,7 +114,26 @@ static int sdei_to_linux_errno(unsigned long sdei_err)
 		return -ENOMEM;
 	}
 
-	return 0;
+	/* Not an error value ... */
+	return sdei_err;
+}
+
+/*
+ * If x0 is any of these values, then the call failed, use sdei_to_linux_errno()
+ * to translate.
+ */
+static int sdei_is_err(struct arm_smccc_res *res)
+{
+	switch (res->a0) {
+	case SDEI_NOT_SUPPORTED:
+	case SDEI_INVALID_PARAMETERS:
+	case SDEI_DENIED:
+	case SDEI_PENDING:
+	case SDEI_OUT_OF_RESOURCE:
+		return true;
+	}
+
+	return false;
 }
 
 static int invoke_sdei_fn(unsigned long function_id, unsigned long arg0,
@@ -137,13 +141,14 @@ static int invoke_sdei_fn(unsigned long function_id, unsigned long arg0,
 			  unsigned long arg3, unsigned long arg4,
 			  u64 *result)
 {
-	int err;
+	int err = 0;
 	struct arm_smccc_res res;
 
 	if (sdei_firmware_call) {
 		sdei_firmware_call(function_id, arg0, arg1, arg2, arg3, arg4,
 				   &res);
-		err = sdei_to_linux_errno(res.a0);
+		if (sdei_is_err(&res))
+			err = sdei_to_linux_errno(res.a0);
 	} else {
 		/*
 		 * !sdei_firmware_call means we failed to probe or called
@@ -205,34 +210,36 @@ static struct sdei_event *sdei_event_create(u32 event_num,
 	lockdep_assert_held(&sdei_events_lock);
 
 	event = kzalloc(sizeof(*event), GFP_KERNEL);
-	if (!event) {
-		err = -ENOMEM;
-		goto fail;
-	}
+	if (!event)
+		return ERR_PTR(-ENOMEM);
 
 	INIT_LIST_HEAD(&event->list);
 	event->event_num = event_num;
 
 	err = sdei_api_event_get_info(event_num, SDEI_EVENT_INFO_EV_PRIORITY,
 				      &result);
-	if (err)
-		goto fail;
+	if (err) {
+		kfree(event);
+		return ERR_PTR(err);
+	}
 	event->priority = result;
 
 	err = sdei_api_event_get_info(event_num, SDEI_EVENT_INFO_EV_TYPE,
 				      &result);
-	if (err)
-		goto fail;
+	if (err) {
+		kfree(event);
+		return ERR_PTR(err);
+	}
 	event->type = result;
 
 	if (event->type == SDEI_EVENT_TYPE_SHARED) {
 		reg = kzalloc(sizeof(*reg), GFP_KERNEL);
 		if (!reg) {
-			err = -ENOMEM;
-			goto fail;
+			kfree(event);
+			return ERR_PTR(-ENOMEM);
 		}
 
-		reg->event_num = event->event_num;
+		reg->event_num = event_num;
 		reg->priority = event->priority;
 
 		reg->callback = cb;
@@ -244,8 +251,8 @@ static struct sdei_event *sdei_event_create(u32 event_num,
 
 		regs = alloc_percpu(struct sdei_registered_event);
 		if (!regs) {
-			err = -ENOMEM;
-			goto fail;
+			kfree(event);
+			return ERR_PTR(-ENOMEM);
 		}
 
 		for_each_possible_cpu(cpu) {
@@ -265,10 +272,6 @@ static struct sdei_event *sdei_event_create(u32 event_num,
 	spin_unlock(&sdei_list_lock);
 
 	return event;
-
-fail:
-	kfree(event);
-	return ERR_PTR(err);
 }
 
 static void sdei_event_destroy_llocked(struct sdei_event *event)
@@ -487,6 +490,16 @@ static void _local_event_unregister(void *data)
 	sdei_cross_call_return(arg, err);
 }
 
+static int _sdei_event_unregister(struct sdei_event *event)
+{
+	lockdep_assert_held(&sdei_events_lock);
+
+	if (event->type == SDEI_EVENT_TYPE_SHARED)
+		return sdei_api_event_unregister(event->event_num);
+
+	return sdei_do_cross_call(_local_event_unregister, event);
+}
+
 int sdei_event_unregister(u32 event_num)
 {
 	int err;
@@ -496,27 +509,24 @@ int sdei_event_unregister(u32 event_num)
 
 	mutex_lock(&sdei_events_lock);
 	event = sdei_event_find(event_num);
-	if (!event) {
-		pr_warn("Event %u not registered\n", event_num);
-		err = -ENOENT;
-		goto unlock;
-	}
+	do {
+		if (!event) {
+			pr_warn("Event %u not registered\n", event_num);
+			err = -ENOENT;
+			break;
+		}
 
-	spin_lock(&sdei_list_lock);
-	event->reregister = false;
-	event->reenable = false;
-	spin_unlock(&sdei_list_lock);
+		spin_lock(&sdei_list_lock);
+		event->reregister = false;
+		event->reenable = false;
+		spin_unlock(&sdei_list_lock);
 
-	if (event->type == SDEI_EVENT_TYPE_SHARED)
-		err = sdei_api_event_unregister(event->event_num);
-	else
-		err = sdei_do_cross_call(_local_event_unregister, event);
+		err = _sdei_event_unregister(event);
+		if (err)
+			break;
 
-	if (err)
-		goto unlock;
-
-	sdei_event_destroy(event);
-unlock:
+		sdei_event_destroy(event);
+	} while (0);
 	mutex_unlock(&sdei_events_lock);
 
 	return err;
@@ -537,7 +547,7 @@ static int sdei_unregister_shared(void)
 		if (event->type != SDEI_EVENT_TYPE_SHARED)
 			continue;
 
-		err = sdei_api_event_unregister(event->event_num);
+		err = _sdei_event_unregister(event);
 		if (err)
 			break;
 	}
@@ -571,6 +581,25 @@ static void _local_event_register(void *data)
 	sdei_cross_call_return(arg, err);
 }
 
+static int _sdei_event_register(struct sdei_event *event)
+{
+	int err;
+
+	lockdep_assert_held(&sdei_events_lock);
+
+	if (event->type == SDEI_EVENT_TYPE_SHARED)
+		return sdei_api_event_register(event->event_num,
+					       sdei_entry_point,
+					       event->registered,
+					       SDEI_EVENT_REGISTER_RM_ANY, 0);
+
+	err = sdei_do_cross_call(_local_event_register, event);
+	if (err)
+		sdei_do_cross_call(_local_event_unregister, event);
+
+	return err;
+}
+
 int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
 {
 	int err;
@@ -579,44 +608,63 @@ int sdei_event_register(u32 event_num, sdei_event_callback *cb, void *arg)
 	WARN_ON(in_nmi());
 
 	mutex_lock(&sdei_events_lock);
-	if (sdei_event_find(event_num)) {
-		pr_warn("Event %u already registered\n", event_num);
-		err = -EBUSY;
-		goto unlock;
-	}
+	do {
+		if (sdei_event_find(event_num)) {
+			pr_warn("Event %u already registered\n", event_num);
+			err = -EBUSY;
+			break;
+		}
 
-	event = sdei_event_create(event_num, cb, arg);
-	if (IS_ERR(event)) {
-		err = PTR_ERR(event);
-		pr_warn("Failed to create event %u: %d\n", event_num, err);
-		goto unlock;
-	}
+		event = sdei_event_create(event_num, cb, arg);
+		if (IS_ERR(event)) {
+			err = PTR_ERR(event);
+			pr_warn("Failed to create event %u: %d\n", event_num,
+				err);
+			break;
+		}
 
-	cpus_read_lock();
-	if (event->type == SDEI_EVENT_TYPE_SHARED) {
-		err = sdei_api_event_register(event->event_num,
-					      sdei_entry_point,
-					      event->registered,
-					      SDEI_EVENT_REGISTER_RM_ANY, 0);
-	} else {
-		err = sdei_do_cross_call(_local_event_register, event);
-		if (err)
-			sdei_do_cross_call(_local_event_unregister, event);
-	}
-
-	if (err) {
-		sdei_event_destroy(event);
-		pr_warn("Failed to register event %u: %d\n", event_num, err);
-		goto cpu_unlock;
-	}
-
-	spin_lock(&sdei_list_lock);
-	event->reregister = true;
-	spin_unlock(&sdei_list_lock);
-cpu_unlock:
-	cpus_read_unlock();
-unlock:
+		cpus_read_lock();
+		err = _sdei_event_register(event);
+		if (err) {
+			sdei_event_destroy(event);
+			pr_warn("Failed to register event %u: %d\n", event_num,
+				err);
+		} else {
+			spin_lock(&sdei_list_lock);
+			event->reregister = true;
+			spin_unlock(&sdei_list_lock);
+		}
+		cpus_read_unlock();
+	} while (0);
 	mutex_unlock(&sdei_events_lock);
+
+	return err;
+}
+
+static int sdei_reregister_event_llocked(struct sdei_event *event)
+{
+	int err;
+
+	lockdep_assert_held(&sdei_events_lock);
+	lockdep_assert_held(&sdei_list_lock);
+
+	err = _sdei_event_register(event);
+	if (err) {
+		pr_err("Failed to re-register event %u\n", event->event_num);
+		sdei_event_destroy_llocked(event);
+		return err;
+	}
+
+	if (event->reenable) {
+		if (event->type == SDEI_EVENT_TYPE_SHARED)
+			err = sdei_api_event_enable(event->event_num);
+		else
+			err = sdei_do_cross_call(_local_event_enable, event);
+	}
+
+	if (err)
+		pr_err("Failed to re-enable event %u\n", event->event_num);
+
 	return err;
 }
 
@@ -632,24 +680,9 @@ static int sdei_reregister_shared(void)
 			continue;
 
 		if (event->reregister) {
-			err = sdei_api_event_register(event->event_num,
-					sdei_entry_point, event->registered,
-					SDEI_EVENT_REGISTER_RM_ANY, 0);
-			if (err) {
-				pr_err("Failed to re-register event %u\n",
-				       event->event_num);
-				sdei_event_destroy_llocked(event);
+			err = sdei_reregister_event_llocked(event);
+			if (err)
 				break;
-			}
-		}
-
-		if (event->reenable) {
-			err = sdei_api_event_enable(event->event_num);
-			if (err) {
-				pr_err("Failed to re-enable event %u\n",
-				       event->event_num);
-				break;
-			}
 		}
 	}
 	spin_unlock(&sdei_list_lock);
@@ -661,7 +694,7 @@ static int sdei_reregister_shared(void)
 static int sdei_cpuhp_down(unsigned int cpu)
 {
 	struct sdei_event *event;
-	int err;
+	struct sdei_crosscall_args arg;
 
 	/* un-register private events */
 	spin_lock(&sdei_list_lock);
@@ -669,11 +702,12 @@ static int sdei_cpuhp_down(unsigned int cpu)
 		if (event->type == SDEI_EVENT_TYPE_SHARED)
 			continue;
 
-		err = sdei_do_local_call(_local_event_unregister, event);
-		if (err) {
+		CROSSCALL_INIT(arg, event);
+		/* call the cross-call function locally... */
+		_local_event_unregister(&arg);
+		if (arg.first_error)
 			pr_err("Failed to unregister event %u: %d\n",
-			       event->event_num, err);
-		}
+			       event->event_num, arg.first_error);
 	}
 	spin_unlock(&sdei_list_lock);
 
@@ -683,7 +717,7 @@ static int sdei_cpuhp_down(unsigned int cpu)
 static int sdei_cpuhp_up(unsigned int cpu)
 {
 	struct sdei_event *event;
-	int err;
+	struct sdei_crosscall_args arg;
 
 	/* re-register/enable private events */
 	spin_lock(&sdei_list_lock);
@@ -692,19 +726,20 @@ static int sdei_cpuhp_up(unsigned int cpu)
 			continue;
 
 		if (event->reregister) {
-			err = sdei_do_local_call(_local_event_register, event);
-			if (err) {
+			CROSSCALL_INIT(arg, event);
+			/* call the cross-call function locally... */
+			_local_event_register(&arg);
+			if (arg.first_error)
 				pr_err("Failed to re-register event %u: %d\n",
-				       event->event_num, err);
-			}
+				       event->event_num, arg.first_error);
 		}
 
 		if (event->reenable) {
-			err = sdei_do_local_call(_local_event_enable, event);
-			if (err) {
+			CROSSCALL_INIT(arg, event);
+			_local_event_enable(&arg);
+			if (arg.first_error)
 				pr_err("Failed to re-enable event %u: %d\n",
-				       event->event_num, err);
-			}
+				       event->event_num, arg.first_error);
 		}
 	}
 	spin_unlock(&sdei_list_lock);
@@ -941,7 +976,7 @@ static int sdei_get_conduit(struct platform_device *pdev)
 		}
 
 		pr_warn("invalid \"method\" property: %s\n", method);
-	} else if (!acpi_disabled) {
+	} else if (IS_ENABLED(CONFIG_ACPI) && !acpi_disabled) {
 		if (acpi_psci_use_hvc()) {
 			sdei_firmware_call = &sdei_smccc_hvc;
 			return SMCCC_CONDUIT_HVC;
@@ -965,6 +1000,8 @@ static int sdei_probe(struct platform_device *pdev)
 		return 0;
 
 	err = sdei_api_get_version(&ver);
+	if (err == -EOPNOTSUPP)
+		pr_err("advertised but not implemented in platform firmware\n");
 	if (err) {
 		pr_err("Failed to get SDEI version: %d\n", err);
 		sdei_mark_interface_broken();
@@ -1062,20 +1099,16 @@ static bool __init sdei_present_acpi(void)
 
 static int __init sdei_init(void)
 {
-	struct platform_device *pdev;
-	int ret;
+	int ret = platform_driver_register(&sdei_driver);
 
-	ret = platform_driver_register(&sdei_driver);
-	if (ret || !sdei_present_acpi())
-		return ret;
+	if (!ret && sdei_present_acpi()) {
+		struct platform_device *pdev;
 
-	pdev = platform_device_register_simple(sdei_driver.driver.name,
-					       0, NULL, 0);
-	if (IS_ERR(pdev)) {
-		ret = PTR_ERR(pdev);
-		platform_driver_unregister(&sdei_driver);
-		pr_info("Failed to register ACPI:SDEI platform device %d\n",
-			ret);
+		pdev = platform_device_register_simple(sdei_driver.driver.name,
+						       0, NULL, 0);
+		if (IS_ERR(pdev))
+			pr_info("Failed to register ACPI:SDEI platform device %ld\n",
+				PTR_ERR(pdev));
 	}
 
 	return ret;

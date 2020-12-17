@@ -12,6 +12,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <sound/core.h>
+#include <sound/hdmi-codec.h>
 #include <sound/jack.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -237,7 +238,7 @@ static int rk_hdmi_init(struct snd_soc_pcm_runtime *runtime)
 		return ret;
 	}
 
-	return snd_soc_component_set_jack(component, &rk_hdmi_jack, NULL);
+	return hdmi_codec_set_jack_detect(component, &rk_hdmi_jack);
 }
 
 /* max98090 dai_link */

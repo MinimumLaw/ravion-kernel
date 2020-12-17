@@ -58,21 +58,16 @@
 				reg = <0x33>;
 				label = "lp5521_pri";
 				clock-mode = /bits/ 8 <2>;
-				#address-cells = <1>;
-				#size-cells = <0>;
-				chan@0 {
-					reg = <0>;
+				chan0 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 					linux,default-trigger = "heartbeat";
 				};
-				chan@1 {
-					reg = <1>;
+				chan1 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 				};
-				chan@2 {
-					reg = <2>;
+				chan2 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 				};
@@ -82,20 +77,15 @@
 				reg = <0x34>;
 				label = "lp5521_sec";
 				clock-mode = /bits/ 8 <2>;
-				#address-cells = <1>;
-				#size-cells = <0>;
-				chan@0 {
-					reg = <0>;
+				chan0 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 				};
-				chan@1 {
-					reg = <1>;
+				chan1 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 				};
-				chan@2 {
-					reg = <2>;
+				chan2 {
 					led-cur = /bits/ 8 <0x2f>;
 					max-cur = /bits/ 8 <0x5f>;
 				};

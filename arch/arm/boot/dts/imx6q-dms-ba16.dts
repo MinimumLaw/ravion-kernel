@@ -42,7 +42,7 @@
 };
 
 &ecspi5 {
-	cs-gpios = <&gpio1 17 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio1 17 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi5>;
 	status = "okay";

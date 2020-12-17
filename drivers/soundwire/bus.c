@@ -61,12 +61,6 @@ int sdw_bus_master_add(struct sdw_bus *bus, struct device *parent,
 		return -EINVAL;
 	}
 
-	if (!bus->compute_params) {
-		dev_err(bus->dev,
-			"Bandwidth allocation not configured, compute_params no set\n");
-		return -EINVAL;
-	}
-
 	mutex_init(&bus->msg_lock);
 	mutex_init(&bus->bus_lock);
 	INIT_LIST_HEAD(&bus->slaves);
@@ -261,21 +255,6 @@ static int sdw_reset_page(struct sdw_bus *bus, u16 dev_num)
 	return ret;
 }
 
-static int sdw_transfer_unlocked(struct sdw_bus *bus, struct sdw_msg *msg)
-{
-	int ret;
-
-	ret = do_transfer(bus, msg);
-	if (ret != 0 && ret != -ENODATA)
-		dev_err(bus->dev, "trf on Slave %d failed:%d\n",
-			msg->dev_num, ret);
-
-	if (msg->page)
-		sdw_reset_page(bus, msg->dev_num);
-
-	return ret;
-}
-
 /**
  * sdw_transfer() - Synchronous transfer message to a SDW Slave device
  * @bus: SDW bus
@@ -287,7 +266,13 @@ int sdw_transfer(struct sdw_bus *bus, struct sdw_msg *msg)
 
 	mutex_lock(&bus->msg_lock);
 
-	ret = sdw_transfer_unlocked(bus, msg);
+	ret = do_transfer(bus, msg);
+	if (ret != 0 && ret != -ENODATA)
+		dev_err(bus->dev, "trf on Slave %d failed:%d\n",
+			msg->dev_num, ret);
+
+	if (msg->page)
+		sdw_reset_page(bus, msg->dev_num);
 
 	mutex_unlock(&bus->msg_lock);
 
@@ -362,8 +347,8 @@ int sdw_fill_msg(struct sdw_msg *msg, struct sdw_slave *slave,
 		return -EINVAL;
 	}
 
-	msg->addr_page1 = FIELD_GET(SDW_SCP_ADDRPAGE1_MASK, addr);
-	msg->addr_page2 = FIELD_GET(SDW_SCP_ADDRPAGE2_MASK, addr);
+	msg->addr_page1 = (addr >> SDW_REG_SHIFT(SDW_SCP_ADDRPAGE1_MASK));
+	msg->addr_page2 = (addr >> SDW_REG_SHIFT(SDW_SCP_ADDRPAGE2_MASK));
 	msg->addr |= BIT(15);
 	msg->page = true;
 
@@ -442,39 +427,6 @@ sdw_bwrite_no_pm(struct sdw_bus *bus, u16 dev_num, u32 addr, u8 value)
 
 	return sdw_transfer(bus, &msg);
 }
-
-int sdw_bread_no_pm_unlocked(struct sdw_bus *bus, u16 dev_num, u32 addr)
-{
-	struct sdw_msg msg;
-	u8 buf;
-	int ret;
-
-	ret = sdw_fill_msg(&msg, NULL, addr, 1, dev_num,
-			   SDW_MSG_FLAG_READ, &buf);
-	if (ret)
-		return ret;
-
-	ret = sdw_transfer_unlocked(bus, &msg);
-	if (ret < 0)
-		return ret;
-
-	return buf;
-}
-EXPORT_SYMBOL(sdw_bread_no_pm_unlocked);
-
-int sdw_bwrite_no_pm_unlocked(struct sdw_bus *bus, u16 dev_num, u32 addr, u8 value)
-{
-	struct sdw_msg msg;
-	int ret;
-
-	ret = sdw_fill_msg(&msg, NULL, addr, 1, dev_num,
-			   SDW_MSG_FLAG_WRITE, &value);
-	if (ret)
-		return ret;
-
-	return sdw_transfer_unlocked(bus, &msg);
-}
-EXPORT_SYMBOL(sdw_bwrite_no_pm_unlocked);
 
 static int
 sdw_read_no_pm(struct sdw_slave *slave, u32 addr)
@@ -747,15 +699,6 @@ static int sdw_program_device_num(struct sdw_bus *bus)
 
 		if (!found) {
 			/* TODO: Park this device in Group 13 */
-
-			/*
-			 * add Slave device even if there is no platform
-			 * firmware description. There will be no driver probe
-			 * but the user/integration will be able to see the
-			 * device, enumeration status and device number in sysfs
-			 */
-			sdw_slave_add(bus, &id, NULL);
-
 			dev_err(bus->dev, "Slave Entry not found\n");
 		}
 
@@ -1108,12 +1051,6 @@ int sdw_configure_dpn_intr(struct sdw_slave *slave,
 	int ret;
 	u8 val = 0;
 
-	if (slave->bus->params.s_data_mode != SDW_PORT_DATA_MODE_NORMAL) {
-		dev_dbg(&slave->dev, "TEST FAIL interrupt %s\n",
-			enable ? "on" : "off");
-		mask |= SDW_DPN_INT_TEST_FAIL;
-	}
-
 	addr = SDW_DPN_INTMASK(port);
 
 	/* Set/Clear port ready interrupt mask */
@@ -1247,13 +1184,13 @@ static int sdw_initialize_slave(struct sdw_slave *slave)
 		return ret;
 
 	/*
-	 * Set SCP_INT1_MASK register, typically bus clash and
-	 * implementation-defined interrupt mask. The Parity detection
-	 * may not always be correct on startup so its use is
-	 * device-dependent, it might e.g. only be enabled in
-	 * steady-state after a couple of frames.
+	 * Set bus clash, parity and SCP implementation
+	 * defined interrupt mask
+	 * TODO: Read implementation defined interrupt mask
+	 * from Slave property
 	 */
-	val = slave->prop.scp_int1_mask;
+	val = SDW_SCP_INT1_IMPL_DEF | SDW_SCP_INT1_BUS_CLASH |
+					SDW_SCP_INT1_PARITY;
 
 	/* Enable SCP interrupts */
 	ret = sdw_update(slave, SDW_SCP_INTMASK1, val, val);
@@ -1425,8 +1362,6 @@ static int sdw_handle_slave_alerts(struct sdw_slave *slave)
 	unsigned long port;
 	bool slave_notify = false;
 	u8 buf, buf2[2], _buf, _buf2[2];
-	bool parity_check;
-	bool parity_quirk;
 
 	sdw_modify_slave_status(slave, SDW_SLAVE_ALERT);
 
@@ -1459,18 +1394,12 @@ static int sdw_handle_slave_alerts(struct sdw_slave *slave)
 		 * interrupt
 		 */
 		if (buf & SDW_SCP_INT1_PARITY) {
-			parity_check = slave->prop.scp_int1_mask & SDW_SCP_INT1_PARITY;
-			parity_quirk = !slave->first_interrupt_done &&
-				(slave->prop.quirks & SDW_SLAVE_QUIRKS_INVALID_INITIAL_PARITY);
-
-			if (parity_check && !parity_quirk)
-				dev_err(&slave->dev, "Parity error detected\n");
+			dev_err(&slave->dev, "Parity error detected\n");
 			clear |= SDW_SCP_INT1_PARITY;
 		}
 
 		if (buf & SDW_SCP_INT1_BUS_CLASH) {
-			if (slave->prop.scp_int1_mask & SDW_SCP_INT1_BUS_CLASH)
-				dev_err(&slave->dev, "Bus clash detected\n");
+			dev_err(&slave->dev, "Bus clash error detected\n");
 			clear |= SDW_SCP_INT1_BUS_CLASH;
 		}
 
@@ -1482,18 +1411,16 @@ static int sdw_handle_slave_alerts(struct sdw_slave *slave)
 		 */
 
 		if (buf & SDW_SCP_INT1_IMPL_DEF) {
-			if (slave->prop.scp_int1_mask & SDW_SCP_INT1_IMPL_DEF) {
-				dev_dbg(&slave->dev, "Slave impl defined interrupt\n");
-				slave_notify = true;
-			}
+			dev_dbg(&slave->dev, "Slave impl defined interrupt\n");
 			clear |= SDW_SCP_INT1_IMPL_DEF;
+			slave_notify = true;
 		}
 
 		/* Check port 0 - 3 interrupts */
 		port = buf & SDW_SCP_INT1_PORT0_3;
 
 		/* To get port number corresponding to bits, shift it */
-		port = FIELD_GET(SDW_SCP_INT1_PORT0_3, port);
+		port = port >> SDW_REG_SHIFT(SDW_SCP_INT1_PORT0_3);
 		for_each_set_bit(bit, &port, 8) {
 			sdw_handle_port_interrupt(slave, bit,
 						  &port_status[bit]);
@@ -1540,9 +1467,6 @@ static int sdw_handle_slave_alerts(struct sdw_slave *slave)
 				"SDW_SCP_INT1 write failed:%d\n", ret);
 			goto io_err;
 		}
-
-		/* at this point all initial interrupt sources were handled */
-		slave->first_interrupt_done = true;
 
 		/*
 		 * Read status again to ensure no new interrupts arrived
@@ -1746,10 +1670,8 @@ void sdw_clear_slave_status(struct sdw_bus *bus, u32 request)
 		if (!slave)
 			continue;
 
-		if (slave->status != SDW_SLAVE_UNATTACHED) {
+		if (slave->status != SDW_SLAVE_UNATTACHED)
 			sdw_modify_slave_status(slave, SDW_SLAVE_UNATTACHED);
-			slave->first_interrupt_done = false;
-		}
 
 		/* keep track of request, used in pm_runtime resume */
 		slave->unattach_request = request;

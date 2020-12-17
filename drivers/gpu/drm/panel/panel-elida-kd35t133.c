@@ -22,6 +22,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 /* Manufacturer specific Commands send via DSI */
 #define KD35T133_CMD_INTERFACEMODECTRL		0xb0
@@ -88,7 +89,7 @@ static int kd35t133_init_sequence(struct kd35t133 *ctx)
 			  0xa9, 0x51, 0x2c, 0x82);
 	mipi_dsi_dcs_write(dsi, MIPI_DCS_ENTER_INVERT_MODE, NULL, 0);
 
-	dev_dbg(dev, "Panel init sequence done\n");
+	DRM_DEV_DEBUG_DRIVER(dev, "Panel init sequence done\n");
 	return 0;
 }
 
@@ -103,11 +104,13 @@ static int kd35t133_unprepare(struct drm_panel *panel)
 
 	ret = mipi_dsi_dcs_set_display_off(dsi);
 	if (ret < 0)
-		dev_err(ctx->dev, "failed to set display off: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "failed to set display off: %d\n",
+			      ret);
 
 	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
 	if (ret < 0) {
-		dev_err(ctx->dev, "failed to enter sleep mode: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "failed to enter sleep mode: %d\n",
+			      ret);
 		return ret;
 	}
 
@@ -128,16 +131,18 @@ static int kd35t133_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-	dev_dbg(ctx->dev, "Resetting the panel\n");
+	DRM_DEV_DEBUG_DRIVER(ctx->dev, "Resetting the panel\n");
 	ret = regulator_enable(ctx->vdd);
 	if (ret < 0) {
-		dev_err(ctx->dev, "Failed to enable vdd supply: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			      "Failed to enable vdd supply: %d\n", ret);
 		return ret;
 	}
 
 	ret = regulator_enable(ctx->iovcc);
 	if (ret < 0) {
-		dev_err(ctx->dev, "Failed to enable iovcc supply: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			      "Failed to enable iovcc supply: %d\n", ret);
 		goto disable_vdd;
 	}
 
@@ -151,7 +156,7 @@ static int kd35t133_prepare(struct drm_panel *panel)
 
 	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
 	if (ret < 0) {
-		dev_err(ctx->dev, "Failed to exit sleep mode: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "Failed to exit sleep mode: %d\n", ret);
 		goto disable_iovcc;
 	}
 
@@ -159,13 +164,14 @@ static int kd35t133_prepare(struct drm_panel *panel)
 
 	ret = kd35t133_init_sequence(ctx);
 	if (ret < 0) {
-		dev_err(ctx->dev, "Panel init sequence failed: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "Panel init sequence failed: %d\n",
+			      ret);
 		goto disable_iovcc;
 	}
 
 	ret = mipi_dsi_dcs_set_display_on(dsi);
 	if (ret < 0) {
-		dev_err(ctx->dev, "Failed to set display on: %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "Failed to set display on: %d\n", ret);
 		goto disable_iovcc;
 	}
 
@@ -204,9 +210,9 @@ static int kd35t133_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
-		dev_err(ctx->dev, "Failed to add mode %ux%u@%u\n",
-			default_mode.hdisplay, default_mode.vdisplay,
-			drm_mode_vrefresh(&default_mode));
+		DRM_DEV_ERROR(ctx->dev, "Failed to add mode %ux%u@%u\n",
+			      default_mode.hdisplay, default_mode.vdisplay,
+			      drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
@@ -238,7 +244,7 @@ static int kd35t133_probe(struct mipi_dsi_device *dsi)
 
 	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(ctx->reset_gpio)) {
-		dev_err(dev, "cannot get reset gpio\n");
+		DRM_DEV_ERROR(dev, "cannot get reset gpio\n");
 		return PTR_ERR(ctx->reset_gpio);
 	}
 
@@ -246,7 +252,9 @@ static int kd35t133_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(ctx->vdd)) {
 		ret = PTR_ERR(ctx->vdd);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "Failed to request vdd regulator: %d\n", ret);
+			DRM_DEV_ERROR(dev,
+				      "Failed to request vdd regulator: %d\n",
+				      ret);
 		return ret;
 	}
 
@@ -254,7 +262,9 @@ static int kd35t133_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(ctx->iovcc)) {
 		ret = PTR_ERR(ctx->iovcc);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "Failed to request iovcc regulator: %d\n", ret);
+			DRM_DEV_ERROR(dev,
+				      "Failed to request iovcc regulator: %d\n",
+				      ret);
 		return ret;
 	}
 
@@ -278,7 +288,7 @@ static int kd35t133_probe(struct mipi_dsi_device *dsi)
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0) {
-		dev_err(dev, "mipi_dsi_attach failed: %d\n", ret);
+		DRM_DEV_ERROR(dev, "mipi_dsi_attach failed: %d\n", ret);
 		drm_panel_remove(&ctx->panel);
 		return ret;
 	}
@@ -293,11 +303,13 @@ static void kd35t133_shutdown(struct mipi_dsi_device *dsi)
 
 	ret = drm_panel_unprepare(&ctx->panel);
 	if (ret < 0)
-		dev_err(&dsi->dev, "Failed to unprepare panel: %d\n", ret);
+		DRM_DEV_ERROR(&dsi->dev, "Failed to unprepare panel: %d\n",
+			      ret);
 
 	ret = drm_panel_disable(&ctx->panel);
 	if (ret < 0)
-		dev_err(&dsi->dev, "Failed to disable panel: %d\n", ret);
+		DRM_DEV_ERROR(&dsi->dev, "Failed to disable panel: %d\n",
+			      ret);
 }
 
 static int kd35t133_remove(struct mipi_dsi_device *dsi)
@@ -309,7 +321,8 @@ static int kd35t133_remove(struct mipi_dsi_device *dsi)
 
 	ret = mipi_dsi_detach(dsi);
 	if (ret < 0)
-		dev_err(&dsi->dev, "Failed to detach from DSI host: %d\n", ret);
+		DRM_DEV_ERROR(&dsi->dev, "Failed to detach from DSI host: %d\n",
+			      ret);
 
 	drm_panel_remove(&ctx->panel);
 

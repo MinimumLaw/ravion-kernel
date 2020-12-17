@@ -647,14 +647,13 @@
 	.result = REJECT,
 },
 {
-	"calls: subprog call with ld_abs in main prog",
+	"calls: ld_abs with changing ctx data in callee",
 	.insns = {
 	BPF_MOV64_REG(BPF_REG_6, BPF_REG_1),
 	BPF_LD_ABS(BPF_B, 0),
 	BPF_LD_ABS(BPF_H, 0),
 	BPF_LD_ABS(BPF_W, 0),
 	BPF_MOV64_REG(BPF_REG_7, BPF_REG_6),
-	BPF_MOV64_REG(BPF_REG_1, BPF_REG_6),
 	BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 1, 0, 5),
 	BPF_MOV64_REG(BPF_REG_6, BPF_REG_7),
 	BPF_LD_ABS(BPF_B, 0),
@@ -667,7 +666,8 @@
 	BPF_EXIT_INSN(),
 	},
 	.prog_type = BPF_PROG_TYPE_SCHED_CLS,
-	.result = ACCEPT,
+	.errstr = "BPF_LD_[ABS|IND] instructions cannot be mixed",
+	.result = REJECT,
 },
 {
 	"calls: two calls with bad fallthrough",

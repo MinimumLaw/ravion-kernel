@@ -496,10 +496,11 @@ static irqreturn_t
 mv64xxx_i2c_intr(int irq, void *dev_id)
 {
 	struct mv64xxx_i2c_data	*drv_data = dev_id;
+	unsigned long	flags;
 	u32		status;
 	irqreturn_t	rc = IRQ_NONE;
 
-	spin_lock(&drv_data->lock);
+	spin_lock_irqsave(&drv_data->lock, flags);
 
 	if (drv_data->offload_enabled)
 		rc = mv64xxx_i2c_intr_offload(drv_data);
@@ -516,7 +517,7 @@ mv64xxx_i2c_intr(int irq, void *dev_id)
 
 		rc = IRQ_HANDLED;
 	}
-	spin_unlock(&drv_data->lock);
+	spin_unlock_irqrestore(&drv_data->lock, flags);
 
 	return rc;
 }

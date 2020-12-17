@@ -15,7 +15,6 @@
 #include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <linux/usb/otg.h>
-#include <linux/phy/phy.h>
 
 #include "gadget.h"
 #include "drd.h"
@@ -43,18 +42,6 @@ int cdns3_set_mode(struct cdns3 *cdns, enum usb_dr_mode mode)
 			reg = readl(&cdns->otg_v1_regs->override);
 			reg |= OVERRIDE_IDPULLUP;
 			writel(reg, &cdns->otg_v1_regs->override);
-
-			/*
-			 * Enable work around feature built into the
-			 * controller to address issue with RX Sensitivity
-			 * est (EL_17) for USB2 PHY. The issue only occures
-			 * for 0x0002450D controller version.
-			 */
-			if (cdns->phyrst_a_enable) {
-				reg = readl(&cdns->otg_v1_regs->phyrst_cfg);
-				reg |= PHYRST_CFG_PHYRST_A_ENABLE;
-				writel(reg, &cdns->otg_v1_regs->phyrst_cfg);
-			}
 		} else {
 			reg = readl(&cdns->otg_v0_regs->ctrl1);
 			reg |= OVERRIDE_IDPULLUP_V0;
@@ -158,7 +145,6 @@ int cdns3_drd_host_on(struct cdns3 *cdns)
 	if (ret)
 		dev_err(cdns->dev, "timeout waiting for xhci_ready\n");
 
-	phy_set_mode(cdns->usb3_phy, PHY_MODE_USB_HOST);
 	return ret;
 }
 
@@ -178,7 +164,6 @@ void cdns3_drd_host_off(struct cdns3 *cdns)
 	readl_poll_timeout_atomic(&cdns->otg_regs->state, val,
 				  !(val & OTGSTATE_HOST_STATE_MASK),
 				  1, 2000000);
-	phy_set_mode(cdns->usb3_phy, PHY_MODE_INVALID);
 }
 
 /**
@@ -205,7 +190,6 @@ int cdns3_drd_gadget_on(struct cdns3 *cdns)
 		return ret;
 	}
 
-	phy_set_mode(cdns->usb3_phy, PHY_MODE_USB_DEVICE);
 	return 0;
 }
 
@@ -229,7 +213,6 @@ void cdns3_drd_gadget_off(struct cdns3 *cdns)
 	readl_poll_timeout_atomic(&cdns->otg_regs->state, val,
 				  !(val & OTGSTATE_DEV_STATE_MASK),
 				  1, 2000000);
-	phy_set_mode(cdns->usb3_phy, PHY_MODE_INVALID);
 }
 
 /**
@@ -309,9 +292,6 @@ static irqreturn_t cdns3_drd_irq(int irq, void *data)
 
 	if (cdns->dr_mode != USB_DR_MODE_OTG)
 		return IRQ_NONE;
-
-	if (cdns->in_lpm)
-		return ret;
 
 	reg = readl(&cdns->otg_regs->ivect);
 

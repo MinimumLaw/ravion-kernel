@@ -39,10 +39,9 @@ DVB_DEFINE_MOD_OPT_ADAPTER_NR(adapter_nr);
 
 #define IF_FREQUENCYx6 217    /* 6 * 36.16666666667MHz */
 
-static void dvb_bt8xx_task(struct tasklet_struct *t)
+static void dvb_bt8xx_task(unsigned long data)
 {
-	struct bt878 *bt = from_tasklet(bt, t, tasklet);
-	struct dvb_bt8xx_card *card = dev_get_drvdata(&bt->adapter->dev);
+	struct dvb_bt8xx_card *card = (struct dvb_bt8xx_card *)data;
 
 	dprintk("%d\n", card->bt->finished_block);
 
@@ -778,7 +777,7 @@ static int dvb_bt8xx_load_card(struct dvb_bt8xx_card *card, u32 type)
 		goto err_disconnect_frontend;
 	}
 
-	tasklet_setup(&card->bt->tasklet, dvb_bt8xx_task);
+	tasklet_init(&card->bt->tasklet, dvb_bt8xx_task, (unsigned long) card);
 
 	frontend_init(card, type);
 

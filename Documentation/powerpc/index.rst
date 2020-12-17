@@ -7,7 +7,6 @@ powerpc
 .. toctree::
     :maxdepth: 1
 
-    booting
     bootwrapper
     cpu_families
     cpu_features

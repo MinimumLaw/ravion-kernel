@@ -4,7 +4,6 @@
  */
 
 #include <dt-bindings/clock/imx6sx-clock.h>
-#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/clk-provider.h>

@@ -114,11 +114,7 @@ static int amdgpu_ctx_init_entity(struct amdgpu_ctx *ctx, u32 hw_ip,
 	scheds = adev->gpu_sched[hw_ip][hw_prio].sched;
 	num_scheds = adev->gpu_sched[hw_ip][hw_prio].num_scheds;
 
-	/* disable load balance if the hw engine retains context among dependent jobs */
-	if (hw_ip == AMDGPU_HW_IP_VCN_ENC ||
-	    hw_ip == AMDGPU_HW_IP_VCN_DEC ||
-	    hw_ip == AMDGPU_HW_IP_UVD_ENC ||
-	    hw_ip == AMDGPU_HW_IP_UVD) {
+	if (hw_ip == AMDGPU_HW_IP_VCN_ENC || hw_ip == AMDGPU_HW_IP_VCN_DEC) {
 		sched = drm_sched_pick_best(scheds, num_scheds);
 		scheds = &sched;
 		num_scheds = 1;
@@ -389,15 +385,16 @@ int amdgpu_ctx_ioctl(struct drm_device *dev, void *data,
 	enum drm_sched_priority priority;
 
 	union drm_amdgpu_ctx *args = data;
-	struct amdgpu_device *adev = drm_to_adev(dev);
+	struct amdgpu_device *adev = dev->dev_private;
 	struct amdgpu_fpriv *fpriv = filp->driver_priv;
 
+	r = 0;
 	id = args->in.ctx_id;
-	r = amdgpu_to_sched_priority(args->in.priority, &priority);
+	priority = amdgpu_to_sched_priority(args->in.priority);
 
 	/* For backwards compatibility reasons, we need to accept
 	 * ioctls with garbage in the priority field */
-	if (r == -EINVAL)
+	if (priority == DRM_SCHED_PRIORITY_INVALID)
 		priority = DRM_SCHED_PRIORITY_NORMAL;
 
 	switch (args->in.op) {

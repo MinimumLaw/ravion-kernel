@@ -611,7 +611,8 @@ static void gl518_init_client(struct i2c_client *client)
 	gl518_write_value(client, GL518_REG_CONF, 0x40 | regvalue);
 }
 
-static int gl518_probe(struct i2c_client *client)
+static int gl518_probe(struct i2c_client *client,
+		       const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -652,7 +653,7 @@ static struct i2c_driver gl518_driver = {
 	.driver = {
 		.name	= "gl518sm",
 	},
-	.probe_new	= gl518_probe,
+	.probe		= gl518_probe,
 	.id_table	= gl518_id,
 	.detect		= gl518_detect,
 	.address_list	= normal_i2c,

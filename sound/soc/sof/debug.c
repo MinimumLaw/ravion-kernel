@@ -405,7 +405,7 @@ static ssize_t sof_dfsentry_write(struct file *file, const char __user *buffer,
 	}
 
 	ret = pm_runtime_get_sync(sdev->dev);
-	if (ret < 0 && ret != -EACCES) {
+	if (ret < 0) {
 		dev_err_ratelimited(sdev->dev,
 				    "error: debugfs write failed to resume %d\n",
 				    ret);

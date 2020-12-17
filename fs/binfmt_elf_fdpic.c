@@ -1215,6 +1215,76 @@ struct elf_prstatus_fdpic
 	int pr_fpvalid;		/* True if math co-processor being used.  */
 };
 
+/*
+ * Decide whether a segment is worth dumping; default is yes to be
+ * sure (missing info is worse than too much; etc).
+ * Personally I'd include everything, and use the coredump limit...
+ *
+ * I think we should skip something. But I am not sure how. H.J.
+ */
+static int maydump(struct vm_area_struct *vma, unsigned long mm_flags)
+{
+	int dump_ok;
+
+	/* Do not dump I/O mapped devices or special mappings */
+	if (vma->vm_flags & VM_IO) {
+		kdcore("%08lx: %08lx: no (IO)", vma->vm_start, vma->vm_flags);
+		return 0;
+	}
+
+	/* If we may not read the contents, don't allow us to dump
+	 * them either. "dump_write()" can't handle it anyway.
+	 */
+	if (!(vma->vm_flags & VM_READ)) {
+		kdcore("%08lx: %08lx: no (!read)", vma->vm_start, vma->vm_flags);
+		return 0;
+	}
+
+	/* support for DAX */
+	if (vma_is_dax(vma)) {
+		if (vma->vm_flags & VM_SHARED) {
+			dump_ok = test_bit(MMF_DUMP_DAX_SHARED, &mm_flags);
+			kdcore("%08lx: %08lx: %s (DAX shared)", vma->vm_start,
+			       vma->vm_flags, dump_ok ? "yes" : "no");
+		} else {
+			dump_ok = test_bit(MMF_DUMP_DAX_PRIVATE, &mm_flags);
+			kdcore("%08lx: %08lx: %s (DAX private)", vma->vm_start,
+			       vma->vm_flags, dump_ok ? "yes" : "no");
+		}
+		return dump_ok;
+	}
+
+	/* By default, dump shared memory if mapped from an anonymous file. */
+	if (vma->vm_flags & VM_SHARED) {
+		if (file_inode(vma->vm_file)->i_nlink == 0) {
+			dump_ok = test_bit(MMF_DUMP_ANON_SHARED, &mm_flags);
+			kdcore("%08lx: %08lx: %s (share)", vma->vm_start,
+			       vma->vm_flags, dump_ok ? "yes" : "no");
+			return dump_ok;
+		}
+
+		dump_ok = test_bit(MMF_DUMP_MAPPED_SHARED, &mm_flags);
+		kdcore("%08lx: %08lx: %s (share)", vma->vm_start,
+		       vma->vm_flags, dump_ok ? "yes" : "no");
+		return dump_ok;
+	}
+
+#ifdef CONFIG_MMU
+	/* By default, if it hasn't been written to, don't write it out */
+	if (!vma->anon_vma) {
+		dump_ok = test_bit(MMF_DUMP_MAPPED_PRIVATE, &mm_flags);
+		kdcore("%08lx: %08lx: %s (!anon)", vma->vm_start,
+		       vma->vm_flags, dump_ok ? "yes" : "no");
+		return dump_ok;
+	}
+#endif
+
+	dump_ok = test_bit(MMF_DUMP_ANON_PRIVATE, &mm_flags);
+	kdcore("%08lx: %08lx: %s", vma->vm_start, vma->vm_flags,
+	       dump_ok ? "yes" : "no");
+	return dump_ok;
+}
+
 /* An ELF note in memory */
 struct memelfnote
 {
@@ -1454,19 +1524,52 @@ static void fill_extnum_info(struct elfhdr *elf, struct elf_shdr *shdr4extnum,
 /*
  * dump the segments for an MMU process
  */
-static bool elf_fdpic_dump_segments(struct coredump_params *cprm,
-				    struct core_vma_metadata *vma_meta,
-				    int vma_count)
+static bool elf_fdpic_dump_segments(struct coredump_params *cprm)
 {
-	int i;
+	struct vm_area_struct *vma;
 
-	for (i = 0; i < vma_count; i++) {
-		struct core_vma_metadata *meta = vma_meta + i;
+	for (vma = current->mm->mmap; vma; vma = vma->vm_next) {
+#ifdef CONFIG_MMU
+		unsigned long addr;
+#endif
 
-		if (!dump_user_range(cprm, meta->start, meta->dump_size))
+		if (!maydump(vma, cprm->mm_flags))
+			continue;
+
+#ifdef CONFIG_MMU
+		for (addr = vma->vm_start; addr < vma->vm_end;
+							addr += PAGE_SIZE) {
+			bool res;
+			struct page *page = get_dump_page(addr);
+			if (page) {
+				void *kaddr = kmap(page);
+				res = dump_emit(cprm, kaddr, PAGE_SIZE);
+				kunmap(page);
+				put_page(page);
+			} else {
+				res = dump_skip(cprm, PAGE_SIZE);
+			}
+			if (!res)
+				return false;
+		}
+#else
+		if (!dump_emit(cprm, (void *) vma->vm_start,
+				vma->vm_end - vma->vm_start))
 			return false;
+#endif
 	}
 	return true;
+}
+
+static size_t elf_core_vma_data_size(unsigned long mm_flags)
+{
+	struct vm_area_struct *vma;
+	size_t size = 0;
+
+	for (vma = current->mm->mmap; vma; vma = vma->vm_next)
+		if (maydump(vma, mm_flags))
+			size += vma->vm_end - vma->vm_start;
+	return size;
 }
 
 /*
@@ -1479,8 +1582,9 @@ static bool elf_fdpic_dump_segments(struct coredump_params *cprm,
 static int elf_fdpic_core_dump(struct coredump_params *cprm)
 {
 	int has_dumped = 0;
-	int vma_count, segs;
+	int segs;
 	int i;
+	struct vm_area_struct *vma;
 	struct elfhdr *elf = NULL;
 	loff_t offset = 0, dataoff;
 	struct memelfnote psinfo_note, auxv_note;
@@ -1494,8 +1598,18 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	elf_addr_t e_shoff;
 	struct core_thread *ct;
 	struct elf_thread_status *tmp;
-	struct core_vma_metadata *vma_meta = NULL;
-	size_t vma_data_size;
+
+	/*
+	 * We no longer stop all VM operations.
+	 *
+	 * This is because those proceses that could possibly change map_count
+	 * or the mmap / vma pages are now blocked in do_exit on current
+	 * finishing this core dump.
+	 *
+	 * Only ptrace can touch these memory addresses, but it doesn't change
+	 * the map_count or the pages allocated. So no possibility of crashing
+	 * exists while dumping the mm->vm_next areas to the core file.
+	 */
 
 	/* alloc memory for large data structures: too large to be on stack */
 	elf = kmalloc(sizeof(*elf), GFP_KERNEL);
@@ -1503,9 +1617,6 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 		goto end_coredump;
 	psinfo = kmalloc(sizeof(*psinfo), GFP_KERNEL);
 	if (!psinfo)
-		goto end_coredump;
-
-	if (dump_vma_snapshot(cprm, &vma_count, &vma_meta, &vma_data_size))
 		goto end_coredump;
 
 	for (ct = current->mm->core_state->dumper.next;
@@ -1527,7 +1638,8 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	tmp->next = thread_list;
 	thread_list = tmp;
 
-	segs = vma_count + elf_core_extra_phdrs();
+	segs = current->mm->map_count;
+	segs += elf_core_extra_phdrs();
 
 	/* for notes section */
 	segs++;
@@ -1572,7 +1684,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	/* Page-align dumped data */
 	dataoff = offset = roundup(offset, ELF_EXEC_PAGESIZE);
 
-	offset += vma_data_size;
+	offset += elf_core_vma_data_size(cprm->mm_flags);
 	offset += elf_core_extra_data_size();
 	e_shoff = offset;
 
@@ -1592,26 +1704,23 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 		goto end_coredump;
 
 	/* write program headers for segments dump */
-	for (i = 0; i < vma_count; i++) {
-		struct core_vma_metadata *meta = vma_meta + i;
+	for (vma = current->mm->mmap; vma; vma = vma->vm_next) {
 		struct elf_phdr phdr;
 		size_t sz;
 
-		sz = meta->end - meta->start;
+		sz = vma->vm_end - vma->vm_start;
 
 		phdr.p_type = PT_LOAD;
 		phdr.p_offset = offset;
-		phdr.p_vaddr = meta->start;
+		phdr.p_vaddr = vma->vm_start;
 		phdr.p_paddr = 0;
-		phdr.p_filesz = meta->dump_size;
+		phdr.p_filesz = maydump(vma, cprm->mm_flags) ? sz : 0;
 		phdr.p_memsz = sz;
 		offset += phdr.p_filesz;
-		phdr.p_flags = 0;
-		if (meta->flags & VM_READ)
-			phdr.p_flags |= PF_R;
-		if (meta->flags & VM_WRITE)
+		phdr.p_flags = vma->vm_flags & VM_READ ? PF_R : 0;
+		if (vma->vm_flags & VM_WRITE)
 			phdr.p_flags |= PF_W;
-		if (meta->flags & VM_EXEC)
+		if (vma->vm_flags & VM_EXEC)
 			phdr.p_flags |= PF_X;
 		phdr.p_align = ELF_EXEC_PAGESIZE;
 
@@ -1643,7 +1752,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	if (!dump_skip(cprm, dataoff - cprm->pos))
 		goto end_coredump;
 
-	if (!elf_fdpic_dump_segments(cprm, vma_meta, vma_count))
+	if (!elf_fdpic_dump_segments(cprm))
 		goto end_coredump;
 
 	if (!elf_core_write_extra_data(cprm))
@@ -1667,7 +1776,6 @@ end_coredump:
 		thread_list = thread_list->next;
 		kfree(tmp);
 	}
-	kvfree(vma_meta);
 	kfree(phdr4note);
 	kfree(elf);
 	kfree(psinfo);

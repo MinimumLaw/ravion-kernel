@@ -31,6 +31,8 @@ void svnic_cq_free(struct vnic_cq *cq)
 int svnic_cq_alloc(struct vnic_dev *vdev, struct vnic_cq *cq,
 	unsigned int index, unsigned int desc_count, unsigned int desc_size)
 {
+	int err;
+
 	cq->index = index;
 	cq->vdev = vdev;
 
@@ -41,7 +43,11 @@ int svnic_cq_alloc(struct vnic_dev *vdev, struct vnic_cq *cq,
 		return -EINVAL;
 	}
 
-	return svnic_dev_alloc_desc_ring(vdev, &cq->ring, desc_count, desc_size);
+	err = svnic_dev_alloc_desc_ring(vdev, &cq->ring, desc_count, desc_size);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 void svnic_cq_init(struct vnic_cq *cq, unsigned int flow_control_enable,

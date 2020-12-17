@@ -163,6 +163,7 @@ prism54_update_stats(struct work_struct *work)
 {
 	islpci_private *priv = container_of(work, islpci_private, stats_work);
 	char *data;
+	int j;
 	struct obj_bss bss, *bss2;
 	union oid_res_t r;
 
@@ -186,7 +187,7 @@ prism54_update_stats(struct work_struct *work)
 	kfree(data);
 
 	/* now ask for the corresponding bss */
-	mgt_get_request(priv, DOT11_OID_BSSFIND, 0, (void *) &bss, &r);
+	j = mgt_get_request(priv, DOT11_OID_BSSFIND, 0, (void *) &bss, &r);
 	bss2 = r.ptr;
 	/* report the rssi and use it to calculate
 	 *  link quality through a signal-noise
@@ -1690,7 +1691,7 @@ static int prism54_get_encodeext(struct net_device *ndev,
 	case DOT11_AUTH_BOTH:
 	case DOT11_AUTH_SK:
 		wrqu->encoding.flags |= IW_ENCODE_RESTRICTED;
-		fallthrough;
+		/* fall through */
 	case DOT11_AUTH_OS:
 	default:
 		wrqu->encoding.flags |= IW_ENCODE_OPEN;

@@ -56,6 +56,7 @@ struct hpre_dfx {
  * Just relevant for PF.
  */
 struct hpre_debug {
+	struct dentry *debug_root;
 	struct hpre_dfx dfx[HPRE_DFX_FILE_NUM];
 	struct hpre_debugfs_file files[HPRE_DEBUGFS_FILE_NUM];
 };

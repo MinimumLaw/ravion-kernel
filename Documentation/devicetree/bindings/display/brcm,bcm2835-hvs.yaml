@@ -11,9 +11,7 @@ maintainers:
 
 properties:
   compatible:
-    enum:
-      - brcm,bcm2711-hvs
-      - brcm,bcm2835-hvs
+    const: brcm,bcm2835-hvs
 
   reg:
     maxItems: 1
@@ -21,26 +19,12 @@ properties:
   interrupts:
     maxItems: 1
 
-  clocks:
-    maxItems: 1
-    description: Core Clock
-
 required:
   - compatible
   - reg
   - interrupts
 
 additionalProperties: false
-
-if:
-  properties:
-    compatible:
-      contains:
-        const: brcm,bcm2711-hvs"
-
-then:
-  required:
-    - clocks
 
 examples:
   - |

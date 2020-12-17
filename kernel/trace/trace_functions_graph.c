@@ -1336,13 +1336,13 @@ static const struct file_operations graph_depth_fops = {
 
 static __init int init_graph_tracefs(void)
 {
-	int ret;
+	struct dentry *d_tracer;
 
-	ret = tracing_init_dentry();
-	if (ret)
+	d_tracer = tracing_init_dentry();
+	if (IS_ERR(d_tracer))
 		return 0;
 
-	trace_create_file("max_graph_depth", 0644, NULL,
+	trace_create_file("max_graph_depth", 0644, d_tracer,
 			  NULL, &graph_depth_fops);
 
 	return 0;

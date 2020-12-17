@@ -15,7 +15,8 @@ static const struct regmap_config ltc2947_regmap_config = {
 	.val_bits = 8,
 };
 
-static int ltc2947_probe(struct i2c_client *i2c)
+static int ltc2947_probe(struct i2c_client *i2c,
+			 const struct i2c_device_id *id)
 {
 	struct regmap *map;
 
@@ -38,7 +39,7 @@ static struct i2c_driver ltc2947_driver = {
 		.of_match_table = ltc2947_of_match,
 		.pm = &ltc2947_pm_ops,
 	},
-	.probe_new = ltc2947_probe,
+	.probe = ltc2947_probe,
 	.id_table = ltc2947_id,
 };
 module_i2c_driver(ltc2947_driver);

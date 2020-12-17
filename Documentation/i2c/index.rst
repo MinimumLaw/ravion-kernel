@@ -47,7 +47,6 @@ Slave I2C
 
    slave-interface
    slave-eeprom-backend
-   slave-testunit-backend
 
 Advanced topics
 ===============

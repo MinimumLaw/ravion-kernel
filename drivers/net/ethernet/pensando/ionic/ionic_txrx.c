@@ -22,7 +22,7 @@ static bool ionic_tx_service(struct ionic_cq *cq, struct ionic_cq_info *cq_info)
 static inline void ionic_txq_post(struct ionic_queue *q, bool ring_dbell,
 				  ionic_desc_cb cb_func, void *cb_arg)
 {
-	DEBUG_STATS_TXQ_POST(q, ring_dbell);
+	DEBUG_STATS_TXQ_POST(q_to_qcq(q), q->head->desc, ring_dbell);
 
 	ionic_q_post(q, ring_dbell, cb_func, cb_arg);
 }
@@ -32,7 +32,7 @@ static inline void ionic_rxq_post(struct ionic_queue *q, bool ring_dbell,
 {
 	ionic_q_post(q, ring_dbell, cb_func, cb_arg);
 
-	DEBUG_STATS_RX_BUFF_CNT(q);
+	DEBUG_STATS_RX_BUFF_CNT(q_to_qcq(q));
 }
 
 static inline struct netdev_queue *q_to_ndq(struct ionic_queue *q)
@@ -49,7 +49,7 @@ static struct sk_buff *ionic_rx_skb_alloc(struct ionic_queue *q,
 	struct sk_buff *skb;
 
 	netdev = lif->netdev;
-	stats = &q->lif->rxqstats[q->index];
+	stats = q_to_rx_stats(q);
 
 	if (frags)
 		skb = napi_get_frags(&q_to_qcq(q)->napi);
@@ -200,7 +200,7 @@ static void ionic_rx_clean(struct ionic_queue *q,
 	if (likely(netdev->features & NETIF_F_RXCSUM)) {
 		if (comp->csum_flags & IONIC_RXQ_COMP_CSUM_F_CALC) {
 			skb->ip_summed = CHECKSUM_COMPLETE;
-			skb->csum = (__force __wsum)le16_to_cpu(comp->csum);
+			skb->csum = (__wsum)le16_to_cpu(comp->csum);
 			stats->csum_complete++;
 		}
 	} else {
@@ -235,14 +235,14 @@ static bool ionic_rx_service(struct ionic_cq *cq, struct ionic_cq_info *cq_info)
 		return false;
 
 	/* check for empty queue */
-	if (q->tail_idx == q->head_idx)
+	if (q->tail->index == q->head->index)
 		return false;
 
-	if (q->tail_idx != le16_to_cpu(comp->comp_index))
+	desc_info = q->tail;
+	if (desc_info->index != le16_to_cpu(comp->comp_index))
 		return false;
 
-	desc_info = &q->info[q->tail_idx];
-	q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+	q->tail = desc_info->next;
 
 	/* clean the related q entry, only one per qc completion */
 	ionic_rx_clean(q, desc_info, cq_info, desc_info->cb_arg);
@@ -253,49 +253,40 @@ static bool ionic_rx_service(struct ionic_cq *cq, struct ionic_cq_info *cq_info)
 	return true;
 }
 
-static int ionic_rx_page_alloc(struct ionic_queue *q,
-			       struct ionic_page_info *page_info)
+static struct page *ionic_rx_page_alloc(struct ionic_queue *q,
+					dma_addr_t *dma_addr)
 {
 	struct ionic_lif *lif = q->lif;
 	struct ionic_rx_stats *stats;
 	struct net_device *netdev;
 	struct device *dev;
+	struct page *page;
 
 	netdev = lif->netdev;
 	dev = lif->ionic->dev;
 	stats = q_to_rx_stats(q);
-
-	if (unlikely(!page_info)) {
-		net_err_ratelimited("%s: %s invalid page_info in alloc\n",
-				    netdev->name, q->name);
-		return -EINVAL;
-	}
-
-	page_info->page = dev_alloc_page();
-	if (unlikely(!page_info->page)) {
-		net_err_ratelimited("%s: %s page alloc failed\n",
+	page = alloc_page(GFP_ATOMIC);
+	if (unlikely(!page)) {
+		net_err_ratelimited("%s: Page alloc failed on %s!\n",
 				    netdev->name, q->name);
 		stats->alloc_err++;
-		return -ENOMEM;
+		return NULL;
 	}
 
-	page_info->dma_addr = dma_map_page(dev, page_info->page, 0, PAGE_SIZE,
-					   DMA_FROM_DEVICE);
-	if (unlikely(dma_mapping_error(dev, page_info->dma_addr))) {
-		put_page(page_info->page);
-		page_info->dma_addr = 0;
-		page_info->page = NULL;
-		net_err_ratelimited("%s: %s dma map failed\n",
+	*dma_addr = dma_map_page(dev, page, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+	if (unlikely(dma_mapping_error(dev, *dma_addr))) {
+		__free_page(page);
+		net_err_ratelimited("%s: DMA single map failed on %s!\n",
 				    netdev->name, q->name);
 		stats->dma_map_err++;
-		return -EIO;
+		return NULL;
 	}
 
-	return 0;
+	return page;
 }
 
-static void ionic_rx_page_free(struct ionic_queue *q,
-			       struct ionic_page_info *page_info)
+static void ionic_rx_page_free(struct ionic_queue *q, struct page *page,
+			       dma_addr_t dma_addr)
 {
 	struct ionic_lif *lif = q->lif;
 	struct net_device *netdev;
@@ -304,23 +295,15 @@ static void ionic_rx_page_free(struct ionic_queue *q,
 	netdev = lif->netdev;
 	dev = lif->ionic->dev;
 
-	if (unlikely(!page_info)) {
-		net_err_ratelimited("%s: %s invalid page_info in free\n",
+	if (unlikely(!page)) {
+		net_err_ratelimited("%s: Trying to free unallocated buffer on %s!\n",
 				    netdev->name, q->name);
 		return;
 	}
 
-	if (unlikely(!page_info->page)) {
-		net_err_ratelimited("%s: %s invalid page in free\n",
-				    netdev->name, q->name);
-		return;
-	}
+	dma_unmap_page(dev, dma_addr, PAGE_SIZE, DMA_FROM_DEVICE);
 
-	dma_unmap_page(dev, page_info->dma_addr, PAGE_SIZE, DMA_FROM_DEVICE);
-
-	put_page(page_info->page);
-	page_info->dma_addr = 0;
-	page_info->page = NULL;
+	__free_page(page);
 }
 
 void ionic_rx_fill(struct ionic_queue *q)
@@ -342,7 +325,7 @@ void ionic_rx_fill(struct ionic_queue *q)
 
 	for (i = ionic_q_space_avail(q); i; i--) {
 		remain_len = len;
-		desc_info = &q->info[q->head_idx];
+		desc_info = q->head;
 		desc = desc_info->desc;
 		sg_desc = desc_info->sg_desc;
 		page_info = &desc_info->pages[0];
@@ -356,7 +339,8 @@ void ionic_rx_fill(struct ionic_queue *q)
 		desc->opcode = (nfrags > 1) ? IONIC_RXQ_DESC_OPCODE_SG :
 					      IONIC_RXQ_DESC_OPCODE_SIMPLE;
 		desc_info->npages = nfrags;
-		if (unlikely(ionic_rx_page_alloc(q, page_info))) {
+		page_info->page = ionic_rx_page_alloc(q, &page_info->dma_addr);
+		if (unlikely(!page_info->page)) {
 			desc->addr = 0;
 			desc->len = 0;
 			return;
@@ -373,7 +357,8 @@ void ionic_rx_fill(struct ionic_queue *q)
 				continue;
 
 			sg_elem = &sg_desc->elems[j];
-			if (unlikely(ionic_rx_page_alloc(q, page_info))) {
+			page_info->page = ionic_rx_page_alloc(q, &page_info->dma_addr);
+			if (unlikely(!page_info->page)) {
 				sg_elem->addr = 0;
 				sg_elem->len = 0;
 				return;
@@ -389,7 +374,7 @@ void ionic_rx_fill(struct ionic_queue *q)
 	}
 
 	ionic_dbell_ring(q->lif->kern_dbpage, q->hw_type,
-			 q->dbval | q->head_idx);
+			 q->dbval | q->head->index);
 }
 
 static void ionic_rx_fill_cb(void *arg)
@@ -399,46 +384,26 @@ static void ionic_rx_fill_cb(void *arg)
 
 void ionic_rx_empty(struct ionic_queue *q)
 {
-	struct ionic_desc_info *desc_info;
-	struct ionic_page_info *page_info;
-	unsigned int i, j;
+	struct ionic_desc_info *cur;
+	struct ionic_rxq_desc *desc;
+	unsigned int i;
 
-	for (i = 0; i < q->num_descs; i++) {
-		desc_info = &q->info[i];
-		for (j = 0; j < IONIC_RX_MAX_SG_ELEMS + 1; j++) {
-			page_info = &desc_info->pages[j];
-			if (page_info->page)
-				ionic_rx_page_free(q, page_info);
+	for (cur = q->tail; cur != q->head; cur = cur->next) {
+		desc = cur->desc;
+		desc->addr = 0;
+		desc->len = 0;
+
+		for (i = 0; i < cur->npages; i++) {
+			if (likely(cur->pages[i].page)) {
+				ionic_rx_page_free(q, cur->pages[i].page,
+						   cur->pages[i].dma_addr);
+				cur->pages[i].page = NULL;
+				cur->pages[i].dma_addr = 0;
+			}
 		}
 
-		desc_info->npages = 0;
-		desc_info->cb = NULL;
-		desc_info->cb_arg = NULL;
+		cur->cb_arg = NULL;
 	}
-}
-
-static void ionic_dim_update(struct ionic_qcq *qcq)
-{
-	struct dim_sample dim_sample;
-	struct ionic_lif *lif;
-	unsigned int qi;
-
-	if (!qcq->intr.dim_coal_hw)
-		return;
-
-	lif = qcq->q.lif;
-	qi = qcq->cq.bound_q->index;
-
-	ionic_intr_coal_init(lif->ionic->idev.intr_ctrl,
-			     lif->rxqcqs[qi]->intr.index,
-			     qcq->intr.dim_coal_hw);
-
-	dim_update_sample(qcq->cq.bound_intr->rearm_count,
-			  lif->txqstats[qi].pkts,
-			  lif->txqstats[qi].bytes,
-			  &dim_sample);
-
-	net_dim(&qcq->dim, dim_sample);
 }
 
 int ionic_tx_napi(struct napi_struct *napi, int budget)
@@ -457,9 +422,8 @@ int ionic_tx_napi(struct napi_struct *napi, int budget)
 				     ionic_tx_service, NULL, NULL);
 
 	if (work_done < budget && napi_complete_done(napi, work_done)) {
-		ionic_dim_update(qcq);
 		flags |= IONIC_INTR_CRED_UNMASK;
-		cq->bound_intr->rearm_count++;
+		DEBUG_STATS_INTR_REARM(cq->bound_intr);
 	}
 
 	if (work_done || flags) {
@@ -493,9 +457,8 @@ int ionic_rx_napi(struct napi_struct *napi, int budget)
 		ionic_rx_fill(cq->bound_q);
 
 	if (work_done < budget && napi_complete_done(napi, work_done)) {
-		ionic_dim_update(qcq);
 		flags |= IONIC_INTR_CRED_UNMASK;
-		cq->bound_intr->rearm_count++;
+		DEBUG_STATS_INTR_REARM(cq->bound_intr);
 	}
 
 	if (work_done || flags) {
@@ -524,7 +487,7 @@ int ionic_txrx_napi(struct napi_struct *napi, int budget)
 
 	lif = rxcq->bound_q->lif;
 	idev = &lif->ionic->idev;
-	txcq = &lif->txqcqs[qi]->cq;
+	txcq = &lif->txqcqs[qi].qcq->cq;
 
 	tx_work_done = ionic_cq_service(txcq, lif->tx_budget,
 					ionic_tx_service, NULL, NULL);
@@ -535,9 +498,8 @@ int ionic_txrx_napi(struct napi_struct *napi, int budget)
 		ionic_rx_fill_cb(rxcq->bound_q);
 
 	if (rx_work_done < budget && napi_complete_done(napi, rx_work_done)) {
-		ionic_dim_update(qcq);
 		flags |= IONIC_INTR_CRED_UNMASK;
-		rxcq->bound_intr->rearm_count++;
+		DEBUG_STATS_INTR_REARM(rxcq->bound_intr);
 	}
 
 	if (rx_work_done || flags) {
@@ -640,7 +602,6 @@ static bool ionic_tx_service(struct ionic_cq *cq, struct ionic_cq_info *cq_info)
 	struct ionic_txq_comp *comp = cq_info->cq_desc;
 	struct ionic_queue *q = cq->bound_q;
 	struct ionic_desc_info *desc_info;
-	u16 index;
 
 	if (!color_match(comp->color, cq->done_color))
 		return false;
@@ -649,13 +610,12 @@ static bool ionic_tx_service(struct ionic_cq *cq, struct ionic_cq_info *cq_info)
 	 * several q entries completed for each cq completion
 	 */
 	do {
-		desc_info = &q->info[q->tail_idx];
-		index = q->tail_idx;
-		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
-		ionic_tx_clean(q, desc_info, cq_info, desc_info->cb_arg);
+		desc_info = q->tail;
+		q->tail = desc_info->next;
+		ionic_tx_clean(q, desc_info, cq->tail, desc_info->cb_arg);
 		desc_info->cb = NULL;
 		desc_info->cb_arg = NULL;
-	} while (index != le16_to_cpu(comp->comp_index));
+	} while (desc_info->index != le16_to_cpu(comp->comp_index));
 
 	return true;
 }
@@ -675,14 +635,16 @@ void ionic_tx_flush(struct ionic_cq *cq)
 void ionic_tx_empty(struct ionic_queue *q)
 {
 	struct ionic_desc_info *desc_info;
+	int done = 0;
 
 	/* walk the not completed tx entries, if any */
-	while (q->head_idx != q->tail_idx) {
-		desc_info = &q->info[q->tail_idx];
-		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+	while (q->head != q->tail) {
+		desc_info = q->tail;
+		q->tail = desc_info->next;
 		ionic_tx_clean(q, desc_info, NULL, desc_info->cb_arg);
 		desc_info->cb = NULL;
 		desc_info->cb_arg = NULL;
+		done++;
 	}
 }
 
@@ -766,8 +728,8 @@ static void ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc
 static struct ionic_txq_desc *ionic_tx_tso_next(struct ionic_queue *q,
 						struct ionic_txq_sg_elem **elem)
 {
-	struct ionic_txq_sg_desc *sg_desc = q->info[q->head_idx].txq_sg_desc;
-	struct ionic_txq_desc *desc = q->info[q->head_idx].txq_desc;
+	struct ionic_txq_sg_desc *sg_desc = q->head->sg_desc;
+	struct ionic_txq_desc *desc = q->head->desc;
 
 	*elem = sg_desc->elems;
 	return desc;
@@ -776,13 +738,13 @@ static struct ionic_txq_desc *ionic_tx_tso_next(struct ionic_queue *q,
 static int ionic_tx_tso(struct ionic_queue *q, struct sk_buff *skb)
 {
 	struct ionic_tx_stats *stats = q_to_tx_stats(q);
-	struct ionic_desc_info *rewind_desc_info;
+	struct ionic_desc_info *abort = q->head;
 	struct device *dev = q->lif->ionic->dev;
+	struct ionic_desc_info *rewind = abort;
 	struct ionic_txq_sg_elem *elem;
 	struct ionic_txq_desc *desc;
 	unsigned int frag_left = 0;
 	unsigned int offset = 0;
-	u16 abort = q->head_idx;
 	unsigned int len_left;
 	dma_addr_t desc_addr;
 	unsigned int hdrlen;
@@ -790,14 +752,12 @@ static int ionic_tx_tso(struct ionic_queue *q, struct sk_buff *skb)
 	unsigned int seglen;
 	u64 total_bytes = 0;
 	u64 total_pkts = 0;
-	u16 rewind = abort;
 	unsigned int left;
 	unsigned int len;
 	unsigned int mss;
 	skb_frag_t *frag;
 	bool start, done;
 	bool outer_csum;
-	dma_addr_t addr;
 	bool has_vlan;
 	u16 desc_len;
 	u8 desc_nsge;
@@ -879,10 +839,11 @@ static int ionic_tx_tso(struct ionic_queue *q, struct sk_buff *skb)
 			if (frag_left > 0) {
 				len = min(frag_left, left);
 				frag_left -= len;
-				addr = ionic_tx_map_frag(q, frag, offset, len);
-				if (dma_mapping_error(dev, addr))
+				elem->addr =
+				    cpu_to_le64(ionic_tx_map_frag(q, frag,
+								  offset, len));
+				if (dma_mapping_error(dev, elem->addr))
 					goto err_out_abort;
-				elem->addr = cpu_to_le64(addr);
 				elem->len = cpu_to_le16(len);
 				elem++;
 				desc_nsge++;
@@ -935,20 +896,19 @@ static int ionic_tx_tso(struct ionic_queue *q, struct sk_buff *skb)
 	return 0;
 
 err_out_abort:
-	while (rewind != q->head_idx) {
-		rewind_desc_info = &q->info[rewind];
-		ionic_tx_clean(q, rewind_desc_info, NULL, NULL);
-		rewind = (rewind + 1) & (q->num_descs - 1);
+	while (rewind->desc != q->head->desc) {
+		ionic_tx_clean(q, rewind, NULL, NULL);
+		rewind = rewind->next;
 	}
-	q->head_idx = abort;
+	q->head = abort;
 
 	return -ENOMEM;
 }
 
 static int ionic_tx_calc_csum(struct ionic_queue *q, struct sk_buff *skb)
 {
-	struct ionic_txq_desc *desc = q->info[q->head_idx].txq_desc;
 	struct ionic_tx_stats *stats = q_to_tx_stats(q);
+	struct ionic_txq_desc *desc = q->head->desc;
 	struct device *dev = q->lif->ionic->dev;
 	dma_addr_t dma_addr;
 	bool has_vlan;
@@ -987,8 +947,8 @@ static int ionic_tx_calc_csum(struct ionic_queue *q, struct sk_buff *skb)
 
 static int ionic_tx_calc_no_csum(struct ionic_queue *q, struct sk_buff *skb)
 {
-	struct ionic_txq_desc *desc = q->info[q->head_idx].txq_desc;
 	struct ionic_tx_stats *stats = q_to_tx_stats(q);
+	struct ionic_txq_desc *desc = q->head->desc;
 	struct device *dev = q->lif->ionic->dev;
 	dma_addr_t dma_addr;
 	bool has_vlan;
@@ -1022,7 +982,7 @@ static int ionic_tx_calc_no_csum(struct ionic_queue *q, struct sk_buff *skb)
 
 static int ionic_tx_skb_frags(struct ionic_queue *q, struct sk_buff *skb)
 {
-	struct ionic_txq_sg_desc *sg_desc = q->info[q->head_idx].txq_sg_desc;
+	struct ionic_txq_sg_desc *sg_desc = q->head->sg_desc;
 	unsigned int len_left = skb->len - skb_headlen(skb);
 	struct ionic_txq_sg_elem *elem = sg_desc->elems;
 	struct ionic_tx_stats *stats = q_to_tx_stats(q);
@@ -1131,9 +1091,9 @@ netdev_tx_t ionic_start_xmit(struct sk_buff *skb, struct net_device *netdev)
 		return NETDEV_TX_OK;
 	}
 
-	if (unlikely(queue_index >= lif->nxqs))
+	if (unlikely(!lif_to_txqcq(lif, queue_index)))
 		queue_index = 0;
-	q = &lif->txqcqs[queue_index]->q;
+	q = lif_to_txq(lif, queue_index);
 
 	ndescs = ionic_tx_descs_needed(q, skb);
 	if (ndescs < 0)

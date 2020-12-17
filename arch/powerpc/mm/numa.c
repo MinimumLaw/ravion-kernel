@@ -430,7 +430,7 @@ static int of_get_assoc_arrays(struct assoc_arrays *aa)
  * This is like of_node_to_nid_single() for memory represented in the
  * ibm,dynamic-reconfiguration-memory node.
  */
-int of_drconf_to_nid_single(struct drmem_lmb *lmb)
+static int of_drconf_to_nid_single(struct drmem_lmb *lmb)
 {
 	struct assoc_arrays aa = { .arrays = NULL };
 	int default_nid = NUMA_NO_NODE;
@@ -506,11 +506,6 @@ static int numa_setup_cpu(unsigned long lcpu)
 	struct device_node *cpu;
 	int fcpu = cpu_first_thread_sibling(lcpu);
 	int nid = NUMA_NO_NODE;
-
-	if (!cpu_present(lcpu)) {
-		set_cpu_numa_node(lcpu, first_online_node);
-		return first_online_node;
-	}
 
 	/*
 	 * If a valid cpu-to-node mapping is already available, use it
@@ -728,20 +723,20 @@ static int __init parse_numa_properties(void)
 	 */
 	for_each_present_cpu(i) {
 		struct device_node *cpu;
-		int nid = vphn_get_nid(i);
+		int nid;
+
+		cpu = of_get_cpu_node(i, NULL);
+		BUG_ON(!cpu);
+		nid = of_node_to_nid_single(cpu);
+		of_node_put(cpu);
 
 		/*
 		 * Don't fall back to default_nid yet -- we will plug
 		 * cpus into nodes once the memory scan has discovered
 		 * the topology.
 		 */
-		if (nid == NUMA_NO_NODE) {
-			cpu = of_get_cpu_node(i, NULL);
-			BUG_ON(!cpu);
-			nid = of_node_to_nid_single(cpu);
-			of_node_put(cpu);
-		}
-
+		if (nid < 0)
+			continue;
 		node_set_online(nid);
 	}
 
@@ -809,14 +804,17 @@ static void __init setup_nonnuma(void)
 	unsigned long total_ram = memblock_phys_mem_size();
 	unsigned long start_pfn, end_pfn;
 	unsigned int nid = 0;
-	int i;
+	struct memblock_region *reg;
 
 	printk(KERN_DEBUG "Top of RAM: 0x%lx, Total RAM: 0x%lx\n",
 	       top_of_ram, total_ram);
 	printk(KERN_DEBUG "Memory hole size: %ldMB\n",
 	       (top_of_ram - total_ram) >> 20);
 
-	for_each_mem_pfn_range(i, MAX_NUMNODES, &start_pfn, &end_pfn, NULL) {
+	for_each_memblock(memory, reg) {
+		start_pfn = memblock_region_memory_base_pfn(reg);
+		end_pfn = memblock_region_memory_end_pfn(reg);
+
 		fake_numa_create_new_node(end_pfn, &nid);
 		memblock_set_node(PFN_PHYS(start_pfn),
 				  PFN_PHYS(end_pfn - start_pfn),
@@ -893,9 +891,7 @@ static void __init setup_node_data(int nid, u64 start_pfn, u64 end_pfn)
 static void __init find_possible_nodes(void)
 {
 	struct device_node *rtas;
-	const __be32 *domains;
-	int prop_length, max_nodes;
-	u32 i;
+	u32 numnodes, i;
 
 	if (!numa_enabled)
 		return;
@@ -904,30 +900,15 @@ static void __init find_possible_nodes(void)
 	if (!rtas)
 		return;
 
-	/*
-	 * ibm,current-associativity-domains is a fairly recent property. If
-	 * it doesn't exist, then fallback on ibm,max-associativity-domains.
-	 * Current denotes what the platform can support compared to max
-	 * which denotes what the Hypervisor can support.
-	 */
-	domains = of_get_property(rtas, "ibm,current-associativity-domains",
-					&prop_length);
-	if (!domains) {
-		domains = of_get_property(rtas, "ibm,max-associativity-domains",
-					&prop_length);
-		if (!domains)
-			goto out;
-	}
+	if (of_property_read_u32_index(rtas,
+				"ibm,max-associativity-domains",
+				min_common_depth, &numnodes))
+		goto out;
 
-	max_nodes = of_read_number(&domains[min_common_depth], 1);
-	for (i = 0; i < max_nodes; i++) {
+	for (i = 0; i < numnodes; i++) {
 		if (!node_possible(i))
 			node_set(i, node_possible_map);
 	}
-
-	prop_length /= sizeof(int);
-	if (prop_length > min_common_depth + 2)
-		coregroup_enabled = 1;
 
 out:
 	of_node_put(rtas);
@@ -936,16 +917,6 @@ out:
 void __init mem_topology_setup(void)
 {
 	int cpu;
-
-	/*
-	 * Linux/mm assumes node 0 to be online at boot. However this is not
-	 * true on PowerPC, where node 0 is similar to any other node, it
-	 * could be cpuless, memoryless node. So force node 0 to be offline
-	 * for now. This will prevent cpuless, memoryless node 0 showing up
-	 * unnecessarily as online. If a node has cpus or memory that need
-	 * to be online, then node will anyway be marked online.
-	 */
-	node_set_offline(0);
 
 	if (parse_numa_properties())
 		setup_nonnuma();
@@ -964,17 +935,8 @@ void __init mem_topology_setup(void)
 
 	reset_numa_cpu_lookup_table();
 
-	for_each_possible_cpu(cpu) {
-		/*
-		 * Powerpc with CONFIG_NUMA always used to have a node 0,
-		 * even if it was memoryless or cpuless. For all cpus that
-		 * are possible but not present, cpu_to_node() would point
-		 * to node 0. To remove a cpuless, memoryless dummy node,
-		 * powerpc need to make sure all possible but not present
-		 * cpu_to_node are set to a proper node.
-		 */
+	for_each_present_cpu(cpu)
 		numa_setup_cpu(cpu);
-	}
 }
 
 void __init initmem_init(void)
@@ -1239,31 +1201,6 @@ int find_and_online_cpu_nid(int cpu)
 	pr_debug("%s:%d cpu %d nid %d\n", __FUNCTION__, __LINE__,
 		cpu, new_nid);
 	return new_nid;
-}
-
-int cpu_to_coregroup_id(int cpu)
-{
-	__be32 associativity[VPHN_ASSOC_BUFSIZE] = {0};
-	int index;
-
-	if (cpu < 0 || cpu > nr_cpu_ids)
-		return -1;
-
-	if (!coregroup_enabled)
-		goto out;
-
-	if (!firmware_has_feature(FW_FEATURE_VPHN))
-		goto out;
-
-	if (vphn_get_associativity(cpu, associativity))
-		goto out;
-
-	index = of_read_number(associativity, 1);
-	if (index > min_common_depth + 1)
-		return of_read_number(&associativity[index - 1], 1);
-
-out:
-	return cpu_to_core_id(cpu);
 }
 
 static int topology_update_init(void)

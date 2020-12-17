@@ -136,4 +136,3 @@ struct clk *rockchip_clk_register_ddrclk(const char *name, int flags,
 
 	return clk;
 }
-EXPORT_SYMBOL_GPL(rockchip_clk_register_ddrclk);

@@ -25,6 +25,9 @@ static int nf_flow_state_check(struct flow_offload *flow, int proto,
 	if (proto != IPPROTO_TCP)
 		return 0;
 
+	if (!pskb_may_pull(skb, thoff + sizeof(*tcph)))
+		return -1;
+
 	tcph = (void *)(skb_network_header(skb) + thoff);
 	if (unlikely(tcph->fin || tcph->rst)) {
 		flow_offload_teardown(flow);
@@ -39,7 +42,8 @@ static int nf_flow_nat_ip_tcp(struct sk_buff *skb, unsigned int thoff,
 {
 	struct tcphdr *tcph;
 
-	if (skb_try_make_writable(skb, thoff + sizeof(*tcph)))
+	if (!pskb_may_pull(skb, thoff + sizeof(*tcph)) ||
+	    skb_try_make_writable(skb, thoff + sizeof(*tcph)))
 		return -1;
 
 	tcph = (void *)(skb_network_header(skb) + thoff);
@@ -53,7 +57,8 @@ static int nf_flow_nat_ip_udp(struct sk_buff *skb, unsigned int thoff,
 {
 	struct udphdr *udph;
 
-	if (skb_try_make_writable(skb, thoff + sizeof(*udph)))
+	if (!pskb_may_pull(skb, thoff + sizeof(*udph)) ||
+	    skb_try_make_writable(skb, thoff + sizeof(*udph)))
 		return -1;
 
 	udph = (void *)(skb_network_header(skb) + thoff);
@@ -162,8 +167,8 @@ static bool ip_has_options(unsigned int thoff)
 static int nf_flow_tuple_ip(struct sk_buff *skb, const struct net_device *dev,
 			    struct flow_offload_tuple *tuple)
 {
-	unsigned int thoff, hdrsize;
 	struct flow_ports *ports;
+	unsigned int thoff;
 	struct iphdr *iph;
 
 	if (!pskb_may_pull(skb, sizeof(*iph)))
@@ -176,22 +181,15 @@ static int nf_flow_tuple_ip(struct sk_buff *skb, const struct net_device *dev,
 	    unlikely(ip_has_options(thoff)))
 		return -1;
 
-	switch (iph->protocol) {
-	case IPPROTO_TCP:
-		hdrsize = sizeof(struct tcphdr);
-		break;
-	case IPPROTO_UDP:
-		hdrsize = sizeof(struct udphdr);
-		break;
-	default:
+	if (iph->protocol != IPPROTO_TCP &&
+	    iph->protocol != IPPROTO_UDP)
 		return -1;
-	}
 
 	if (iph->ttl <= 1)
 		return -1;
 
 	thoff = iph->ihl * 4;
-	if (!pskb_may_pull(skb, thoff + hdrsize))
+	if (!pskb_may_pull(skb, thoff + sizeof(*ports)))
 		return -1;
 
 	iph = ip_hdr(skb);
@@ -317,7 +315,8 @@ static int nf_flow_nat_ipv6_tcp(struct sk_buff *skb, unsigned int thoff,
 {
 	struct tcphdr *tcph;
 
-	if (skb_try_make_writable(skb, thoff + sizeof(*tcph)))
+	if (!pskb_may_pull(skb, thoff + sizeof(*tcph)) ||
+	    skb_try_make_writable(skb, thoff + sizeof(*tcph)))
 		return -1;
 
 	tcph = (void *)(skb_network_header(skb) + thoff);
@@ -333,7 +332,8 @@ static int nf_flow_nat_ipv6_udp(struct sk_buff *skb, unsigned int thoff,
 {
 	struct udphdr *udph;
 
-	if (skb_try_make_writable(skb, thoff + sizeof(*udph)))
+	if (!pskb_may_pull(skb, thoff + sizeof(*udph)) ||
+	    skb_try_make_writable(skb, thoff + sizeof(*udph)))
 		return -1;
 
 	udph = (void *)(skb_network_header(skb) + thoff);
@@ -439,31 +439,24 @@ static int nf_flow_nat_ipv6(const struct flow_offload *flow,
 static int nf_flow_tuple_ipv6(struct sk_buff *skb, const struct net_device *dev,
 			      struct flow_offload_tuple *tuple)
 {
-	unsigned int thoff, hdrsize;
 	struct flow_ports *ports;
 	struct ipv6hdr *ip6h;
+	unsigned int thoff;
 
 	if (!pskb_may_pull(skb, sizeof(*ip6h)))
 		return -1;
 
 	ip6h = ipv6_hdr(skb);
 
-	switch (ip6h->nexthdr) {
-	case IPPROTO_TCP:
-		hdrsize = sizeof(struct tcphdr);
-		break;
-	case IPPROTO_UDP:
-		hdrsize = sizeof(struct udphdr);
-		break;
-	default:
+	if (ip6h->nexthdr != IPPROTO_TCP &&
+	    ip6h->nexthdr != IPPROTO_UDP)
 		return -1;
-	}
 
 	if (ip6h->hop_limit <= 1)
 		return -1;
 
 	thoff = sizeof(*ip6h);
-	if (!pskb_may_pull(skb, thoff + hdrsize))
+	if (!pskb_may_pull(skb, thoff + sizeof(*ports)))
 		return -1;
 
 	ip6h = ipv6_hdr(skb);

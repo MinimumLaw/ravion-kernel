@@ -305,13 +305,12 @@ error:
  * @ibpd: ptr of pd to be deallocated
  * @udata: user data or null for kernel object
  */
-static int i40iw_dealloc_pd(struct ib_pd *ibpd, struct ib_udata *udata)
+static void i40iw_dealloc_pd(struct ib_pd *ibpd, struct ib_udata *udata)
 {
 	struct i40iw_pd *iwpd = to_iwpd(ibpd);
 	struct i40iw_device *iwdev = to_iwdev(ibpd->device);
 
 	i40iw_rem_pdusecount(iwpd, iwdev);
-	return 0;
 }
 
 /**
@@ -357,7 +356,7 @@ void i40iw_free_qp_resources(struct i40iw_qp *iwqp)
 	i40iw_free_dma_mem(iwdev->sc_dev.hw, &iwqp->kqp.dma_mem);
 	kfree(iwqp->kqp.wrid_mem);
 	iwqp->kqp.wrid_mem = NULL;
-	kfree(iwqp);
+	kfree(iwqp->allocated_buffer);
 }
 
 /**
@@ -514,6 +513,7 @@ static struct ib_qp *i40iw_create_qp(struct ib_pd *ibpd,
 	struct i40iw_create_qp_req req;
 	struct i40iw_create_qp_resp uresp;
 	u32 qp_num = 0;
+	void *mem;
 	enum i40iw_status_code ret;
 	int err_code;
 	int sq_size;
@@ -555,10 +555,12 @@ static struct ib_qp *i40iw_create_qp(struct ib_pd *ibpd,
 	init_info.qp_uk_init_info.max_rq_frag_cnt = init_attr->cap.max_recv_sge;
 	init_info.qp_uk_init_info.max_inline_data = init_attr->cap.max_inline_data;
 
-	iwqp = kzalloc(sizeof(*iwqp), GFP_KERNEL);
-	if (!iwqp)
+	mem = kzalloc(sizeof(*iwqp), GFP_KERNEL);
+	if (!mem)
 		return ERR_PTR(-ENOMEM);
 
+	iwqp = (struct i40iw_qp *)mem;
+	iwqp->allocated_buffer = mem;
 	qp = &iwqp->sc_qp;
 	qp->back_qp = (void *)iwqp;
 	qp->push_idx = I40IW_INVALID_PUSH_PAGE_INDEX;
@@ -1309,7 +1311,8 @@ static void i40iw_copy_user_pgaddrs(struct i40iw_mr *iwmr,
 	if (iwmr->type == IW_MEMREG_TYPE_QP)
 		iwpbl->qp_mr.sq_page = sg_page(region->sg_head.sgl);
 
-	rdma_umem_for_each_dma_block(region, &biter, iwmr->page_size) {
+	rdma_for_each_block(region->sg_head.sgl, &biter, region->nmap,
+			    iwmr->page_size) {
 		*pbl = rdma_block_iter_dma_address(&biter);
 		pbl = i40iw_next_pbl_addr(pbl, &pinfo, &idx);
 	}
@@ -1732,12 +1735,15 @@ static struct ib_mr *i40iw_reg_user_mr(struct ib_pd *pd,
 	struct i40iw_mr *iwmr;
 	struct ib_umem *region;
 	struct i40iw_mem_reg_req req;
+	u64 pbl_depth = 0;
 	u32 stag = 0;
 	u16 access;
+	u64 region_length;
 	bool use_pbles = false;
 	unsigned long flags;
 	int err = -ENOSYS;
 	int ret;
+	int pg_shift;
 
 	if (!udata)
 		return ERR_PTR(-EOPNOTSUPP);
@@ -1772,13 +1778,18 @@ static struct ib_mr *i40iw_reg_user_mr(struct ib_pd *pd,
 	if (req.reg_type == IW_MEMREG_TYPE_MEM)
 		iwmr->page_size = ib_umem_find_best_pgsz(region, SZ_4K | SZ_2M,
 							 virt);
+
+	region_length = region->length + (start & (iwmr->page_size - 1));
+	pg_shift = ffs(iwmr->page_size) - 1;
+	pbl_depth = region_length >> pg_shift;
+	pbl_depth += (region_length & (iwmr->page_size - 1)) ? 1 : 0;
 	iwmr->length = region->length;
 
 	iwpbl->user_base = virt;
 	palloc = &iwpbl->pble_alloc;
 
 	iwmr->type = req.reg_type;
-	iwmr->page_cnt = ib_umem_num_dma_blocks(region, iwmr->page_size);
+	iwmr->page_cnt = (u32)pbl_depth;
 
 	switch (req.reg_type) {
 	case IW_MEMREG_TYPE_QP:
@@ -2648,7 +2659,7 @@ static struct i40iw_ib_device *i40iw_init_rdma_device(struct i40iw_device *iwdev
 {
 	struct i40iw_ib_device *iwibdev;
 	struct net_device *netdev = iwdev->netdev;
-	struct pci_dev *pcidev = iwdev->hw.pcidev;
+	struct pci_dev *pcidev = (struct pci_dev *)iwdev->hw.dev_context;
 
 	iwibdev = ib_alloc_device(i40iw_ib_device, ibdev);
 	if (!iwibdev) {
@@ -2738,8 +2749,7 @@ int i40iw_register_rdma_device(struct i40iw_device *iwdev)
 	if (ret)
 		goto error;
 
-	dma_set_max_seg_size(&iwdev->hw.pcidev->dev, UINT_MAX);
-	ret = ib_register_device(&iwibdev->ibdev, "i40iw%d", &iwdev->hw.pcidev->dev);
+	ret = ib_register_device(&iwibdev->ibdev, "i40iw%d");
 	if (ret)
 		goto error;
 

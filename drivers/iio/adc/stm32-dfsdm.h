@@ -249,7 +249,6 @@ enum stm32_dfsdm_sinc_order {
  * @rshift: output sample right shift (hardware shift)
  * @lshift: output sample left shift (software shift)
  * @res: output sample resolution
- * @bits: output sample resolution in bits
  * @max: output sample maximum positive value
  */
 struct stm32_dfsdm_filter_osr {
@@ -258,7 +257,6 @@ struct stm32_dfsdm_filter_osr {
 	unsigned int rshift;
 	unsigned int lshift;
 	u64 res;
-	u32 bits;
 	s32 max;
 };
 

@@ -191,7 +191,8 @@ static void elevator_release(struct kobject *kobj)
 void __elevator_exit(struct request_queue *q, struct elevator_queue *e)
 {
 	mutex_lock(&e->sysfs_lock);
-	blk_mq_exit_sched(q, e);
+	if (e->type->ops.exit_sched)
+		blk_mq_exit_sched(q, e);
 	mutex_unlock(&e->sysfs_lock);
 
 	kobject_put(&e->kobj);
@@ -479,12 +480,15 @@ static struct kobj_type elv_ktype = {
 	.release	= elevator_release,
 };
 
+/*
+ * elv_register_queue is called from either blk_register_queue or
+ * elevator_switch, elevator switch is prevented from being happen
+ * in the two paths, so it is safe to not hold q->sysfs_lock.
+ */
 int elv_register_queue(struct request_queue *q, bool uevent)
 {
 	struct elevator_queue *e = q->elevator;
 	int error;
-
-	lockdep_assert_held(&q->sysfs_lock);
 
 	error = kobject_add(&e->kobj, &q->kobj, "%s", "iosched");
 	if (!error) {
@@ -504,10 +508,13 @@ int elv_register_queue(struct request_queue *q, bool uevent)
 	return error;
 }
 
+/*
+ * elv_unregister_queue is called from either blk_unregister_queue or
+ * elevator_switch, elevator switch is prevented from being happen
+ * in the two paths, so it is safe to not hold q->sysfs_lock.
+ */
 void elv_unregister_queue(struct request_queue *q)
 {
-	lockdep_assert_held(&q->sysfs_lock);
-
 	if (q) {
 		struct elevator_queue *e = q->elevator;
 
@@ -609,7 +616,7 @@ out:
 
 static inline bool elv_support_iosched(struct request_queue *q)
 {
-	if (!queue_is_mq(q) ||
+	if (!q->mq_ops ||
 	    (q->tag_set && (q->tag_set->flags & BLK_MQ_F_NO_SCHED)))
 		return false;
 	return true;
@@ -666,7 +673,7 @@ void elevator_init_mq(struct request_queue *q)
 	if (!elv_support_iosched(q))
 		return;
 
-	WARN_ON_ONCE(blk_queue_registered(q));
+	WARN_ON_ONCE(test_bit(QUEUE_FLAG_REGISTERED, &q->queue_flags));
 
 	if (unlikely(q->elevator))
 		return;
@@ -757,7 +764,7 @@ ssize_t elv_iosched_store(struct request_queue *q, const char *name,
 {
 	int ret;
 
-	if (!elv_support_iosched(q))
+	if (!queue_is_mq(q) || !elv_support_iosched(q))
 		return count;
 
 	ret = __elevator_change(q, name);

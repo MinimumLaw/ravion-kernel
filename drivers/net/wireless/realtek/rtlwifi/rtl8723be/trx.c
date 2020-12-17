@@ -340,9 +340,9 @@ bool rtl8723be_rx_query_desc(struct ieee80211_hw *hw,
 	else
 		wake_match = 0;
 	if (wake_match)
-		rtl_dbg(rtlpriv, COMP_RXDESC, DBG_LOUD,
-			"GGGGGGGGGGGGGet Wakeup Packet!! WakeMatch=%d\n",
-			wake_match);
+		RT_TRACE(rtlpriv, COMP_RXDESC, DBG_LOUD,
+		"GGGGGGGGGGGGGet Wakeup Packet!! WakeMatch=%d\n",
+		wake_match);
 	rx_status->freq = hw->conf.chandef.chan->center_freq;
 	rx_status->band = hw->conf.chandef.chan->band;
 
@@ -442,10 +442,10 @@ void rtl8723be_tx_fill_desc(struct ieee80211_hw *hw,
 		memset(skb->data, 0, EM_HDR_LEN);
 	}
 	buf_len = skb->len;
-	mapping = dma_map_single(&rtlpci->pdev->dev, skb->data, skb->len,
-				 DMA_TO_DEVICE);
-	if (dma_mapping_error(&rtlpci->pdev->dev, mapping)) {
-		rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE, "DMA mapping error\n");
+	mapping = pci_map_single(rtlpci->pdev, skb->data, skb->len,
+				 PCI_DMA_TODEVICE);
+	if (pci_dma_mapping_error(rtlpci->pdev, mapping)) {
+		RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE, "DMA mapping error\n");
 		return;
 	}
 	clear_pci_tx_desc_content(pdesc, sizeof(struct tx_desc_8723be));
@@ -459,9 +459,9 @@ void rtl8723be_tx_fill_desc(struct ieee80211_hw *hw,
 			set_tx_desc_offset(pdesc, USB_HWDESC_HEADER_LEN +
 					   EM_HDR_LEN);
 			if (ptcb_desc->empkt_num) {
-				rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-					"Insert 8 byte.pTcb->EMPktNum:%d\n",
-					ptcb_desc->empkt_num);
+				RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+					 "Insert 8 byte.pTcb->EMPktNum:%d\n",
+					  ptcb_desc->empkt_num);
 				_rtl8723be_insert_emcontent(ptcb_desc,
 							    (__le32 *)(skb->data));
 			}
@@ -551,8 +551,8 @@ void rtl8723be_tx_fill_desc(struct ieee80211_hw *hw,
 		/* from being overwritten by retried  packet rate.*/
 		if (ieee80211_is_data_qos(fc)) {
 			if (mac->rdg_en) {
-				rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-					"Enable RDG function.\n");
+				RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+					 "Enable RDG function.\n");
 				set_tx_desc_rdg_enable(pdesc, 1);
 				set_tx_desc_htc(pdesc, 1);
 			}
@@ -583,7 +583,7 @@ void rtl8723be_tx_fill_desc(struct ieee80211_hw *hw,
 		set_tx_desc_bmc(pdesc, 1);
 	}
 
-	rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE, "\n");
+	RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE, "\n");
 }
 
 void rtl8723be_tx_fill_cmddesc(struct ieee80211_hw *hw, u8 *pdesc8,
@@ -595,12 +595,13 @@ void rtl8723be_tx_fill_cmddesc(struct ieee80211_hw *hw, u8 *pdesc8,
 	u8 fw_queue = QSLT_BEACON;
 	__le32 *pdesc = (__le32 *)pdesc8;
 
-	dma_addr_t mapping = dma_map_single(&rtlpci->pdev->dev, skb->data,
-					    skb->len, DMA_TO_DEVICE);
+	dma_addr_t mapping = pci_map_single(rtlpci->pdev,
+					    skb->data, skb->len,
+					    PCI_DMA_TODEVICE);
 
-	if (dma_mapping_error(&rtlpci->pdev->dev, mapping)) {
-		rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-			"DMA mapping error\n");
+	if (pci_dma_mapping_error(rtlpci->pdev, mapping)) {
+		RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+			 "DMA mapping error\n");
 		return;
 	}
 	clear_pci_tx_desc_content(pdesc, TX_DESC_SIZE);

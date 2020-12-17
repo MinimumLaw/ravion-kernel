@@ -8,23 +8,13 @@
 #include <linux/ratelimit.h>
 #include <linux/kasan.h>
 
-static DEFINE_STATIC_KEY_FALSE_RO(want_page_poisoning);
+static bool want_page_poisoning __read_mostly;
 
 static int __init early_page_poison_param(char *buf)
 {
-	int ret;
-	bool tmp;
-
-	ret = strtobool(buf, &tmp);
-	if (ret)
-		return ret;
-
-	if (tmp)
-		static_branch_enable(&want_page_poisoning);
-	else
-		static_branch_disable(&want_page_poisoning);
-
-	return 0;
+	if (!buf)
+		return -EINVAL;
+	return strtobool(buf, &want_page_poisoning);
 }
 early_param("page_poison", early_page_poison_param);
 
@@ -41,7 +31,7 @@ bool page_poisoning_enabled(void)
 	 * Page poisoning is debug page alloc for some arches. If
 	 * either of those options are enabled, enable poisoning.
 	 */
-	return (static_branch_unlikely(&want_page_poisoning) ||
+	return (want_page_poisoning ||
 		(!IS_ENABLED(CONFIG_ARCH_SUPPORTS_DEBUG_PAGEALLOC) &&
 		debug_pagealloc_enabled()));
 }

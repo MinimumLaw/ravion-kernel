@@ -7,6 +7,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
@@ -268,9 +269,10 @@ static int st7701_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, desc_mode);
 	if (!mode) {
-		dev_err(&st7701->dsi->dev, "failed to add mode %ux%u@%u\n",
-			desc_mode->hdisplay, desc_mode->vdisplay,
-			drm_mode_vrefresh(desc_mode));
+		DRM_DEV_ERROR(&st7701->dsi->dev,
+			      "failed to add mode %ux%ux@%u\n",
+			      desc_mode->hdisplay, desc_mode->vdisplay,
+			      drm_mode_vrefresh(desc_mode));
 		return -ENOMEM;
 	}
 
@@ -356,7 +358,7 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 
 	st7701->reset = devm_gpiod_get(&dsi->dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(st7701->reset)) {
-		dev_err(&dsi->dev, "Couldn't get our reset GPIO\n");
+		DRM_DEV_ERROR(&dsi->dev, "Couldn't get our reset GPIO\n");
 		return PTR_ERR(st7701->reset);
 	}
 
@@ -378,7 +380,9 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 	if (ret)
 		return ret;
 
-	drm_panel_add(&st7701->panel);
+	ret = drm_panel_add(&st7701->panel);
+	if (ret < 0)
+		return ret;
 
 	mipi_dsi_set_drvdata(dsi, st7701);
 	st7701->dsi = dsi;

@@ -19,11 +19,9 @@
  *  Author: Manjunatha Halli <manjunatha_halli@ti.com>
  */
 
-#include <linux/delay.h>
-#include <linux/firmware.h>
 #include <linux/module.h>
-#include <linux/nospec.h>
-
+#include <linux/firmware.h>
+#include <linux/delay.h>
 #include "fmdrv.h"
 #include "fmdrv_v4l2.h"
 #include "fmdrv_common.h"
@@ -246,7 +244,7 @@ void fmc_update_region_info(struct fmdev *fmdev, u8 region_to_set)
  * FM common sub-module will schedule this tasklet whenever it receives
  * FM packet from ST driver.
  */
-static void recv_tasklet(struct tasklet_struct *t)
+static void recv_tasklet(unsigned long arg)
 {
 	struct fmdev *fmdev;
 	struct fm_irq *irq_info;
@@ -255,7 +253,7 @@ static void recv_tasklet(struct tasklet_struct *t)
 	u8 num_fm_hci_cmds;
 	unsigned long flags;
 
-	fmdev = from_tasklet(fmdev, t, tx_task);
+	fmdev = (struct fmdev *)arg;
 	irq_info = &fmdev->irq_info;
 	/* Process all packets in the RX queue */
 	while ((skb = skb_dequeue(&fmdev->rx_q))) {
@@ -330,13 +328,13 @@ static void recv_tasklet(struct tasklet_struct *t)
 }
 
 /* FM send tasklet: is scheduled when FM packet has to be sent to chip */
-static void send_tasklet(struct tasklet_struct *t)
+static void send_tasklet(unsigned long arg)
 {
 	struct fmdev *fmdev;
 	struct sk_buff *skb;
 	int len;
 
-	fmdev = from_tasklet(fmdev, t, tx_task);
+	fmdev = (struct fmdev *)arg;
 
 	if (!atomic_read(&fmdev->tx_cnt))
 		return;
@@ -702,7 +700,7 @@ static void fm_irq_handle_rdsdata_getcmd_resp(struct fmdev *fmdev)
 	struct fm_rds *rds = &fmdev->rx.rds;
 	unsigned long group_idx, flags;
 	u8 *rds_data, meta_data, tmpbuf[FM_RDS_BLK_SIZE];
-	u8 type, blk_idx, idx;
+	u8 type, blk_idx;
 	u16 cur_picode;
 	u32 rds_len;
 
@@ -735,11 +733,9 @@ static void fm_irq_handle_rdsdata_getcmd_resp(struct fmdev *fmdev)
 		}
 
 		/* Skip checkword (control) byte and copy only data byte */
-		idx = array_index_nospec(blk_idx * (FM_RDS_BLK_SIZE - 1),
-					 FM_RX_RDS_INFO_FIELD_MAX - (FM_RDS_BLK_SIZE - 1));
-
-		memcpy(&rds_fmt.data.groupdatabuff.buff[idx], rds_data,
-		       FM_RDS_BLK_SIZE - 1);
+		memcpy(&rds_fmt.data.groupdatabuff.
+				buff[blk_idx * (FM_RDS_BLK_SIZE - 1)],
+				rds_data, (FM_RDS_BLK_SIZE - 1));
 
 		rds->last_blk_idx = blk_idx;
 
@@ -1539,11 +1535,11 @@ int fmc_prepare(struct fmdev *fmdev)
 
 	/* Initialize TX queue and TX tasklet */
 	skb_queue_head_init(&fmdev->tx_q);
-	tasklet_setup(&fmdev->tx_task, send_tasklet);
+	tasklet_init(&fmdev->tx_task, send_tasklet, (unsigned long)fmdev);
 
 	/* Initialize RX Queue and RX tasklet */
 	skb_queue_head_init(&fmdev->rx_q);
-	tasklet_setup(&fmdev->rx_task, recv_tasklet);
+	tasklet_init(&fmdev->rx_task, recv_tasklet, (unsigned long)fmdev);
 
 	fmdev->irq_info.stage = 0;
 	atomic_set(&fmdev->tx_cnt, 1);

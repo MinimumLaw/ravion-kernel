@@ -109,7 +109,8 @@ static const struct regmap_config tmp103_regmap_config = {
 	.volatile_reg = tmp103_regmap_is_volatile,
 };
 
-static int tmp103_probe(struct i2c_client *client)
+static int tmp103_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -171,7 +172,7 @@ static struct i2c_driver tmp103_driver = {
 		.of_match_table = of_match_ptr(tmp103_of_match),
 		.pm	= &tmp103_dev_pm_ops,
 	},
-	.probe_new	= tmp103_probe,
+	.probe		= tmp103_probe,
 	.id_table	= tmp103_id,
 };
 

@@ -35,9 +35,10 @@ static struct pmbus_driver_info ir38064_info = {
 	    | PMBUS_HAVE_POUT,
 };
 
-static int ir38064_probe(struct i2c_client *client)
+static int ir38064_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
-	return pmbus_do_probe(client, &ir38064_info);
+	return pmbus_do_probe(client, id, &ir38064_info);
 }
 
 static const struct i2c_device_id ir38064_id[] = {
@@ -52,7 +53,7 @@ static struct i2c_driver ir38064_driver = {
 	.driver = {
 		   .name = "ir38064",
 		   },
-	.probe_new = ir38064_probe,
+	.probe = ir38064_probe,
 	.remove = pmbus_do_remove,
 	.id_table = ir38064_id,
 };

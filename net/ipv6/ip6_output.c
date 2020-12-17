@@ -468,6 +468,8 @@ int ip6_forward(struct sk_buff *skb)
 	 *	check and decrement ttl
 	 */
 	if (hdr->hop_limit <= 1) {
+		/* Force OUTPUT device used as source address */
+		skb->dev = dst->dev;
 		icmpv6_send(skb, ICMPV6_TIME_EXCEED, ICMPV6_EXC_HOPLIMIT, 0);
 		__IP6_INC_STATS(net, idev, IPSTATS_MIB_INHDRERRORS);
 
@@ -1490,7 +1492,7 @@ emsgsize:
 	 * Otherwise, we need to reserve fragment header and
 	 * fragment alignment (= 8-15 octects, in total).
 	 *
-	 * Note that we may need to "move" the data from the tail
+	 * Note that we may need to "move" the data from the tail of
 	 * of the buffer to the new fragment when we split
 	 * the message.
 	 *
@@ -1613,7 +1615,7 @@ alloc_new_skb:
 			if (fraggap) {
 				skb->csum = skb_copy_and_csum_bits(
 					skb_prev, maxfraglen,
-					data + transhdrlen, fraggap);
+					data + transhdrlen, fraggap, 0);
 				skb_prev->csum = csum_sub(skb_prev->csum,
 							  skb->csum);
 				data += fraggap;

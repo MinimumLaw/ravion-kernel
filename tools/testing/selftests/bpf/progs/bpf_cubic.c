@@ -15,8 +15,6 @@
  */
 
 #include <linux/bpf.h>
-#include <linux/stddef.h>
-#include <linux/tcp.h>
 #include "bpf_tcp_helpers.h"
 
 char _license[] SEC("license") = "GPL";

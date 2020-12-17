@@ -4,6 +4,8 @@
 
 #include <linux/debugfs.h>
 
+#define CMA_MAX_NAME 64
+
 struct cma {
 	unsigned long   base_pfn;
 	unsigned long   count;

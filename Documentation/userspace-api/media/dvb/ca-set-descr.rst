@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.ca
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _CA_SET_DESCR:
 
@@ -12,18 +18,19 @@ Name
 
 CA_SET_DESCR
 
+
 Synopsis
 --------
 
-.. c:macro:: CA_SET_DESCR
+.. c:function:: int ioctl(fd, CA_SET_DESCR, struct ca_descr *desc)
+    :name: CA_SET_DESCR
 
-``int ioctl(fd, CA_SET_DESCR, struct ca_descr *desc)``
 
 Arguments
 ---------
 
 ``fd``
-  File descriptor returned by a previous call to :c:func:`open()`.
+  File descriptor returned by a previous call to :c:func:`open() <cec-open>`.
 
 ``msg``
   Pointer to struct :c:type:`ca_descr`.

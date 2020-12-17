@@ -37,14 +37,12 @@
  * reside in the .data section so as not to be zeroed out when the .bss
  * section is later cleared.
  */
-u64 sme_me_mask __section(".data") = 0;
-u64 sev_status __section(".data") = 0;
-u64 sev_check_data __section(".data") = 0;
+u64 sme_me_mask __section(.data) = 0;
 EXPORT_SYMBOL(sme_me_mask);
 DEFINE_STATIC_KEY_FALSE(sev_enable_key);
 EXPORT_SYMBOL_GPL(sev_enable_key);
 
-bool sev_enabled __section(".data");
+bool sev_enabled __section(.data);
 
 /* Buffer used for early in-place encryption by BSP, no locking needed */
 static char sme_early_buffer[PAGE_SIZE] __initdata __aligned(PAGE_SIZE);
@@ -349,13 +347,7 @@ bool sme_active(void)
 
 bool sev_active(void)
 {
-	return sev_status & MSR_AMD64_SEV_ENABLED;
-}
-
-/* Needs to be called from non-instrumentable code */
-bool noinstr sev_es_active(void)
-{
-	return sev_status & MSR_AMD64_SEV_ES_ENABLED;
+	return sme_me_mask && sev_enabled;
 }
 
 /* Override for DMA direct allocation check - ARCH_HAS_FORCE_DMA_UNENCRYPTED */
@@ -408,31 +400,6 @@ void __init mem_encrypt_free_decrypted_mem(void)
 	free_init_pages("unused decrypted", vaddr, vaddr_end);
 }
 
-static void print_mem_encrypt_feature_info(void)
-{
-	pr_info("AMD Memory Encryption Features active:");
-
-	/* Secure Memory Encryption */
-	if (sme_active()) {
-		/*
-		 * SME is mutually exclusive with any of the SEV
-		 * features below.
-		 */
-		pr_cont(" SME\n");
-		return;
-	}
-
-	/* Secure Encrypted Virtualization */
-	if (sev_active())
-		pr_cont(" SEV");
-
-	/* Encrypted Register State */
-	if (sev_es_active())
-		pr_cont(" SEV-ES");
-
-	pr_cont("\n");
-}
-
 /* Architecture __weak replacement functions */
 void __init mem_encrypt_init(void)
 {
@@ -448,6 +415,8 @@ void __init mem_encrypt_init(void)
 	if (sev_active())
 		static_branch_enable(&sev_enable_key);
 
-	print_mem_encrypt_feature_info();
+	pr_info("AMD %s active\n",
+		sev_active() ? "Secure Encrypted Virtualization (SEV)"
+			     : "Secure Memory Encryption (SME)");
 }
 

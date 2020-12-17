@@ -19,7 +19,6 @@
 #include <linux/sched/rt.h>
 #include <linux/sched/debug.h>
 #include <linux/sched/task.h>
-#include <linux/ctype.h>
 #include <linux/interrupt.h>
 #include <linux/mm.h>
 #include <linux/fs.h>
@@ -441,7 +440,7 @@ static const struct sysrq_key_op sysrq_unrt_op = {
 /* Key Operations table and lock */
 static DEFINE_SPINLOCK(sysrq_key_table_lock);
 
-static const struct sysrq_key_op *sysrq_key_table[62] = {
+static const struct sysrq_key_op *sysrq_key_table[36] = {
 	&sysrq_loglevel_op,		/* 0 */
 	&sysrq_loglevel_op,		/* 1 */
 	&sysrq_loglevel_op,		/* 2 */
@@ -498,32 +497,6 @@ static const struct sysrq_key_op *sysrq_key_table[62] = {
 	/* y: May be registered on sparc64 for global register dump */
 	NULL,				/* y */
 	&sysrq_ftrace_dump_op,		/* z */
-	NULL,				/* A */
-	NULL,				/* B */
-	NULL,				/* C */
-	NULL,				/* D */
-	NULL,				/* E */
-	NULL,				/* F */
-	NULL,				/* G */
-	NULL,				/* H */
-	NULL,				/* I */
-	NULL,				/* J */
-	NULL,				/* K */
-	NULL,				/* L */
-	NULL,				/* M */
-	NULL,				/* N */
-	NULL,				/* O */
-	NULL,				/* P */
-	NULL,				/* Q */
-	NULL,				/* R */
-	NULL,				/* S */
-	NULL,				/* T */
-	NULL,				/* U */
-	NULL,				/* V */
-	NULL,				/* W */
-	NULL,				/* X */
-	NULL,				/* Y */
-	NULL,				/* Z */
 };
 
 /* key2index calculation, -1 on invalid index */
@@ -535,8 +508,6 @@ static int sysrq_key_table_key2index(int key)
 		retval = key - '0';
 	else if ((key >= 'a') && (key <= 'z'))
 		retval = key + 10 - 'a';
-	else if ((key >= 'A') && (key <= 'Z'))
-		retval = key + 36 - 'A';
 	else
 		retval = -1;
 	return retval;
@@ -650,8 +621,6 @@ struct sysrq_state {
 	unsigned long key_down[BITS_TO_LONGS(KEY_CNT)];
 	unsigned int alt;
 	unsigned int alt_use;
-	unsigned int shift;
-	unsigned int shift_use;
 	bool active;
 	bool need_reinject;
 	bool reinjecting;
@@ -836,20 +805,10 @@ static bool sysrq_handle_keypress(struct sysrq_state *sysrq,
 		}
 		break;
 
-	case KEY_LEFTSHIFT:
-	case KEY_RIGHTSHIFT:
-		if (!value)
-			sysrq->shift = KEY_RESERVED;
-		else if (value != 2)
-			sysrq->shift = code;
-		break;
-
 	case KEY_SYSRQ:
 		if (value == 1 && sysrq->alt != KEY_RESERVED) {
 			sysrq->active = true;
 			sysrq->alt_use = sysrq->alt;
-			/* either RESERVED (for released) or actual code */
-			sysrq->shift_use = sysrq->shift;
 			/*
 			 * If nothing else will be pressed we'll need
 			 * to re-inject Alt-SysRq keysroke.
@@ -872,12 +831,8 @@ static bool sysrq_handle_keypress(struct sysrq_state *sysrq,
 
 	default:
 		if (sysrq->active && value && value != 2) {
-			unsigned char c = sysrq_xlate[code];
-
 			sysrq->need_reinject = false;
-			if (sysrq->shift_use != KEY_RESERVED)
-				c = toupper(c);
-			__handle_sysrq(c, true);
+			__handle_sysrq(sysrq_xlate[code], true);
 		}
 		break;
 	}

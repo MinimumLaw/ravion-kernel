@@ -183,6 +183,7 @@ bool blk_integrity_merge_rq(struct request_queue *q, struct request *req,
 
 	return true;
 }
+EXPORT_SYMBOL(blk_integrity_merge_rq);
 
 bool blk_integrity_merge_bio(struct request_queue *q, struct request *req,
 			     struct bio *bio)
@@ -211,6 +212,7 @@ bool blk_integrity_merge_bio(struct request_queue *q, struct request *req,
 
 	return true;
 }
+EXPORT_SYMBOL(blk_integrity_merge_bio);
 
 struct integrity_sysfs_entry {
 	struct attribute attr;
@@ -406,7 +408,7 @@ void blk_integrity_register(struct gendisk *disk, struct blk_integrity *template
 	bi->tuple_size = template->tuple_size;
 	bi->tag_size = template->tag_size;
 
-	blk_queue_flag_set(QUEUE_FLAG_STABLE_WRITES, disk->queue);
+	disk->queue->backing_dev_info->capabilities |= BDI_CAP_STABLE_WRITES;
 
 #ifdef CONFIG_BLK_INLINE_ENCRYPTION
 	if (disk->queue->ksm) {
@@ -426,7 +428,7 @@ EXPORT_SYMBOL(blk_integrity_register);
  */
 void blk_integrity_unregister(struct gendisk *disk)
 {
-	blk_queue_flag_clear(QUEUE_FLAG_STABLE_WRITES, disk->queue);
+	disk->queue->backing_dev_info->capabilities &= ~BDI_CAP_STABLE_WRITES;
 	memset(&disk->queue->integrity, 0, sizeof(struct blk_integrity));
 }
 EXPORT_SYMBOL(blk_integrity_unregister);

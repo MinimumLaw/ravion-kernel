@@ -120,7 +120,7 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 
 	vdda_video-supply = <&ldoln_reg>;
 
@@ -148,7 +148,7 @@
 };
 
 &hdmi {
-	status = "okay";
+	status = "ok";
 	vdda-supply = <&ldo4_reg>;
 
 	pinctrl-names = "default";

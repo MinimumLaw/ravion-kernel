@@ -48,8 +48,6 @@ required:
   - interrupt-map
   - interrupt-map-mask
 
-unevaluatedProperties: false
-
 examples:
   - |
     pci@10001000 {

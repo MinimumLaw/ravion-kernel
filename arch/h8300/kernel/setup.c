@@ -74,15 +74,17 @@ static void __init bootmem_init(void)
 	memory_end = memory_start = 0;
 
 	/* Find main memory where is the kernel */
-	memory_start = memblock_start_of_DRAM();
-	memory_end = memblock_end_of_DRAM();
+	for_each_memblock(memory, region) {
+		memory_start = region->base;
+		memory_end = region->base + region->size;
+	}
 
 	if (!memory_end)
 		panic("No memory!");
 
 	/* setup bootmem globals (we use no_bootmem, but mm still depends on this) */
 	min_low_pfn = PFN_UP(memory_start);
-	max_low_pfn = PFN_DOWN(memory_end);
+	max_low_pfn = PFN_DOWN(memblock_end_of_DRAM());
 	max_pfn = max_low_pfn;
 
 	memblock_reserve(__pa(_stext), _end - _stext);

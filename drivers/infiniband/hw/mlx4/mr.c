@@ -271,8 +271,6 @@ int mlx4_ib_umem_calc_optimal_mtt_size(struct ib_umem *umem, u64 start_va,
 	u64 total_len = 0;
 	int i;
 
-	*num_of_mtts = ib_umem_num_dma_blocks(umem, PAGE_SIZE);
-
 	for_each_sg(umem->sg_head.sgl, sg, umem->nmap, i) {
 		/*
 		 * Initialization - save the first chunk start as the
@@ -423,6 +421,7 @@ struct ib_mr *mlx4_ib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 		goto err_free;
 	}
 
+	n = ib_umem_page_count(mr->umem);
 	shift = mlx4_ib_umem_calc_optimal_mtt_size(mr->umem, start, &n);
 
 	err = mlx4_mr_alloc(dev->dev, to_mpd(pd)->pdn, virt_addr, length,
@@ -512,7 +511,7 @@ int mlx4_ib_rereg_user_mr(struct ib_mr *mr, int flags,
 			mmr->umem = NULL;
 			goto release_mpt_entry;
 		}
-		n = ib_umem_num_dma_blocks(mmr->umem, PAGE_SIZE);
+		n = ib_umem_page_count(mmr->umem);
 		shift = PAGE_SHIFT;
 
 		err = mlx4_mr_rereg_mem_write(dev->dev, &mmr->mmr,
@@ -611,27 +610,37 @@ int mlx4_ib_dereg_mr(struct ib_mr *ibmr, struct ib_udata *udata)
 	return 0;
 }
 
-int mlx4_ib_alloc_mw(struct ib_mw *ibmw, struct ib_udata *udata)
+struct ib_mw *mlx4_ib_alloc_mw(struct ib_pd *pd, enum ib_mw_type type,
+			       struct ib_udata *udata)
 {
-	struct mlx4_ib_dev *dev = to_mdev(ibmw->device);
-	struct mlx4_ib_mw *mw = to_mmw(ibmw);
+	struct mlx4_ib_dev *dev = to_mdev(pd->device);
+	struct mlx4_ib_mw *mw;
 	int err;
 
-	err = mlx4_mw_alloc(dev->dev, to_mpd(ibmw->pd)->pdn,
-			    to_mlx4_type(ibmw->type), &mw->mmw);
+	mw = kmalloc(sizeof(*mw), GFP_KERNEL);
+	if (!mw)
+		return ERR_PTR(-ENOMEM);
+
+	err = mlx4_mw_alloc(dev->dev, to_mpd(pd)->pdn,
+			    to_mlx4_type(type), &mw->mmw);
 	if (err)
-		return err;
+		goto err_free;
 
 	err = mlx4_mw_enable(dev->dev, &mw->mmw);
 	if (err)
 		goto err_mw;
 
-	ibmw->rkey = mw->mmw.key;
-	return 0;
+	mw->ibmw.rkey = mw->mmw.key;
+
+	return &mw->ibmw;
 
 err_mw:
 	mlx4_mw_free(dev->dev, &mw->mmw);
-	return err;
+
+err_free:
+	kfree(mw);
+
+	return ERR_PTR(err);
 }
 
 int mlx4_ib_dealloc_mw(struct ib_mw *ibmw)
@@ -639,6 +648,8 @@ int mlx4_ib_dealloc_mw(struct ib_mw *ibmw)
 	struct mlx4_ib_mw *mw = to_mmw(ibmw);
 
 	mlx4_mw_free(to_mdev(ibmw->device)->dev, &mw->mmw);
+	kfree(mw);
+
 	return 0;
 }
 

@@ -44,8 +44,6 @@ required:
   - "#address-cells"
   - "#size-cells"
 
-unevaluatedProperties: false
-
 examples:
   - |
     spi0: spi@54006000 {

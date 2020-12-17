@@ -29,6 +29,7 @@
 #include <asm/platform_sst_audio.h>
 #include "../sst-mfld-platform.h"
 #include "sst.h"
+#include "../../common/sst-dsp.h"
 
 void memcpy32_toio(void __iomem *dst, const void *src, int count)
 {
@@ -397,7 +398,8 @@ int sst_load_fw(struct intel_sst_drv *sst_drv_ctx)
 
 	dev_dbg(sst_drv_ctx->dev, "sst_load_fw\n");
 
-	if (sst_drv_ctx->sst_state !=  SST_RESET)
+	if (sst_drv_ctx->sst_state !=  SST_RESET ||
+			sst_drv_ctx->sst_state == SST_SHUTDOWN)
 		return -EAGAIN;
 
 	if (!sst_drv_ctx->fw_in_mem) {

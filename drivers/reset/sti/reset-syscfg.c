@@ -17,7 +17,7 @@
 #include "reset-syscfg.h"
 
 /**
- * struct syscfg_reset_channel - Reset channel regmap configuration
+ * Reset channel regmap configuration
  *
  * @reset: regmap field for the channel's reset bit.
  * @ack: regmap field for the channel's ack bit (optional).
@@ -28,9 +28,8 @@ struct syscfg_reset_channel {
 };
 
 /**
- * struct syscfg_reset_controller - A reset controller which groups together
- * a set of related reset bits, which may be located in different system
- * configuration registers.
+ * A reset controller which groups together a set of related reset bits, which
+ * may be located in different system configuration registers.
  *
  * @rst: base reset controller structure.
  * @active_low: are the resets in this controller active low, i.e. clearing

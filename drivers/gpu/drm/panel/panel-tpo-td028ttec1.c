@@ -350,9 +350,7 @@ static int td028ttec1_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	drm_panel_add(&lcd->panel);
-
-	return 0;
+	return drm_panel_add(&lcd->panel);
 }
 
 static int td028ttec1_remove(struct spi_device *spi)

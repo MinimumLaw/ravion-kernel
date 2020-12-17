@@ -60,11 +60,10 @@ What Criteria Determine Acceptance
 
 Licensing:
 		The code must be released to us under the
-		GNU General Public License. If you wish the driver to be
-		useful to other communities such as BSD you may release
-		under multiple licenses. If you choose to release under
-		licenses other than the GPL, you should include your
-		rationale for your license choices in your cover letter.
+		GNU General Public License. We don't insist on any kind
+		of exclusive GPL licensing, and if you wish the driver
+		to be useful to other communities such as BSD you may well
+		wish to release under multiple licenses.
 		See accepted licenses at include/linux/module.h
 
 Copyright:

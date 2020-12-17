@@ -1186,19 +1186,16 @@ static struct sdhci_arasan_of_data sdhci_arasan_versal_data = {
 static struct sdhci_arasan_of_data intel_keembay_emmc_data = {
 	.soc_ctl_map = &intel_keembay_soc_ctl_map,
 	.pdata = &sdhci_keembay_emmc_pdata,
-	.clk_ops = &arasan_clk_ops,
 };
 
 static struct sdhci_arasan_of_data intel_keembay_sd_data = {
 	.soc_ctl_map = &intel_keembay_soc_ctl_map,
 	.pdata = &sdhci_keembay_sd_pdata,
-	.clk_ops = &arasan_clk_ops,
 };
 
 static struct sdhci_arasan_of_data intel_keembay_sdio_data = {
 	.soc_ctl_map = &intel_keembay_soc_ctl_map,
 	.pdata = &sdhci_keembay_sdio_pdata,
-	.clk_ops = &arasan_clk_ops,
 };
 
 static const struct of_device_id sdhci_arasan_of_match[] = {
@@ -1533,9 +1530,10 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 		of_node_put(node);
 
 		if (IS_ERR(sdhci_arasan->soc_ctl_base)) {
-			ret = dev_err_probe(&pdev->dev,
-					    PTR_ERR(sdhci_arasan->soc_ctl_base),
-					    "Can't get syscon\n");
+			ret = PTR_ERR(sdhci_arasan->soc_ctl_base);
+			if (ret != -EPROBE_DEFER)
+				dev_err(&pdev->dev, "Can't get syscon: %d\n",
+					ret);
 			goto err_pltfm_free;
 		}
 	}
@@ -1683,7 +1681,6 @@ static int sdhci_arasan_remove(struct platform_device *pdev)
 static struct platform_driver sdhci_arasan_driver = {
 	.driver = {
 		.name = "sdhci-arasan",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table = sdhci_arasan_of_match,
 		.pm = &sdhci_arasan_dev_pm_ops,
 	},

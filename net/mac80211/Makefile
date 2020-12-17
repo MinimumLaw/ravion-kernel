@@ -13,7 +13,6 @@ mac80211-y := \
 	ht.o agg-tx.o agg-rx.o \
 	vht.o \
 	he.o \
-	s1g.o \
 	ibss.o \
 	iface.o \
 	rate.o \

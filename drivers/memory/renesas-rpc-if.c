@@ -199,8 +199,10 @@ int rpcif_sw_init(struct rpcif *rpc, struct device *dev)
 		rpc->dirmap = NULL;
 
 	rpc->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
+	if (IS_ERR(rpc->rstc))
+		return PTR_ERR(rpc->rstc);
 
-	return PTR_ERR_OR_ZERO(rpc->rstc);
+	return 0;
 }
 EXPORT_SYMBOL(rpcif_sw_init);
 

@@ -13,7 +13,6 @@
 
 #include <cpu/sh7723.h>
 
-#include <linux/dma-map-ops.h>
 #include <linux/clkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>

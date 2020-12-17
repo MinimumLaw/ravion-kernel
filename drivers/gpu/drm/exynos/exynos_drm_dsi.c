@@ -1551,10 +1551,12 @@ static int exynos_dsi_host_attach(struct mipi_dsi_host *host,
 		}
 
 		dsi->panel = of_drm_find_panel(device->dev.of_node);
-		if (IS_ERR(dsi->panel))
+		if (IS_ERR(dsi->panel)) {
 			dsi->panel = NULL;
-		else
+		} else {
+			drm_panel_attach(dsi->panel, &dsi->connector);
 			dsi->connector.status = connector_status_connected;
+		}
 	}
 
 	/*
@@ -1594,6 +1596,7 @@ static int exynos_dsi_host_detach(struct mipi_dsi_host *host,
 	if (dsi->panel) {
 		mutex_lock(&drm->mode_config.mutex);
 		exynos_dsi_disable(&dsi->encoder);
+		drm_panel_detach(dsi->panel);
 		dsi->panel = NULL;
 		dsi->connector.status = connector_status_disconnected;
 		mutex_unlock(&drm->mode_config.mutex);
@@ -1760,8 +1763,11 @@ static int exynos_dsi_probe(struct platform_device *pdev)
 	dsi->supplies[1].supply = "vddio";
 	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(dsi->supplies),
 				      dsi->supplies);
-	if (ret)
-		return dev_err_probe(dev, ret, "failed to get regulators\n");
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_info(dev, "failed to get regulators: %d\n", ret);
+		return ret;
+	}
 
 	dsi->clks = devm_kcalloc(dev,
 			dsi->driver_data->num_clks, sizeof(*dsi->clks),

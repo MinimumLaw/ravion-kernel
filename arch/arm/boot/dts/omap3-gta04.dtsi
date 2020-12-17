@@ -822,27 +822,27 @@
 };
 
 &mcbsp1 { /* FM Transceiver PCM */
-	status = "okay";
+	status = "ok";
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcbsp1_pins>;
 };
 
 &mcbsp2 { /* TPS65950 I2S */
-	status = "okay";
+	status = "ok";
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcbsp2_pins>;
 };
 
 &mcbsp3 { /* Bluetooth PCM */
-	status = "okay";
+	status = "ok";
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcbsp3_pins>;
 };
 
 &mcbsp4 { /* GSM voice PCM */
-	status = "okay";
+	status = "ok";
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcbsp4_pins>;

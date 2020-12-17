@@ -75,8 +75,5 @@ omap_uart_lsr:	.word	0
 		bne	1001b
 		.endm
 
-		.macro	waituartcts,rd,rx
-		.endm
-
-		.macro	waituarttxrdy,rd,rx
+		.macro	waituart,rd,rx
 		.endm

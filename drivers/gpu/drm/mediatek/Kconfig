@@ -24,6 +24,6 @@ config DRM_MEDIATEK_HDMI
 	tristate "DRM HDMI Support for Mediatek SoCs"
 	depends on DRM_MEDIATEK
 	select SND_SOC_HDMI_CODEC if SND_SOC
-	select PHY_MTK_HDMI
+	select GENERIC_PHY
 	help
 	  DRM/KMS HDMI driver for Mediatek SoCs

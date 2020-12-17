@@ -342,8 +342,20 @@ static struct usb_driver appledisplay_driver = {
 	.disconnect	= appledisplay_disconnect,
 	.id_table	= appledisplay_table,
 };
-module_usb_driver(appledisplay_driver);
+
+static int __init appledisplay_init(void)
+{
+	return usb_register(&appledisplay_driver);
+}
+
+static void __exit appledisplay_exit(void)
+{
+	usb_deregister(&appledisplay_driver);
+}
 
 MODULE_AUTHOR("Michael Hanselmann");
 MODULE_DESCRIPTION("Apple Cinema Display driver");
 MODULE_LICENSE("GPL");
+
+module_init(appledisplay_init);
+module_exit(appledisplay_exit);

@@ -250,7 +250,22 @@ EXPORT_SYMBOL_GPL(ip_set_type_unregister);
 void *
 ip_set_alloc(size_t size)
 {
-	return kvzalloc(size, GFP_KERNEL_ACCOUNT);
+	void *members = NULL;
+
+	if (size < KMALLOC_MAX_SIZE)
+		members = kzalloc(size, GFP_KERNEL | __GFP_NOWARN);
+
+	if (members) {
+		pr_debug("%p: allocated with kmalloc\n", members);
+		return members;
+	}
+
+	members = vzalloc(size);
+	if (!members)
+		return NULL;
+	pr_debug("%p: allocated with vmalloc\n", members);
+
+	return members;
 }
 EXPORT_SYMBOL_GPL(ip_set_alloc);
 

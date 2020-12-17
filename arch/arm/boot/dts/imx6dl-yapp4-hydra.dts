@@ -29,11 +29,7 @@
 	status = "okay";
 };
 
-&oled_1305 {
-	status = "okay";
-};
-
-&oled_1309 {
+&oled {
 	status = "okay";
 };
 

@@ -23,6 +23,4 @@ properties:
     description:
       Contains the watchdog timeout in seconds.
 
-additionalProperties: true
-
 ...

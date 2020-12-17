@@ -73,13 +73,18 @@ static int soc_compr_components_free(struct snd_compr_stream *cstream,
 static int soc_compr_open(struct snd_compr_stream *cstream)
 {
 	struct snd_soc_pcm_runtime *rtd = cstream->private_data;
-	struct snd_soc_component *component = NULL;
+	struct snd_soc_component *component = NULL, *save = NULL;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
-	int ret;
+	int ret, i;
 
-	ret = snd_soc_pcm_component_pm_runtime_get(rtd, cstream);
-	if (ret < 0)
-		goto pm_err;
+	for_each_rtd_components(rtd, i, component) {
+		ret = pm_runtime_get_sync(component->dev);
+		if (ret < 0 && ret != -EACCES) {
+			pm_runtime_put_noidle(component->dev);
+			save = component;
+			goto pm_err;
+		}
+	}
 
 	mutex_lock_nested(&rtd->card->pcm_mutex, rtd->card->pcm_subclass);
 
@@ -108,7 +113,12 @@ machine_err:
 out:
 	mutex_unlock(&rtd->card->pcm_mutex);
 pm_err:
-	snd_soc_pcm_component_pm_runtime_put(rtd, cstream, 1);
+	for_each_rtd_components(rtd, i, component) {
+		if (component == save)
+			break;
+		pm_runtime_mark_last_busy(component->dev);
+		pm_runtime_put_autosuspend(component->dev);
+	}
 
 	return ret;
 }
@@ -195,9 +205,10 @@ be_err:
 static int soc_compr_free(struct snd_compr_stream *cstream)
 {
 	struct snd_soc_pcm_runtime *rtd = cstream->private_data;
+	struct snd_soc_component *component;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
-	int stream;
+	int stream, i;
 
 	mutex_lock_nested(&rtd->card->pcm_mutex, rtd->card->pcm_subclass);
 
@@ -226,7 +237,10 @@ static int soc_compr_free(struct snd_compr_stream *cstream)
 
 	mutex_unlock(&rtd->card->pcm_mutex);
 
-	snd_soc_pcm_component_pm_runtime_put(rtd, cstream, 0);
+	for_each_rtd_components(rtd, i, component) {
+		pm_runtime_mark_last_busy(component->dev);
+		pm_runtime_put_autosuspend(component->dev);
+	}
 
 	return 0;
 }

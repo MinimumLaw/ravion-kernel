@@ -223,6 +223,7 @@ static int eps_cpu_init(struct cpufreq_policy *policy)
 	case EPS_BRAND_C3:
 		pr_cont("C3\n");
 		return -ENODEV;
+		break;
 	}
 	/* Enable Enhanced PowerSaver */
 	rdmsrl(MSR_IA32_MISC_ENABLE, val);

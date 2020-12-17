@@ -27,10 +27,7 @@
 	strb    \rd, [\rx, #STM32_USART_TDR_OFF]
 .endm
 
-.macro	waituartcts,rd,rx
-.endm
-
-.macro  waituarttxrdy,rd,rx
+.macro  waituart,rd,rx
 1001:	ldr	\rd, [\rx, #(STM32_USART_SR_OFF)]	@ Read Status Register
 	tst	\rd, #STM32_USART_TXE			@ TXE = 1 = tx empty
 	beq	1001b

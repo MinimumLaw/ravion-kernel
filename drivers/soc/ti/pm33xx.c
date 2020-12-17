@@ -16,7 +16,6 @@
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
 #include <linux/platform_data/pm33xx.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
@@ -40,8 +39,6 @@
 #define GIC_INT_SET_PENDING_BASE 0x200
 #define AM43XX_GIC_DIST_BASE	0x48241000
 
-static void __iomem *rtc_base_virt;
-static struct clk *rtc_fck;
 static u32 rtc_magic_val;
 
 static int (*am33xx_do_wfi_sram)(unsigned long unused);
@@ -93,7 +90,7 @@ static int am33xx_push_sram_idle(void)
 	ro_sram_data.amx3_pm_sram_data_virt = ocmcram_location_data;
 	ro_sram_data.amx3_pm_sram_data_phys =
 		gen_pool_virt_to_phys(sram_pool_data, ocmcram_location_data);
-	ro_sram_data.rtc_base_virt = rtc_base_virt;
+	ro_sram_data.rtc_base_virt = pm_ops->get_rtc_base_addr();
 
 	/* Save physical address to calculate resume offset during pm init */
 	am33xx_do_wfi_sram_phys = gen_pool_virt_to_phys(sram_pool,
@@ -161,7 +158,7 @@ static struct wkup_m3_wakeup_src rtc_wake_src(void)
 {
 	u32 i;
 
-	i = __raw_readl(rtc_base_virt + 0x44) & 0x40;
+	i = __raw_readl(pm_ops->get_rtc_base_addr() + 0x44) & 0x40;
 
 	if (i) {
 		retrigger_irq = rtc_alarm_wakeup.irq_nr;
@@ -180,24 +177,13 @@ static int am33xx_rtc_only_idle(unsigned long wfi_flags)
 	return 0;
 }
 
-/*
- * Note that the RTC module clock must be re-enabled only for rtc+ddr suspend.
- * And looks like the module can stay in SYSC_IDLE_SMART_WKUP mode configured
- * by the interconnect code just fine for both rtc+ddr suspend and retention
- * suspend.
- */
 static int am33xx_pm_suspend(suspend_state_t suspend_state)
 {
 	int i, ret = 0;
 
 	if (suspend_state == PM_SUSPEND_MEM &&
 	    pm_ops->check_off_mode_enable()) {
-		ret = clk_prepare_enable(rtc_fck);
-		if (ret) {
-			dev_err(pm33xx_dev, "Failed to enable clock: %i\n", ret);
-			return ret;
-		}
-
+		pm_ops->prepare_rtc_suspend();
 		pm_ops->save_context();
 		suspend_wfi_flags |= WFI_FLAG_RTC_ONLY;
 		clk_save_context();
@@ -250,7 +236,7 @@ static int am33xx_pm_suspend(suspend_state_t suspend_state)
 	}
 
 	if (suspend_state == PM_SUSPEND_MEM && pm_ops->check_off_mode_enable())
-		clk_disable_unprepare(rtc_fck);
+		pm_ops->prepare_rtc_resume();
 
 	return ret;
 }
@@ -439,28 +425,14 @@ static int am33xx_pm_rtc_setup(void)
 	struct device_node *np;
 	unsigned long val = 0;
 	struct nvmem_device *nvmem;
-	int error;
 
 	np = of_find_node_by_name(NULL, "rtc");
 
 	if (of_device_is_available(np)) {
-		/* RTC interconnect target module clock */
-		rtc_fck = of_clk_get_by_name(np->parent, "fck");
-		if (IS_ERR(rtc_fck))
-			return PTR_ERR(rtc_fck);
-
-		rtc_base_virt = of_iomap(np, 0);
-		if (!rtc_base_virt) {
-			pr_warn("PM: could not iomap rtc");
-			error = -ENODEV;
-			goto err_clk_put;
-		}
-
 		omap_rtc = rtc_class_open("rtc0");
 		if (!omap_rtc) {
 			pr_warn("PM: rtc0 not available");
-			error = -EPROBE_DEFER;
-			goto err_iounmap;
+			return -EPROBE_DEFER;
 		}
 
 		nvmem = devm_nvmem_device_get(&omap_rtc->dev,
@@ -482,13 +454,6 @@ static int am33xx_pm_rtc_setup(void)
 	}
 
 	return 0;
-
-err_iounmap:
-	iounmap(rtc_base_virt);
-err_clk_put:
-	clk_put(rtc_fck);
-
-	return error;
 }
 
 static int am33xx_pm_probe(struct platform_device *pdev)
@@ -579,8 +544,6 @@ static int am33xx_pm_remove(struct platform_device *pdev)
 	suspend_set_ops(NULL);
 	wkup_m3_ipc_put(m3_ipc);
 	am33xx_pm_free_sram();
-	iounmap(rtc_base_virt);
-	clk_put(rtc_fck);
 	return 0;
 }
 

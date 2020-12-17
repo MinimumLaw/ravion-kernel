@@ -15,11 +15,7 @@ properties:
     const: 0
 
   compatible:
-    oneOf:
-      - items:
-          - const: allwinner,sun50i-a64-codec
-          - const: allwinner,sun8i-a33-codec
-      - const: allwinner,sun8i-a33-codec
+    const: allwinner,sun8i-a33-codec
 
   reg:
     maxItems: 1

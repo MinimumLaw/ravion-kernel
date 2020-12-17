@@ -26,9 +26,10 @@ static struct pmbus_driver_info max20751_info = {
 		PMBUS_HAVE_POUT,
 };
 
-static int max20751_probe(struct i2c_client *client)
+static int max20751_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
-	return pmbus_do_probe(client, &max20751_info);
+	return pmbus_do_probe(client, id, &max20751_info);
 }
 
 static const struct i2c_device_id max20751_id[] = {
@@ -42,7 +43,7 @@ static struct i2c_driver max20751_driver = {
 	.driver = {
 		   .name = "max20751",
 		   },
-	.probe_new = max20751_probe,
+	.probe = max20751_probe,
 	.remove = pmbus_do_remove,
 	.id_table = max20751_id,
 };

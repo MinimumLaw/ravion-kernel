@@ -755,7 +755,13 @@ EXPORT_SYMBOL_GPL(usbip_recv_xbuff);
 
 static int __init usbip_core_init(void)
 {
-	return usbip_init_eh();
+	int ret;
+
+	ret = usbip_init_eh();
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static void __exit usbip_core_exit(void)

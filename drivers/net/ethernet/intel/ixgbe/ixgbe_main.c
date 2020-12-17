@@ -1945,8 +1945,7 @@ static inline bool ixgbe_page_is_reserved(struct page *page)
 	return (page_to_nid(page) != numa_mem_id()) || page_is_pfmemalloc(page);
 }
 
-static bool ixgbe_can_reuse_rx_page(struct ixgbe_rx_buffer *rx_buffer,
-				    int rx_buffer_pgcnt)
+static bool ixgbe_can_reuse_rx_page(struct ixgbe_rx_buffer *rx_buffer)
 {
 	unsigned int pagecnt_bias = rx_buffer->pagecnt_bias;
 	struct page *page = rx_buffer->page;
@@ -1957,7 +1956,7 @@ static bool ixgbe_can_reuse_rx_page(struct ixgbe_rx_buffer *rx_buffer,
 
 #if (PAGE_SIZE < 8192)
 	/* if we are only owner of page we can reuse it */
-	if (unlikely((rx_buffer_pgcnt - pagecnt_bias) > 1))
+	if (unlikely((page_ref_count(page) - pagecnt_bias) > 1))
 		return false;
 #else
 	/* The last offset is a bit aggressive in that we assume the
@@ -2022,18 +2021,11 @@ static void ixgbe_add_rx_frag(struct ixgbe_ring *rx_ring,
 static struct ixgbe_rx_buffer *ixgbe_get_rx_buffer(struct ixgbe_ring *rx_ring,
 						   union ixgbe_adv_rx_desc *rx_desc,
 						   struct sk_buff **skb,
-						   const unsigned int size,
-						   int *rx_buffer_pgcnt)
+						   const unsigned int size)
 {
 	struct ixgbe_rx_buffer *rx_buffer;
 
 	rx_buffer = &rx_ring->rx_buffer_info[rx_ring->next_to_clean];
-	*rx_buffer_pgcnt =
-#if (PAGE_SIZE < 8192)
-		page_count(rx_buffer->page);
-#else
-		0;
-#endif
 	prefetchw(rx_buffer->page);
 	*skb = rx_buffer->skb;
 
@@ -2063,10 +2055,9 @@ skip_sync:
 
 static void ixgbe_put_rx_buffer(struct ixgbe_ring *rx_ring,
 				struct ixgbe_rx_buffer *rx_buffer,
-				struct sk_buff *skb,
-				int rx_buffer_pgcnt)
+				struct sk_buff *skb)
 {
-	if (ixgbe_can_reuse_rx_page(rx_buffer, rx_buffer_pgcnt)) {
+	if (ixgbe_can_reuse_rx_page(rx_buffer)) {
 		/* hand second half of page back to the ring */
 		ixgbe_reuse_rx_page(rx_ring, rx_buffer);
 	} else {
@@ -2104,8 +2095,10 @@ static struct sk_buff *ixgbe_construct_skb(struct ixgbe_ring *rx_ring,
 	struct sk_buff *skb;
 
 	/* prefetch first cache line of first page */
-	net_prefetch(xdp->data);
-
+	prefetch(xdp->data);
+#if L1_CACHE_BYTES < 128
+	prefetch(xdp->data + L1_CACHE_BYTES);
+#endif
 	/* Note, we get here by enabling legacy-rx via:
 	 *
 	 *    ethtool --set-priv-flags <dev> legacy-rx on
@@ -2168,7 +2161,10 @@ static struct sk_buff *ixgbe_build_skb(struct ixgbe_ring *rx_ring,
 	 * likely have a consumer accessing first few bytes of meta
 	 * data, and then actual data.
 	 */
-	net_prefetch(xdp->data_meta);
+	prefetch(xdp->data_meta);
+#if L1_CACHE_BYTES < 128
+	prefetch(xdp->data_meta + L1_CACHE_BYTES);
+#endif
 
 	/* build an skb to around the page buffer */
 	skb = build_skb(xdp->data_hard_start, truesize);
@@ -2312,7 +2308,6 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 		union ixgbe_adv_rx_desc *rx_desc;
 		struct ixgbe_rx_buffer *rx_buffer;
 		struct sk_buff *skb;
-		int rx_buffer_pgcnt;
 		unsigned int size;
 
 		/* return some buffers to hardware, one at a time is too slow */
@@ -2332,7 +2327,7 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 		 */
 		dma_rmb();
 
-		rx_buffer = ixgbe_get_rx_buffer(rx_ring, rx_desc, &skb, size, &rx_buffer_pgcnt);
+		rx_buffer = ixgbe_get_rx_buffer(rx_ring, rx_desc, &skb, size);
 
 		/* retrieve a buffer from the ring */
 		if (!skb) {
@@ -2377,7 +2372,7 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 			break;
 		}
 
-		ixgbe_put_rx_buffer(rx_ring, rx_buffer, skb, rx_buffer_pgcnt);
+		ixgbe_put_rx_buffer(rx_ring, rx_buffer, skb);
 		cleaned_count++;
 
 		/* place incomplete frames back on ring for completion */
@@ -3161,7 +3156,7 @@ int ixgbe_poll(struct napi_struct *napi, int budget)
 #endif
 
 	ixgbe_for_each_ring(ring, q_vector->tx) {
-		bool wd = ring->xsk_pool ?
+		bool wd = ring->xsk_umem ?
 			  ixgbe_clean_xdp_tx_irq(q_vector, ring, budget) :
 			  ixgbe_clean_tx_irq(q_vector, ring, budget);
 
@@ -3181,7 +3176,7 @@ int ixgbe_poll(struct napi_struct *napi, int budget)
 		per_ring_budget = budget;
 
 	ixgbe_for_each_ring(ring, q_vector->rx) {
-		int cleaned = ring->xsk_pool ?
+		int cleaned = ring->xsk_umem ?
 			      ixgbe_clean_rx_irq_zc(q_vector, ring,
 						    per_ring_budget) :
 			      ixgbe_clean_rx_irq(q_vector, ring,
@@ -3476,9 +3471,9 @@ void ixgbe_configure_tx_ring(struct ixgbe_adapter *adapter,
 	u32 txdctl = IXGBE_TXDCTL_ENABLE;
 	u8 reg_idx = ring->reg_idx;
 
-	ring->xsk_pool = NULL;
+	ring->xsk_umem = NULL;
 	if (ring_is_xdp(ring))
-		ring->xsk_pool = ixgbe_xsk_pool(adapter, ring);
+		ring->xsk_umem = ixgbe_xsk_umem(adapter, ring);
 
 	/* disable queue to avoid issues while updating state */
 	IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(reg_idx), 0);
@@ -3718,8 +3713,8 @@ static void ixgbe_configure_srrctl(struct ixgbe_adapter *adapter,
 	srrctl = IXGBE_RX_HDR_SIZE << IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT;
 
 	/* configure the packet buffer length */
-	if (rx_ring->xsk_pool) {
-		u32 xsk_buf_len = xsk_pool_get_rx_frame_size(rx_ring->xsk_pool);
+	if (rx_ring->xsk_umem) {
+		u32 xsk_buf_len = xsk_umem_get_rx_frame_size(rx_ring->xsk_umem);
 
 		/* If the MAC support setting RXDCTL.RLPML, the
 		 * SRRCTL[n].BSIZEPKT is set to PAGE_SIZE and
@@ -4064,12 +4059,12 @@ void ixgbe_configure_rx_ring(struct ixgbe_adapter *adapter,
 	u8 reg_idx = ring->reg_idx;
 
 	xdp_rxq_info_unreg_mem_model(&ring->xdp_rxq);
-	ring->xsk_pool = ixgbe_xsk_pool(adapter, ring);
-	if (ring->xsk_pool) {
+	ring->xsk_umem = ixgbe_xsk_umem(adapter, ring);
+	if (ring->xsk_umem) {
 		WARN_ON(xdp_rxq_info_reg_mem_model(&ring->xdp_rxq,
 						   MEM_TYPE_XSK_BUFF_POOL,
 						   NULL));
-		xsk_pool_set_rxq_info(ring->xsk_pool, &ring->xdp_rxq);
+		xsk_buff_set_rxq_info(ring->xsk_umem, &ring->xdp_rxq);
 	} else {
 		WARN_ON(xdp_rxq_info_reg_mem_model(&ring->xdp_rxq,
 						   MEM_TYPE_PAGE_SHARED, NULL));
@@ -4124,8 +4119,8 @@ void ixgbe_configure_rx_ring(struct ixgbe_adapter *adapter,
 #endif
 	}
 
-	if (ring->xsk_pool && hw->mac.type != ixgbe_mac_82599EB) {
-		u32 xsk_buf_len = xsk_pool_get_rx_frame_size(ring->xsk_pool);
+	if (ring->xsk_umem && hw->mac.type != ixgbe_mac_82599EB) {
+		u32 xsk_buf_len = xsk_umem_get_rx_frame_size(ring->xsk_umem);
 
 		rxdctl &= ~(IXGBE_RXDCTL_RLPMLMASK |
 			    IXGBE_RXDCTL_RLPML_EN);
@@ -4147,7 +4142,7 @@ void ixgbe_configure_rx_ring(struct ixgbe_adapter *adapter,
 	IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(reg_idx), rxdctl);
 
 	ixgbe_rx_desc_queue_enable(adapter, ring);
-	if (ring->xsk_pool)
+	if (ring->xsk_umem)
 		ixgbe_alloc_rx_buffers_zc(ring, ixgbe_desc_unused(ring));
 	else
 		ixgbe_alloc_rx_buffers(ring, ixgbe_desc_unused(ring));
@@ -5297,7 +5292,7 @@ static void ixgbe_clean_rx_ring(struct ixgbe_ring *rx_ring)
 	u16 i = rx_ring->next_to_clean;
 	struct ixgbe_rx_buffer *rx_buffer = &rx_ring->rx_buffer_info[i];
 
-	if (rx_ring->xsk_pool) {
+	if (rx_ring->xsk_umem) {
 		ixgbe_xsk_clean_rx_ring(rx_ring);
 		goto skip_free;
 	}
@@ -5687,6 +5682,7 @@ static void ixgbe_up_complete(struct ixgbe_adapter *adapter)
 
 void ixgbe_reinit_locked(struct ixgbe_adapter *adapter)
 {
+	WARN_ON(in_interrupt());
 	/* put off any impending NetWatchDogTimeout */
 	netif_trans_update(adapter->netdev);
 
@@ -5993,7 +5989,7 @@ static void ixgbe_clean_tx_ring(struct ixgbe_ring *tx_ring)
 	u16 i = tx_ring->next_to_clean;
 	struct ixgbe_tx_buffer *tx_buffer = &tx_ring->tx_buffer_info[i];
 
-	if (tx_ring->xsk_pool) {
+	if (tx_ring->xsk_umem) {
 		ixgbe_xsk_clean_tx_ring(tx_ring);
 		goto out;
 	}
@@ -6189,9 +6185,8 @@ static void ixgbe_set_eee_capable(struct ixgbe_adapter *adapter)
 /**
  * ixgbe_tx_timeout - Respond to a Tx Hang
  * @netdev: network interface device structure
- * @txqueue: queue number that timed out
  **/
-static void ixgbe_tx_timeout(struct net_device *netdev, unsigned int __always_unused txqueue)
+static void ixgbe_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 {
 	struct ixgbe_adapter *adapter = netdev_priv(netdev);
 
@@ -10166,7 +10161,7 @@ static int ixgbe_xdp_setup(struct net_device *dev, struct bpf_prog *prog)
 	 */
 	if (need_reset && prog)
 		for (i = 0; i < adapter->num_rx_queues; i++)
-			if (adapter->xdp_ring[i]->xsk_pool)
+			if (adapter->xdp_ring[i]->xsk_umem)
 				(void)ixgbe_xsk_wakeup(adapter->netdev, i,
 						       XDP_WAKEUP_RX);
 
@@ -10180,8 +10175,8 @@ static int ixgbe_xdp(struct net_device *dev, struct netdev_bpf *xdp)
 	switch (xdp->command) {
 	case XDP_SETUP_PROG:
 		return ixgbe_xdp_setup(dev, xdp->prog);
-	case XDP_SETUP_XSK_POOL:
-		return ixgbe_xsk_pool_setup(adapter, xdp->xsk.pool,
+	case XDP_SETUP_XSK_UMEM:
+		return ixgbe_xsk_umem_setup(adapter, xdp->xsk.umem,
 					    xdp->xsk.queue_id);
 
 	default:

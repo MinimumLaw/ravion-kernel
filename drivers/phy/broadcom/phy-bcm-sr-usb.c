@@ -5,7 +5,6 @@
 
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/phy/phy.h>
@@ -110,15 +109,19 @@ static inline void bcm_usb_reg32_setbits(void __iomem *addr, uint32_t set)
 
 static int bcm_usb_pll_lock_check(void __iomem *addr, u32 bit)
 {
-	u32 data;
-	int ret;
+	int retry;
+	u32 rd_data;
 
-	ret = readl_poll_timeout_atomic(addr, data, (data & bit), 1,
-					PLL_LOCK_RETRY_COUNT);
-	if (ret)
-		pr_err("%s: FAIL\n", __func__);
+	retry = PLL_LOCK_RETRY_COUNT;
+	do {
+		rd_data = readl(addr);
+		if (rd_data & bit)
+			return 0;
+		udelay(1);
+	} while (--retry > 0);
 
-	return ret;
+	pr_err("%s: FAIL\n", __func__);
+	return -ETIMEDOUT;
 }
 
 static int bcm_usb_ss_phy_init(struct bcm_usb_phy_cfg *phy_cfg)

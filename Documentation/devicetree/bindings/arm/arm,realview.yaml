@@ -120,6 +120,4 @@ required:
   - compatible
   - soc
 
-additionalProperties: true
-
 ...

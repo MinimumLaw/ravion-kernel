@@ -336,6 +336,7 @@ static void cmpk_count_tx_status(struct net_device *dev,
 	priv->stats.txretrycount	+= pstx_status->txretry;
 	priv->stats.txfeedbackretry	+= pstx_status->txretry;
 
+
 	priv->stats.txmulticast		+= pstx_status->txmcok;
 	priv->stats.txbroadcast		+= pstx_status->txbcok;
 	priv->stats.txunicast		+= pstx_status->txucok;
@@ -430,7 +431,7 @@ static void cmpk_handle_tx_rate_history(struct net_device *dev, u8 *pmsg)
 
 	ptxrate = (cmpk_tx_rahis_t *)pmsg;
 
-	if (!ptxrate)
+	if (ptxrate == NULL)
 		return;
 
 	for (i = 0; i < 16; i++) {
@@ -479,7 +480,7 @@ u32 cmpk_message_handle_rx(struct net_device *dev,
 	/* 0. Check inpt arguments. It is a command queue message or
 	 * pointer is null.
 	 */
-	if (!pstats)
+	if (pstats == NULL)
 		return 0;	/* This is not a command packet. */
 
 	/* 1. Read received command packet message length from RFD. */

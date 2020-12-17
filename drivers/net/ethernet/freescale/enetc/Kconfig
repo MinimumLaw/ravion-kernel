@@ -3,8 +3,7 @@ config FSL_ENETC
 	tristate "ENETC PF driver"
 	depends on PCI && PCI_MSI
 	select FSL_ENETC_MDIO
-	select PHYLINK
-	select PCS_LYNX
+	select PHYLIB
 	select DIMLIB
 	help
 	  This driver supports NXP ENETC gigabit ethernet controller PCIe
@@ -17,7 +16,7 @@ config FSL_ENETC_VF
 	tristate "ENETC VF driver"
 	depends on PCI && PCI_MSI
 	select FSL_ENETC_MDIO
-	select PHYLINK
+	select PHYLIB
 	select DIMLIB
 	help
 	  This driver supports NXP ENETC gigabit ethernet controller PCIe

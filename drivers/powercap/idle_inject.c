@@ -43,7 +43,6 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/smpboot.h>
-#include <linux/idle_inject.h>
 
 #include <uapi/linux/sched/types.h>
 

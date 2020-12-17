@@ -1,34 +1,67 @@
-.. SPDX-License-Identifier: GPL-2.0+
-
 ================================
 Documentation for /proc/sys/abi/
 ================================
 
-.. See scripts/check-sysctl-docs to keep this up to date:
-.. scripts/check-sysctl-docs -vtable="abi" \
-..         Documentation/admin-guide/sysctl/abi.rst \
-..         $(git grep -l register_sysctl_)
+kernel version 2.6.0.test2
 
-Copyright (c) 2020, Stephen Kitt
+Copyright (c) 2003,  Fabian Frederick <ffrederick@users.sourceforge.net>
 
-For general info, see :doc:`index`.
+For general info: index.rst.
 
 ------------------------------------------------------------------------------
 
-The files in ``/proc/sys/abi`` can be used to see and modify
-ABI-related settings.
+This path is binary emulation relevant aka personality types aka abi.
+When a process is executed, it's linked to an exec_domain whose
+personality is defined using values available from /proc/sys/abi.
+You can find further details about abi in include/linux/personality.h.
 
-Currently, these files might (depending on your configuration)
-show up in ``/proc/sys/kernel``:
+Here are the files featuring in 2.6 kernel:
 
-.. contents:: :local:
+- defhandler_coff
+- defhandler_elf
+- defhandler_lcall7
+- defhandler_libcso
+- fake_utsname
+- trace
 
-vsyscall32 (x86)
-================
+defhandler_coff
+---------------
 
-Determines whether the kernels maps a vDSO page into 32-bit processes;
-can be set to 1 to enable, or 0 to disable. Defaults to enabled if
-``CONFIG_COMPAT_VDSO`` is set, disabled otherwide.
+defined value:
+	PER_SCOSVR3::
 
-This controls the same setting as the ``vdso32`` kernel boot
-parameter.
+		0x0003 | STICKY_TIMEOUTS | WHOLE_SECONDS | SHORT_INODE
+
+defhandler_elf
+--------------
+
+defined value:
+	PER_LINUX::
+
+		0
+
+defhandler_lcall7
+-----------------
+
+defined value :
+	PER_SVR4::
+
+		0x0001 | STICKY_TIMEOUTS | MMAP_PAGE_ZERO,
+
+defhandler_libsco
+-----------------
+
+defined value:
+	PER_SVR4::
+
+		0x0001 | STICKY_TIMEOUTS | MMAP_PAGE_ZERO,
+
+fake_utsname
+------------
+
+Unused
+
+trace
+-----
+
+Unused

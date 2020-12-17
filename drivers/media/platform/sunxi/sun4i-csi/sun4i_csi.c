@@ -7,7 +7,6 @@
  */
 
 #include <linux/clk.h>
-#include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -183,14 +182,8 @@ static int sun4i_csi_probe(struct platform_device *pdev)
 		if (ret)
 			return ret;
 	} else {
-		/*
-		 * XXX(hch): this has no business in a driver and needs to move
-		 * to the device tree.
-		 */
 #ifdef PHYS_PFN_OFFSET
-		ret = dma_direct_set_offset(csi->dev, PHYS_OFFSET, 0, SZ_4G);
-		if (ret)
-			return ret;
+		csi->dev->dma_pfn_offset = PHYS_PFN_OFFSET;
 #endif
 	}
 
@@ -294,7 +287,6 @@ static int sun4i_csi_remove(struct platform_device *pdev)
 
 	v4l2_async_notifier_unregister(&csi->notifier);
 	v4l2_async_notifier_cleanup(&csi->notifier);
-	vb2_video_unregister_device(&csi->vdev);
 	media_device_unregister(&csi->mdev);
 	sun4i_csi_dma_unregister(csi);
 	media_device_cleanup(&csi->mdev);

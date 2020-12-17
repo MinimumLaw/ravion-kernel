@@ -28,50 +28,34 @@
 #define to_sdio_driver(d)	container_of(d, struct sdio_driver, drv)
 
 /* show configuration fields */
-#define sdio_config_attr(field, format_string, args...)			\
+#define sdio_config_attr(field, format_string)				\
 static ssize_t								\
 field##_show(struct device *dev, struct device_attribute *attr, char *buf)				\
 {									\
 	struct sdio_func *func;						\
 									\
 	func = dev_to_sdio_func (dev);					\
-	return sprintf(buf, format_string, args);			\
+	return sprintf (buf, format_string, func->field);		\
 }									\
 static DEVICE_ATTR_RO(field)
 
-sdio_config_attr(class, "0x%02x\n", func->class);
-sdio_config_attr(vendor, "0x%04x\n", func->vendor);
-sdio_config_attr(device, "0x%04x\n", func->device);
-sdio_config_attr(revision, "%u.%u\n", func->major_rev, func->minor_rev);
-sdio_config_attr(modalias, "sdio:c%02Xv%04Xd%04X\n", func->class, func->vendor, func->device);
+sdio_config_attr(class, "0x%02x\n");
+sdio_config_attr(vendor, "0x%04x\n");
+sdio_config_attr(device, "0x%04x\n");
 
-#define sdio_info_attr(num)									\
-static ssize_t info##num##_show(struct device *dev, struct device_attribute *attr, char *buf)	\
-{												\
-	struct sdio_func *func = dev_to_sdio_func(dev);						\
-												\
-	if (num > func->num_info)								\
-		return -ENODATA;								\
-	if (!func->info[num-1][0])								\
-		return 0;									\
-	return sprintf(buf, "%s\n", func->info[num-1]);						\
-}												\
-static DEVICE_ATTR_RO(info##num)
+static ssize_t modalias_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct sdio_func *func = dev_to_sdio_func (dev);
 
-sdio_info_attr(1);
-sdio_info_attr(2);
-sdio_info_attr(3);
-sdio_info_attr(4);
+	return sprintf(buf, "sdio:c%02Xv%04Xd%04X\n",
+			func->class, func->vendor, func->device);
+}
+static DEVICE_ATTR_RO(modalias);
 
 static struct attribute *sdio_dev_attrs[] = {
 	&dev_attr_class.attr,
 	&dev_attr_vendor.attr,
 	&dev_attr_device.attr,
-	&dev_attr_revision.attr,
-	&dev_attr_info1.attr,
-	&dev_attr_info2.attr,
-	&dev_attr_info3.attr,
-	&dev_attr_info4.attr,
 	&dev_attr_modalias.attr,
 	NULL,
 };
@@ -122,7 +106,6 @@ static int
 sdio_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
-	unsigned int i;
 
 	if (add_uevent_var(env,
 			"SDIO_CLASS=%02X", func->class))
@@ -131,15 +114,6 @@ sdio_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	if (add_uevent_var(env, 
 			"SDIO_ID=%04X:%04X", func->vendor, func->device))
 		return -ENOMEM;
-
-	if (add_uevent_var(env,
-			"SDIO_REVISION=%u.%u", func->major_rev, func->minor_rev))
-		return -ENOMEM;
-
-	for (i = 0; i < func->num_info; i++) {
-		if (add_uevent_var(env, "SDIO_INFO%u=%s", i+1, func->info[i]))
-			return -ENOMEM;
-	}
 
 	if (add_uevent_var(env,
 			"MODALIAS=sdio:c%02Xv%04Xd%04X",

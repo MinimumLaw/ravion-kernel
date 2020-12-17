@@ -51,13 +51,9 @@ extern int mp_irqdomain_ioapic_idx(struct irq_domain *domain);
 #endif /* CONFIG_X86_IO_APIC */
 
 #ifdef CONFIG_PCI_MSI
-void x86_create_pci_msi_domain(void);
-struct irq_domain *native_create_pci_msi_domain(void);
-extern struct irq_domain *x86_pci_msi_default_domain;
+extern void arch_init_msi_domain(struct irq_domain *domain);
 #else
-static inline void x86_create_pci_msi_domain(void) { }
-#define native_create_pci_msi_domain	NULL
-#define x86_pci_msi_default_domain	NULL
+static inline void arch_init_msi_domain(struct irq_domain *domain) { }
 #endif
 
 #endif

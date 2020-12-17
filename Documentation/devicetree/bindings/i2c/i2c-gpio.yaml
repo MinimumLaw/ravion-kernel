@@ -70,6 +70,4 @@ required:
   - sda-gpios
   - scl-gpios
 
-unevaluatedProperties: false
-
 ...

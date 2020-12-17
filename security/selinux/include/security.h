@@ -13,11 +13,9 @@
 #include <linux/dcache.h>
 #include <linux/magic.h>
 #include <linux/types.h>
-#include <linux/rcupdate.h>
 #include <linux/refcount.h>
 #include <linux/workqueue.h>
 #include "flask.h"
-#include "policycap.h"
 
 #define SECSID_NULL			0x00000000 /* unspecified SID */
 #define SECSID_WILD			0xffffffff /* wildcard SID */
@@ -74,6 +72,21 @@ struct netlbl_lsm_secattr;
 
 extern int selinux_enabled_boot;
 
+/* Policy capabilities */
+enum {
+	POLICYDB_CAPABILITY_NETPEER,
+	POLICYDB_CAPABILITY_OPENPERM,
+	POLICYDB_CAPABILITY_EXTSOCKCLASS,
+	POLICYDB_CAPABILITY_ALWAYSNETWORK,
+	POLICYDB_CAPABILITY_CGROUPSECLABEL,
+	POLICYDB_CAPABILITY_NNP_NOSUID_TRANSITION,
+	POLICYDB_CAPABILITY_GENFS_SECLABEL_SYMLINKS,
+	__POLICYDB_CAPABILITY_MAX
+};
+#define POLICYDB_CAPABILITY_MAX (__POLICYDB_CAPABILITY_MAX - 1)
+
+extern const char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX];
+
 /*
  * type_datum properties
  * available at the kernel policy version >= POLICYDB_VERSION_BOUNDARY
@@ -85,7 +98,7 @@ extern int selinux_enabled_boot;
 #define POLICYDB_BOUNDS_MAXDEPTH	4
 
 struct selinux_avc;
-struct selinux_policy;
+struct selinux_ss;
 
 struct selinux_state {
 #ifdef CONFIG_SECURITY_SELINUX_DISABLE
@@ -102,10 +115,10 @@ struct selinux_state {
 	struct mutex status_lock;
 
 	struct selinux_avc *avc;
-	struct selinux_policy __rcu *policy;
-	struct mutex policy_mutex;
+	struct selinux_ss *ss;
 } __randomize_layout;
 
+void selinux_ss_init(struct selinux_ss **ss);
 void selinux_avc_init(struct selinux_avc **avc);
 
 extern struct selinux_state selinux_state;
@@ -142,16 +155,6 @@ static inline void enforcing_set(struct selinux_state *state, bool value)
 {
 }
 #endif
-
-static inline bool checkreqprot_get(const struct selinux_state *state)
-{
-	return READ_ONCE(state->checkreqprot);
-}
-
-static inline void checkreqprot_set(struct selinux_state *state, bool value)
-{
-	WRITE_ONCE(state->checkreqprot, value);
-}
 
 #ifdef CONFIG_SECURITY_SELINUX_DISABLE
 static inline bool selinux_disabled(struct selinux_state *state)
@@ -221,14 +224,10 @@ static inline bool selinux_policycap_genfs_seclabel_symlinks(void)
 
 int security_mls_enabled(struct selinux_state *state);
 int security_load_policy(struct selinux_state *state,
-			void *data, size_t len,
-			struct selinux_policy **newpolicyp);
-void selinux_policy_commit(struct selinux_state *state,
-			struct selinux_policy *newpolicy);
-void selinux_policy_cancel(struct selinux_state *state,
-			struct selinux_policy *policy);
+			 void *data, size_t len);
 int security_read_policy(struct selinux_state *state,
 			 void **data, size_t *len);
+size_t security_policydb_len(struct selinux_state *state);
 
 int security_policycap_supported(struct selinux_state *state,
 				 unsigned int req_cap);
@@ -359,9 +358,9 @@ int security_net_peersid_resolve(struct selinux_state *state,
 				 u32 xfrm_sid,
 				 u32 *peer_sid);
 
-int security_get_classes(struct selinux_policy *policy,
+int security_get_classes(struct selinux_state *state,
 			 char ***classes, int *nclasses);
-int security_get_permissions(struct selinux_policy *policy,
+int security_get_permissions(struct selinux_state *state,
 			     char *class, char ***perms, int *nperms);
 int security_get_reject_unknown(struct selinux_state *state);
 int security_get_allow_unknown(struct selinux_state *state);
@@ -378,10 +377,6 @@ int security_get_allow_unknown(struct selinux_state *state);
 int security_fs_use(struct selinux_state *state, struct super_block *sb);
 
 int security_genfs_sid(struct selinux_state *state,
-		       const char *fstype, char *name, u16 sclass,
-		       u32 *sid);
-
-int selinux_policy_genfs_sid(struct selinux_policy *policy,
 		       const char *fstype, char *name, u16 sclass,
 		       u32 *sid);
 

@@ -1091,9 +1091,9 @@ fw_load_exit:
 	put_device(&pdev->dev);
 }
 
-static void qtnf_pearl_reclaim_tasklet_fn(struct tasklet_struct *t)
+static void qtnf_pearl_reclaim_tasklet_fn(unsigned long data)
 {
-	struct qtnf_pcie_pearl_state *ps = from_tasklet(ps, t, base.reclaim_tq);
+	struct qtnf_pcie_pearl_state *ps = (void *)data;
 
 	qtnf_pearl_data_tx_reclaim(ps);
 	qtnf_en_txdone_irq(ps);
@@ -1145,7 +1145,8 @@ static int qtnf_pcie_pearl_probe(struct qtnf_bus *bus, unsigned int tx_bd_size,
 		return ret;
 	}
 
-	tasklet_setup(&ps->base.reclaim_tq, qtnf_pearl_reclaim_tasklet_fn);
+	tasklet_init(&ps->base.reclaim_tq, qtnf_pearl_reclaim_tasklet_fn,
+		     (unsigned long)ps);
 	netif_napi_add(&bus->mux_dev, &bus->mux_napi,
 		       qtnf_pcie_pearl_rx_poll, 10);
 

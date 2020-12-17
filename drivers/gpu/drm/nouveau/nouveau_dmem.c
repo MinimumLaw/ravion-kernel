@@ -101,7 +101,7 @@ unsigned long nouveau_dmem_page_addr(struct page *page)
 {
 	struct nouveau_dmem_chunk *chunk = nouveau_page_to_chunk(page);
 	unsigned long off = (page_to_pfn(page) << PAGE_SHIFT) -
-				chunk->pagemap.range.start;
+				chunk->pagemap.res.start;
 
 	return chunk->bo->offset + off;
 }
@@ -249,19 +249,17 @@ nouveau_dmem_chunk_alloc(struct nouveau_drm *drm, struct page **ppage)
 
 	chunk->drm = drm;
 	chunk->pagemap.type = MEMORY_DEVICE_PRIVATE;
-	chunk->pagemap.range.start = res->start;
-	chunk->pagemap.range.end = res->end;
-	chunk->pagemap.nr_range = 1;
+	chunk->pagemap.res = *res;
 	chunk->pagemap.ops = &nouveau_dmem_pagemap_ops;
 	chunk->pagemap.owner = drm->dev;
 
 	ret = nouveau_bo_new(&drm->client, DMEM_CHUNK_SIZE, 0,
-			     NOUVEAU_GEM_DOMAIN_VRAM, 0, 0, NULL, NULL,
+			     TTM_PL_FLAG_VRAM, 0, 0, NULL, NULL,
 			     &chunk->bo);
 	if (ret)
 		goto out_release;
 
-	ret = nouveau_bo_pin(chunk->bo, NOUVEAU_GEM_DOMAIN_VRAM, false);
+	ret = nouveau_bo_pin(chunk->bo, TTM_PL_FLAG_VRAM, false);
 	if (ret)
 		goto out_bo_free;
 
@@ -275,7 +273,7 @@ nouveau_dmem_chunk_alloc(struct nouveau_drm *drm, struct page **ppage)
 	list_add(&chunk->list, &drm->dmem->chunks);
 	mutex_unlock(&drm->dmem->mutex);
 
-	pfn_first = chunk->pagemap.range.start >> PAGE_SHIFT;
+	pfn_first = chunk->pagemap.res.start >> PAGE_SHIFT;
 	page = pfn_to_page(pfn_first);
 	spin_lock(&drm->dmem->lock);
 	for (i = 0; i < DMEM_CHUNK_NPAGES - 1; ++i, ++page) {
@@ -296,7 +294,8 @@ out_bo_unpin:
 out_bo_free:
 	nouveau_bo_ref(NULL, &chunk->bo);
 out_release:
-	release_mem_region(chunk->pagemap.range.start, range_len(&chunk->pagemap.range));
+	release_mem_region(chunk->pagemap.res.start,
+			   resource_size(&chunk->pagemap.res));
 out_free:
 	kfree(chunk);
 out:
@@ -347,7 +346,7 @@ nouveau_dmem_resume(struct nouveau_drm *drm)
 
 	mutex_lock(&drm->dmem->mutex);
 	list_for_each_entry(chunk, &drm->dmem->chunks, list) {
-		ret = nouveau_bo_pin(chunk->bo, NOUVEAU_GEM_DOMAIN_VRAM, false);
+		ret = nouveau_bo_pin(chunk->bo, TTM_PL_FLAG_VRAM, false);
 		/* FIXME handle pin failure */
 		WARN_ON(ret);
 	}
@@ -383,8 +382,8 @@ nouveau_dmem_fini(struct nouveau_drm *drm)
 		nouveau_bo_ref(NULL, &chunk->bo);
 		list_del(&chunk->list);
 		memunmap_pages(&chunk->pagemap);
-		release_mem_region(chunk->pagemap.range.start,
-				   range_len(&chunk->pagemap.range));
+		release_mem_region(chunk->pagemap.res.start,
+				   resource_size(&chunk->pagemap.res));
 		kfree(chunk);
 	}
 

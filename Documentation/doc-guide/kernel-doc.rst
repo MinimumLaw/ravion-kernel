@@ -387,23 +387,22 @@ Domain`_ references.
 Cross-referencing from reStructuredText
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-No additional syntax is needed to cross-reference the functions and types
-defined in the kernel-doc comments from reStructuredText documents.
-Just end function names with ``()`` and write ``struct``, ``union``, ``enum``
-or ``typedef`` before types.
-For example::
+To cross-reference the functions and types defined in the kernel-doc comments
+from reStructuredText documents, please use the `Sphinx C Domain`_
+references. For example::
 
-  See foo().
-  See struct foo.
-  See union bar.
-  See enum baz.
-  See typedef meh.
+  See function :c:func:`foo` and struct/union/enum/typedef :c:type:`bar`.
 
-However, if you want custom text in the cross-reference link, that can be done
-through the following syntax::
+While the type reference works with just the type name, without the
+struct/union/enum/typedef part in front, you may want to use::
 
-  See :c:func:`my custom link text for function foo <foo>`.
-  See :c:type:`my custom link text for struct bar <bar>`.
+  See :c:type:`struct foo <foo>`.
+  See :c:type:`union bar <bar>`.
+  See :c:type:`enum baz <baz>`.
+  See :c:type:`typedef meh <meh>`.
+
+This will produce prettier links, and is in line with how kernel-doc does the
+cross-references.
 
 For further details, please refer to the `Sphinx C Domain`_ documentation.
 
@@ -489,14 +488,6 @@ identifiers: *[ function/type ...]*
 
     .. kernel-doc:: lib/idr.c
        :identifiers:
-
-no-identifiers: *[ function/type ...]*
-  Exclude documentation for each *function* and *type* in *source*.
-
-  Example::
-
-    .. kernel-doc:: lib/bitmap.c
-       :no-identifiers: bitmap_parselist
 
 functions: *[ function/type ...]*
   This is an alias of the 'identifiers' directive and deprecated.

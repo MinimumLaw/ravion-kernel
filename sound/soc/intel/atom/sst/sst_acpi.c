@@ -31,6 +31,7 @@
 #include <sound/soc-acpi.h>
 #include <sound/soc-acpi-intel-match.h>
 #include "../sst-mfld-platform.h"
+#include "../../common/sst-dsp.h"
 #include "../../common/soc-intel-quirks.h"
 #include "sst.h"
 

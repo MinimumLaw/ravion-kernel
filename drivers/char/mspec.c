@@ -195,7 +195,10 @@ mspec_mmap(struct file *file, struct vm_area_struct *vma,
 
 	pages = vma_pages(vma);
 	vdata_size = sizeof(struct vma_data) + pages * sizeof(long);
-	vdata = kvzalloc(vdata_size, GFP_KERNEL);
+	if (vdata_size <= PAGE_SIZE)
+		vdata = kzalloc(vdata_size, GFP_KERNEL);
+	else
+		vdata = vzalloc(vdata_size);
 	if (!vdata)
 		return -ENOMEM;
 

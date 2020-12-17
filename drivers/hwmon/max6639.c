@@ -516,7 +516,8 @@ static int max6639_detect(struct i2c_client *client,
 	return 0;
 }
 
-static int max6639_probe(struct i2c_client *client)
+static int max6639_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct max6639_data *data;
@@ -580,7 +581,7 @@ static struct i2c_driver max6639_driver = {
 		   .name = "max6639",
 		   .pm = &max6639_pm_ops,
 		   },
-	.probe_new = max6639_probe,
+	.probe = max6639_probe,
 	.id_table = max6639_id,
 	.detect = max6639_detect,
 	.address_list = normal_i2c,

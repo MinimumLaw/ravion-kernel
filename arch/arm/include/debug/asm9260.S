@@ -11,10 +11,7 @@
 		ldr	\rv, = CONFIG_DEBUG_UART_VIRT
 		.endm
 
-		.macro	waituarttxrdy,rd,rx
-		.endm
-
-		.macro	waituartcts,rd,rx
+		.macro	waituart,rd,rx
 		.endm
 
 		.macro	senduart,rd,rx

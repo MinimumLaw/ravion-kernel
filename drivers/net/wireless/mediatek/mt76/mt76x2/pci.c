@@ -63,8 +63,6 @@ mt76x2e_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	mdev->rev = mt76_rr(dev, MT_ASIC_VERSION);
 	dev_info(mdev->dev, "ASIC revision: %08x\n", mdev->rev);
 
-	mt76_wr(dev, MT_INT_MASK_CSR, 0);
-
 	ret = devm_request_irq(mdev->dev, pdev->irq, mt76x02_irq_handler,
 			       IRQF_SHARED, KBUILD_MODNAME, dev);
 	if (ret)
@@ -113,7 +111,7 @@ mt76x2e_suspend(struct pci_dev *pdev, pm_message_t state)
 
 	napi_disable(&mdev->tx_napi);
 	tasklet_kill(&mdev->pre_tbtt_tasklet);
-	mt76_worker_disable(&mdev->tx_worker);
+	tasklet_kill(&mdev->tx_tasklet);
 
 	mt76_for_each_q_rx(mdev, i)
 		napi_disable(&mdev->napi[i]);
@@ -147,7 +145,6 @@ mt76x2e_resume(struct pci_dev *pdev)
 
 	pci_restore_state(pdev);
 
-	mt76_worker_enable(&mdev->tx_worker);
 	mt76_for_each_q_rx(mdev, i) {
 		napi_enable(&mdev->napi[i]);
 		napi_schedule(&mdev->napi[i]);

@@ -434,9 +434,9 @@ EXPORT_SYMBOL_GPL(dev_pm_opp_of_find_icc_paths);
 static bool _opp_is_supported(struct device *dev, struct opp_table *opp_table,
 			      struct device_node *np)
 {
-	unsigned int levels = opp_table->supported_hw_count;
-	int count, versions, ret, i, j;
-	u32 val;
+	unsigned int count = opp_table->supported_hw_count;
+	u32 version;
+	int ret;
 
 	if (!opp_table->supported_hw) {
 		/*
@@ -451,40 +451,21 @@ static bool _opp_is_supported(struct device *dev, struct opp_table *opp_table,
 			return true;
 	}
 
-	count = of_property_count_u32_elems(np, "opp-supported-hw");
-	if (count <= 0 || count % levels) {
-		dev_err(dev, "%s: Invalid opp-supported-hw property (%d)\n",
-			__func__, count);
-		return false;
-	}
-
-	versions = count / levels;
-
-	/* All levels in at least one of the versions should match */
-	for (i = 0; i < versions; i++) {
-		bool supported = true;
-
-		for (j = 0; j < levels; j++) {
-			ret = of_property_read_u32_index(np, "opp-supported-hw",
-							 i * levels + j, &val);
-			if (ret) {
-				dev_warn(dev, "%s: failed to read opp-supported-hw property at index %d: %d\n",
-					 __func__, i * levels + j, ret);
-				return false;
-			}
-
-			/* Check if the level is supported */
-			if (!(val & opp_table->supported_hw[j])) {
-				supported = false;
-				break;
-			}
+	while (count--) {
+		ret = of_property_read_u32_index(np, "opp-supported-hw", count,
+						 &version);
+		if (ret) {
+			dev_warn(dev, "%s: failed to read opp-supported-hw property at index %d: %d\n",
+				 __func__, count, ret);
+			return false;
 		}
 
-		if (supported)
-			return true;
+		/* Both of these are bitwise masks of the versions */
+		if (!(version & opp_table->supported_hw[count]))
+			return false;
 	}
 
-	return false;
+	return true;
 }
 
 static int opp_parse_supplies(struct dev_pm_opp *opp, struct device *dev,
@@ -635,7 +616,7 @@ free_microvolt:
  */
 void dev_pm_opp_of_remove_table(struct device *dev)
 {
-	dev_pm_opp_remove_table(dev);
+	_dev_pm_opp_find_and_remove_table(dev);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_of_remove_table);
 
@@ -842,7 +823,7 @@ free_opp:
 static int _of_add_opp_table_v2(struct device *dev, struct opp_table *opp_table)
 {
 	struct device_node *np;
-	int ret, count = 0;
+	int ret, count = 0, pstate_count = 0;
 	struct dev_pm_opp *opp;
 
 	/* OPP table is already initialized for the device */
@@ -876,13 +857,19 @@ static int _of_add_opp_table_v2(struct device *dev, struct opp_table *opp_table)
 		goto remove_static_opp;
 	}
 
-	list_for_each_entry(opp, &opp_table->opp_list, node) {
-		/* Any non-zero performance state would enable the feature */
-		if (opp->pstate) {
-			opp_table->genpd_performance_state = true;
-			break;
-		}
+	list_for_each_entry(opp, &opp_table->opp_list, node)
+		pstate_count += !!opp->pstate;
+
+	/* Either all or none of the nodes shall have performance state set */
+	if (pstate_count && pstate_count != count) {
+		dev_err(dev, "Not all nodes have performance state set (%d: %d)\n",
+			count, pstate_count);
+		ret = -ENOENT;
+		goto remove_static_opp;
 	}
+
+	if (pstate_count)
+		opp_table->genpd_performance_state = true;
 
 	return 0;
 
@@ -899,25 +886,11 @@ static int _of_add_opp_table_v1(struct device *dev, struct opp_table *opp_table)
 	const __be32 *val;
 	int nr, ret = 0;
 
-	mutex_lock(&opp_table->lock);
-	if (opp_table->parsed_static_opps) {
-		opp_table->parsed_static_opps++;
-		mutex_unlock(&opp_table->lock);
-		return 0;
-	}
-
-	opp_table->parsed_static_opps = 1;
-	mutex_unlock(&opp_table->lock);
-
 	prop = of_find_property(dev->of_node, "operating-points", NULL);
-	if (!prop) {
-		ret = -ENODEV;
-		goto remove_static_opp;
-	}
-	if (!prop->value) {
-		ret = -ENODATA;
-		goto remove_static_opp;
-	}
+	if (!prop)
+		return -ENODEV;
+	if (!prop->value)
+		return -ENODATA;
 
 	/*
 	 * Each OPP is a set of tuples consisting of frequency and
@@ -926,9 +899,12 @@ static int _of_add_opp_table_v1(struct device *dev, struct opp_table *opp_table)
 	nr = prop->length / sizeof(u32);
 	if (nr % 2) {
 		dev_err(dev, "%s: Invalid OPP table\n", __func__);
-		ret = -EINVAL;
-		goto remove_static_opp;
+		return -EINVAL;
 	}
+
+	mutex_lock(&opp_table->lock);
+	opp_table->parsed_static_opps = 1;
+	mutex_unlock(&opp_table->lock);
 
 	val = prop->value;
 	while (nr) {
@@ -939,15 +915,11 @@ static int _of_add_opp_table_v1(struct device *dev, struct opp_table *opp_table)
 		if (ret) {
 			dev_err(dev, "%s: Failed to add OPP %ld (%d)\n",
 				__func__, freq, ret);
-			goto remove_static_opp;
+			_opp_remove_all_static(opp_table);
+			return ret;
 		}
 		nr -= 2;
 	}
-
-	return 0;
-
-remove_static_opp:
-	_opp_remove_all_static(opp_table);
 
 	return ret;
 }
@@ -975,8 +947,8 @@ int dev_pm_opp_of_add_table(struct device *dev)
 	int ret;
 
 	opp_table = dev_pm_opp_get_opp_table_indexed(dev, 0);
-	if (IS_ERR(opp_table))
-		return PTR_ERR(opp_table);
+	if (!opp_table)
+		return -ENOMEM;
 
 	/*
 	 * OPPs have two version of bindings now. Also try the old (v1)
@@ -1030,8 +1002,8 @@ int dev_pm_opp_of_add_table_indexed(struct device *dev, int index)
 	}
 
 	opp_table = dev_pm_opp_get_opp_table_indexed(dev, index);
-	if (IS_ERR(opp_table))
-		return PTR_ERR(opp_table);
+	if (!opp_table)
+		return -ENOMEM;
 
 	ret = _of_add_opp_table_v2(dev, opp_table);
 	if (ret)

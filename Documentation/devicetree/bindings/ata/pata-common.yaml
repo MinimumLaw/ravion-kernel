@@ -47,6 +47,4 @@ patternProperties:
           The ID number of the drive port, 0 for the master port and 1 for the
           slave port.
 
-additionalProperties: true
-
 ...

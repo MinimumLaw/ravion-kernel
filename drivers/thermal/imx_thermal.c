@@ -716,9 +716,14 @@ static int imx_thermal_probe(struct platform_device *pdev)
 
 	if (of_find_property(pdev->dev.of_node, "nvmem-cells", NULL)) {
 		ret = imx_init_from_nvmem_cells(pdev);
-		if (ret)
-			return dev_err_probe(&pdev->dev, ret,
-					     "failed to init from nvmem\n");
+		if (ret) {
+			if (ret == -EPROBE_DEFER)
+				return ret;
+
+			dev_err(&pdev->dev, "failed to init from nvmem: %d\n",
+				ret);
+			return ret;
+		}
 	} else {
 		ret = imx_init_from_tempmon_data(pdev);
 		if (ret) {
@@ -741,9 +746,14 @@ static int imx_thermal_probe(struct platform_device *pdev)
 		     data->socdata->power_down_mask);
 
 	ret = imx_thermal_register_legacy_cooling(data);
-	if (ret)
-		return dev_err_probe(&pdev->dev, ret,
-				     "failed to register cpufreq cooling device\n");
+	if (ret) {
+		if (ret == -EPROBE_DEFER)
+			return ret;
+
+		dev_err(&pdev->dev,
+			"failed to register cpufreq cooling device: %d\n", ret);
+		return ret;
+	}
 
 	data->thermal_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(data->thermal_clk)) {

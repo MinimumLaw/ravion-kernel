@@ -19,6 +19,9 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+#include <mach/gpio-samsung.h>
+#include <plat/gpio-cfg.h>
+
 #include "dma.h"
 #include "regs-i2s-v2.h"
 #include "s3c2412-i2s.h"
@@ -46,7 +49,7 @@ static int s3c2412_i2s_probe(struct snd_soc_dai *dai)
 	snd_soc_dai_init_dma_data(dai, &s3c2412_i2s_pcm_stereo_out,
 					&s3c2412_i2s_pcm_stereo_in);
 
-	ret = s3c_i2sv2_probe(dai, &s3c2412_i2s);
+	ret = s3c_i2sv2_probe(dai, &s3c2412_i2s, S3C2410_PA_IIS);
 	if (ret)
 		return ret;
 
@@ -66,6 +69,10 @@ static int s3c2412_i2s_probe(struct snd_soc_dai *dai)
 	ret = clk_prepare_enable(s3c2412_i2s.iis_cclk);
 	if (ret)
 		goto err;
+
+	/* Configure the I2S pins (GPE0...GPE4) in correct mode */
+	s3c_gpio_cfgall_range(S3C2410_GPE(0), 5, S3C_GPIO_SFN(2),
+			      S3C_GPIO_PULL_NONE);
 
 	return 0;
 

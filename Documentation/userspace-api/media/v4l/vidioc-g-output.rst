@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_G_OUTPUT:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_G_OUTPUT - VIDIOC_S_OUTPUT - Query or select the current video output
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_G_OUTPUT
+.. c:function:: int ioctl( int fd, VIDIOC_G_OUTPUT, int *argp )
+    :name: VIDIOC_G_OUTPUT
 
-``int ioctl(int fd, VIDIOC_G_OUTPUT, int *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_S_OUTPUT, int *argp )
+    :name: VIDIOC_S_OUTPUT
 
-.. c:macro:: VIDIOC_S_OUTPUT
-
-``int ioctl(int fd, VIDIOC_S_OUTPUT, int *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to an integer with output index.
+
 
 Description
 ===========
@@ -52,6 +59,7 @@ negotiating any other parameters.
 
 Information about video outputs is available using the
 :ref:`VIDIOC_ENUMOUTPUT` ioctl.
+
 
 Return Value
 ============

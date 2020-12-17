@@ -365,6 +365,7 @@ _GLOBAL(kexec_smp_wait)
 
 	li	r4,KEXEC_STATE_REAL_MODE
 	stb	r4,PACAKEXECSTATE(r13)
+	SYNC
 
 	b	kexec_wait
 

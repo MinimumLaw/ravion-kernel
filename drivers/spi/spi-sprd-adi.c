@@ -504,7 +504,10 @@ static int sprd_adi_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "no hardware spinlock supplied\n");
 			break;
 		default:
-			dev_err_probe(&pdev->dev, ret, "failed to find hwlock id\n");
+			dev_err(&pdev->dev,
+				"failed to find hwlock id, %d\n", ret);
+			fallthrough;
+		case -EPROBE_DEFER:
 			goto put_ctlr;
 		}
 	}

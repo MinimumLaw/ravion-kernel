@@ -590,7 +590,6 @@ static struct notifier_block s5pv210_cpufreq_reboot_notifier = {
 
 static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
 	struct device_node *np;
 	int id, result = 0;
 
@@ -603,20 +602,28 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 	 * cpufreq-dt driver.
 	 */
 	arm_regulator = regulator_get(NULL, "vddarm");
-	if (IS_ERR(arm_regulator))
-		return dev_err_probe(dev, PTR_ERR(arm_regulator),
-				     "failed to get regulator vddarm\n");
+	if (IS_ERR(arm_regulator)) {
+		if (PTR_ERR(arm_regulator) == -EPROBE_DEFER)
+			pr_debug("vddarm regulator not ready, defer\n");
+		else
+			pr_err("failed to get regulator vddarm\n");
+		return PTR_ERR(arm_regulator);
+	}
 
 	int_regulator = regulator_get(NULL, "vddint");
 	if (IS_ERR(int_regulator)) {
-		result = dev_err_probe(dev, PTR_ERR(int_regulator),
-				       "failed to get regulator vddint\n");
+		if (PTR_ERR(int_regulator) == -EPROBE_DEFER)
+			pr_debug("vddint regulator not ready, defer\n");
+		else
+			pr_err("failed to get regulator vddint\n");
+		result = PTR_ERR(int_regulator);
 		goto err_int_regulator;
 	}
 
 	np = of_find_compatible_node(NULL, NULL, "samsung,s5pv210-clock");
 	if (!np) {
-		dev_err(dev, "failed to find clock controller DT node\n");
+		pr_err("%s: failed to find clock controller DT node\n",
+			__func__);
 		result = -ENODEV;
 		goto err_clock;
 	}
@@ -624,7 +631,7 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 	clk_base = of_iomap(np, 0);
 	of_node_put(np);
 	if (!clk_base) {
-		dev_err(dev, "failed to map clock registers\n");
+		pr_err("%s: failed to map clock registers\n", __func__);
 		result = -EFAULT;
 		goto err_clock;
 	}
@@ -632,7 +639,8 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 	for_each_compatible_node(np, NULL, "samsung,s5pv210-dmc") {
 		id = of_alias_get_id(np, "dmc");
 		if (id < 0 || id >= ARRAY_SIZE(dmc_base)) {
-			dev_err(dev, "failed to get alias of dmc node '%pOFn'\n", np);
+			pr_err("%s: failed to get alias of dmc node '%pOFn'\n",
+				__func__, np);
 			of_node_put(np);
 			result = id;
 			goto err_clk_base;
@@ -640,7 +648,8 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 
 		dmc_base[id] = of_iomap(np, 0);
 		if (!dmc_base[id]) {
-			dev_err(dev, "failed to map dmc%d registers\n", id);
+			pr_err("%s: failed to map dmc%d registers\n",
+				__func__, id);
 			of_node_put(np);
 			result = -EFAULT;
 			goto err_dmc;
@@ -649,7 +658,7 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
 
 	for (id = 0; id < ARRAY_SIZE(dmc_base); ++id) {
 		if (!dmc_base[id]) {
-			dev_err(dev, "failed to find dmc%d node\n", id);
+			pr_err("%s: failed to find dmc%d node\n", __func__, id);
 			result = -ENODEV;
 			goto err_dmc;
 		}

@@ -488,7 +488,11 @@ int mwifiex_recv_packet(struct mwifiex_private *priv, struct sk_buff *skb)
 	    (skb->truesize > MWIFIEX_RX_DATA_BUF_SIZE))
 		skb->truesize += (skb->len - MWIFIEX_RX_DATA_BUF_SIZE);
 
-	netif_rx_any_context(skb);
+	if (in_interrupt())
+		netif_rx(skb);
+	else
+		netif_rx_ni(skb);
+
 	return 0;
 }
 

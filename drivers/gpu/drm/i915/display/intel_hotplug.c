@@ -81,12 +81,33 @@
  *
  * It is only valid and used by digital port encoder.
  *
- * Return pin that is associatade with @port.
+ * Return pin that is associatade with @port and HDP_NONE if no pin is
+ * hard associated with that @port.
  */
 enum hpd_pin intel_hpd_pin_default(struct drm_i915_private *dev_priv,
 				   enum port port)
 {
-	return HPD_PORT_A + port - PORT_A;
+	enum phy phy = intel_port_to_phy(dev_priv, port);
+
+	/*
+	 * RKL + TGP PCH is a special case; we effectively choose the hpd_pin
+	 * based on the DDI rather than the PHY (i.e., the last two outputs
+	 * shold be HPD_PORT_{D,E} rather than {C,D}.  Note that this differs
+	 * from the behavior of both TGL+TGP and RKL+CMP.
+	 */
+	if (IS_ROCKETLAKE(dev_priv) && HAS_PCH_TGP(dev_priv))
+		return HPD_PORT_A + port - PORT_A;
+
+	switch (phy) {
+	case PHY_F:
+		return IS_CNL_WITH_PORT_F(dev_priv) ? HPD_PORT_E : HPD_PORT_F;
+	case PHY_A ... PHY_E:
+	case PHY_G ... PHY_I:
+		return HPD_PORT_A + phy - PHY_A;
+	default:
+		MISSING_CASE(phy);
+		return HPD_NONE;
+	}
 }
 
 #define HPD_STORM_DETECT_PERIOD		1000
@@ -482,6 +503,7 @@ void intel_hpd_irq_handler(struct drm_i915_private *dev_priv,
 	 * only the one of them (DP) will have ->hpd_pulse().
 	 */
 	for_each_intel_encoder(&dev_priv->drm, encoder) {
+		bool has_hpd_pulse = intel_encoder_has_hpd_pulse(encoder);
 		enum port port = encoder->port;
 		bool long_hpd;
 
@@ -489,7 +511,7 @@ void intel_hpd_irq_handler(struct drm_i915_private *dev_priv,
 		if (!(BIT(pin) & pin_mask))
 			continue;
 
-		if (!intel_encoder_has_hpd_pulse(encoder))
+		if (!has_hpd_pulse)
 			continue;
 
 		long_hpd = long_mask & BIT(pin);

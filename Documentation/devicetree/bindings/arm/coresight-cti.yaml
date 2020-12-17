@@ -220,8 +220,6 @@ then:
   required:
     - cpu
 
-unevaluatedProperties: false
-
 examples:
   # minimum CTI definition. DEVID register used to set number of triggers.
   - |

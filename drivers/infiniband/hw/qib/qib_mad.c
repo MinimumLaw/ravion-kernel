@@ -2293,50 +2293,76 @@ static int process_cc(struct ib_device *ibdev, int mad_flags,
 			struct ib_mad *out_mad)
 {
 	struct ib_cc_mad *ccp = (struct ib_cc_mad *)out_mad;
+	int ret;
+
 	*out_mad = *in_mad;
 
 	if (ccp->class_version != 2) {
 		ccp->status |= IB_SMP_UNSUP_VERSION;
-		return reply((struct ib_smp *)ccp);
+		ret = reply((struct ib_smp *)ccp);
+		goto bail;
 	}
 
 	switch (ccp->method) {
 	case IB_MGMT_METHOD_GET:
 		switch (ccp->attr_id) {
 		case IB_CC_ATTR_CLASSPORTINFO:
-			return cc_get_classportinfo(ccp, ibdev);
+			ret = cc_get_classportinfo(ccp, ibdev);
+			goto bail;
+
 		case IB_CC_ATTR_CONGESTION_INFO:
-			return cc_get_congestion_info(ccp, ibdev, port);
+			ret = cc_get_congestion_info(ccp, ibdev, port);
+			goto bail;
+
 		case IB_CC_ATTR_CA_CONGESTION_SETTING:
-			return cc_get_congestion_setting(ccp, ibdev, port);
+			ret = cc_get_congestion_setting(ccp, ibdev, port);
+			goto bail;
+
 		case IB_CC_ATTR_CONGESTION_CONTROL_TABLE:
-			return cc_get_congestion_control_table(ccp, ibdev, port);
+			ret = cc_get_congestion_control_table(ccp, ibdev, port);
+			goto bail;
+
+			fallthrough;
 		default:
 			ccp->status |= IB_SMP_UNSUP_METH_ATTR;
-			return reply((struct ib_smp *) ccp);
+			ret = reply((struct ib_smp *) ccp);
+			goto bail;
 		}
+
 	case IB_MGMT_METHOD_SET:
 		switch (ccp->attr_id) {
 		case IB_CC_ATTR_CA_CONGESTION_SETTING:
-			return cc_set_congestion_setting(ccp, ibdev, port);
+			ret = cc_set_congestion_setting(ccp, ibdev, port);
+			goto bail;
+
 		case IB_CC_ATTR_CONGESTION_CONTROL_TABLE:
-			return cc_set_congestion_control_table(ccp, ibdev, port);
+			ret = cc_set_congestion_control_table(ccp, ibdev, port);
+			goto bail;
+
+			fallthrough;
 		default:
 			ccp->status |= IB_SMP_UNSUP_METH_ATTR;
-			return reply((struct ib_smp *) ccp);
+			ret = reply((struct ib_smp *) ccp);
+			goto bail;
 		}
+
 	case IB_MGMT_METHOD_GET_RESP:
 		/*
 		 * The ib_mad module will call us to process responses
 		 * before checking for other consumers.
 		 * Just tell the caller to process it normally.
 		 */
-		return IB_MAD_RESULT_SUCCESS;
+		ret = IB_MAD_RESULT_SUCCESS;
+		goto bail;
+
+	case IB_MGMT_METHOD_TRAP:
+	default:
+		ccp->status |= IB_SMP_UNSUP_METHOD;
+		ret = reply((struct ib_smp *) ccp);
 	}
 
-	/* method is unsupported */
-	ccp->status |= IB_SMP_UNSUP_METHOD;
-	return reply((struct ib_smp *) ccp);
+bail:
+	return ret;
 }
 
 /**

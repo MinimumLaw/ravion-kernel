@@ -176,3 +176,14 @@ unsigned int do_csum(const void *voidptr, int len)
 
 	return 0xFFFF & sum0;
 }
+
+/*
+ * copy from ds while checksumming, otherwise like csum_partial
+ */
+__wsum
+csum_partial_copy_nocheck(const void *src, void *dst, int len, __wsum sum)
+{
+	memcpy(dst, src, len);
+	return csum_partial(dst, len, sum);
+}
+EXPORT_SYMBOL(csum_partial_copy_nocheck);

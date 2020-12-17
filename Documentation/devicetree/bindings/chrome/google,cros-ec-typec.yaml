@@ -26,8 +26,6 @@ properties:
 required:
   - compatible
 
-additionalProperties: true #fixme
-
 examples:
   - |+
     spi0 {

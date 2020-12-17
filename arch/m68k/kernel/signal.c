@@ -920,8 +920,7 @@ static int setup_frame(struct ksignal *ksig, sigset_t *set,
 	err |= __put_user(0x70004e40 + (__NR_sigreturn << 16),
 			  (long __user *)(frame->retcode));
 #else
-	err |= __put_user((long) ret_from_user_signal,
-			  (long __user *) &frame->pretcode);
+	err |= __put_user((void *) ret_from_user_signal, &frame->pretcode);
 #endif
 
 	if (err)
@@ -1005,8 +1004,7 @@ static int setup_rt_frame(struct ksignal *ksig, sigset_t *set,
 	err |= __put_user(0x4e40, (short __user *)(frame->retcode + 4));
 #endif
 #else
-	err |= __put_user((long) ret_from_user_rt_signal,
-			  (long __user *) &frame->pretcode);
+	err |= __put_user((void *) ret_from_user_rt_signal, &frame->pretcode);
 #endif /* CONFIG_MMU */
 
 	if (err)
@@ -1136,6 +1134,6 @@ void do_notify_resume(struct pt_regs *regs)
 	if (test_thread_flag(TIF_SIGPENDING))
 		do_signal(regs);
 
-	if (test_thread_flag(TIF_NOTIFY_RESUME))
+	if (test_and_clear_thread_flag(TIF_NOTIFY_RESUME))
 		tracehook_notify_resume(regs);
 }

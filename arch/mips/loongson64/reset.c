@@ -15,6 +15,11 @@
 #include <loongson.h>
 #include <boot_param.h>
 
+static inline void loongson_reboot(void)
+{
+	((void (*)(void))ioremap(LOONGSON_BOOT_BASE, 4)) ();
+}
+
 static void loongson_restart(char *command)
 {
 

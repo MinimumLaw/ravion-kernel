@@ -909,13 +909,8 @@ static int gen8_oa_read(struct i915_perf_stream *stream,
 				       DRM_I915_PERF_RECORD_OA_REPORT_LOST);
 		if (ret)
 			return ret;
-
-		intel_uncore_rmw(uncore, oastatus_reg,
-				 GEN8_OASTATUS_COUNTER_OVERFLOW |
-				 GEN8_OASTATUS_REPORT_LOST,
-				 IS_GEN_RANGE(uncore->i915, 8, 10) ?
-				 (GEN8_OASTATUS_HEAD_POINTER_WRAP |
-				  GEN8_OASTATUS_TAIL_POINTER_WRAP) : 0);
+		intel_uncore_write(uncore, oastatus_reg,
+				   oastatus & ~GEN8_OASTATUS_REPORT_LOST);
 	}
 
 	return gen8_append_oa_reports(stream, buf, count, offset);
@@ -1200,39 +1195,24 @@ static struct intel_context *oa_pin_context(struct i915_perf_stream *stream)
 	struct i915_gem_engines_iter it;
 	struct i915_gem_context *ctx = stream->ctx;
 	struct intel_context *ce;
-	struct i915_gem_ww_ctx ww;
-	int err = -ENODEV;
+	int err;
 
 	for_each_gem_engine(ce, i915_gem_context_lock_engines(ctx), it) {
 		if (ce->engine != stream->engine) /* first match! */
 			continue;
 
-		err = 0;
-		break;
+		/*
+		 * As the ID is the gtt offset of the context's vma we
+		 * pin the vma to ensure the ID remains fixed.
+		 */
+		err = intel_context_pin(ce);
+		if (err == 0) {
+			stream->pinned_ctx = ce;
+			break;
+		}
 	}
 	i915_gem_context_unlock_engines(ctx);
 
-	if (err)
-		return ERR_PTR(err);
-
-	i915_gem_ww_ctx_init(&ww, true);
-retry:
-	/*
-	 * As the ID is the gtt offset of the context's vma we
-	 * pin the vma to ensure the ID remains fixed.
-	 */
-	err = intel_context_pin_ww(ce, &ww);
-	if (err == -EDEADLK) {
-		err = i915_gem_ww_ctx_backoff(&ww);
-		if (!err)
-			goto retry;
-	}
-	i915_gem_ww_ctx_fini(&ww);
-
-	if (err)
-		return ERR_PTR(err);
-
-	stream->pinned_ctx = ce;
 	return stream->pinned_ctx;
 }
 
@@ -1943,22 +1923,15 @@ emit_oa_config(struct i915_perf_stream *stream,
 {
 	struct i915_request *rq;
 	struct i915_vma *vma;
-	struct i915_gem_ww_ctx ww;
 	int err;
 
 	vma = get_oa_vma(stream, oa_config);
 	if (IS_ERR(vma))
 		return PTR_ERR(vma);
 
-	i915_gem_ww_ctx_init(&ww, true);
-retry:
-	err = i915_gem_object_lock(vma->obj, &ww);
+	err = i915_vma_pin(vma, 0, 0, PIN_GLOBAL | PIN_HIGH);
 	if (err)
-		goto err;
-
-	err = i915_vma_pin_ww(vma, &ww, 0, 0, PIN_GLOBAL | PIN_HIGH);
-	if (err)
-		goto err;
+		goto err_vma_put;
 
 	intel_engine_pm_get(ce->engine);
 	rq = i915_request_create(ce);
@@ -1980,9 +1953,11 @@ retry:
 			goto err_add_request;
 	}
 
+	i915_vma_lock(vma);
 	err = i915_request_await_object(rq, vma->obj, 0);
 	if (!err)
 		err = i915_vma_move_to_active(vma, rq, 0);
+	i915_vma_unlock(vma);
 	if (err)
 		goto err_add_request;
 
@@ -1996,14 +1971,7 @@ err_add_request:
 	i915_request_add(rq);
 err_vma_unpin:
 	i915_vma_unpin(vma);
-err:
-	if (err == -EDEADLK) {
-		err = i915_gem_ww_ctx_backoff(&ww);
-		if (!err)
-			goto retry;
-	}
-
-	i915_gem_ww_ctx_fini(&ww);
+err_vma_put:
 	i915_vma_put(vma);
 	return err;
 }

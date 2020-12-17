@@ -445,7 +445,8 @@ static const struct regmap_config ltc2945_regmap_config = {
 	.max_register = LTC2945_MIN_ADIN_THRES_L,
 };
 
-static int ltc2945_probe(struct i2c_client *client)
+static int ltc2945_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -477,7 +478,7 @@ static struct i2c_driver ltc2945_driver = {
 	.driver = {
 		   .name = "ltc2945",
 		   },
-	.probe_new = ltc2945_probe,
+	.probe = ltc2945_probe,
 	.id_table = ltc2945_id,
 };
 

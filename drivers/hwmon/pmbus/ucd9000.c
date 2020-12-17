@@ -487,7 +487,8 @@ static int ucd9000_init_debugfs(struct i2c_client *client,
 }
 #endif /* CONFIG_DEBUG_FS */
 
-static int ucd9000_probe(struct i2c_client *client)
+static int ucd9000_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1];
 	struct ucd9000_data *data;
@@ -522,12 +523,12 @@ static int ucd9000_probe(struct i2c_client *client)
 	if (client->dev.of_node)
 		chip = (enum chips)of_device_get_match_data(&client->dev);
 	else
-		chip = mid->driver_data;
+		chip = id->driver_data;
 
-	if (chip != ucd9000 && strcmp(client->name, mid->name) != 0)
+	if (chip != ucd9000 && chip != mid->driver_data)
 		dev_notice(&client->dev,
 			   "Device mismatch: Configured %s, detected %s\n",
-			   client->name, mid->name);
+			   id->name, mid->name);
 
 	data = devm_kzalloc(&client->dev, sizeof(struct ucd9000_data),
 			    GFP_KERNEL);
@@ -602,7 +603,7 @@ static int ucd9000_probe(struct i2c_client *client)
 
 	ucd9000_probe_gpio(client, mid, data);
 
-	ret = pmbus_do_probe(client, info);
+	ret = pmbus_do_probe(client, mid, info);
 	if (ret)
 		return ret;
 
@@ -620,7 +621,7 @@ static struct i2c_driver ucd9000_driver = {
 		.name = "ucd9000",
 		.of_match_table = of_match_ptr(ucd9000_of_match),
 	},
-	.probe_new = ucd9000_probe,
+	.probe = ucd9000_probe,
 	.remove = pmbus_do_remove,
 	.id_table = ucd9000_id,
 };

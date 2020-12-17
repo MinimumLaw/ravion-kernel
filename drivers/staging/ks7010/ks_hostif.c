@@ -2205,9 +2205,9 @@ static void hostif_sme_execute(struct ks_wlan_private *priv, int event)
 }
 
 static
-void hostif_sme_task(struct tasklet_struct *t)
+void hostif_sme_task(unsigned long dev)
 {
-	struct ks_wlan_private *priv = from_tasklet(priv, t, sme_task);
+	struct ks_wlan_private *priv = (struct ks_wlan_private *)dev;
 
 	if (priv->dev_state < DEVICE_STATE_BOOT)
 		return;
@@ -2258,7 +2258,7 @@ static inline void hostif_sme_init(struct ks_wlan_private *priv)
 	priv->sme_i.qtail = 0;
 	spin_lock_init(&priv->sme_i.sme_spin);
 	priv->sme_i.sme_flag = 0;
-	tasklet_setup(&priv->sme_task, hostif_sme_task);
+	tasklet_init(&priv->sme_task, hostif_sme_task, (unsigned long)priv);
 }
 
 static inline void hostif_wpa_init(struct ks_wlan_private *priv)

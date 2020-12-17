@@ -15,7 +15,7 @@
 
 #include "system_global.h"
 
-#ifdef ISP2401
+#ifdef USE_INPUT_SYSTEM_VERSION_2401
 
 #include "assert_support.h"
 #include "platform_support.h"

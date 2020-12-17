@@ -65,6 +65,7 @@ static const struct rtc_class_ops meson_vrtc_ops = {
 static int meson_vrtc_probe(struct platform_device *pdev)
 {
 	struct meson_vrtc_data *vrtc;
+	int ret;
 
 	vrtc = devm_kzalloc(&pdev->dev, sizeof(*vrtc), GFP_KERNEL);
 	if (!vrtc)
@@ -83,7 +84,11 @@ static int meson_vrtc_probe(struct platform_device *pdev)
 		return PTR_ERR(vrtc->rtc);
 
 	vrtc->rtc->ops = &meson_vrtc_ops;
-	return rtc_register_device(vrtc->rtc);
+	ret = rtc_register_device(vrtc->rtc);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static int __maybe_unused meson_vrtc_suspend(struct device *dev)

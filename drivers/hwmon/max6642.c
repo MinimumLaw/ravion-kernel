@@ -264,7 +264,8 @@ static struct attribute *max6642_attrs[] = {
 };
 ATTRIBUTE_GROUPS(max6642);
 
-static int max6642_probe(struct i2c_client *client)
+static int max6642_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct max6642_data *data;
@@ -301,7 +302,7 @@ static struct i2c_driver max6642_driver = {
 	.driver = {
 		.name	= "max6642",
 	},
-	.probe_new	= max6642_probe,
+	.probe		= max6642_probe,
 	.id_table	= max6642_id,
 	.detect		= max6642_detect,
 	.address_list	= normal_i2c,

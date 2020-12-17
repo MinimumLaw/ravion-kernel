@@ -19,7 +19,6 @@
 #include <linux/slab.h>
 #include <linux/hash.h>
 #include <linux/kmemleak.h>
-#include <linux/cpu.h>
 
 #define ODEBUG_HASH_BITS	14
 #define ODEBUG_HASH_SIZE	(1 << ODEBUG_HASH_BITS)
@@ -91,7 +90,7 @@ static int			debug_objects_pool_size __read_mostly
 				= ODEBUG_POOL_SIZE;
 static int			debug_objects_pool_min_level __read_mostly
 				= ODEBUG_POOL_MIN_LEVEL;
-static const struct debug_obj_descr *descr_test  __read_mostly;
+static struct debug_obj_descr	*descr_test  __read_mostly;
 static struct kmem_cache	*obj_cache __read_mostly;
 
 /*
@@ -224,7 +223,7 @@ static struct debug_obj *__alloc_object(struct hlist_head *list)
  * Must be called with interrupts disabled.
  */
 static struct debug_obj *
-alloc_object(void *addr, struct debug_bucket *b, const struct debug_obj_descr *descr)
+alloc_object(void *addr, struct debug_bucket *b, struct debug_obj_descr *descr)
 {
 	struct debug_percpu_free *percpu_pool = this_cpu_ptr(&percpu_obj_pool);
 	struct debug_obj *obj;
@@ -434,25 +433,6 @@ static void free_object(struct debug_obj *obj)
 	}
 }
 
-#ifdef CONFIG_HOTPLUG_CPU
-static int object_cpu_offline(unsigned int cpu)
-{
-	struct debug_percpu_free *percpu_pool;
-	struct hlist_node *tmp;
-	struct debug_obj *obj;
-
-	/* Remote access is safe as the CPU is dead already */
-	percpu_pool = per_cpu_ptr(&percpu_obj_pool, cpu);
-	hlist_for_each_entry_safe(obj, tmp, &percpu_pool->free_objs, node) {
-		hlist_del(&obj->node);
-		kmem_cache_free(obj_cache, obj);
-	}
-	percpu_pool->obj_free = 0;
-
-	return 0;
-}
-#endif
-
 /*
  * We run out of memory. That means we probably have tons of objects
  * allocated.
@@ -495,7 +475,7 @@ static struct debug_bucket *get_bucket(unsigned long addr)
 
 static void debug_print_object(struct debug_obj *obj, char *msg)
 {
-	const struct debug_obj_descr *descr = obj->descr;
+	struct debug_obj_descr *descr = obj->descr;
 	static int limit;
 
 	if (limit < 5 && descr != descr_test) {
@@ -549,7 +529,7 @@ static void debug_object_is_on_stack(void *addr, int onstack)
 }
 
 static void
-__debug_object_init(void *addr, const struct debug_obj_descr *descr, int onstack)
+__debug_object_init(void *addr, struct debug_obj_descr *descr, int onstack)
 {
 	enum debug_obj_state state;
 	bool check_stack = false;
@@ -607,7 +587,7 @@ __debug_object_init(void *addr, const struct debug_obj_descr *descr, int onstack
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_init(void *addr, const struct debug_obj_descr *descr)
+void debug_object_init(void *addr, struct debug_obj_descr *descr)
 {
 	if (!debug_objects_enabled)
 		return;
@@ -622,7 +602,7 @@ EXPORT_SYMBOL_GPL(debug_object_init);
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_init_on_stack(void *addr, const struct debug_obj_descr *descr)
+void debug_object_init_on_stack(void *addr, struct debug_obj_descr *descr)
 {
 	if (!debug_objects_enabled)
 		return;
@@ -637,7 +617,7 @@ EXPORT_SYMBOL_GPL(debug_object_init_on_stack);
  * @descr:	pointer to an object specific debug description structure
  * Returns 0 for success, -EINVAL for check failed.
  */
-int debug_object_activate(void *addr, const struct debug_obj_descr *descr)
+int debug_object_activate(void *addr, struct debug_obj_descr *descr)
 {
 	enum debug_obj_state state;
 	struct debug_bucket *db;
@@ -715,7 +695,7 @@ EXPORT_SYMBOL_GPL(debug_object_activate);
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_deactivate(void *addr, const struct debug_obj_descr *descr)
+void debug_object_deactivate(void *addr, struct debug_obj_descr *descr)
 {
 	struct debug_bucket *db;
 	struct debug_obj *obj;
@@ -767,7 +747,7 @@ EXPORT_SYMBOL_GPL(debug_object_deactivate);
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_destroy(void *addr, const struct debug_obj_descr *descr)
+void debug_object_destroy(void *addr, struct debug_obj_descr *descr)
 {
 	enum debug_obj_state state;
 	struct debug_bucket *db;
@@ -817,7 +797,7 @@ EXPORT_SYMBOL_GPL(debug_object_destroy);
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_free(void *addr, const struct debug_obj_descr *descr)
+void debug_object_free(void *addr, struct debug_obj_descr *descr)
 {
 	enum debug_obj_state state;
 	struct debug_bucket *db;
@@ -858,7 +838,7 @@ EXPORT_SYMBOL_GPL(debug_object_free);
  * @addr:	address of the object
  * @descr:	pointer to an object specific debug description structure
  */
-void debug_object_assert_init(void *addr, const struct debug_obj_descr *descr)
+void debug_object_assert_init(void *addr, struct debug_obj_descr *descr)
 {
 	struct debug_bucket *db;
 	struct debug_obj *obj;
@@ -906,7 +886,7 @@ EXPORT_SYMBOL_GPL(debug_object_assert_init);
  * @next:	state to move to if expected state is found
  */
 void
-debug_object_active_state(void *addr, const struct debug_obj_descr *descr,
+debug_object_active_state(void *addr, struct debug_obj_descr *descr,
 			  unsigned int expect, unsigned int next)
 {
 	struct debug_bucket *db;
@@ -954,7 +934,7 @@ EXPORT_SYMBOL_GPL(debug_object_active_state);
 static void __debug_check_no_obj_freed(const void *address, unsigned long size)
 {
 	unsigned long flags, oaddr, saddr, eaddr, paddr, chunks;
-	const struct debug_obj_descr *descr;
+	struct debug_obj_descr *descr;
 	enum debug_obj_state state;
 	struct debug_bucket *db;
 	struct hlist_node *tmp;
@@ -1072,7 +1052,7 @@ struct self_test {
 	unsigned long	dummy2[3];
 };
 
-static __initconst const struct debug_obj_descr descr_type_test;
+static __initdata struct debug_obj_descr descr_type_test;
 
 static bool __init is_static_object(void *addr)
 {
@@ -1197,7 +1177,7 @@ out:
 	return res;
 }
 
-static __initconst const struct debug_obj_descr descr_type_test = {
+static __initdata struct debug_obj_descr descr_type_test = {
 	.name			= "selftest",
 	.is_static_object	= is_static_object,
 	.fixup_init		= fixup_init,
@@ -1386,11 +1366,6 @@ void __init debug_objects_mem_init(void)
 		pr_warn("out of memory.\n");
 	} else
 		debug_objects_selftest();
-
-#ifdef CONFIG_HOTPLUG_CPU
-	cpuhp_setup_state_nocalls(CPUHP_DEBUG_OBJ_DEAD, "object:offline", NULL,
-					object_cpu_offline);
-#endif
 
 	/*
 	 * Increase the thresholds for allocating and freeing objects

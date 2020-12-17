@@ -3,7 +3,6 @@
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * (C) Copyright 2020 Hewlett Packard Enterprise Development LP
  * Copyright (c) 2008 Silicon Graphics, Inc.  All Rights Reserved.
  */
 
@@ -149,9 +148,7 @@ xp_restrict_memprotect_uv(unsigned long phys_addr, unsigned long size)
 enum xp_retval
 xp_init_uv(void)
 {
-	WARN_ON(!is_uv_system());
-	if (!is_uv_system())
-		return xpUnsupported;
+	BUG_ON(!is_uv());
 
 	xp_max_npartitions = XP_MAX_NPARTITIONS_UV;
 #ifdef CONFIG_X86
@@ -171,5 +168,5 @@ xp_init_uv(void)
 void
 xp_exit_uv(void)
 {
-	WARN_ON(!is_uv_system());
+	BUG_ON(!is_uv());
 }

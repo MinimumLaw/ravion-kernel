@@ -12,7 +12,6 @@
 #include <linux/module.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
-#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 
 #include <sound/asoundef.h>
@@ -1560,14 +1559,10 @@ static int stm32_sai_sub_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_component(&pdev->dev, &stm32_component,
 					 &sai->cpu_dai_drv, 1);
-	if (ret) {
+	if (ret)
 		snd_dmaengine_pcm_unregister(&pdev->dev);
-		return ret;
-	}
 
-	pm_runtime_enable(&pdev->dev);
-
-	return 0;
+	return ret;
 }
 
 static int stm32_sai_sub_remove(struct platform_device *pdev)
@@ -1577,7 +1572,6 @@ static int stm32_sai_sub_remove(struct platform_device *pdev)
 	clk_unprepare(sai->pdata->pclk);
 	snd_dmaengine_pcm_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
-	pm_runtime_disable(&pdev->dev);
 
 	return 0;
 }

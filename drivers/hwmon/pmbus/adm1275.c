@@ -462,7 +462,8 @@ static const struct i2c_device_id adm1275_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, adm1275_id);
 
-static int adm1275_probe(struct i2c_client *client)
+static int adm1275_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	s32 (*config_read_fn)(const struct i2c_client *client, u8 reg);
 	u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1];
@@ -505,10 +506,10 @@ static int adm1275_probe(struct i2c_client *client)
 		return -ENODEV;
 	}
 
-	if (strcmp(client->name, mid->name) != 0)
+	if (id->driver_data != mid->driver_data)
 		dev_notice(&client->dev,
 			   "Device mismatch: Configured %s, detected %s\n",
-			   client->name, mid->name);
+			   id->name, mid->name);
 
 	if (mid->driver_data == adm1272 || mid->driver_data == adm1278 ||
 	    mid->driver_data == adm1293 || mid->driver_data == adm1294)
@@ -789,14 +790,14 @@ static int adm1275_probe(struct i2c_client *client)
 		info->R[PSC_TEMPERATURE] = coefficients[tindex].R;
 	}
 
-	return pmbus_do_probe(client, info);
+	return pmbus_do_probe(client, id, info);
 }
 
 static struct i2c_driver adm1275_driver = {
 	.driver = {
 		   .name = "adm1275",
 		   },
-	.probe_new = adm1275_probe,
+	.probe = adm1275_probe,
 	.remove = pmbus_do_remove,
 	.id_table = adm1275_id,
 };

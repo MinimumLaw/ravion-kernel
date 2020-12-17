@@ -19,13 +19,10 @@
 	strb	\rd, [\rx, #(AT91_DBGU_THR)]		@ Write to Transmitter Holding Register
 	.endm
 
-	.macro	waituarttxrdy,rd,rx
+	.macro	waituart,rd,rx
 1001:	ldr	\rd, [\rx, #(AT91_DBGU_SR)]		@ Read Status Register
 	tst	\rd, #AT91_DBGU_TXRDY			@ DBGU_TXRDY = 1 when ready to transmit
 	beq	1001b
-	.endm
-
-	.macro	waituartcts,rd,rx
 	.endm
 
 	.macro	busyuart,rd,rx

@@ -100,8 +100,6 @@ patternProperties:
     required:
       - reg
 
-additionalProperties: true
-
 examples:
   - |
     davinci_mdio: mdio@5c030000 {

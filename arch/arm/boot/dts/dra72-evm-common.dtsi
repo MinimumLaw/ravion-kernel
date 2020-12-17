@@ -462,8 +462,12 @@
 	};
 };
 
-&dcan1 {
+&mac {
 	status = "okay";
+};
+
+&dcan1 {
+	status = "ok";
 	pinctrl-names = "default", "sleep", "active";
 	pinctrl-0 = <&dcan1_pins_sleep>;
 	pinctrl-1 = <&dcan1_pins_sleep>;
@@ -532,11 +536,11 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 };
 
 &hdmi {
-	status = "okay";
+	status = "ok";
 
 	port {
 		hdmi_out: endpoint {

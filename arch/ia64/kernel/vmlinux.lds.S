@@ -218,7 +218,6 @@ SECTIONS {
 
 	STABS_DEBUG
 	DWARF_DEBUG
-	ELF_DETAILS
 
 	/* Default discards */
 	DISCARDS

@@ -26,8 +26,6 @@ required:
   - "#clock-cells"
   - reg
 
-additionalProperties: false
-
 examples:
   - |
     ehrpwm_tbclk: syscon@4140 {

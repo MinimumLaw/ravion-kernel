@@ -54,9 +54,6 @@ extern int sof_core_debug;
 	(IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_ENABLE_DEBUGFS_CACHE) || \
 	 IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_IPC_FLOOD_TEST))
 
-/* So far the primary core on all DSPs has ID 0 */
-#define SOF_DSP_PRIMARY_CORE 0
-
 /* DSP power state */
 enum sof_dsp_power_states {
 	SOF_DSP_PM_D0,
@@ -373,7 +370,7 @@ struct snd_sof_dev {
 	/* DSP firmware boot */
 	wait_queue_head_t boot_wait;
 	enum snd_sof_fw_state fw_state;
-	bool first_boot;
+	u32 first_boot;
 
 	/* work queue in case the probe is implemented in two steps */
 	struct work_struct probe_work;
@@ -386,7 +383,6 @@ struct snd_sof_dev {
 	struct snd_sof_mailbox dsp_box;		/* DSP initiated IPC */
 	struct snd_sof_mailbox host_box;	/* Host initiated IPC */
 	struct snd_sof_mailbox stream_box;	/* Stream position update */
-	struct snd_sof_mailbox debug_box;	/* Debug info updates */
 	struct snd_sof_ipc_msg *msg;
 	int ipc_irq;
 	u32 next_comp_id; /* monotonic - reset during S3 */
@@ -435,10 +431,10 @@ struct snd_sof_dev {
 	int dma_trace_pages;
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;
-	bool dtrace_is_supported; /* set with Kconfig or module parameter */
-	bool dtrace_is_enabled;
-	bool dtrace_error;
-	bool dtrace_draining;
+	u32 dtrace_is_supported; /* set with Kconfig or module parameter */
+	u32 dtrace_is_enabled;
+	u32 dtrace_error;
+	u32 dtrace_draining;
 
 	bool msi_enabled;
 
@@ -577,13 +573,5 @@ int intel_pcm_close(struct snd_sof_dev *sdev,
 		    struct snd_pcm_substream *substream);
 
 int sof_machine_check(struct snd_sof_dev *sdev);
-
-#define sof_dev_dbg_or_err(dev, is_err, fmt, ...)			\
-	do {								\
-		if (is_err)						\
-			dev_err(dev, "error: " fmt, __VA_ARGS__);	\
-		else							\
-			dev_dbg(dev, fmt, __VA_ARGS__);			\
-	} while (0)
 
 #endif

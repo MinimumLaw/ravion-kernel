@@ -1652,11 +1652,15 @@ static int zd1201_set_maxassoc(struct net_device *dev,
     struct iw_request_info *info, struct iw_param *rrq, char *extra)
 {
 	struct zd1201 *zd = netdev_priv(dev);
+	int err;
 
 	if (!zd->ap)
 		return -EOPNOTSUPP;
 
-	return zd1201_setconfig16(zd, ZD1201_RID_CNFMAXASSOCSTATIONS, rrq->value);
+	err = zd1201_setconfig16(zd, ZD1201_RID_CNFMAXASSOCSTATIONS, rrq->value);
+	if (err)
+		return err;
+	return 0;
 }
 
 static int zd1201_get_maxassoc(struct net_device *dev,

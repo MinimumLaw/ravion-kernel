@@ -81,8 +81,6 @@ struct hinic_sq {
 
 	struct hinic_wq         *wq;
 
-	u16			qid;
-
 	u32                     irq;
 	u16                     msix_entry;
 
@@ -92,15 +90,12 @@ struct hinic_sq {
 	void __iomem            *db_base;
 
 	struct sk_buff          **saved_skb;
-	struct hinic_debug_priv	*dbg;
 };
 
 struct hinic_rq {
 	struct hinic_hwif       *hwif;
 
 	struct hinic_wq         *wq;
-
-	u16			qid;
 
 	struct cpumask		affinity_mask;
 	u32                     irq;
@@ -115,7 +110,6 @@ struct hinic_rq {
 
 	u16                     *pi_virt_addr;
 	dma_addr_t              pi_dma_addr;
-	struct hinic_debug_priv	*dbg;
 };
 
 struct hinic_qp {

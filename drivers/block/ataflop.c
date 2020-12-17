@@ -1732,8 +1732,7 @@ static int fd_locked_ioctl(struct block_device *bdev, fmode_t mode,
 		/* invalidate the buffer track to force a reread */
 		BufferDrive = -1;
 		set_bit(drive, &fake_change);
-		if (bdev_check_media_change(bdev))
-			floppy_revalidate(bdev->bd_disk);
+		check_disk_change(bdev);
 		return 0;
 	default:
 		return -EINVAL;
@@ -1910,8 +1909,7 @@ static int floppy_open(struct block_device *bdev, fmode_t mode)
 		return 0;
 
 	if (mode & (FMODE_READ|FMODE_WRITE)) {
-		if (bdev_check_media_change(bdev))
-			floppy_revalidate(bdev->bd_disk);
+		check_disk_change(bdev);
 		if (mode & FMODE_WRITE) {
 			if (p->wpstat) {
 				if (p->ref < 0)
@@ -1955,6 +1953,7 @@ static const struct block_device_operations floppy_fops = {
 	.release	= floppy_release,
 	.ioctl		= fd_ioctl,
 	.check_events	= floppy_check_events,
+	.revalidate_disk= floppy_revalidate,
 };
 
 static const struct blk_mq_ops ataflop_mq_ops = {

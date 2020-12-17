@@ -7,13 +7,11 @@
 #ifndef _VDEC_VPU_IF_H_
 #define _VDEC_VPU_IF_H_
 
-#include "mtk_vcodec_fw.h"
-
-struct mtk_vcodec_ctx;
+#include "mtk_vpu.h"
 
 /**
  * struct vdec_vpu_inst - VPU instance for video codec
- * @id          : ipi msg id for each decoder
+ * @ipi_id      : ipi id for each decoder
  * @vsi         : driver structure allocated by VPU side and shared to AP side
  *                for control and info share
  * @failure     : VPU execution result status, 0: success, others: fail
@@ -25,14 +23,15 @@ struct mtk_vcodec_ctx;
  * @handler     : ipi handler for each decoder
  */
 struct vdec_vpu_inst {
-	int id;
+	enum ipi_id id;
 	void *vsi;
 	int32_t failure;
 	uint32_t inst_addr;
 	unsigned int signaled;
 	struct mtk_vcodec_ctx *ctx;
+	struct platform_device *dev;
 	wait_queue_head_t wq;
-	mtk_vcodec_ipi_handler handler;
+	ipi_handler_t handler;
 };
 
 /**

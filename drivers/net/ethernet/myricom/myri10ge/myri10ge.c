@@ -3543,10 +3543,11 @@ static void myri10ge_free_slices(struct myri10ge_priv *mgp)
 					  ss->fw_stats, ss->fw_stats_bus);
 			ss->fw_stats = NULL;
 		}
-		__netif_napi_del(&ss->napi);
+		napi_hash_del(&ss->napi);
+		netif_napi_del(&ss->napi);
 	}
 	/* Wait till napi structs are no longer used, and then free ss. */
-	synchronize_net();
+	synchronize_rcu();
 	kfree(mgp->ss);
 	mgp->ss = NULL;
 }

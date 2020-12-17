@@ -316,9 +316,14 @@ static int cik_ih_sw_fini(void *handle)
 
 static int cik_ih_hw_init(void *handle)
 {
+	int r;
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
-	return cik_ih_irq_init(adev);
+	r = cik_ih_irq_init(adev);
+	if (r)
+		return r;
+
+	return 0;
 }
 
 static int cik_ih_hw_fini(void *handle)

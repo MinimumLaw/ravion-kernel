@@ -18,15 +18,12 @@ properties:
     const: snps,dma-spear1340
 
   "#dma-cells":
-    minimum: 3
-    maximum: 4
+    const: 3
     description: |
       First cell is a phandle pointing to the DMA controller. Second one is
       the DMA request line number. Third cell is the memory master identifier
       for transfers on dynamically allocated channel. Fourth cell is the
-      peripheral master identifier for transfers on an allocated channel. Fifth
-      cell is an optional mask of the DMA channels permitted to be allocated
-      for the corresponding client device.
+      peripheral master identifier for transfers on an allocated channel.
 
   reg:
     maxItems: 1

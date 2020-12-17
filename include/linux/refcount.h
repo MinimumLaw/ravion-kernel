@@ -147,24 +147,6 @@ static inline unsigned int refcount_read(const refcount_t *r)
 	return atomic_read(&r->refs);
 }
 
-static inline __must_check bool __refcount_add_not_zero(int i, refcount_t *r, int *oldp)
-{
-	int old = refcount_read(r);
-
-	do {
-		if (!old)
-			break;
-	} while (!atomic_try_cmpxchg_relaxed(&r->refs, &old, old + i));
-
-	if (oldp)
-		*oldp = old;
-
-	if (unlikely(old < 0 || old + i < 0))
-		refcount_warn_saturate(r, REFCOUNT_ADD_NOT_ZERO_OVF);
-
-	return old;
-}
-
 /**
  * refcount_add_not_zero - add a value to a refcount unless it is 0
  * @i: the value to add to the refcount
@@ -185,20 +167,17 @@ static inline __must_check bool __refcount_add_not_zero(int i, refcount_t *r, in
  */
 static inline __must_check bool refcount_add_not_zero(int i, refcount_t *r)
 {
-	return __refcount_add_not_zero(i, r, NULL);
-}
+	int old = refcount_read(r);
 
-static inline void __refcount_add(int i, refcount_t *r, int *oldp)
-{
-	int old = atomic_fetch_add_relaxed(i, &r->refs);
+	do {
+		if (!old)
+			break;
+	} while (!atomic_try_cmpxchg_relaxed(&r->refs, &old, old + i));
 
-	if (oldp)
-		*oldp = old;
+	if (unlikely(old < 0 || old + i < 0))
+		refcount_warn_saturate(r, REFCOUNT_ADD_NOT_ZERO_OVF);
 
-	if (unlikely(!old))
-		refcount_warn_saturate(r, REFCOUNT_ADD_UAF);
-	else if (unlikely(old < 0 || old + i < 0))
-		refcount_warn_saturate(r, REFCOUNT_ADD_OVF);
+	return old;
 }
 
 /**
@@ -219,12 +198,12 @@ static inline void __refcount_add(int i, refcount_t *r, int *oldp)
  */
 static inline void refcount_add(int i, refcount_t *r)
 {
-	__refcount_add(i, r, NULL);
-}
+	int old = atomic_fetch_add_relaxed(i, &r->refs);
 
-static inline __must_check bool __refcount_inc_not_zero(refcount_t *r, int *oldp)
-{
-	return __refcount_add_not_zero(1, r, oldp);
+	if (unlikely(!old))
+		refcount_warn_saturate(r, REFCOUNT_ADD_UAF);
+	else if (unlikely(old < 0 || old + i < 0))
+		refcount_warn_saturate(r, REFCOUNT_ADD_OVF);
 }
 
 /**
@@ -242,12 +221,7 @@ static inline __must_check bool __refcount_inc_not_zero(refcount_t *r, int *oldp
  */
 static inline __must_check bool refcount_inc_not_zero(refcount_t *r)
 {
-	return __refcount_inc_not_zero(r, NULL);
-}
-
-static inline void __refcount_inc(refcount_t *r, int *oldp)
-{
-	__refcount_add(1, r, oldp);
+	return refcount_add_not_zero(1, r);
 }
 
 /**
@@ -264,25 +238,7 @@ static inline void __refcount_inc(refcount_t *r, int *oldp)
  */
 static inline void refcount_inc(refcount_t *r)
 {
-	__refcount_inc(r, NULL);
-}
-
-static inline __must_check bool __refcount_sub_and_test(int i, refcount_t *r, int *oldp)
-{
-	int old = atomic_fetch_sub_release(i, &r->refs);
-
-	if (oldp)
-		*oldp = old;
-
-	if (old == i) {
-		smp_acquire__after_ctrl_dep();
-		return true;
-	}
-
-	if (unlikely(old < 0 || old - i < 0))
-		refcount_warn_saturate(r, REFCOUNT_SUB_UAF);
-
-	return false;
+	refcount_add(1, r);
 }
 
 /**
@@ -307,12 +263,17 @@ static inline __must_check bool __refcount_sub_and_test(int i, refcount_t *r, in
  */
 static inline __must_check bool refcount_sub_and_test(int i, refcount_t *r)
 {
-	return __refcount_sub_and_test(i, r, NULL);
-}
+	int old = atomic_fetch_sub_release(i, &r->refs);
 
-static inline __must_check bool __refcount_dec_and_test(refcount_t *r, int *oldp)
-{
-	return __refcount_sub_and_test(1, r, oldp);
+	if (old == i) {
+		smp_acquire__after_ctrl_dep();
+		return true;
+	}
+
+	if (unlikely(old < 0 || old - i < 0))
+		refcount_warn_saturate(r, REFCOUNT_SUB_UAF);
+
+	return false;
 }
 
 /**
@@ -330,18 +291,7 @@ static inline __must_check bool __refcount_dec_and_test(refcount_t *r, int *oldp
  */
 static inline __must_check bool refcount_dec_and_test(refcount_t *r)
 {
-	return __refcount_dec_and_test(r, NULL);
-}
-
-static inline void __refcount_dec(refcount_t *r, int *oldp)
-{
-	int old = atomic_fetch_sub_release(1, &r->refs);
-
-	if (oldp)
-		*oldp = old;
-
-	if (unlikely(old <= 1))
-		refcount_warn_saturate(r, REFCOUNT_DEC_LEAK);
+	return refcount_sub_and_test(1, r);
 }
 
 /**
@@ -356,7 +306,8 @@ static inline void __refcount_dec(refcount_t *r, int *oldp)
  */
 static inline void refcount_dec(refcount_t *r)
 {
-	__refcount_dec(r, NULL);
+	if (unlikely(atomic_fetch_sub_release(1, &r->refs) <= 1))
+		refcount_warn_saturate(r, REFCOUNT_DEC_LEAK);
 }
 
 extern __must_check bool refcount_dec_if_one(refcount_t *r);

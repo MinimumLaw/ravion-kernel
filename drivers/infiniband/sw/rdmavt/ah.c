@@ -132,7 +132,7 @@ int rvt_create_ah(struct ib_ah *ibah, struct rdma_ah_init_attr *init_attr,
  *
  * Return: 0 on success
  */
-int rvt_destroy_ah(struct ib_ah *ibah, u32 destroy_flags)
+void rvt_destroy_ah(struct ib_ah *ibah, u32 destroy_flags)
 {
 	struct rvt_dev_info *dev = ib_to_rvt(ibah->device);
 	struct rvt_ah *ah = ibah_to_rvtah(ibah);
@@ -143,7 +143,6 @@ int rvt_destroy_ah(struct ib_ah *ibah, u32 destroy_flags)
 	spin_unlock_irqrestore(&dev->n_ahs_lock, flags);
 
 	rdma_destroy_ah_attr(&ah->attr);
-	return 0;
 }
 
 /**

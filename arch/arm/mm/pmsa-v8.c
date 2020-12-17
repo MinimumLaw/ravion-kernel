@@ -94,19 +94,20 @@ static __init bool is_region_fixed(int number)
 void __init pmsav8_adjust_lowmem_bounds(void)
 {
 	phys_addr_t mem_end;
-	phys_addr_t reg_start, reg_end;
-	u64 i;
+	struct memblock_region *reg;
+	bool first = true;
 
-	for_each_mem_range(i, &reg_start, &reg_end) {
-		if (i == 0) {
+	for_each_memblock(memory, reg) {
+		if (first) {
 			phys_addr_t phys_offset = PHYS_OFFSET;
 
 			/*
 			 * Initially only use memory continuous from
 			 * PHYS_OFFSET */
-			if (reg_start != phys_offset)
+			if (reg->base != phys_offset)
 				panic("First memory bank must be contiguous from PHYS_OFFSET");
-			mem_end = reg_end;
+			mem_end = reg->base + reg->size;
+			first = false;
 		} else {
 			/*
 			 * memblock auto merges contiguous blocks, remove
@@ -114,8 +115,8 @@ void __init pmsav8_adjust_lowmem_bounds(void)
 			 * blocks separately while iterating)
 			 */
 			pr_notice("Ignoring RAM after %pa, memory at %pa ignored\n",
-				  &mem_end, &reg_start);
-			memblock_remove(reg_start, 0 - reg_start);
+				  &mem_end, &reg->base);
+			memblock_remove(reg->base, 0 - reg->base);
 			break;
 		}
 	}

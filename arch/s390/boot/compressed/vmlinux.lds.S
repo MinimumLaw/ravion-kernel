@@ -59,19 +59,6 @@ SECTIONS
 	BOOT_DATA_PRESERVED
 
 	/*
-	 * This is the BSS section of the decompressor and not of the decompressed Linux kernel.
-	 * It will consume place in the decompressor's image.
-	 */
-	. = ALIGN(8);
-	.bss : {
-		_bss = . ;
-		*(.bss)
-		*(.bss.*)
-		*(COMMON)
-		_ebss = .;
-	}
-
-	/*
 	 * uncompressed image info used by the decompressor it should match
 	 * struct vmlinux_info. It comes from .vmlinux.info section of
 	 * uncompressed vmlinux in a form of info.o
@@ -93,6 +80,15 @@ SECTIONS
 		_compressed_end = .;
 		FILL(0xff);
 		. = ALIGN(4096);
+	}
+	. = ALIGN(256);
+	.bss : {
+		_bss = . ;
+		*(.bss)
+		*(.bss.*)
+		*(COMMON)
+		. = ALIGN(8);	/* For convenience during zeroing */
+		_ebss = .;
 	}
 	_end = .;
 

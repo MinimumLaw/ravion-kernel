@@ -354,7 +354,7 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,
 	if (error)
 		goto out;
 
-	/* Update the xattr entry. */
+	/* Update the xttr entry. */
 	i.value = value;
 	i.value_len = len;
 

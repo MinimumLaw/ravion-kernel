@@ -21,6 +21,4 @@ properties:
               - ea,ea3250
               - phytec,phy3250
           - const: nxp,lpc3250
-
-additionalProperties: true
 ...

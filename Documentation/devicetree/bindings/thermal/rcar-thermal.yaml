@@ -59,9 +59,6 @@ properties:
   resets:
     maxItems: 1
 
-  "#thermal-sensor-cells":
-    const: 0
-
 if:
   properties:
     compatible:
@@ -81,8 +78,6 @@ else:
     - clocks
     - power-domains
     - resets
-
-additionalProperties: false
 
 examples:
   # Example (non interrupt support)

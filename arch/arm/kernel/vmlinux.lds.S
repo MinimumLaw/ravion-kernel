@@ -9,12 +9,14 @@
 #else
 
 #include <linux/pgtable.h>
-#include <asm/vmlinux.lds.h>
+#include <asm-generic/vmlinux.lds.h>
 #include <asm/cache.h>
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/mpu.h>
 #include <asm/page.h>
+
+#include "vmlinux.lds.h"
 
 OUTPUT_ARCH(arm)
 ENTRY(stext)
@@ -40,10 +42,6 @@ SECTIONS
 		ARM_DISCARD
 #ifndef CONFIG_SMP_ON_UP
 		*(.alt.smp.init)
-#endif
-#ifndef CONFIG_ARM_UNWIND
-		*(.ARM.exidx) *(.ARM.exidx.*)
-		*(.ARM.extab) *(.ARM.extab.*)
 #endif
 	}
 
@@ -153,10 +151,6 @@ SECTIONS
 	_end = .;
 
 	STABS_DEBUG
-	DWARF_DEBUG
-	ARM_DETAILS
-
-	ARM_ASSERTS
 }
 
 #ifdef CONFIG_STRICT_KERNEL_RWX

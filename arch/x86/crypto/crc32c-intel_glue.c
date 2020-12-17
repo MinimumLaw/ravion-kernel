@@ -28,9 +28,9 @@
 #define SCALE_F	sizeof(unsigned long)
 
 #ifdef CONFIG_X86_64
-#define CRC32_INST "crc32q %1, %q0"
+#define REX_PRE "0x48, "
 #else
-#define CRC32_INST "crc32l %1, %0"
+#define REX_PRE
 #endif
 
 #ifdef CONFIG_X86_64
@@ -48,8 +48,11 @@ asmlinkage unsigned int crc_pcl(const u8 *buffer, int len,
 static u32 crc32c_intel_le_hw_byte(u32 crc, unsigned char const *data, size_t length)
 {
 	while (length--) {
-		asm("crc32b %1, %0"
-		    : "+r" (crc) : "rm" (*data));
+		__asm__ __volatile__(
+			".byte 0xf2, 0xf, 0x38, 0xf0, 0xf1"
+			:"=S"(crc)
+			:"0"(crc), "c"(*data)
+		);
 		data++;
 	}
 
@@ -63,8 +66,11 @@ static u32 __pure crc32c_intel_le_hw(u32 crc, unsigned char const *p, size_t len
 	unsigned long *ptmp = (unsigned long *)p;
 
 	while (iquotient--) {
-		asm(CRC32_INST
-		    : "+r" (crc) : "rm" (*ptmp));
+		__asm__ __volatile__(
+			".byte 0xf2, " REX_PRE "0xf, 0x38, 0xf1, 0xf1;"
+			:"=S"(crc)
+			:"0"(crc), "c"(*ptmp)
+		);
 		ptmp++;
 	}
 

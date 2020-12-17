@@ -79,12 +79,7 @@ static ssize_t nfs_netns_identifier_show(struct kobject *kobj,
 	struct nfs_netns_client *c = container_of(kobj,
 			struct nfs_netns_client,
 			kobject);
-	ssize_t ret;
-
-	rcu_read_lock();
-	ret = scnprintf(buf, PAGE_SIZE, "%s\n", rcu_dereference(c->identifier));
-	rcu_read_unlock();
-	return ret;
+	return scnprintf(buf, PAGE_SIZE, "%s\n", c->identifier);
 }
 
 /* Strip trailing '\n' */
@@ -112,7 +107,7 @@ static ssize_t nfs_netns_identifier_store(struct kobject *kobj,
 	p = kmemdup_nul(buf, len, GFP_KERNEL);
 	if (!p)
 		return -ENOMEM;
-	old = rcu_dereference_protected(xchg(&c->identifier, (char __rcu *)p), 1);
+	old = xchg(&c->identifier, p);
 	if (old) {
 		synchronize_rcu();
 		kfree(old);
@@ -126,7 +121,7 @@ static void nfs_netns_client_release(struct kobject *kobj)
 			struct nfs_netns_client,
 			kobject);
 
-	kfree(rcu_dereference_raw(c->identifier));
+	kfree(c->identifier);
 	kfree(c);
 }
 

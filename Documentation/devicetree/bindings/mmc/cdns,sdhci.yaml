@@ -117,8 +117,6 @@ required:
   - interrupts
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     emmc: mmc@5a000000 {

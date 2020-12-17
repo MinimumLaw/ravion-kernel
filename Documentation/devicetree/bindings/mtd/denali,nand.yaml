@@ -128,8 +128,6 @@ required:
   - clock-names
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     nand-controller@ff900000 {

@@ -1956,7 +1956,7 @@ static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
 	/*
 	 * Racy check. If we mistakenly see no partial slabs then we
 	 * just allocate an empty slab. If we mistakenly try to get a
-	 * partial slab and there is none available then get_partial()
+	 * partial slab and there is none available then get_partials()
 	 * will return NULL.
 	 */
 	if (!n || !n->nr_partial)
@@ -2245,8 +2245,7 @@ redo:
 		}
 	} else {
 		m = M_FULL;
-#ifdef CONFIG_SLUB_DEBUG
-		if ((s->flags & SLAB_STORE_USER) && !lock) {
+		if (kmem_cache_debug(s) && !lock) {
 			lock = 1;
 			/*
 			 * This also ensures that the scanning of full
@@ -2255,7 +2254,6 @@ redo:
 			 */
 			spin_lock(&n->list_lock);
 		}
-#endif
 	}
 
 	if (l != m) {
@@ -2663,8 +2661,6 @@ static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 	void *freelist;
 	struct page *page;
 
-	stat(s, ALLOC_SLOWPATH);
-
 	page = c->page;
 	if (!page) {
 		/*
@@ -2854,6 +2850,7 @@ redo:
 	page = c->page;
 	if (unlikely(!object || !page || !node_match(page, node))) {
 		object = __slab_alloc(s, gfpflags, node, addr, c);
+		stat(s, ALLOC_SLOWPATH);
 	} else {
 		void *next_object = get_freepointer_safe(s, object);
 
@@ -3022,21 +3019,20 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
 
 	if (likely(!n)) {
 
-		if (likely(was_frozen)) {
-			/*
-			 * The list lock was not taken therefore no list
-			 * activity can be necessary.
-			 */
-			stat(s, FREE_FROZEN);
-		} else if (new.frozen) {
-			/*
-			 * If we just froze the page then put it onto the
-			 * per cpu partial list.
-			 */
+		/*
+		 * If we just froze the page then put it onto the
+		 * per cpu partial list.
+		 */
+		if (new.frozen && !was_frozen) {
 			put_cpu_partial(s, page, 1);
 			stat(s, CPU_PARTIAL_FREE);
 		}
-
+		/*
+		 * The list lock was not taken therefore no list
+		 * activity can be necessary.
+		 */
+		if (was_frozen)
+			stat(s, FREE_FROZEN);
 		return;
 	}
 

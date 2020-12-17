@@ -30,15 +30,12 @@
 
 /**
  * struct clk_pllv3 - IMX PLL clock version 3
- * @hw:		clock source
+ * @clk_hw:	 clock source
  * @base:	 base address of PLL registers
  * @power_bit:	 pll power bit mask
  * @powerup_set: set power_bit to power up the PLL
  * @div_mask:	 mask of divider bits
  * @div_shift:	 shift of divider bits
- * @ref_clock:	reference clock rate
- * @num_offset:	num register offset
- * @denom_offset: denom register offset
  *
  * IMX PLL clock version 3, found on i.MX6 series.  Divider for pllv3
  * is actually a multiplier, and always sits at bit 0.

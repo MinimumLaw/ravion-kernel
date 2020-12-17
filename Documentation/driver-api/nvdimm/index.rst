@@ -10,4 +10,3 @@ Non-Volatile Memory Device (NVDIMM)
    nvdimm
    btt
    security
-   firmware-activate

@@ -170,7 +170,8 @@ ATTRIBUTE_GROUPS(g760a);
  * new-style driver model code
  */
 
-static int g760a_probe(struct i2c_client *client)
+static int g760a_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct g760a_data *data;
@@ -206,7 +207,7 @@ static struct i2c_driver g760a_driver = {
 	.driver = {
 		.name	= "g760a",
 	},
-	.probe_new = g760a_probe,
+	.probe	  = g760a_probe,
 	.id_table = g760a_id,
 };
 

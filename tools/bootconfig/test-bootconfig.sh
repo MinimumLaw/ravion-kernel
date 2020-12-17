@@ -9,7 +9,6 @@ else
   TESTDIR=.
 fi
 BOOTCONF=${TESTDIR}/bootconfig
-ALIGN=4
 
 INITRD=`mktemp ${TESTDIR}/initrd-XXXX`
 TEMPCONF=`mktemp ${TESTDIR}/temp-XXXX.bconf`
@@ -60,10 +59,7 @@ echo "Show command test"
 xpass $BOOTCONF $INITRD
 
 echo "File size check"
-total_size=$(expr $bconf_size + $initrd_size + 9 + 12 + $ALIGN - 1 )
-total_size=$(expr $total_size / $ALIGN)
-total_size=$(expr $total_size \* $ALIGN)
-xpass test $new_size -eq $total_size
+xpass test $new_size -eq $(expr $bconf_size + $initrd_size + 9 + 12)
 
 echo "Apply command repeat test"
 xpass $BOOTCONF -a $TEMPCONF $INITRD

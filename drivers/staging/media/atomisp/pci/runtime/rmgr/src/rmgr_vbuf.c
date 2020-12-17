@@ -241,6 +241,7 @@ void rmgr_pop_handle(struct ia_css_rmgr_vbuf_pool *pool,
 		     struct ia_css_rmgr_vbuf_handle **handle)
 {
 	u32 i;
+	bool succes = false;
 
 	assert(pool);
 	assert(pool->recycle);
@@ -254,7 +255,8 @@ void rmgr_pop_handle(struct ia_css_rmgr_vbuf_pool *pool,
 			pool->handles[i] = NULL;
 			/* dont release, we are returning it...
 			   ia_css_rmgr_refcount_release_vbuf(handle); */
-			return;
+			succes = true;
+			break;
 		}
 	}
 }

@@ -259,9 +259,8 @@ static int preempt_init_ring(struct a5xx_gpu *a5xx_gpu,
 	ptr->magic = A5XX_PREEMPT_RECORD_MAGIC;
 	ptr->info = 0;
 	ptr->data = 0;
-	ptr->cntl = MSM_GPU_RB_CNTL_DEFAULT | AXXX_CP_RB_CNTL_NO_UPDATE;
-
-	ptr->rptr_addr = shadowptr(a5xx_gpu, ring);
+	ptr->cntl = MSM_GPU_RB_CNTL_DEFAULT;
+	ptr->rptr_addr = rbmemptr(ring, rptr);
 	ptr->counter = counters_iova;
 
 	return 0;

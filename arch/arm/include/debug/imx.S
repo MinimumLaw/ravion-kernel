@@ -35,10 +35,7 @@
 		str	\rd, [\rx, #0x40]	@ TXDATA
 		.endm
 
-		.macro	waituartcts,rd,rx
-		.endm
-
-		.macro	waituarttxrdy,rd,rx
+		.macro	waituart,rd,rx
 		.endm
 
 		.macro	busyuart,rd,rx

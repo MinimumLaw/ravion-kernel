@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
 
-#define pr_fmt(fmt) "kcsan: " fmt
-
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/printk.h>
@@ -118,16 +116,16 @@ static int __init kcsan_selftest(void)
 		if (do_test())                                                 \
 			++passed;                                              \
 		else                                                           \
-			pr_err("selftest: " #do_test " failed");               \
+			pr_err("KCSAN selftest: " #do_test " failed");         \
 	} while (0)
 
 	RUN_TEST(test_requires);
 	RUN_TEST(test_encode_decode);
 	RUN_TEST(test_matching_access);
 
-	pr_info("selftest: %d/%d tests passed\n", passed, total);
+	pr_info("KCSAN selftest: %d/%d tests passed\n", passed, total);
 	if (passed != total)
-		panic("selftests failed");
+		panic("KCSAN selftests failed");
 	return 0;
 }
 postcore_initcall(kcsan_selftest);

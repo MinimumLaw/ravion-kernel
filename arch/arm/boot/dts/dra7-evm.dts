@@ -537,23 +537,24 @@
 	ti,no-idle-on-init;
 };
 
-&mac_sw {
+&mac {
 	status = "okay";
+	dual_emac;
 };
 
-&cpsw_port1 {
+&cpsw_emac0 {
 	phy-handle = <&ethphy0>;
 	phy-mode = "rgmii";
-	ti,dual-emac-pvid = <1>;
+	dual_emac_res_vlan = <1>;
 };
 
-&cpsw_port2 {
+&cpsw_emac1 {
 	phy-handle = <&ethphy1>;
 	phy-mode = "rgmii";
-	ti,dual-emac-pvid = <2>;
+	dual_emac_res_vlan = <2>;
 };
 
-&davinci_mdio_sw {
+&davinci_mdio {
 	ethphy0: ethernet-phy@2 {
 		reg = <2>;
 	};
@@ -564,7 +565,7 @@
 };
 
 &dcan1 {
-	status = "okay";
+	status = "ok";
 	pinctrl-names = "default", "sleep", "active";
 	pinctrl-0 = <&dcan1_pins_sleep>;
 	pinctrl-1 = <&dcan1_pins_sleep>;

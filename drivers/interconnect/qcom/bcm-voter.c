@@ -27,7 +27,6 @@ static DEFINE_MUTEX(bcm_voter_lock);
  * @commit_list: list containing bcms to be committed to hardware
  * @ws_list: list containing bcms that have different wake/sleep votes
  * @voter_node: list of bcm voters
- * @tcs_wait: mask for which buckets require TCS completion
  */
 struct bcm_voter {
 	struct device *dev;
@@ -36,7 +35,6 @@ struct bcm_voter {
 	struct list_head commit_list;
 	struct list_head ws_list;
 	struct list_head voter_node;
-	u32 tcs_wait;
 };
 
 static int cmp_vcd(void *priv, struct list_head *a, struct list_head *b)
@@ -85,10 +83,10 @@ static void bcm_aggregate(struct qcom_icc_bcm *bcm)
 			agg_peak[bucket] = max(agg_peak[bucket], temp);
 		}
 
-		temp = agg_avg[bucket] * bcm->vote_scale;
+		temp = agg_avg[bucket] * 1000ULL;
 		bcm->vote_x[bucket] = bcm_div(temp, bcm->aux_data.unit);
 
-		temp = agg_peak[bucket] * bcm->vote_scale;
+		temp = agg_peak[bucket] * 1000ULL;
 		bcm->vote_y[bucket] = bcm_div(temp, bcm->aux_data.unit);
 	}
 
@@ -102,7 +100,7 @@ static void bcm_aggregate(struct qcom_icc_bcm *bcm)
 }
 
 static inline void tcs_cmd_gen(struct tcs_cmd *cmd, u64 vote_x, u64 vote_y,
-			       u32 addr, bool commit, bool wait)
+			       u32 addr, bool commit)
 {
 	bool valid = true;
 
@@ -127,16 +125,15 @@ static inline void tcs_cmd_gen(struct tcs_cmd *cmd, u64 vote_x, u64 vote_y,
 	 * Set the wait for completion flag on command that need to be completed
 	 * before the next command.
 	 */
-	cmd->wait = wait;
+	cmd->wait = commit;
 }
 
-static void tcs_list_gen(struct bcm_voter *voter, int bucket,
-			 struct tcs_cmd tcs_list[MAX_VCD],
+static void tcs_list_gen(struct list_head *bcm_list, int bucket,
+			 struct tcs_cmd tcs_list[MAX_BCMS],
 			 int n[MAX_VCD + 1])
 {
-	struct list_head *bcm_list = &voter->commit_list;
 	struct qcom_icc_bcm *bcm;
-	bool commit, wait;
+	bool commit;
 	size_t idx = 0, batch = 0, cur_vcd_size = 0;
 
 	memset(n, 0, sizeof(int) * (MAX_VCD + 1));
@@ -149,11 +146,8 @@ static void tcs_list_gen(struct bcm_voter *voter, int bucket,
 			commit = true;
 			cur_vcd_size = 0;
 		}
-
-		wait = commit && (voter->tcs_wait & BIT(bucket));
-
 		tcs_cmd_gen(&tcs_list[idx], bcm->vote_x[bucket],
-			    bcm->vote_y[bucket], bcm->addr, commit, wait);
+			    bcm->vote_y[bucket], bcm->addr, commit);
 		idx++;
 		n[batch]++;
 		/*
@@ -278,7 +272,8 @@ int qcom_icc_bcm_voter_commit(struct bcm_voter *voter)
 	 * Construct the command list based on a pre ordered list of BCMs
 	 * based on VCD.
 	 */
-	tcs_list_gen(voter, QCOM_ICC_BUCKET_AMC, cmds, commit_idx);
+	tcs_list_gen(&voter->commit_list, QCOM_ICC_BUCKET_AMC, cmds, commit_idx);
+
 	if (!commit_idx[0])
 		goto out;
 
@@ -314,7 +309,7 @@ int qcom_icc_bcm_voter_commit(struct bcm_voter *voter)
 
 	list_sort(NULL, &voter->commit_list, cmp_vcd);
 
-	tcs_list_gen(voter, QCOM_ICC_BUCKET_WAKE, cmds, commit_idx);
+	tcs_list_gen(&voter->commit_list, QCOM_ICC_BUCKET_WAKE, cmds, commit_idx);
 
 	ret = rpmh_write_batch(voter->dev, RPMH_WAKE_ONLY_STATE, cmds, commit_idx);
 	if (ret) {
@@ -322,7 +317,7 @@ int qcom_icc_bcm_voter_commit(struct bcm_voter *voter)
 		goto out;
 	}
 
-	tcs_list_gen(voter, QCOM_ICC_BUCKET_SLEEP, cmds, commit_idx);
+	tcs_list_gen(&voter->commit_list, QCOM_ICC_BUCKET_SLEEP, cmds, commit_idx);
 
 	ret = rpmh_write_batch(voter->dev, RPMH_SLEEP_STATE, cmds, commit_idx);
 	if (ret) {
@@ -341,7 +336,6 @@ EXPORT_SYMBOL_GPL(qcom_icc_bcm_voter_commit);
 
 static int qcom_icc_bcm_voter_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct bcm_voter *voter;
 
 	voter = devm_kzalloc(&pdev->dev, sizeof(*voter), GFP_KERNEL);
@@ -349,11 +343,7 @@ static int qcom_icc_bcm_voter_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	voter->dev = &pdev->dev;
-	voter->np = np;
-
-	if (of_property_read_u32(np, "qcom,tcs-wait", &voter->tcs_wait))
-		voter->tcs_wait = QCOM_ICC_TAG_ACTIVE_ONLY;
-
+	voter->np = pdev->dev.of_node;
 	mutex_init(&voter->lock);
 	INIT_LIST_HEAD(&voter->commit_list);
 	INIT_LIST_HEAD(&voter->ws_list);

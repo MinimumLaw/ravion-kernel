@@ -31,9 +31,6 @@ properties:
   compatible:
     const: ite,it6505
 
-  reg:
-    maxItems: 1
-
   ovdd-supply:
     maxItems: 1
     description: I/O voltage
@@ -65,8 +62,6 @@ required:
   - interrupts
   - reset-gpios
   - extcon
-
-additionalProperties: false
 
 examples:
   - |

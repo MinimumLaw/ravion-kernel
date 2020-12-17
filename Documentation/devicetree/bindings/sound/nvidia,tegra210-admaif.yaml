@@ -81,8 +81,6 @@ required:
   - dmas
   - dma-names
 
-additionalProperties: false
-
 examples:
   - |
     admaif@702d0000 {

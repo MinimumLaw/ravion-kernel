@@ -112,6 +112,4 @@ oneOf:
   - required:
       - ports
 
-additionalProperties: true
-
 ...

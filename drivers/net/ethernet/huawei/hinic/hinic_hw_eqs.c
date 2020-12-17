@@ -106,7 +106,7 @@ enum eq_arm_state {
  * @aeqs: pointer to Async eqs of the chip
  * @event: aeq event to register callback for it
  * @handle: private data will be used by the callback
- * @hwe_handler: callback function
+ * @hw_handler: callback function
  **/
 void hinic_aeq_register_hw_cb(struct hinic_aeqs *aeqs,
 			      enum hinic_aeq_type event, void *handle,
@@ -188,7 +188,6 @@ static u8 eq_cons_idx_checksum_set(u32 val)
 /**
  * eq_update_ci - update the HW cons idx of event queue
  * @eq: the event queue to update the cons idx for
- * @arm_state: the arm bit value of eq's interrupt
  **/
 static void eq_update_ci(struct hinic_eq *eq, u32 arm_state)
 {
@@ -369,11 +368,11 @@ static void eq_irq_work(struct work_struct *work)
 
 /**
  * ceq_tasklet - the tasklet of the EQ that received the event
- * @t: the tasklet struct pointer
+ * @ceq_data: the eq
  **/
-static void ceq_tasklet(struct tasklet_struct *t)
+static void ceq_tasklet(unsigned long ceq_data)
 {
-	struct hinic_eq *ceq = from_tasklet(ceq, t, ceq_tasklet);
+	struct hinic_eq *ceq = (struct hinic_eq *)ceq_data;
 
 	eq_irq_handler(ceq);
 }
@@ -783,7 +782,8 @@ static int init_eq(struct hinic_eq *eq, struct hinic_hwif *hwif,
 
 		INIT_WORK(&aeq_work->work, eq_irq_work);
 	} else if (type == HINIC_CEQ) {
-		tasklet_setup(&eq->ceq_tasklet, ceq_tasklet);
+		tasklet_init(&eq->ceq_tasklet, ceq_tasklet,
+			     (unsigned long)eq);
 	}
 
 	/* set the attributes of the msix entry */
@@ -794,15 +794,12 @@ static int init_eq(struct hinic_eq *eq, struct hinic_hwif *hwif,
 			    HINIC_EQ_MSIX_LLI_CREDIT_LIMIT_DEFAULT,
 			    HINIC_EQ_MSIX_RESEND_TIMER_DEFAULT);
 
-	if (type == HINIC_AEQ) {
-		snprintf(eq->irq_name, sizeof(eq->irq_name), "hinic_aeq%d@pci:%s", eq->q_id,
-			 pci_name(pdev));
-		err = request_irq(entry.vector, aeq_interrupt, 0, eq->irq_name, eq);
-	} else if (type == HINIC_CEQ) {
-		snprintf(eq->irq_name, sizeof(eq->irq_name), "hinic_ceq%d@pci:%s", eq->q_id,
-			 pci_name(pdev));
-		err = request_irq(entry.vector, ceq_interrupt, 0, eq->irq_name, eq);
-	}
+	if (type == HINIC_AEQ)
+		err = request_irq(entry.vector, aeq_interrupt, 0,
+				  "hinic_aeq", eq);
+	else if (type == HINIC_CEQ)
+		err = request_irq(entry.vector, ceq_interrupt, 0,
+				  "hinic_ceq", eq);
 
 	if (err) {
 		dev_err(&pdev->dev, "Failed to request irq for the EQ\n");

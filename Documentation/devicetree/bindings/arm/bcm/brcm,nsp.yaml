@@ -33,6 +33,4 @@ properties:
           - brcm,bcm88312
       - const: brcm,nsp
 
-additionalProperties: true
-
 ...

@@ -17,7 +17,6 @@
 
 #include <asm/cputable.h>
 #include <asm/dt_cpu_ftrs.h>
-#include <asm/mce.h>
 #include <asm/mmu.h>
 #include <asm/oprofile_impl.h>
 #include <asm/prom.h>

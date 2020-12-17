@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/i2c.h>
+#include <linux/version.h>
 #include <linux/mutex.h>
 #include <linux/vmalloc.h>
 #include <asm/div64.h>

@@ -22,7 +22,6 @@
 #include <crypto/internal/akcipher.h>
 #include <crypto/akcipher.h>
 #include <linux/oid_registry.h>
-#include <linux/scatterlist.h>
 #include "ecrdsa_params.asn1.h"
 #include "ecrdsa_pub_key.asn1.h"
 #include "ecc.h"

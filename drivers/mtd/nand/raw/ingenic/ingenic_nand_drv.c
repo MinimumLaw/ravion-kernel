@@ -194,8 +194,8 @@ static int ingenic_nand_attach_chip(struct nand_chip *chip)
 				  (chip->ecc.strength / 8);
 	}
 
-	switch (chip->ecc.engine_type) {
-	case NAND_ECC_ENGINE_TYPE_ON_HOST:
+	switch (chip->ecc.mode) {
+	case NAND_ECC_HW:
 		if (!nfc->ecc) {
 			dev_err(nfc->dev, "HW ECC selected, but ECC controller not found\n");
 			return -ENODEV;
@@ -205,22 +205,22 @@ static int ingenic_nand_attach_chip(struct nand_chip *chip)
 		chip->ecc.calculate = ingenic_nand_ecc_calculate;
 		chip->ecc.correct = ingenic_nand_ecc_correct;
 		fallthrough;
-	case NAND_ECC_ENGINE_TYPE_SOFT:
+	case NAND_ECC_SOFT:
 		dev_info(nfc->dev, "using %s (strength %d, size %d, bytes %d)\n",
 			 (nfc->ecc) ? "hardware ECC" : "software ECC",
 			 chip->ecc.strength, chip->ecc.size, chip->ecc.bytes);
 		break;
-	case NAND_ECC_ENGINE_TYPE_NONE:
+	case NAND_ECC_NONE:
 		dev_info(nfc->dev, "not using ECC\n");
 		break;
 	default:
 		dev_err(nfc->dev, "ECC mode %d not supported\n",
-			chip->ecc.engine_type);
+			chip->ecc.mode);
 		return -EINVAL;
 	}
 
 	/* The NAND core will generate the ECC layout for SW ECC */
-	if (chip->ecc.engine_type != NAND_ECC_ENGINE_TYPE_ON_HOST)
+	if (chip->ecc.mode != NAND_ECC_HW)
 		return 0;
 
 	/* Generate ECC layout. ECC codes are right aligned in the OOB area. */
@@ -243,10 +243,8 @@ static int ingenic_nand_attach_chip(struct nand_chip *chip)
 	/* For legacy reasons we use a different layout on the qi,lb60 board. */
 	if (of_machine_is_compatible("qi,lb60"))
 		mtd_set_ooblayout(mtd, &qi_lb60_ooblayout_ops);
-	else if (nfc->soc_info->oob_layout)
-		mtd_set_ooblayout(mtd, nfc->soc_info->oob_layout);
 	else
-		mtd_set_ooblayout(mtd, nand_get_large_page_ooblayout());
+		mtd_set_ooblayout(mtd, nfc->soc_info->oob_layout);
 
 	return 0;
 }
@@ -406,7 +404,7 @@ static int ingenic_nand_init_chip(struct platform_device *pdev,
 	mtd->dev.parent = dev;
 
 	chip->options = NAND_NO_SUBPAGE_WRITE;
-	chip->ecc.engine_type = NAND_ECC_ENGINE_TYPE_ON_HOST;
+	chip->ecc.mode = NAND_ECC_HW;
 	chip->controller = &nfc->controller;
 	nand_set_flash_node(chip, np);
 
@@ -534,6 +532,7 @@ static const struct jz_soc_info jz4740_soc_info = {
 	.data_offset = 0x00000000,
 	.cmd_offset = 0x00008000,
 	.addr_offset = 0x00010000,
+	.oob_layout = &nand_ooblayout_lp_ops,
 };
 
 static const struct jz_soc_info jz4725b_soc_info = {
@@ -547,6 +546,7 @@ static const struct jz_soc_info jz4780_soc_info = {
 	.data_offset = 0x00000000,
 	.cmd_offset = 0x00400000,
 	.addr_offset = 0x00800000,
+	.oob_layout = &nand_ooblayout_lp_ops,
 };
 
 static const struct of_device_id ingenic_nand_dt_match[] = {

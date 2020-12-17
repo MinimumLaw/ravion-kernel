@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
-#include <termios.h>
+#include <sys/termios.h>
 #include <sys/wait.h>
 #include <net_user.h>
 #include <os.h>

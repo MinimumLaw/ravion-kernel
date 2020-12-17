@@ -538,14 +538,14 @@ static const struct file_operations window_fops = {
  */
 static int init_tracefs(void)
 {
-	int ret;
+	struct dentry *d_tracer;
 	struct dentry *top_dir;
 
-	ret = tracing_init_dentry();
-	if (ret)
+	d_tracer = tracing_init_dentry();
+	if (IS_ERR(d_tracer))
 		return -ENOMEM;
 
-	top_dir = tracefs_create_dir("hwlat_detector", NULL);
+	top_dir = tracefs_create_dir("hwlat_detector", d_tracer);
 	if (!top_dir)
 		return -ENOMEM;
 

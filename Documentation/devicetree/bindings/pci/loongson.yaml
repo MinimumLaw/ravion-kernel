@@ -39,8 +39,6 @@ required:
   - reg
   - ranges
 
-unevaluatedProperties: false
-
 examples:
   - |
 

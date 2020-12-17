@@ -37,7 +37,6 @@
 #include <linux/kernel.h>
 
 struct vmwgfx_gmrid_man {
-	struct ttm_resource_manager manager;
 	spinlock_t lock;
 	struct ida gmr_ida;
 	uint32_t max_gmr_ids;
@@ -45,17 +44,13 @@ struct vmwgfx_gmrid_man {
 	uint32_t used_gmr_pages;
 };
 
-static struct vmwgfx_gmrid_man *to_gmrid_manager(struct ttm_resource_manager *man)
-{
-	return container_of(man, struct vmwgfx_gmrid_man, manager);
-}
-
-static int vmw_gmrid_man_get_node(struct ttm_resource_manager *man,
+static int vmw_gmrid_man_get_node(struct ttm_mem_type_manager *man,
 				  struct ttm_buffer_object *bo,
 				  const struct ttm_place *place,
-				  struct ttm_resource *mem)
+				  struct ttm_mem_reg *mem)
 {
-	struct vmwgfx_gmrid_man *gman = to_gmrid_manager(man);
+	struct vmwgfx_gmrid_man *gman =
+		(struct vmwgfx_gmrid_man *)man->priv;
 	int id;
 
 	id = ida_alloc_max(&gman->gmr_ida, gman->max_gmr_ids - 1, GFP_KERNEL);
@@ -84,10 +79,11 @@ nospace:
 	return -ENOSPC;
 }
 
-static void vmw_gmrid_man_put_node(struct ttm_resource_manager *man,
-				   struct ttm_resource *mem)
+static void vmw_gmrid_man_put_node(struct ttm_mem_type_manager *man,
+				   struct ttm_mem_reg *mem)
 {
-	struct vmwgfx_gmrid_man *gman = to_gmrid_manager(man);
+	struct vmwgfx_gmrid_man *gman =
+		(struct vmwgfx_gmrid_man *)man->priv;
 
 	if (mem->mm_node) {
 		ida_free(&gman->gmr_ida, mem->start);
@@ -98,28 +94,22 @@ static void vmw_gmrid_man_put_node(struct ttm_resource_manager *man,
 	}
 }
 
-static const struct ttm_resource_manager_func vmw_gmrid_manager_func;
-
-int vmw_gmrid_man_init(struct vmw_private *dev_priv, int type)
+static int vmw_gmrid_man_init(struct ttm_mem_type_manager *man,
+			      unsigned long p_size)
 {
-	struct ttm_resource_manager *man;
+	struct vmw_private *dev_priv =
+		container_of(man->bdev, struct vmw_private, bdev);
 	struct vmwgfx_gmrid_man *gman =
 		kzalloc(sizeof(*gman), GFP_KERNEL);
 
 	if (unlikely(!gman))
 		return -ENOMEM;
 
-	man = &gman->manager;
-
-	man->func = &vmw_gmrid_manager_func;
-	/* TODO: This is most likely not correct */
-	man->use_tt = true;
-	ttm_resource_manager_init(man, 0);
 	spin_lock_init(&gman->lock);
 	gman->used_gmr_pages = 0;
 	ida_init(&gman->gmr_ida);
 
-	switch (type) {
+	switch (p_size) {
 	case VMW_PL_GMR:
 		gman->max_gmr_ids = dev_priv->max_gmr_ids;
 		gman->max_gmr_pages = dev_priv->max_gmr_pages;
@@ -131,29 +121,32 @@ int vmw_gmrid_man_init(struct vmw_private *dev_priv, int type)
 	default:
 		BUG();
 	}
-	ttm_set_driver_manager(&dev_priv->bdev, type, &gman->manager);
-	ttm_resource_manager_set_used(man, true);
+	man->priv = (void *) gman;
 	return 0;
 }
 
-void vmw_gmrid_man_fini(struct vmw_private *dev_priv, int type)
+static int vmw_gmrid_man_takedown(struct ttm_mem_type_manager *man)
 {
-	struct ttm_resource_manager *man = ttm_manager_type(&dev_priv->bdev, type);
-	struct vmwgfx_gmrid_man *gman = to_gmrid_manager(man);
+	struct vmwgfx_gmrid_man *gman =
+		(struct vmwgfx_gmrid_man *)man->priv;
 
-	ttm_resource_manager_set_used(man, false);
-
-	ttm_resource_manager_force_list_clean(&dev_priv->bdev, man);
-
-	ttm_resource_manager_cleanup(man);
-
-	ttm_set_driver_manager(&dev_priv->bdev, type, NULL);
-	ida_destroy(&gman->gmr_ida);
-	kfree(gman);
-
+	if (gman) {
+		ida_destroy(&gman->gmr_ida);
+		kfree(gman);
+	}
+	return 0;
 }
 
-static const struct ttm_resource_manager_func vmw_gmrid_manager_func = {
-	.alloc = vmw_gmrid_man_get_node,
-	.free = vmw_gmrid_man_put_node,
+static void vmw_gmrid_man_debug(struct ttm_mem_type_manager *man,
+				struct drm_printer *printer)
+{
+	drm_printf(printer, "No debug info available for the GMR id manager\n");
+}
+
+const struct ttm_mem_type_manager_func vmw_gmrid_manager_func = {
+	.init = vmw_gmrid_man_init,
+	.takedown = vmw_gmrid_man_takedown,
+	.get_node = vmw_gmrid_man_get_node,
+	.put_node = vmw_gmrid_man_put_node,
+	.debug = vmw_gmrid_man_debug
 };

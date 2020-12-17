@@ -85,9 +85,10 @@ static struct pmbus_driver_info max16064_info = {
 	.write_word_data = max16064_write_word_data,
 };
 
-static int max16064_probe(struct i2c_client *client)
+static int max16064_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
-	return pmbus_do_probe(client, &max16064_info);
+	return pmbus_do_probe(client, id, &max16064_info);
 }
 
 static const struct i2c_device_id max16064_id[] = {
@@ -102,7 +103,7 @@ static struct i2c_driver max16064_driver = {
 	.driver = {
 		   .name = "max16064",
 		   },
-	.probe_new = max16064_probe,
+	.probe = max16064_probe,
 	.remove = pmbus_do_remove,
 	.id_table = max16064_id,
 };

@@ -103,7 +103,8 @@ static struct attribute *tc74_attrs[] = {
 
 ATTRIBUTE_GROUPS(tc74);
 
-static int tc74_probe(struct i2c_client *client)
+static int tc74_probe(struct i2c_client *client,
+		      const struct i2c_device_id *dev_id)
 {
 	struct device *dev = &client->dev;
 	struct tc74_data *data;
@@ -160,7 +161,7 @@ static struct i2c_driver tc74_driver = {
 	.driver = {
 		.name	= "tc74",
 	},
-	.probe_new = tc74_probe,
+	.probe	= tc74_probe,
 	.id_table = tc74_id,
 };
 

@@ -587,7 +587,8 @@ static int smsc47m192_detect(struct i2c_client *client,
 	return 0;
 }
 
-static int smsc47m192_probe(struct i2c_client *client)
+static int smsc47m192_probe(struct i2c_client *client,
+			    const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -628,7 +629,7 @@ static struct i2c_driver smsc47m192_driver = {
 	.driver = {
 		.name	= "smsc47m192",
 	},
-	.probe_new	= smsc47m192_probe,
+	.probe		= smsc47m192_probe,
 	.id_table	= smsc47m192_id,
 	.detect		= smsc47m192_detect,
 	.address_list	= normal_i2c,

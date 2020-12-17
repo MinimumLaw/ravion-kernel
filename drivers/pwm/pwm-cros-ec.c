@@ -81,7 +81,8 @@ static int cros_ec_pwm_set_duty(struct cros_ec_device *ec, u8 index, u16 duty)
 	return cros_ec_cmd_xfer_status(ec, msg);
 }
 
-static int cros_ec_pwm_get_duty(struct cros_ec_device *ec, u8 index)
+static int __cros_ec_pwm_get_duty(struct cros_ec_device *ec, u8 index,
+				  u32 *result)
 {
 	struct {
 		struct cros_ec_command msg;
@@ -106,10 +107,17 @@ static int cros_ec_pwm_get_duty(struct cros_ec_device *ec, u8 index)
 	params->index = index;
 
 	ret = cros_ec_cmd_xfer_status(ec, msg);
+	if (result)
+		*result = msg->result;
 	if (ret < 0)
 		return ret;
 
 	return resp->duty;
+}
+
+static int cros_ec_pwm_get_duty(struct cros_ec_device *ec, u8 index)
+{
+	return __cros_ec_pwm_get_duty(ec, index, NULL);
 }
 
 static int cros_ec_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
@@ -196,34 +204,29 @@ static const struct pwm_ops cros_ec_pwm_ops = {
 	.owner		= THIS_MODULE,
 };
 
-/*
- * Determine the number of supported PWMs. The EC does not return the number
- * of PWMs it supports directly, so we have to read the pwm duty cycle for
- * subsequent channels until we get an error.
- */
 static int cros_ec_num_pwms(struct cros_ec_device *ec)
 {
 	int i, ret;
 
 	/* The index field is only 8 bits */
 	for (i = 0; i <= U8_MAX; i++) {
-		ret = cros_ec_pwm_get_duty(ec, i);
+		u32 result = 0;
+
+		ret = __cros_ec_pwm_get_duty(ec, i, &result);
+		/* We want to parse EC protocol errors */
+		if (ret < 0 && !(ret == -EPROTO && result))
+			return ret;
+
 		/*
 		 * We look for SUCCESS, INVALID_COMMAND, or INVALID_PARAM
 		 * responses; everything else is treated as an error.
-		 * The EC error codes map to -EOPNOTSUPP and -EINVAL,
-		 * so check for those.
 		 */
-		switch (ret) {
-		case -EOPNOTSUPP:	/* invalid command */
+		if (result == EC_RES_INVALID_COMMAND)
 			return -ENODEV;
-		case -EINVAL:		/* invalid parameter */
+		else if (result == EC_RES_INVALID_PARAM)
 			return i;
-		default:
-			if (ret < 0)
-				return ret;
-			break;
-		}
+		else if (result)
+			return -EPROTO;
 	}
 
 	return U8_MAX;

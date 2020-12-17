@@ -14,9 +14,9 @@
 
 extern raw_spinlock_t logbuf_lock;
 
-__printf(4, 0)
+__printf(5, 0)
 int vprintk_store(int facility, int level,
-		  const struct dev_printk_info *dev_info,
+		  const char *dict, size_t dictlen,
 		  const char *fmt, va_list args);
 
 __printf(1, 0) int vprintk_default(const char *fmt, va_list args);

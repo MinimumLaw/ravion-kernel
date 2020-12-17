@@ -30,6 +30,7 @@
  * SOFTWARE.
  */
 
+#include <linux/prefetch.h>
 #include <linux/ip.h>
 #include <linux/udp.h>
 #include <net/udp.h>
@@ -114,7 +115,7 @@ static struct sk_buff *mlx5e_test_get_udp_skb(struct mlx5e_priv *priv)
 		return NULL;
 	}
 
-	net_prefetchw(skb->data);
+	prefetchw(skb->data);
 	skb_reserve(skb, NET_IP_ALIGN);
 
 	/*  Reserve for ethernet and IP header  */

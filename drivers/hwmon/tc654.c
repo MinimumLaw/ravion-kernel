@@ -446,7 +446,8 @@ ATTRIBUTE_GROUPS(tc654);
  * device probe and removal
  */
 
-static int tc654_probe(struct i2c_client *client)
+static int tc654_probe(struct i2c_client *client,
+		       const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct tc654_data *data;
@@ -487,7 +488,7 @@ static struct i2c_driver tc654_driver = {
 	.driver = {
 		   .name = "tc654",
 		   },
-	.probe_new = tc654_probe,
+	.probe = tc654_probe,
 	.id_table = tc654_id,
 };
 

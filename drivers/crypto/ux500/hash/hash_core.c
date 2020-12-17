@@ -15,7 +15,6 @@
 
 #include <linux/clk.h>
 #include <linux/device.h>
-#include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -1072,31 +1071,26 @@ int hash_hw_update(struct ahash_request *req)
 	struct hash_ctx *ctx = crypto_ahash_ctx(tfm);
 	struct hash_req_ctx *req_ctx = ahash_request_ctx(req);
 	struct crypto_hash_walk walk;
-	int msg_length;
+	int msg_length = crypto_hash_walk_first(req, &walk);
+
+	/* Empty message ("") is correct indata */
+	if (msg_length == 0)
+		return ret;
 
 	index = req_ctx->state.index;
 	buffer = (u8 *)req_ctx->state.buffer;
-
-	ret = hash_get_device_data(ctx, &device_data);
-	if (ret)
-		return ret;
-
-	msg_length = crypto_hash_walk_first(req, &walk);
-
-	/* Empty message ("") is correct indata */
-	if (msg_length == 0) {
-		ret = 0;
-		goto release_dev;
-	}
 
 	/* Check if ctx->state.length + msg_length
 	   overflows */
 	if (msg_length > (req_ctx->state.length.low_word + msg_length) &&
 	    HASH_HIGH_WORD_MAX_VAL == req_ctx->state.length.high_word) {
 		pr_err("%s: HASH_MSG_LENGTH_OVERFLOW!\n", __func__);
-		ret = crypto_hash_walk_done(&walk, -EPERM);
-		goto release_dev;
+		return -EPERM;
 	}
+
+	ret = hash_get_device_data(ctx, &device_data);
+	if (ret)
+		return ret;
 
 	/* Main loop */
 	while (0 != msg_length) {
@@ -1107,8 +1101,7 @@ int hash_hw_update(struct ahash_request *req)
 		if (ret) {
 			dev_err(device_data->dev, "%s: hash_internal_hw_update() failed!\n",
 				__func__);
-			crypto_hash_walk_done(&walk, ret);
-			goto release_dev;
+			goto out;
 		}
 
 		msg_length = crypto_hash_walk_done(&walk, 0);
@@ -1118,7 +1111,7 @@ int hash_hw_update(struct ahash_request *req)
 	dev_dbg(device_data->dev, "%s: indata length=%d, bin=%d\n",
 		__func__, req_ctx->state.index, req_ctx->state.bit_index);
 
-release_dev:
+out:
 	release_hash_device(device_data);
 
 	return ret;

@@ -6,6 +6,7 @@
  * Copyright (C) 2019, Paul Cercueil <paul@crapouillou.net>
  */
 
+#include <linux/backlight.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
@@ -56,11 +57,14 @@ struct nt39016_panel_info {
 
 struct nt39016 {
 	struct drm_panel drm_panel;
+	struct device *dev;
 	struct regmap *map;
 	struct regulator *supply;
 	const struct nt39016_panel_info *panel_info;
 
 	struct gpio_desc *reset_gpio;
+
+	struct backlight_device *backlight;
 };
 
 static inline struct nt39016 *to_nt39016(struct drm_panel *panel)
@@ -123,7 +127,7 @@ static int nt39016_prepare(struct drm_panel *drm_panel)
 
 	err = regulator_enable(panel->supply);
 	if (err) {
-		dev_err(drm_panel->dev, "Failed to enable power supply: %d\n", err);
+		dev_err(panel->dev, "Failed to enable power supply: %d", err);
 		return err;
 	}
 
@@ -142,7 +146,7 @@ static int nt39016_prepare(struct drm_panel *drm_panel)
 	err = regmap_multi_reg_write(panel->map, nt39016_panel_regs,
 				     ARRAY_SIZE(nt39016_panel_regs));
 	if (err) {
-		dev_err(drm_panel->dev, "Failed to init registers: %d\n", err);
+		dev_err(panel->dev, "Failed to init registers: %d", err);
 		goto err_disable_regulator;
 	}
 
@@ -172,16 +176,18 @@ static int nt39016_enable(struct drm_panel *drm_panel)
 	ret = regmap_write(panel->map, NT39016_REG_SYSTEM,
 			   NT39016_SYSTEM_RESET_N | NT39016_SYSTEM_STANDBY);
 	if (ret) {
-		dev_err(drm_panel->dev, "Unable to enable panel: %d\n", ret);
+		dev_err(panel->dev, "Unable to enable panel: %d", ret);
 		return ret;
 	}
 
-	if (drm_panel->backlight) {
+	if (panel->backlight) {
 		/* Wait for the picture to be ready before enabling backlight */
 		msleep(150);
+
+		ret = backlight_enable(panel->backlight);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int nt39016_disable(struct drm_panel *drm_panel)
@@ -189,10 +195,12 @@ static int nt39016_disable(struct drm_panel *drm_panel)
 	struct nt39016 *panel = to_nt39016(drm_panel);
 	int err;
 
+	backlight_disable(panel->backlight);
+
 	err = regmap_write(panel->map, NT39016_REG_SYSTEM,
 			   NT39016_SYSTEM_RESET_N);
 	if (err) {
-		dev_err(drm_panel->dev, "Unable to disable panel: %d\n", err);
+		dev_err(panel->dev, "Unable to disable panel: %d", err);
 		return err;
 	}
 
@@ -251,6 +259,7 @@ static int nt39016_probe(struct spi_device *spi)
 	if (!panel)
 		return -ENOMEM;
 
+	panel->dev = dev;
 	spi_set_drvdata(spi, panel);
 
 	panel->panel_info = of_device_get_match_data(dev);
@@ -259,13 +268,13 @@ static int nt39016_probe(struct spi_device *spi)
 
 	panel->supply = devm_regulator_get(dev, "power");
 	if (IS_ERR(panel->supply)) {
-		dev_err(dev, "Failed to get power supply\n");
+		dev_err(dev, "Failed to get power supply");
 		return PTR_ERR(panel->supply);
 	}
 
 	panel->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(panel->reset_gpio)) {
-		dev_err(dev, "Failed to get reset GPIO\n");
+		dev_err(dev, "Failed to get reset GPIO");
 		return PTR_ERR(panel->reset_gpio);
 	}
 
@@ -273,27 +282,32 @@ static int nt39016_probe(struct spi_device *spi)
 	spi->mode = SPI_MODE_3 | SPI_3WIRE;
 	err = spi_setup(spi);
 	if (err) {
-		dev_err(dev, "Failed to setup SPI\n");
+		dev_err(dev, "Failed to setup SPI");
 		return err;
 	}
 
 	panel->map = devm_regmap_init_spi(spi, &nt39016_regmap_config);
 	if (IS_ERR(panel->map)) {
-		dev_err(dev, "Failed to init regmap\n");
+		dev_err(dev, "Failed to init regmap");
 		return PTR_ERR(panel->map);
+	}
+
+	panel->backlight = devm_of_find_backlight(dev);
+	if (IS_ERR(panel->backlight)) {
+		err = PTR_ERR(panel->backlight);
+		if (err != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get backlight handle");
+		return err;
 	}
 
 	drm_panel_init(&panel->drm_panel, dev, &nt39016_funcs,
 		       DRM_MODE_CONNECTOR_DPI);
 
-	err = drm_panel_of_backlight(&panel->drm_panel);
-	if (err) {
-		if (err != -EPROBE_DEFER)
-			dev_err(dev, "Failed to get backlight handle\n");
+	err = drm_panel_add(&panel->drm_panel);
+	if (err < 0) {
+		dev_err(dev, "Failed to register panel");
 		return err;
 	}
-
-	drm_panel_add(&panel->drm_panel);
 
 	return 0;
 }

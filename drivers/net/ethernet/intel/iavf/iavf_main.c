@@ -147,7 +147,6 @@ void iavf_schedule_reset(struct iavf_adapter *adapter)
 /**
  * iavf_tx_timeout - Respond to a Tx Hang
  * @netdev: network interface device structure
- * @txqueue: queue number that is timing out
  **/
 static void iavf_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 {
@@ -2573,8 +2572,8 @@ static int iavf_validate_ch_config(struct iavf_adapter *adapter,
 }
 
 /**
- * iavf_del_all_cloud_filters - delete all cloud filters on the traffic classes
- * @adapter: board private structure
+ * iavf_del_all_cloud_filters - delete all cloud filters
+ * on the traffic classes
  **/
 static void iavf_del_all_cloud_filters(struct iavf_adapter *adapter)
 {
@@ -2593,7 +2592,7 @@ static void iavf_del_all_cloud_filters(struct iavf_adapter *adapter)
 /**
  * __iavf_setup_tc - configure multiple traffic classes
  * @netdev: network interface device structure
- * @type_data: tc offload data
+ * @type_date: tc offload data
  *
  * This function processes the config information provided by the
  * user to configure traffic classes/queue channels and packages the
@@ -2691,7 +2690,7 @@ exit:
 /**
  * iavf_parse_cls_flower - Parse tc flower filters provided by kernel
  * @adapter: board private structure
- * @f: pointer to struct flow_cls_offload
+ * @cls_flower: pointer to struct flow_cls_offload
  * @filter: pointer to cloud filter structure
  */
 static int iavf_parse_cls_flower(struct iavf_adapter *adapter,
@@ -3065,8 +3064,8 @@ static int iavf_delete_clsflower(struct iavf_adapter *adapter,
 
 /**
  * iavf_setup_tc_cls_flower - flower classifier offloads
- * @adapter: board private structure
- * @cls_flower: pointer to flow_cls_offload struct with flow info
+ * @netdev: net device to configure
+ * @type_data: offload data
  */
 static int iavf_setup_tc_cls_flower(struct iavf_adapter *adapter,
 				    struct flow_cls_offload *cls_flower)
@@ -3113,7 +3112,7 @@ static LIST_HEAD(iavf_block_cb_list);
  * iavf_setup_tc - configure multiple traffic classes
  * @netdev: network interface device structure
  * @type: type of offload
- * @type_data: tc offload data
+ * @type_date: tc offload data
  *
  * This function is the callback to ndo_setup_tc in the
  * netdev_ops.
@@ -3769,7 +3768,8 @@ err_dma:
 
 /**
  * iavf_suspend - Power management suspend routine
- * @dev_d: device info pointer
+ * @pdev: PCI device information struct
+ * @state: unused
  *
  * Called when the system (VM) is entering sleep/suspend.
  **/
@@ -3799,7 +3799,7 @@ static int __maybe_unused iavf_suspend(struct device *dev_d)
 
 /**
  * iavf_resume - Power management resume routine
- * @dev_d: device info pointer
+ * @pdev: PCI device information struct
  *
  * Called when the system (VM) is resumed from sleep/suspend.
  **/

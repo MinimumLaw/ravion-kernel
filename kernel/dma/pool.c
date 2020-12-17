@@ -5,8 +5,9 @@
  */
 #include <linux/cma.h>
 #include <linux/debugfs.h>
-#include <linux/dma-map-ops.h>
+#include <linux/dma-contiguous.h>
 #include <linux/dma-direct.h>
+#include <linux/dma-noncoherent.h>
 #include <linux/init.h>
 #include <linux/genalloc.h>
 #include <linux/set_memory.h>
@@ -114,7 +115,7 @@ static int atomic_pool_expand(struct gen_pool *pool, size_t pool_size,
 #endif
 	/*
 	 * Memory in the atomic DMA pools must be unencrypted, the pools do not
-	 * shrink so no re-encryption occurs in dma_direct_free().
+	 * shrink so no re-encryption occurs in dma_direct_free_pages().
 	 */
 	ret = set_memory_decrypted((unsigned long)page_to_virt(page),
 				   1 << order);

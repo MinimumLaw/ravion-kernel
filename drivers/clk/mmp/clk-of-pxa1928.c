@@ -68,6 +68,7 @@ static struct mmp_clk_factor_tbl uart_factor_tbl[] = {
 
 static void pxa1928_pll_init(struct pxa1928_clk_unit *pxa_unit)
 {
+	struct clk *clk;
 	struct mmp_clk_unit *unit = &pxa_unit->unit;
 
 	mmp_register_fixed_rate_clks(unit, fixed_rate_clks,
@@ -76,7 +77,7 @@ static void pxa1928_pll_init(struct pxa1928_clk_unit *pxa_unit)
 	mmp_register_fixed_factor_clks(unit, fixed_factor_clks,
 					ARRAY_SIZE(fixed_factor_clks));
 
-	mmp_clk_register_factor("uart_pll", "pll1_416",
+	clk = mmp_clk_register_factor("uart_pll", "pll1_416",
 				CLK_SET_RATE_PARENT,
 				pxa_unit->mpmu_base + MPMU_UART_PLL,
 				&uart_factor_masks, uart_factor_tbl,

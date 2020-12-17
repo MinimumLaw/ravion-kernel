@@ -241,7 +241,6 @@ static int overlay_update_local_node_references(void *fdto,
 
 		if (fixup_len % sizeof(uint32_t))
 			return -FDT_ERR_BADOVERLAY;
-		fixup_len /= sizeof(uint32_t);
 
 		tree_val = fdt_getprop(fdto, tree_node, name, &tree_len);
 		if (!tree_val) {
@@ -251,7 +250,7 @@ static int overlay_update_local_node_references(void *fdto,
 			return tree_len;
 		}
 
-		for (i = 0; i < fixup_len; i++) {
+		for (i = 0; i < (fixup_len / sizeof(uint32_t)); i++) {
 			fdt32_t adj_val;
 			uint32_t poffset;
 

@@ -105,13 +105,9 @@
 			"Ext Spk", "SPKOUTL",
 			"Ext Spk", "SPKOUTR",
 			"AMIC", "MICBIAS",
-			"IN3R", "AMIC",
-			"DMIC", "MICBIAS",
-			"DMICDAT", "DMIC";
+			"IN3R", "AMIC";
 		mux-int-port = <2>;
 		mux-ext-port = <3>;
-		hp-det-gpio = <&gpio7 8 GPIO_ACTIVE_LOW>;
-		mic-det-gpio = <&gpio1 9 GPIO_ACTIVE_LOW>;
 	};
 
 	backlight_lvds: backlight-lvds {
@@ -189,7 +185,7 @@
 };
 
 &ecspi1 {
-	cs-gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio4 9 0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi1>;
 	status = "okay";

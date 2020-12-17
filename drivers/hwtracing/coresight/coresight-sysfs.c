@@ -102,7 +102,6 @@ int coresight_add_sysfs_link(struct coresight_sysfs_link *info)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(coresight_add_sysfs_link);
 
 void coresight_remove_sysfs_link(struct coresight_sysfs_link *info)
 {
@@ -123,7 +122,6 @@ void coresight_remove_sysfs_link(struct coresight_sysfs_link *info)
 	info->orig->nr_links--;
 	info->target->nr_links--;
 }
-EXPORT_SYMBOL_GPL(coresight_remove_sysfs_link);
 
 /*
  * coresight_make_links: Make a link for a connection from a @orig

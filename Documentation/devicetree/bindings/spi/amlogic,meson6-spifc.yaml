@@ -35,8 +35,6 @@ required:
   - reg
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     spi@c1108c80 {

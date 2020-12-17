@@ -34,15 +34,15 @@ static int switch_fwnode_match(struct device *dev, const void *fwnode)
 	return dev_fwnode(dev) == fwnode && dev_name_ends_with(dev, "-switch");
 }
 
-static void *typec_switch_match(struct fwnode_handle *fwnode, const char *id,
+static void *typec_switch_match(struct device_connection *con, int ep,
 				void *data)
 {
 	struct device *dev;
 
-	if (id && !fwnode_property_present(fwnode, id))
+	if (con->id && !fwnode_property_present(con->fwnode, con->id))
 		return NULL;
 
-	dev = class_find_device(&typec_mux_class, NULL, fwnode,
+	dev = class_find_device(&typec_mux_class, NULL, con->fwnode,
 				switch_fwnode_match);
 
 	return dev ? to_typec_switch(dev) : ERR_PTR(-EPROBE_DEFER);
@@ -71,7 +71,7 @@ struct typec_switch *fwnode_typec_switch_get(struct fwnode_handle *fwnode)
 EXPORT_SYMBOL_GPL(fwnode_typec_switch_get);
 
 /**
- * typec_switch_put - Release USB Type-C orientation switch
+ * typec_put_switch - Release USB Type-C orientation switch
  * @sw: USB Type-C orientation switch
  *
  * Decrement reference count for @sw.
@@ -183,8 +183,7 @@ static int mux_fwnode_match(struct device *dev, const void *fwnode)
 	return dev_fwnode(dev) == fwnode && dev_name_ends_with(dev, "-mux");
 }
 
-static void *typec_mux_match(struct fwnode_handle *fwnode, const char *id,
-			     void *data)
+static void *typec_mux_match(struct device_connection *con, int ep, void *data)
 {
 	const struct typec_altmode_desc *desc = data;
 	struct device *dev;
@@ -197,20 +196,20 @@ static void *typec_mux_match(struct fwnode_handle *fwnode, const char *id,
 	 * Check has the identifier already been "consumed". If it
 	 * has, no need to do any extra connection identification.
 	 */
-	match = !id;
+	match = !con->id;
 	if (match)
 		goto find_mux;
 
 	/* Accessory Mode muxes */
 	if (!desc) {
-		match = fwnode_property_present(fwnode, "accessory");
+		match = fwnode_property_present(con->fwnode, "accessory");
 		if (match)
 			goto find_mux;
 		return NULL;
 	}
 
 	/* Alternate Mode muxes */
-	nval = fwnode_property_count_u16(fwnode, "svid");
+	nval = fwnode_property_count_u16(con->fwnode, "svid");
 	if (nval <= 0)
 		return NULL;
 
@@ -218,7 +217,7 @@ static void *typec_mux_match(struct fwnode_handle *fwnode, const char *id,
 	if (!val)
 		return ERR_PTR(-ENOMEM);
 
-	nval = fwnode_property_read_u16_array(fwnode, "svid", val, nval);
+	nval = fwnode_property_read_u16_array(con->fwnode, "svid", val, nval);
 	if (nval < 0) {
 		kfree(val);
 		return ERR_PTR(nval);
@@ -235,7 +234,7 @@ static void *typec_mux_match(struct fwnode_handle *fwnode, const char *id,
 	return NULL;
 
 find_mux:
-	dev = class_find_device(&typec_mux_class, NULL, fwnode,
+	dev = class_find_device(&typec_mux_class, NULL, con->fwnode,
 				mux_fwnode_match);
 
 	return dev ? to_typec_switch(dev) : ERR_PTR(-EPROBE_DEFER);

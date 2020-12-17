@@ -57,7 +57,7 @@ EXPORT_SYMBOL(pm_power_off);
 void arch_cpu_idle(void)
 {
 	wtint(0);
-	raw_local_irq_enable();
+	local_irq_enable();
 }
 
 void arch_cpu_idle_dead(void)

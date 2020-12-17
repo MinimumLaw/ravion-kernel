@@ -12,8 +12,6 @@
 extern const char linux_banner[];
 extern const char linux_proc_banner[];
 
-extern int oops_in_progress;	/* If set, an oops, panic(), BUG() or die() is in progress */
-
 #define PRINTK_MAX_SINGLE_HEADER_LEN 2
 
 static inline int printk_get_level(const char *buffer)
@@ -161,12 +159,10 @@ static inline void printk_nmi_direct_enter(void) { }
 static inline void printk_nmi_direct_exit(void) { }
 #endif /* PRINTK_NMI */
 
-struct dev_printk_info;
-
 #ifdef CONFIG_PRINTK
-asmlinkage __printf(4, 0)
+asmlinkage __printf(5, 0)
 int vprintk_emit(int facility, int level,
-		 const struct dev_printk_info *dev_info,
+		 const char *dict, size_t dictlen,
 		 const char *fmt, va_list args);
 
 asmlinkage __printf(1, 0)
@@ -437,7 +433,7 @@ extern int kptr_restrict;
 #ifdef CONFIG_PRINTK
 #define printk_once(fmt, ...)					\
 ({								\
-	static bool __section(".data.once") __print_once;	\
+	static bool __section(.data.once) __print_once;		\
 	bool __ret_print_once = !__print_once;			\
 								\
 	if (!__print_once) {					\
@@ -448,7 +444,7 @@ extern int kptr_restrict;
 })
 #define printk_deferred_once(fmt, ...)				\
 ({								\
-	static bool __section(".data.once") __print_once;	\
+	static bool __section(.data.once) __print_once;		\
 	bool __ret_print_once = !__print_once;			\
 								\
 	if (!__print_once) {					\

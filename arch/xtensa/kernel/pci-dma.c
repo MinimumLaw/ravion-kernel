@@ -11,7 +11,8 @@
  * Joe Taylor <joe@tensilica.com, joetylr@yahoo.com>
  */
 
-#include <linux/dma-map-ops.h>
+#include <linux/dma-contiguous.h>
+#include <linux/dma-noncoherent.h>
 #include <linux/dma-direct.h>
 #include <linux/gfp.h>
 #include <linux/highmem.h>

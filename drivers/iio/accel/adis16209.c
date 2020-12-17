@@ -291,15 +291,33 @@ static int adis16209_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	ret = devm_adis_setup_buffer_and_trigger(st, indio_dev, NULL);
+	ret = adis_setup_buffer_and_trigger(st, indio_dev, NULL);
 	if (ret)
 		return ret;
 
 	ret = adis_initial_startup(st);
 	if (ret)
-		return ret;
+		goto error_cleanup_buffer_trigger;
+	ret = iio_device_register(indio_dev);
+	if (ret)
+		goto error_cleanup_buffer_trigger;
 
-	return devm_iio_device_register(&spi->dev, indio_dev);
+	return 0;
+
+error_cleanup_buffer_trigger:
+	adis_cleanup_buffer_and_trigger(st, indio_dev);
+	return ret;
+}
+
+static int adis16209_remove(struct spi_device *spi)
+{
+	struct iio_dev *indio_dev = spi_get_drvdata(spi);
+	struct adis *st = iio_priv(indio_dev);
+
+	iio_device_unregister(indio_dev);
+	adis_cleanup_buffer_and_trigger(st, indio_dev);
+
+	return 0;
 }
 
 static struct spi_driver adis16209_driver = {
@@ -307,6 +325,7 @@ static struct spi_driver adis16209_driver = {
 		.name = "adis16209",
 	},
 	.probe = adis16209_probe,
+	.remove = adis16209_remove,
 };
 module_spi_driver(adis16209_driver);
 

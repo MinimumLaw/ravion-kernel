@@ -89,18 +89,11 @@ ENTRY(printascii)
 2:		teq     r1, #'\n'
 		bne	3f
 		mov	r1, #'\r'
-#ifdef CONFIG_DEBUG_UART_FLOW_CONTROL
-		waituartcts r2, r3
-#endif
-		waituarttxrdy r2, r3
+		waituart r2, r3
 		senduart r1, r3
 		busyuart r2, r3
 		mov	r1, #'\n'
-3:
-#ifdef CONFIG_DEBUG_UART_FLOW_CONTROL
-		waituartcts r2, r3
-#endif
-		waituarttxrdy r2, r3
+3:		waituart r2, r3
 		senduart r1, r3
 		busyuart r2, r3
 		b	1b

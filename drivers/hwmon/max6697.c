@@ -685,9 +685,8 @@ done:
 	return 0;
 }
 
-static const struct i2c_device_id max6697_id[];
-
-static int max6697_probe(struct i2c_client *client)
+static int max6697_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = client->adapter;
 	struct device *dev = &client->dev;
@@ -705,7 +704,7 @@ static int max6697_probe(struct i2c_client *client)
 	if (client->dev.of_node)
 		data->type = (enum chips)of_device_get_match_data(&client->dev);
 	else
-		data->type = i2c_match_id(max6697_id, client)->driver_data;
+		data->type = id->driver_data;
 	data->chip = &max6697_chip_data[data->type];
 	data->client = client;
 	mutex_init(&data->update_lock);
@@ -786,7 +785,7 @@ static struct i2c_driver max6697_driver = {
 		.name	= "max6697",
 		.of_match_table = of_match_ptr(max6697_of_match),
 	},
-	.probe_new = max6697_probe,
+	.probe = max6697_probe,
 	.id_table = max6697_id,
 };
 

@@ -65,7 +65,6 @@ enum pca955x_type {
 	pca9550,
 	pca9551,
 	pca9552,
-	ibm_pca9552,
 	pca9553,
 };
 
@@ -91,11 +90,6 @@ static struct pca955x_chipdef pca955x_chipdefs[] = {
 		.slv_addr	= /* 1100xxx */ 0x60,
 		.slv_addr_shift	= 3,
 	},
-	[ibm_pca9552] = {
-		.bits		= 16,
-		.slv_addr	= /* 0110xxx */ 0x30,
-		.slv_addr_shift	= 3,
-	},
 	[pca9553] = {
 		.bits		= 4,
 		.slv_addr	= /* 110001x */ 0x62,
@@ -107,7 +101,6 @@ static const struct i2c_device_id pca955x_id[] = {
 	{ "pca9550", pca9550 },
 	{ "pca9551", pca9551 },
 	{ "pca9552", pca9552 },
-	{ "ibm-pca9552", ibm_pca9552 },
 	{ "pca9553", pca9553 },
 	{ }
 };
@@ -419,7 +412,6 @@ static const struct of_device_id of_pca955x_match[] = {
 	{ .compatible = "nxp,pca9550", .data = (void *)pca9550 },
 	{ .compatible = "nxp,pca9551", .data = (void *)pca9551 },
 	{ .compatible = "nxp,pca9552", .data = (void *)pca9552 },
-	{ .compatible = "ibm,pca9552", .data = (void *)ibm_pca9552 },
 	{ .compatible = "nxp,pca9553", .data = (void *)pca9553 },
 	{},
 };

@@ -147,6 +147,7 @@ int kdb_stub(struct kgdb_state *ks)
 		return DBG_PASS_EVENT;
 	}
 	kdb_bp_install(ks->linux_regs);
+	dbg_activate_sw_breakpoints();
 	/* Set the exit state to a single step or a continue */
 	if (KDB_STATE(DOING_SS))
 		gdbstub_state(ks, "s");
@@ -166,6 +167,7 @@ int kdb_stub(struct kgdb_state *ks)
 		 * differently vs the gdbstub
 		 */
 		kgdb_single_step = 0;
+		dbg_deactivate_sw_breakpoints();
 		return DBG_SWITCH_CPU_EVENT;
 	}
 	return kgdb_info[ks->cpu].ret_state;

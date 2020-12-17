@@ -27,8 +27,6 @@ required:
   - compatible
   - "#power-domain-cells"
 
-additionalProperties: false
-
 examples:
   - |
     secure-monitor {

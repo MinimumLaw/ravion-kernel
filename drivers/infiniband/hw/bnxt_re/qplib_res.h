@@ -126,7 +126,8 @@ struct bnxt_qplib_pbl {
 };
 
 struct bnxt_qplib_sg_info {
-	struct ib_umem			*umem;
+	struct scatterlist		*sghead;
+	u32				nmap;
 	u32				npages;
 	u32				pgshft;
 	u32				pgsize;

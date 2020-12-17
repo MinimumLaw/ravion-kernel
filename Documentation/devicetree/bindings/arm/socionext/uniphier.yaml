@@ -60,5 +60,3 @@ properties:
           - enum:
               - socionext,uniphier-pxs3-ref
           - const: socionext,uniphier-pxs3
-
-additionalProperties: true

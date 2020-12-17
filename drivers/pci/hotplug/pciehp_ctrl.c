@@ -73,8 +73,10 @@ static int board_added(struct controller *ctrl)
 
 	/* Check link training status */
 	retval = pciehp_check_link_status(ctrl);
-	if (retval)
+	if (retval) {
+		ctrl_err(ctrl, "Failed to check link status\n");
 		goto err_exit;
+	}
 
 	/* Check for a power fault */
 	if (ctrl->power_fault_detected || pciehp_query_power_fault(ctrl)) {

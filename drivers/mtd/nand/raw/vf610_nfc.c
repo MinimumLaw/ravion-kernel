@@ -323,6 +323,11 @@ static inline void vf610_nfc_ecc_mode(struct vf610_nfc *nfc, int ecc_mode)
 			    CONFIG_ECC_MODE_SHIFT, ecc_mode);
 }
 
+static inline void vf610_nfc_transfer_size(struct vf610_nfc *nfc, int size)
+{
+	vf610_nfc_write(nfc, NFC_SECTOR_SIZE, size);
+}
+
 static inline void vf610_nfc_run(struct vf610_nfc *nfc, u32 col, u32 row,
 				 u32 cmd1, u32 cmd2, u32 trfr_sz)
 {
@@ -727,7 +732,7 @@ static void vf610_nfc_init_controller(struct vf610_nfc *nfc)
 	else
 		vf610_nfc_clear(nfc, NFC_FLASH_CONFIG, CONFIG_16BIT);
 
-	if (nfc->chip.ecc.engine_type == NAND_ECC_ENGINE_TYPE_ON_HOST) {
+	if (nfc->chip.ecc.mode == NAND_ECC_HW) {
 		/* Set ECC status offset in SRAM */
 		vf610_nfc_set_field(nfc, NFC_FLASH_CONFIG,
 				    CONFIG_ECC_SRAM_ADDR_MASK,
@@ -756,7 +761,7 @@ static int vf610_nfc_attach_chip(struct nand_chip *chip)
 		return -ENXIO;
 	}
 
-	if (chip->ecc.engine_type != NAND_ECC_ENGINE_TYPE_ON_HOST)
+	if (chip->ecc.mode != NAND_ECC_HW)
 		return 0;
 
 	if (mtd->writesize != PAGE_2K && mtd->oobsize < 64) {
@@ -774,7 +779,7 @@ static int vf610_nfc_attach_chip(struct nand_chip *chip)
 		mtd->oobsize = 64;
 
 	/* Use default large page ECC layout defined in NAND core */
-	mtd_set_ooblayout(mtd, nand_get_large_page_ooblayout());
+	mtd_set_ooblayout(mtd, &nand_ooblayout_lp_ops);
 	if (chip->ecc.strength == 32) {
 		nfc->ecc_mode = ECC_60_BYTE;
 		chip->ecc.bytes = 60;

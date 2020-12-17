@@ -45,15 +45,10 @@ acpi_status acpi_ut_convert_octal_string(char *string, u64 *return_value_ptr)
 	/* Convert each ASCII byte in the input string */
 
 	while (*string) {
-		/*
-		 * Character must be ASCII 0-7, otherwise:
-		 * 1) Runtime: terminate with no error, per the ACPI spec
-		 * 2) Compiler: return an error
-		 */
+
+		/* Character must be ASCII 0-7, otherwise terminate with no error */
+
 		if (!(ACPI_IS_OCTAL_DIGIT(*string))) {
-#ifdef ACPI_ASL_COMPILER
-			status = AE_BAD_OCTAL_CONSTANT;
-#endif
 			break;
 		}
 
@@ -99,15 +94,10 @@ acpi_status acpi_ut_convert_decimal_string(char *string, u64 *return_value_ptr)
 	/* Convert each ASCII byte in the input string */
 
 	while (*string) {
-		/*
-		 * Character must be ASCII 0-9, otherwise:
-		 * 1) Runtime: terminate with no error, per the ACPI spec
-		 * 2) Compiler: return an error
-		 */
+
+		/* Character must be ASCII 0-9, otherwise terminate with no error */
+
 		if (!isdigit(*string)) {
-#ifdef ACPI_ASL_COMPILER
-			status = AE_BAD_DECIMAL_CONSTANT;
-#endif
 			break;
 		}
 
@@ -153,15 +143,10 @@ acpi_status acpi_ut_convert_hex_string(char *string, u64 *return_value_ptr)
 	/* Convert each ASCII byte in the input string */
 
 	while (*string) {
-		/*
-		 * Character must be ASCII A-F, a-f, or 0-9, otherwise:
-		 * 1) Runtime: terminate with no error, per the ACPI spec
-		 * 2) Compiler: return an error
-		 */
+
+		/* Must be ASCII A-F, a-f, or 0-9, otherwise terminate with no error */
+
 		if (!isxdigit(*string)) {
-#ifdef ACPI_ASL_COMPILER
-			status = AE_BAD_HEX_CONSTANT;
-#endif
 			break;
 		}
 

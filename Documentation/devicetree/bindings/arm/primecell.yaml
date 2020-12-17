@@ -33,7 +33,4 @@ properties:
     contains:
       const: apb_pclk
     additionalItems: true
-
-additionalProperties: true
-
 ...

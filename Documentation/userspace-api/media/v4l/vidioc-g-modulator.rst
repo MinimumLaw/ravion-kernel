@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_G_MODULATOR:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_G_MODULATOR - VIDIOC_S_MODULATOR - Get or set modulator attributes
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_G_MODULATOR
+.. c:function:: int ioctl( int fd, VIDIOC_G_MODULATOR, struct v4l2_modulator *argp )
+    :name: VIDIOC_G_MODULATOR
 
-``int ioctl(int fd, VIDIOC_G_MODULATOR, struct v4l2_modulator *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_S_MODULATOR, const struct v4l2_modulator *argp )
+    :name: VIDIOC_S_MODULATOR
 
-.. c:macro:: VIDIOC_S_MODULATOR
-
-``int ioctl(int fd, VIDIOC_S_MODULATOR, const struct v4l2_modulator *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_modulator`.
+
 
 Description
 ===========
@@ -59,6 +66,7 @@ context.
 
 To change the radio frequency the
 :ref:`VIDIOC_S_FREQUENCY <VIDIOC_G_FREQUENCY>` ioctl is available.
+
 
 .. tabularcolumns:: |p{2.9cm}|p{2.9cm}|p{5.8cm}|p{2.9cm}|p{3.0cm}|
 
@@ -120,6 +128,7 @@ To change the radio frequency the
 	Drivers and applications must set the array to zero.
 
 
+
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
 .. _modulator-txsubchans:
@@ -179,6 +188,7 @@ To change the radio frequency the
     * - ``V4L2_TUNER_SUB_RDS``
       - 0x0010
       - Enable the RDS encoder for a radio FM transmitter.
+
 
 Return Value
 ============

@@ -33,7 +33,8 @@
 #define _IBUF_CNTRL_DMA_SYNC_WAIT_FOR_SYNC		1
 #define _IBUF_CNTRL_DMA_SYNC_FSM_WAIT_FOR_ACK		(0x3 << 1)
 
-struct	isp2401_ib_buffer_s {
+typedef struct ib_buffer_s	ib_buffer_t;
+struct	ib_buffer_s {
 	u32	start_addr;	/* start address of the buffer in the
 					 * "input-buffer hardware block"
 					 */
@@ -41,7 +42,6 @@ struct	isp2401_ib_buffer_s {
 	u32	stride;		/* stride per buffer line (in bytes) */
 	u32	lines;		/* lines in the buffer */
 };
-typedef struct isp2401_ib_buffer_s	isp2401_ib_buffer_t;
 
 typedef struct ibuf_ctrl_cfg_s ibuf_ctrl_cfg_t;
 struct ibuf_ctrl_cfg_s {
@@ -58,7 +58,7 @@ struct ibuf_ctrl_cfg_s {
 		u32 elems_per_word_in_dest;
 	} dma_cfg;
 
-	isp2401_ib_buffer_t ib_buffer;
+	ib_buffer_t ib_buffer;
 
 	struct {
 		u32 stride;

@@ -34,8 +34,6 @@ enum chips {
 
 #define TPS53681_MFR_SPECIFIC_20	0xe4	/* Number of phases, per page */
 
-static const struct i2c_device_id tps53679_id[];
-
 static int tps53679_identify_mode(struct i2c_client *client,
 				  struct pmbus_driver_info *info)
 {
@@ -185,7 +183,8 @@ static struct pmbus_driver_info tps53679_info = {
 	.pfunc[5] = PMBUS_HAVE_IOUT,
 };
 
-static int tps53679_probe(struct i2c_client *client)
+static int tps53679_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct pmbus_driver_info *info;
@@ -194,7 +193,7 @@ static int tps53679_probe(struct i2c_client *client)
 	if (dev->of_node)
 		chip_id = (enum chips)of_device_get_match_data(dev);
 	else
-		chip_id = i2c_match_id(tps53679_id, client)->driver_data;
+		chip_id = id->driver_data;
 
 	info = devm_kmemdup(dev, &tps53679_info, sizeof(*info), GFP_KERNEL);
 	if (!info)
@@ -221,7 +220,7 @@ static int tps53679_probe(struct i2c_client *client)
 		return -ENODEV;
 	}
 
-	return pmbus_do_probe(client, info);
+	return pmbus_do_probe(client, id, info);
 }
 
 static const struct i2c_device_id tps53679_id[] = {
@@ -250,7 +249,7 @@ static struct i2c_driver tps53679_driver = {
 		.name = "tps53679",
 		.of_match_table = of_match_ptr(tps53679_of_match),
 	},
-	.probe_new = tps53679_probe,
+	.probe = tps53679_probe,
 	.remove = pmbus_do_remove,
 	.id_table = tps53679_id,
 };

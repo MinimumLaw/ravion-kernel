@@ -982,7 +982,7 @@ struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 #endif
 		NL_SET_ERR_MSG(extack, "Failed to load TC action module");
 		err = -ENOENT;
-		goto err_free;
+		goto err_out;
 	}
 
 	/* backward compatibility for policer */
@@ -1012,12 +1012,11 @@ struct tc_action *tcf_action_init_1(struct net *net, struct tcf_proto *tp,
 
 err_mod:
 	module_put(a_o->owner);
-err_free:
+err_out:
 	if (cookie) {
 		kfree(cookie->data);
 		kfree(cookie);
 	}
-err_out:
 	return ERR_PTR(err);
 }
 

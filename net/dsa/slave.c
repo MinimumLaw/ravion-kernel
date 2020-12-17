@@ -303,36 +303,13 @@ static int dsa_slave_port_attr_set(struct net_device *dev,
 	return ret;
 }
 
-/* Must be called under rcu_read_lock() */
-static int
-dsa_slave_vlan_check_for_8021q_uppers(struct net_device *slave,
-				      const struct switchdev_obj_port_vlan *vlan)
-{
-	struct net_device *upper_dev;
-	struct list_head *iter;
-
-	netdev_for_each_upper_dev_rcu(slave, upper_dev, iter) {
-		u16 vid;
-
-		if (!is_vlan_dev(upper_dev))
-			continue;
-
-		vid = vlan_dev_vlan_id(upper_dev);
-		if (vid >= vlan->vid_begin && vid <= vlan->vid_end)
-			return -EBUSY;
-	}
-
-	return 0;
-}
-
 static int dsa_slave_vlan_add(struct net_device *dev,
 			      const struct switchdev_obj *obj,
 			      struct switchdev_trans *trans)
 {
-	struct net_device *master = dsa_slave_to_master(dev);
 	struct dsa_port *dp = dsa_slave_to_port(dev);
 	struct switchdev_obj_port_vlan vlan;
-	int vid, err;
+	int err;
 
 	if (obj->orig_dev != dev)
 		return -EOPNOTSUPP;
@@ -341,17 +318,6 @@ static int dsa_slave_vlan_add(struct net_device *dev,
 		return 0;
 
 	vlan = *SWITCHDEV_OBJ_PORT_VLAN(obj);
-
-	/* Deny adding a bridge VLAN when there is already an 802.1Q upper with
-	 * the same VID.
-	 */
-	if (trans->ph_prepare && br_vlan_enabled(dp->bridge_dev)) {
-		rcu_read_lock();
-		err = dsa_slave_vlan_check_for_8021q_uppers(dev, &vlan);
-		rcu_read_unlock();
-		if (err)
-			return err;
-	}
 
 	err = dsa_port_vlan_add(dp, &vlan, trans);
 	if (err)
@@ -366,12 +332,6 @@ static int dsa_slave_vlan_add(struct net_device *dev,
 	err = dsa_port_vlan_add(dp->cpu_dp, &vlan, trans);
 	if (err)
 		return err;
-
-	for (vid = vlan.vid_begin; vid <= vlan.vid_end; vid++) {
-		err = vlan_vid_add(master, htons(ETH_P_8021Q), vid);
-		if (err)
-			return err;
-	}
 
 	return 0;
 }
@@ -416,10 +376,7 @@ static int dsa_slave_port_obj_add(struct net_device *dev,
 static int dsa_slave_vlan_del(struct net_device *dev,
 			      const struct switchdev_obj *obj)
 {
-	struct net_device *master = dsa_slave_to_master(dev);
 	struct dsa_port *dp = dsa_slave_to_port(dev);
-	struct switchdev_obj_port_vlan *vlan;
-	int vid, err;
 
 	if (obj->orig_dev != dev)
 		return -EOPNOTSUPP;
@@ -427,19 +384,10 @@ static int dsa_slave_vlan_del(struct net_device *dev,
 	if (dsa_port_skip_vlan_configuration(dp))
 		return 0;
 
-	vlan = SWITCHDEV_OBJ_PORT_VLAN(obj);
-
 	/* Do not deprogram the CPU port as it may be shared with other user
 	 * ports which can be members of this VLAN as well.
 	 */
-	err = dsa_port_vlan_del(dp, vlan);
-	if (err)
-		return err;
-
-	for (vid = vlan->vid_begin; vid <= vlan->vid_end; vid++)
-		vlan_vid_del(master, htons(ETH_P_8021Q), vid);
-
-	return 0;
+	return dsa_port_vlan_del(dp, SWITCHDEV_OBJ_PORT_VLAN(obj));
 }
 
 static int dsa_slave_port_obj_del(struct net_device *dev,
@@ -1221,9 +1169,28 @@ static void dsa_slave_get_stats64(struct net_device *dev,
 				  struct rtnl_link_stats64 *stats)
 {
 	struct dsa_slave_priv *p = netdev_priv(dev);
+	struct pcpu_sw_netstats *s;
+	unsigned int start;
+	int i;
 
 	netdev_stats_to_stats64(stats, &dev->stats);
-	dev_fetch_sw_netstats(stats, p->stats64);
+	for_each_possible_cpu(i) {
+		u64 tx_packets, tx_bytes, rx_packets, rx_bytes;
+
+		s = per_cpu_ptr(p->stats64, i);
+		do {
+			start = u64_stats_fetch_begin_irq(&s->syncp);
+			tx_packets = s->tx_packets;
+			tx_bytes = s->tx_bytes;
+			rx_packets = s->rx_packets;
+			rx_bytes = s->rx_bytes;
+		} while (u64_stats_fetch_retry_irq(&s->syncp, start));
+
+		stats->tx_packets += tx_packets;
+		stats->tx_bytes += tx_bytes;
+		stats->rx_packets += rx_packets;
+		stats->rx_bytes += rx_bytes;
+	}
 }
 
 static int dsa_slave_get_rxnfc(struct net_device *dev,
@@ -1265,66 +1232,64 @@ static int dsa_slave_get_ts_info(struct net_device *dev,
 static int dsa_slave_vlan_rx_add_vid(struct net_device *dev, __be16 proto,
 				     u16 vid)
 {
-	struct net_device *master = dsa_slave_to_master(dev);
 	struct dsa_port *dp = dsa_slave_to_port(dev);
-	struct switchdev_obj_port_vlan vlan = {
-		.obj.id = SWITCHDEV_OBJ_ID_PORT_VLAN,
-		.vid_begin = vid,
-		.vid_end = vid,
-		/* This API only allows programming tagged, non-PVID VIDs */
-		.flags = 0,
-	};
-	struct switchdev_trans trans;
+	struct bridge_vlan_info info;
 	int ret;
 
-	/* User port... */
-	trans.ph_prepare = true;
-	ret = dsa_port_vlan_add(dp, &vlan, &trans);
+	/* Check for a possible bridge VLAN entry now since there is no
+	 * need to emulate the switchdev prepare + commit phase.
+	 */
+	if (dp->bridge_dev) {
+		if (dsa_port_skip_vlan_configuration(dp))
+			return 0;
+
+		/* br_vlan_get_info() returns -EINVAL or -ENOENT if the
+		 * device, respectively the VID is not found, returning
+		 * 0 means success, which is a failure for us here.
+		 */
+		ret = br_vlan_get_info(dp->bridge_dev, vid, &info);
+		if (ret == 0)
+			return -EBUSY;
+	}
+
+	ret = dsa_port_vid_add(dp, vid, 0);
 	if (ret)
 		return ret;
 
-	trans.ph_prepare = false;
-	ret = dsa_port_vlan_add(dp, &vlan, &trans);
+	ret = dsa_port_vid_add(dp->cpu_dp, vid, 0);
 	if (ret)
 		return ret;
 
-	/* And CPU port... */
-	trans.ph_prepare = true;
-	ret = dsa_port_vlan_add(dp->cpu_dp, &vlan, &trans);
-	if (ret)
-		return ret;
-
-	trans.ph_prepare = false;
-	ret = dsa_port_vlan_add(dp->cpu_dp, &vlan, &trans);
-	if (ret)
-		return ret;
-
-	return vlan_vid_add(master, proto, vid);
+	return 0;
 }
 
 static int dsa_slave_vlan_rx_kill_vid(struct net_device *dev, __be16 proto,
 				      u16 vid)
 {
-	struct net_device *master = dsa_slave_to_master(dev);
 	struct dsa_port *dp = dsa_slave_to_port(dev);
-	struct switchdev_obj_port_vlan vlan = {
-		.vid_begin = vid,
-		.vid_end = vid,
-		/* This API only allows programming tagged, non-PVID VIDs */
-		.flags = 0,
-	};
-	int err;
+	struct bridge_vlan_info info;
+	int ret;
+
+	/* Check for a possible bridge VLAN entry now since there is no
+	 * need to emulate the switchdev prepare + commit phase.
+	 */
+	if (dp->bridge_dev) {
+		if (dsa_port_skip_vlan_configuration(dp))
+			return 0;
+
+		/* br_vlan_get_info() returns -EINVAL or -ENOENT if the
+		 * device, respectively the VID is not found, returning
+		 * 0 means success, which is a failure for us here.
+		 */
+		ret = br_vlan_get_info(dp->bridge_dev, vid, &info);
+		if (ret == 0)
+			return -EBUSY;
+	}
 
 	/* Do not deprogram the CPU port as it may be shared with other user
 	 * ports which can be members of this VLAN as well.
 	 */
-	err = dsa_port_vlan_del(dp, &vlan);
-	if (err)
-		return err;
-
-	vlan_vid_del(master, proto, vid);
-
-	return 0;
+	return dsa_port_vid_del(dp, vid);
 }
 
 struct dsa_hw_port {
@@ -1819,7 +1784,7 @@ int dsa_slave_create(struct dsa_port *port)
 	rtnl_lock();
 	ret = dsa_slave_change_mtu(slave_dev, ETH_DATA_LEN);
 	rtnl_unlock();
-	if (ret && ret != -EOPNOTSUPP)
+	if (ret)
 		dev_warn(ds->dev, "nonfatal error %d setting MTU on port %d\n",
 			 ret, port->index);
 
@@ -1827,9 +1792,8 @@ int dsa_slave_create(struct dsa_port *port)
 
 	ret = dsa_slave_phy_setup(slave_dev);
 	if (ret) {
-		netdev_err(slave_dev,
-			   "error %d setting up PHY for tree %d, switch %d, port %d\n",
-			   ret, ds->dst->index, ds->index, port->index);
+		netdev_err(master, "error %d setting up slave PHY for %s\n",
+			   ret, slave_dev->name);
 		goto out_gcells;
 	}
 
@@ -1916,9 +1880,9 @@ static int dsa_slave_changeupper(struct net_device *dev,
 	return err;
 }
 
-static int
-dsa_prevent_bridging_8021q_upper(struct net_device *dev,
-				 struct netdev_notifier_changeupper_info *info)
+static int dsa_slave_upper_vlan_check(struct net_device *dev,
+				      struct netdev_notifier_changeupper_info *
+				      info)
 {
 	struct netlink_ext_ack *ext_ack;
 	struct net_device *slave;
@@ -1948,56 +1912,14 @@ dsa_prevent_bridging_8021q_upper(struct net_device *dev,
 	return NOTIFY_DONE;
 }
 
-static int
-dsa_slave_check_8021q_upper(struct net_device *dev,
-			    struct netdev_notifier_changeupper_info *info)
-{
-	struct dsa_port *dp = dsa_slave_to_port(dev);
-	struct net_device *br = dp->bridge_dev;
-	struct bridge_vlan_info br_info;
-	struct netlink_ext_ack *extack;
-	int err = NOTIFY_DONE;
-	u16 vid;
-
-	if (!br || !br_vlan_enabled(br))
-		return NOTIFY_DONE;
-
-	extack = netdev_notifier_info_to_extack(&info->info);
-	vid = vlan_dev_vlan_id(info->upper_dev);
-
-	/* br_vlan_get_info() returns -EINVAL or -ENOENT if the
-	 * device, respectively the VID is not found, returning
-	 * 0 means success, which is a failure for us here.
-	 */
-	err = br_vlan_get_info(br, vid, &br_info);
-	if (err == 0) {
-		NL_SET_ERR_MSG_MOD(extack,
-				   "This VLAN is already configured by the bridge");
-		return notifier_from_errno(-EBUSY);
-	}
-
-	return NOTIFY_DONE;
-}
-
 static int dsa_slave_netdevice_event(struct notifier_block *nb,
 				     unsigned long event, void *ptr)
 {
 	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
 
-	switch (event) {
-	case NETDEV_PRECHANGEUPPER: {
-		struct netdev_notifier_changeupper_info *info = ptr;
-
+	if (event == NETDEV_CHANGEUPPER) {
 		if (!dsa_slave_dev_check(dev))
-			return dsa_prevent_bridging_8021q_upper(dev, ptr);
-
-		if (is_vlan_dev(info->upper_dev))
-			return dsa_slave_check_8021q_upper(dev, ptr);
-		break;
-	}
-	case NETDEV_CHANGEUPPER:
-		if (!dsa_slave_dev_check(dev))
-			return NOTIFY_DONE;
+			return dsa_slave_upper_vlan_check(dev, ptr);
 
 		return dsa_slave_changeupper(dev, ptr);
 	}

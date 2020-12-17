@@ -8,24 +8,11 @@
 
 MODULE_FIRMWARE("ast_dp501_fw.bin");
 
-static void ast_release_firmware(void *data)
-{
-	struct ast_private *ast = data;
-
-	release_firmware(ast->dp501_fw);
-	ast->dp501_fw = NULL;
-}
-
 static int ast_load_dp501_microcode(struct drm_device *dev)
 {
 	struct ast_private *ast = to_ast_private(dev);
-	int ret;
 
-	ret = request_firmware(&ast->dp501_fw, "ast_dp501_fw.bin", dev->dev);
-	if (ret)
-		return ret;
-
-	return devm_add_action_or_reset(dev->dev, ast_release_firmware, ast);
+	return request_firmware(&ast->dp501_fw, "ast_dp501_fw.bin", dev->dev);
 }
 
 static void send_ack(struct ast_private *ast)
@@ -447,4 +434,12 @@ void ast_init_3rdtx(struct drm_device *dev)
 				ast_init_analog(dev);
 		}
 	}
+}
+
+void ast_release_firmware(struct drm_device *dev)
+{
+	struct ast_private *ast = to_ast_private(dev);
+
+	release_firmware(ast->dp501_fw);
+	ast->dp501_fw = NULL;
 }

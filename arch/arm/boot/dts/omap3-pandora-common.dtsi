@@ -702,7 +702,7 @@
 };
 
 &venc {
-	status = "okay";
+	status = "ok";
 
 	vdda-supply = <&vdac>;
 
@@ -718,7 +718,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = < &dss_dpi_pins >;
 
-	status = "okay";
+	status = "ok";
 	vdds_dsi-supply = <&vpll2>;
 
 	port {

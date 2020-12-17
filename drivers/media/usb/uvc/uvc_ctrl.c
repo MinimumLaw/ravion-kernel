@@ -2020,14 +2020,18 @@ int uvc_ctrl_restore_values(struct uvc_device *dev)
 static int uvc_ctrl_add_info(struct uvc_device *dev, struct uvc_control *ctrl,
 	const struct uvc_control_info *info)
 {
+	int ret = 0;
+
 	ctrl->info = *info;
 	INIT_LIST_HEAD(&ctrl->info.mappings);
 
 	/* Allocate an array to save control values (cur, def, max, etc.) */
 	ctrl->uvc_data = kzalloc(ctrl->info.size * UVC_CTRL_DATA_LAST + 1,
 				 GFP_KERNEL);
-	if (!ctrl->uvc_data)
-		return -ENOMEM;
+	if (ctrl->uvc_data == NULL) {
+		ret = -ENOMEM;
+		goto done;
+	}
 
 	ctrl->initialized = 1;
 
@@ -2035,7 +2039,10 @@ static int uvc_ctrl_add_info(struct uvc_device *dev, struct uvc_control *ctrl,
 		"entity %u\n", ctrl->info.entity, ctrl->info.selector,
 		dev->udev->devpath, ctrl->entity->id);
 
-	return 0;
+done:
+	if (ret < 0)
+		kfree(ctrl->uvc_data);
+	return ret;
 }
 
 /*

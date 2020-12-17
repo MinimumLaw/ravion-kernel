@@ -278,7 +278,13 @@ static void sas_resume_devices(struct work_struct *work)
  */
 int sas_discover_end_dev(struct domain_device *dev)
 {
-	return sas_notify_lldd_dev_found(dev);
+	int res;
+
+	res = sas_notify_lldd_dev_found(dev);
+	if (res)
+		return res;
+
+	return 0;
 }
 
 /* ---------- Device registration and unregistration ---------- */

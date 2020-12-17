@@ -87,7 +87,7 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <

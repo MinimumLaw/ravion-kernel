@@ -50,8 +50,6 @@ patternProperties:
       - exit-latency-us
       - min-residency-us
 
-additionalProperties: false
-
 examples:
   - |
 

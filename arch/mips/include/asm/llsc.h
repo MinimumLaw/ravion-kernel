@@ -28,7 +28,7 @@
  * works around a bug present in R10000 CPUs prior to revision 3.0 that could
  * cause ll-sc sequences to execute non-atomically.
  */
-#ifdef CONFIG_WAR_R10000_LLSC
+#if R10000_LLSC_WAR
 # define __SC_BEQZ "beqzl	"
 #elif MIPS_ISA_REV >= 6
 # define __SC_BEQZ "beqzc	"

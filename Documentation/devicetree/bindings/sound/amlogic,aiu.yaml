@@ -75,8 +75,6 @@ required:
   - reg
   - resets
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/gxbb-clkc.h>

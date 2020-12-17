@@ -9,8 +9,6 @@
 #include <asm/reg.h>
 #include <asm/cputable.h>
 
-#include "internal.h"
-
 /*
  * Bits in event code for PPC970
  */

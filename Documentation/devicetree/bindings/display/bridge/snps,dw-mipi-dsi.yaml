@@ -66,5 +66,3 @@ required:
   - clocks
   - ports
   - reg
-
-additionalProperties: true

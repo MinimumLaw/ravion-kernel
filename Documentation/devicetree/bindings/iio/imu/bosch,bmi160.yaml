@@ -46,13 +46,9 @@ properties:
   mount-matrix:
     description: an optional 3x3 mounting rotation matrix
 
-  spi-max-frequency: true
-
 required:
   - compatible
   - reg
-
-additionalProperties: false
 
 examples:
   - |

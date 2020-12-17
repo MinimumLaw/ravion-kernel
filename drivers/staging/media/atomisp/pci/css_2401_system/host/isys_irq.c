@@ -28,7 +28,8 @@
 #endif
 
 /* Public interface */
-void isys_irqc_status_enable(const isys_irq_ID_t	isys_irqc_id)
+STORAGE_CLASS_ISYS2401_IRQ_C void isys_irqc_status_enable(
+    const isys_irq_ID_t	isys_irqc_id)
 {
 	assert(isys_irqc_id < N_ISYS_IRQ_ID);
 

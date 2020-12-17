@@ -120,8 +120,6 @@ required:
   - clock-names
   - phy-mode
 
-unevaluatedProperties: false
-
 examples:
   - |
     ethmac: ethernet@c9410000 {

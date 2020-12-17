@@ -64,7 +64,6 @@ extern const char _s_kernel_ro[], _e_kernel_ro[];
  */
 static void __init map_ram(void)
 {
-	phys_addr_t start, end;
 	unsigned long v, p, e;
 	pgprot_t prot;
 	pgd_t *pge;
@@ -72,7 +71,6 @@ static void __init map_ram(void)
 	pud_t *pue;
 	pmd_t *pme;
 	pte_t *pte;
-	u64 i;
 	/* These mark extents of read-only kernel pages...
 	 * ...from vmlinux.lds.S
 	 */
@@ -80,9 +78,9 @@ static void __init map_ram(void)
 
 	v = PAGE_OFFSET;
 
-	for_each_mem_range(i, &start, &end) {
-		p = (u32) start & PAGE_MASK;
-		e = (u32) end;
+	for_each_memblock(memory, region) {
+		p = (u32) region->base & PAGE_MASK;
+		e = p + (u32) region->size;
 
 		v = (u32) __va(p);
 		pge = pgd_offset_k(v);

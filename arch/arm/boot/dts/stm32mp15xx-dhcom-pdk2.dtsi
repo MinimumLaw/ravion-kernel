@@ -274,8 +274,7 @@
 
 &uart8 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart8_pins_a &uart8_rtscts_pins_a>;
-	uart-has-rtscts;
+	pinctrl-0 = <&uart8_pins_a>;
 	status = "okay";
 };
 
@@ -285,12 +284,9 @@
 };
 
 &usbotg_hs {
-	dr_mode = "otg";
-	pinctrl-0 = <&usbotg_hs_pins_a>;
-	pinctrl-names = "default";
-	phy-names = "usb2-phy";
+	dr_mode = "peripheral";
 	phys = <&usbphyc_port1 0>;
-	vbus-supply = <&vbus_otg>;
+	phy-names = "usb2-phy";
 	status = "okay";
 };
 

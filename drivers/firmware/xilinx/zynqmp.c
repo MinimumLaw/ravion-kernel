@@ -29,7 +29,7 @@
 #define PM_API_FEATURE_CHECK_MAX_ORDER  7
 
 static bool feature_check_enabled;
-static DEFINE_HASHTABLE(pm_api_features_map, PM_API_FEATURE_CHECK_MAX_ORDER);
+DEFINE_HASHTABLE(pm_api_features_map, PM_API_FEATURE_CHECK_MAX_ORDER);
 
 /**
  * struct pm_api_feature_data - PM API Feature data

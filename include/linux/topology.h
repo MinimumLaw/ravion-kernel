@@ -198,7 +198,7 @@ static inline int cpu_to_mem(int cpu)
 #define topology_die_cpumask(cpu)		cpumask_of(cpu)
 #endif
 
-#if defined(CONFIG_SCHED_SMT) && !defined(cpu_smt_mask)
+#ifdef CONFIG_SCHED_SMT
 static inline const struct cpumask *cpu_smt_mask(int cpu)
 {
 	return topology_sibling_cpumask(cpu);

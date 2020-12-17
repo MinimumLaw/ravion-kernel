@@ -24,6 +24,7 @@
 #include <asm/irqdomain.h>
 #include <asm/mtrr.h>
 #include <asm/mpspec.h>
+#include <asm/io_apic.h>
 #include <asm/proto.h>
 #include <asm/bios_ebda.h>
 #include <asm/e820/api.h>
@@ -45,6 +46,11 @@ static int __init mpf_checksum(unsigned char *mp, int len)
 	return sum & 0xFF;
 }
 
+int __init default_mpc_apic_id(struct mpc_cpu *m)
+{
+	return m->apicid;
+}
+
 static void __init MP_processor_info(struct mpc_cpu *m)
 {
 	int apicid;
@@ -55,7 +61,7 @@ static void __init MP_processor_info(struct mpc_cpu *m)
 		return;
 	}
 
-	apicid = m->apicid;
+	apicid = x86_init.mpparse.mpc_apic_id(m);
 
 	if (m->cpuflag & CPU_BOOTPROCESSOR) {
 		bootup_cpu = " (Bootup-CPU)";
@@ -67,7 +73,7 @@ static void __init MP_processor_info(struct mpc_cpu *m)
 }
 
 #ifdef CONFIG_X86_IO_APIC
-static void __init mpc_oem_bus_info(struct mpc_bus *m, char *str)
+void __init default_mpc_oem_bus_info(struct mpc_bus *m, char *str)
 {
 	memcpy(str, m->bustype, 6);
 	str[6] = 0;
@@ -78,7 +84,7 @@ static void __init MP_bus_info(struct mpc_bus *m)
 {
 	char str[7];
 
-	mpc_oem_bus_info(m, str);
+	x86_init.mpparse.mpc_oem_bus_info(m, str);
 
 #if MAX_MP_BUSSES < 256
 	if (m->busid >= MAX_MP_BUSSES) {
@@ -94,6 +100,9 @@ static void __init MP_bus_info(struct mpc_bus *m)
 		mp_bus_id_to_type[m->busid] = MP_BUS_ISA;
 #endif
 	} else if (strncmp(str, BUSTYPE_PCI, sizeof(BUSTYPE_PCI) - 1) == 0) {
+		if (x86_init.mpparse.mpc_oem_pci_bus)
+			x86_init.mpparse.mpc_oem_pci_bus(m);
+
 		clear_bit(m->busid, mp_bus_not_pci);
 #ifdef CONFIG_EISA
 		mp_bus_id_to_type[m->busid] = MP_BUS_PCI;
@@ -189,6 +198,8 @@ static void __init smp_dump_mptable(struct mpc_table *mpc, unsigned char *mpt)
 			1, mpc, mpc->length, 1);
 }
 
+void __init default_smp_read_mpc_oem(struct mpc_table *mpc) { }
+
 static int __init smp_read_mpc(struct mpc_table *mpc, unsigned early)
 {
 	char str[16];
@@ -207,7 +218,14 @@ static int __init smp_read_mpc(struct mpc_table *mpc, unsigned early)
 	if (early)
 		return 1;
 
-	/* Now process the configuration blocks. */
+	if (mpc->oemptr)
+		x86_init.mpparse.smp_read_mpc_oem(mpc);
+
+	/*
+	 *      Now process the configuration blocks.
+	 */
+	x86_init.mpparse.mpc_record(0);
+
 	while (count < mpc->length) {
 		switch (*mpt) {
 		case MP_PROCESSOR:
@@ -238,6 +256,7 @@ static int __init smp_read_mpc(struct mpc_table *mpc, unsigned early)
 			count = mpc->length;
 			break;
 		}
+		x86_init.mpparse.mpc_record(1);
 	}
 
 	if (!num_processors)

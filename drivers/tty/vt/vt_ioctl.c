@@ -181,7 +181,7 @@ static void vt_event_wait(struct vt_event_wait *vw)
 
 /**
  *	vt_event_wait_ioctl	-	event ioctl handler
- *	@event: argument to ioctl (the event)
+ *	@arg: argument to ioctl
  *
  *	Implement the VT_WAITEVENT ioctl using the VT event interface
  */
@@ -208,6 +208,7 @@ static int vt_event_wait_ioctl(struct vt_event __user *event)
 
 /**
  *	vt_waitactive	-	active console wait
+ *	@event: event code
  *	@n: new console
  *
  *	Helper for event waits. Used to implement the legacy

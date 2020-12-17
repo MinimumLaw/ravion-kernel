@@ -23,13 +23,12 @@ struct dso;
 struct map;
 struct maps;
 struct option;
-struct build_id;
 
 /*
  * libelf 0.8.x and earlier do not support ELF_C_READ_MMAP;
  * for newer versions we can use mmap to reduce memory usage:
  */
-#ifdef ELF_C_READ_MMAP
+#ifdef HAVE_LIBELF_MMAP_SUPPORT
 # define PERF_ELF_C_READ_MMAP ELF_C_READ_MMAP
 #else
 # define PERF_ELF_C_READ_MMAP ELF_C_READ
@@ -131,8 +130,6 @@ int dso__load_kallsyms(struct dso *dso, const char *filename, struct map *map);
 
 void dso__insert_symbol(struct dso *dso,
 			struct symbol *sym);
-void dso__delete_symbol(struct dso *dso,
-			struct symbol *sym);
 
 struct symbol *dso__find_symbol(struct dso *dso, u64 addr);
 struct symbol *dso__find_symbol_by_name(struct dso *dso, const char *name);
@@ -145,8 +142,8 @@ struct symbol *dso__next_symbol(struct symbol *sym);
 
 enum dso_type dso__type_fd(int fd);
 
-int filename__read_build_id(const char *filename, struct build_id *id);
-int sysfs__read_build_id(const char *filename, struct build_id *bid);
+int filename__read_build_id(const char *filename, void *bf, size_t size);
+int sysfs__read_build_id(const char *filename, void *bf, size_t size);
 int modules__parse(const char *filename, void *arg,
 		   int (*process_module)(void *arg, const char *name,
 					 u64 start, u64 size));
@@ -177,10 +174,6 @@ int symbol__config_symfs(const struct option *opt __maybe_unused,
 			 const char *dir, int unset __maybe_unused);
 
 struct symsrc;
-
-#ifdef HAVE_LIBBFD_SUPPORT
-int dso__load_bfd_symbols(struct dso *dso, const char *debugfile);
-#endif
 
 int dso__load_sym(struct dso *dso, struct map *map, struct symsrc *syms_ss,
 		  struct symsrc *runtime_ss, int kmodule);

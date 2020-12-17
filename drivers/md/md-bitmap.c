@@ -357,12 +357,11 @@ static int read_page(struct file *file, unsigned long index,
 	struct inode *inode = file_inode(file);
 	struct buffer_head *bh;
 	sector_t block, blk_cur;
-	unsigned long blocksize = i_blocksize(inode);
 
 	pr_debug("read bitmap file (%dB @ %llu)\n", (int)PAGE_SIZE,
 		 (unsigned long long)index << PAGE_SHIFT);
 
-	bh = alloc_page_buffers(page, blocksize, false);
+	bh = alloc_page_buffers(page, 1<<inode->i_blkbits, false);
 	if (!bh) {
 		ret = -ENOMEM;
 		goto out;
@@ -384,10 +383,10 @@ static int read_page(struct file *file, unsigned long index,
 
 			bh->b_blocknr = block;
 			bh->b_bdev = inode->i_sb->s_bdev;
-			if (count < blocksize)
+			if (count < (1<<inode->i_blkbits))
 				count = 0;
 			else
-				count -= blocksize;
+				count -= (1<<inode->i_blkbits);
 
 			bh->b_end_io = end_bitmap_write;
 			bh->b_private = bitmap;
@@ -606,8 +605,8 @@ re_read:
 	if (bitmap->cluster_slot >= 0) {
 		sector_t bm_blocks = bitmap->mddev->resync_max_sectors;
 
-		bm_blocks = DIV_ROUND_UP_SECTOR_T(bm_blocks,
-			   (bitmap->mddev->bitmap_info.chunksize >> 9));
+		sector_div(bm_blocks,
+			   bitmap->mddev->bitmap_info.chunksize >> 9);
 		/* bits to bytes */
 		bm_blocks = ((bm_blocks+7) >> 3) + sizeof(bitmap_super_t);
 		/* to 4k blocks */

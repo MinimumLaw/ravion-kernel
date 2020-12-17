@@ -84,7 +84,6 @@ enum irq_domain_bus_token {
 	DOMAIN_BUS_FSL_MC_MSI,
 	DOMAIN_BUS_TI_SCI_INTA_MSI,
 	DOMAIN_BUS_WAKEUP,
-	DOMAIN_BUS_VMD_MSI,
 };
 
 /**
@@ -517,9 +516,6 @@ extern int irq_domain_alloc_irqs_parent(struct irq_domain *domain,
 extern void irq_domain_free_irqs_parent(struct irq_domain *domain,
 					unsigned int irq_base,
 					unsigned int nr_irqs);
-
-extern int irq_domain_disconnect_hierarchy(struct irq_domain *domain,
-					   unsigned int virq);
 
 static inline bool irq_domain_is_hierarchy(struct irq_domain *domain)
 {

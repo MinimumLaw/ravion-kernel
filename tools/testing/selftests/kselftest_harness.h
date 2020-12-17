@@ -432,7 +432,7 @@
  */
 
 /**
- * ASSERT_EQ()
+ * ASSERT_EQ(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -443,7 +443,7 @@
 	__EXPECT(expected, #expected, seen, #seen, ==, 1)
 
 /**
- * ASSERT_NE()
+ * ASSERT_NE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -454,7 +454,7 @@
 	__EXPECT(expected, #expected, seen, #seen, !=, 1)
 
 /**
- * ASSERT_LT()
+ * ASSERT_LT(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -465,7 +465,7 @@
 	__EXPECT(expected, #expected, seen, #seen, <, 1)
 
 /**
- * ASSERT_LE()
+ * ASSERT_LE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -476,7 +476,7 @@
 	__EXPECT(expected, #expected, seen, #seen, <=, 1)
 
 /**
- * ASSERT_GT()
+ * ASSERT_GT(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -487,7 +487,7 @@
 	__EXPECT(expected, #expected, seen, #seen, >, 1)
 
 /**
- * ASSERT_GE()
+ * ASSERT_GE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -498,7 +498,7 @@
 	__EXPECT(expected, #expected, seen, #seen, >=, 1)
 
 /**
- * ASSERT_NULL()
+ * ASSERT_NULL(seen)
  *
  * @seen: measured value
  *
@@ -508,7 +508,7 @@
 	__EXPECT(NULL, "NULL", seen, #seen, ==, 1)
 
 /**
- * ASSERT_TRUE()
+ * ASSERT_TRUE(seen)
  *
  * @seen: measured value
  *
@@ -518,7 +518,7 @@
 	__EXPECT(0, "0", seen, #seen, !=, 1)
 
 /**
- * ASSERT_FALSE()
+ * ASSERT_FALSE(seen)
  *
  * @seen: measured value
  *
@@ -528,7 +528,7 @@
 	__EXPECT(0, "0", seen, #seen, ==, 1)
 
 /**
- * ASSERT_STREQ()
+ * ASSERT_STREQ(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -539,7 +539,7 @@
 	__EXPECT_STR(expected, seen, ==, 1)
 
 /**
- * ASSERT_STRNE()
+ * ASSERT_STRNE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -550,7 +550,7 @@
 	__EXPECT_STR(expected, seen, !=, 1)
 
 /**
- * EXPECT_EQ()
+ * EXPECT_EQ(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -561,7 +561,7 @@
 	__EXPECT(expected, #expected, seen, #seen, ==, 0)
 
 /**
- * EXPECT_NE()
+ * EXPECT_NE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -572,7 +572,7 @@
 	__EXPECT(expected, #expected, seen, #seen, !=, 0)
 
 /**
- * EXPECT_LT()
+ * EXPECT_LT(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -583,7 +583,7 @@
 	__EXPECT(expected, #expected, seen, #seen, <, 0)
 
 /**
- * EXPECT_LE()
+ * EXPECT_LE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -594,7 +594,7 @@
 	__EXPECT(expected, #expected, seen, #seen, <=, 0)
 
 /**
- * EXPECT_GT()
+ * EXPECT_GT(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -605,7 +605,7 @@
 	__EXPECT(expected, #expected, seen, #seen, >, 0)
 
 /**
- * EXPECT_GE()
+ * EXPECT_GE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -616,7 +616,7 @@
 	__EXPECT(expected, #expected, seen, #seen, >=, 0)
 
 /**
- * EXPECT_NULL()
+ * EXPECT_NULL(seen)
  *
  * @seen: measured value
  *
@@ -626,7 +626,7 @@
 	__EXPECT(NULL, "NULL", seen, #seen, ==, 0)
 
 /**
- * EXPECT_TRUE()
+ * EXPECT_TRUE(seen)
  *
  * @seen: measured value
  *
@@ -636,7 +636,7 @@
 	__EXPECT(0, "0", seen, #seen, !=, 0)
 
 /**
- * EXPECT_FALSE()
+ * EXPECT_FALSE(seen)
  *
  * @seen: measured value
  *
@@ -646,7 +646,7 @@
 	__EXPECT(0, "0", seen, #seen, ==, 0)
 
 /**
- * EXPECT_STREQ()
+ * EXPECT_STREQ(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -657,7 +657,7 @@
 	__EXPECT_STR(expected, seen, ==, 0)
 
 /**
- * EXPECT_STRNE()
+ * EXPECT_STRNE(expected, seen)
  *
  * @expected: expected value
  * @seen: measured value
@@ -971,11 +971,6 @@ void __run_test(struct __fixture_metadata *f,
 
 	ksft_print_msg(" RUN           %s%s%s.%s ...\n",
 	       f->name, variant->name[0] ? "." : "", variant->name, t->name);
-
-	/* Make sure output buffers are flushed before fork */
-	fflush(stdout);
-	fflush(stderr);
-
 	t->pid = fork();
 	if (t->pid < 0) {
 		ksft_print_msg("ERROR SPAWNING TEST CHILD\n");

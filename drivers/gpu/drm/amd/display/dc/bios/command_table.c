@@ -1877,7 +1877,9 @@ static enum bp_result set_crtc_using_dtd_timing_v3(
 			 * but it is 4 either from Edid data (spec CEA 861)
 			 * or CEA timing table.
 			 */
-			le16_add_cpu(&params.usV_SyncOffset, 1);
+			params.usV_SyncOffset =
+					cpu_to_le16(le16_to_cpu(params.usV_SyncOffset) + 1);
+
 		}
 	}
 

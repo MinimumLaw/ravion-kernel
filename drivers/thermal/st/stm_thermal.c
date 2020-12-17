@@ -446,9 +446,14 @@ thermal_unprepare:
 #ifdef CONFIG_PM_SLEEP
 static int stm_thermal_suspend(struct device *dev)
 {
+	int ret;
 	struct stm_thermal_sensor *sensor = dev_get_drvdata(dev);
 
-	return stm_thermal_sensor_off(sensor);
+	ret = stm_thermal_sensor_off(sensor);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static int stm_thermal_resume(struct device *dev)

@@ -350,7 +350,11 @@ int mwifiex_uap_recv_packet(struct mwifiex_private *priv,
 		skb->truesize += (skb->len - MWIFIEX_RX_DATA_BUF_SIZE);
 
 	/* Forward multicast/broadcast packet to upper layer*/
-	netif_rx_any_context(skb);
+	if (in_interrupt())
+		netif_rx(skb);
+	else
+		netif_rx_ni(skb);
+
 	return 0;
 }
 
