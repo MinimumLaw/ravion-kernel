@@ -11,9 +11,7 @@
 #include <crypto/arc4.h>
 #include <crypto/internal/skcipher.h>
 #include <linux/init.h>
-#include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/sched.h>
 
 static int crypto_arc4_setkey(struct crypto_skcipher *tfm, const u8 *in_key,
 			      unsigned int key_len)
@@ -41,14 +39,6 @@ static int crypto_arc4_crypt(struct skcipher_request *req)
 	return err;
 }
 
-static int crypto_arc4_init(struct crypto_skcipher *tfm)
-{
-	pr_warn_ratelimited("\"%s\" (%ld) uses obsolete ecb(arc4) skcipher\n",
-			    current->comm, (unsigned long)current->pid);
-
-	return 0;
-}
-
 static struct skcipher_alg arc4_alg = {
 	/*
 	 * For legacy reasons, this is named "ecb(arc4)", not "arc4".
@@ -65,7 +55,6 @@ static struct skcipher_alg arc4_alg = {
 	.setkey			=	crypto_arc4_setkey,
 	.encrypt		=	crypto_arc4_crypt,
 	.decrypt		=	crypto_arc4_crypt,
-	.init			=	crypto_arc4_init,
 };
 
 static int __init arc4_init(void)

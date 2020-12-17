@@ -16,6 +16,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 struct kingdisplay_panel {
 	struct drm_panel base;
@@ -190,7 +191,8 @@ static int kingdisplay_panel_disable(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_set_display_off(kingdisplay->link);
 	if (err < 0)
-		dev_err(panel->dev, "failed to set display off: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to set display off: %d\n",
+			      err);
 
 	kingdisplay->enabled = false;
 
@@ -207,7 +209,8 @@ static int kingdisplay_panel_unprepare(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_enter_sleep_mode(kingdisplay->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to enter sleep mode: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to enter sleep mode: %d\n",
+			      err);
 		return err;
 	}
 
@@ -252,14 +255,16 @@ static int kingdisplay_panel_prepare(struct drm_panel *panel)
 		err = mipi_dsi_generic_write(kingdisplay->link, &init_code[i],
 					sizeof(struct kingdisplay_panel_cmd));
 		if (err < 0) {
-			dev_err(panel->dev, "failed write init cmds: %d\n", err);
+			DRM_DEV_ERROR(panel->dev, "failed write init cmds: %d\n",
+				      err);
 			goto poweroff;
 		}
 	}
 
 	err = mipi_dsi_dcs_exit_sleep_mode(kingdisplay->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to exit sleep mode: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to exit sleep mode: %d\n",
+			      err);
 		goto poweroff;
 	}
 
@@ -268,7 +273,8 @@ static int kingdisplay_panel_prepare(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_set_display_on(kingdisplay->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to set display on: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to set display on: %d\n",
+			      err);
 		goto poweroff;
 	}
 
@@ -284,7 +290,8 @@ poweroff:
 
 	regulator_err = regulator_disable(kingdisplay->supply);
 	if (regulator_err)
-		dev_err(panel->dev, "failed to disable regulator: %d\n", regulator_err);
+		DRM_DEV_ERROR(panel->dev, "failed to disable regulator: %d\n",
+			      regulator_err);
 
 	return err;
 }
@@ -320,9 +327,9 @@ static int kingdisplay_panel_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
-		dev_err(panel->dev, "failed to add mode %ux%u@%u\n",
-			default_mode.hdisplay, default_mode.vdisplay,
-			drm_mode_vrefresh(&default_mode));
+		DRM_DEV_ERROR(panel->dev, "failed to add mode %ux%ux@%u\n",
+			      default_mode.hdisplay, default_mode.vdisplay,
+			      drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
@@ -375,9 +382,7 @@ static int kingdisplay_panel_add(struct kingdisplay_panel *kingdisplay)
 	if (err)
 		return err;
 
-	drm_panel_add(&kingdisplay->base);
-
-	return 0;
+	return drm_panel_add(&kingdisplay->base);
 }
 
 static void kingdisplay_panel_del(struct kingdisplay_panel *kingdisplay)
@@ -416,15 +421,17 @@ static int kingdisplay_panel_remove(struct mipi_dsi_device *dsi)
 
 	err = drm_panel_unprepare(&kingdisplay->base);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to unprepare panel: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to unprepare panel: %d\n",
+			      err);
 
 	err = drm_panel_disable(&kingdisplay->base);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to disable panel: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to disable panel: %d\n", err);
 
 	err = mipi_dsi_detach(dsi);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to detach from DSI host: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to detach from DSI host: %d\n",
+			      err);
 
 	kingdisplay_panel_del(kingdisplay);
 

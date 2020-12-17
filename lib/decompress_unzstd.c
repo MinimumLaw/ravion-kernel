@@ -178,13 +178,8 @@ static int INIT __unzstd(unsigned char *in_buf, long in_len,
 	int err;
 	size_t ret;
 
-	/*
-	 * ZSTD decompression code won't be happy if the buffer size is so big
-	 * that its end address overflows. When the size is not provided, make
-	 * it as big as possible without having the end address overflow.
-	 */
 	if (out_len == 0)
-		out_len = UINTPTR_MAX - (uintptr_t)out_buf;
+		out_len = LONG_MAX; /* no limit */
 
 	if (fill == NULL && flush == NULL)
 		/*

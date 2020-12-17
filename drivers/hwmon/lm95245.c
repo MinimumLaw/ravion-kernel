@@ -547,7 +547,8 @@ static const struct hwmon_chip_info lm95245_chip_info = {
 	.info = lm95245_info,
 };
 
-static int lm95245_probe(struct i2c_client *client)
+static int lm95245_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct lm95245_data *data;
@@ -597,7 +598,7 @@ static struct i2c_driver lm95245_driver = {
 		.name	= "lm95245",
 		.of_match_table = of_match_ptr(lm95245_of_match),
 	},
-	.probe_new	= lm95245_probe,
+	.probe		= lm95245_probe,
 	.id_table	= lm95245_id,
 	.detect		= lm95245_detect,
 	.address_list	= normal_i2c,

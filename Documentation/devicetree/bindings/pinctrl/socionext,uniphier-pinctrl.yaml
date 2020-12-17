@@ -28,8 +28,6 @@ properties:
 required:
   - compatible
 
-additionalProperties: false
-
 examples:
   - |
     // The UniPhier pinctrl should be a subnode of a "syscon" compatible node.

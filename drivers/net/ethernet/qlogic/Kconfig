@@ -80,7 +80,7 @@ config QED
 	select CRC8
 	select NET_DEVLINK
 	help
-	  This enables the support for Marvell FastLinQ adapters family.
+	  This enables the support for ...
 
 config QED_LL2
 	bool
@@ -100,8 +100,7 @@ config QEDE
 	depends on QED
 	imply PTP_1588_CLOCK
 	help
-	  This enables the support for Marvell FastLinQ adapters family,
-	  ethernet driver.
+	  This enables the support for ...
 
 config QED_RDMA
 	bool

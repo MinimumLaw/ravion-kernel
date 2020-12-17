@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <linux/objtool.h>
-#include <asm/orc_types.h>
-
 #include "check.h"
 #include "warn.h"
 
@@ -20,9 +17,6 @@ int create_orc(struct objtool_file *file)
 		struct orc_entry *orc = &insn->orc;
 		struct cfi_reg *cfa = &insn->cfi.cfa;
 		struct cfi_reg *bp = &insn->cfi.regs[CFI_BP];
-
-		if (!insn->sec->text)
-			continue;
 
 		orc->end = insn->cfi.end;
 
@@ -149,7 +143,7 @@ int create_orc_sections(struct objtool_file *file)
 	struct orc_entry empty = {
 		.sp_reg = ORC_REG_UNDEFINED,
 		.bp_reg  = ORC_REG_UNDEFINED,
-		.type    = UNWIND_HINT_TYPE_CALL,
+		.type    = ORC_TYPE_CALL,
 	};
 
 	sec = find_section_by_name(file->elf, ".orc_unwind");
@@ -183,7 +177,7 @@ int create_orc_sections(struct objtool_file *file)
 
 
 	/* create .orc_unwind_ip and .rela.orc_unwind_ip sections */
-	sec = elf_create_section(file->elf, ".orc_unwind_ip", 0, sizeof(int), idx);
+	sec = elf_create_section(file->elf, ".orc_unwind_ip", sizeof(int), idx);
 	if (!sec)
 		return -1;
 
@@ -192,7 +186,7 @@ int create_orc_sections(struct objtool_file *file)
 		return -1;
 
 	/* create .orc_unwind section */
-	u_sec = elf_create_section(file->elf, ".orc_unwind", 0,
+	u_sec = elf_create_section(file->elf, ".orc_unwind",
 				   sizeof(struct orc_entry), idx);
 
 	/* populate sections */

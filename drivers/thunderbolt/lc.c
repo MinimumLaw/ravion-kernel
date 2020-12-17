@@ -45,7 +45,7 @@ static int find_port_lc_cap(struct tb_port *port)
 	return sw->cap_lc + start + phys * size;
 }
 
-static int tb_lc_set_port_configured(struct tb_port *port, bool configured)
+static int tb_lc_configure_lane(struct tb_port *port, bool configure)
 {
 	bool upstream = tb_is_upstream_port(port);
 	struct tb_switch *sw = port->sw;
@@ -69,7 +69,7 @@ static int tb_lc_set_port_configured(struct tb_port *port, bool configured)
 	else
 		lane = TB_LC_SX_CTRL_L2C;
 
-	if (configured) {
+	if (configure) {
 		ctrl |= lane;
 		if (upstream)
 			ctrl |= TB_LC_SX_CTRL_UPSTREAM;
@@ -83,146 +83,55 @@ static int tb_lc_set_port_configured(struct tb_port *port, bool configured)
 }
 
 /**
- * tb_lc_configure_port() - Let LC know about configured port
- * @port: Port that is set as configured
+ * tb_lc_configure_link() - Let LC know about configured link
+ * @sw: Switch that is being added
  *
- * Sets the port configured for power management purposes.
+ * Informs LC of both parent switch and @sw that there is established
+ * link between the two.
  */
-int tb_lc_configure_port(struct tb_port *port)
+int tb_lc_configure_link(struct tb_switch *sw)
 {
-	return tb_lc_set_port_configured(port, true);
-}
-
-/**
- * tb_lc_unconfigure_port() - Let LC know about unconfigured port
- * @port: Port that is set as configured
- *
- * Sets the port unconfigured for power management purposes.
- */
-void tb_lc_unconfigure_port(struct tb_port *port)
-{
-	tb_lc_set_port_configured(port, false);
-}
-
-static int tb_lc_set_xdomain_configured(struct tb_port *port, bool configure)
-{
-	struct tb_switch *sw = port->sw;
-	u32 ctrl, lane;
-	int cap, ret;
-
-	if (sw->generation < 2)
-		return 0;
-
-	cap = find_port_lc_cap(port);
-	if (cap < 0)
-		return cap;
-
-	ret = tb_sw_read(sw, &ctrl, TB_CFG_SWITCH, cap + TB_LC_SX_CTRL, 1);
-	if (ret)
-		return ret;
-
-	/* Resolve correct lane */
-	if (port->port % 2)
-		lane = TB_LC_SX_CTRL_L1D;
-	else
-		lane = TB_LC_SX_CTRL_L2D;
-
-	if (configure)
-		ctrl |= lane;
-	else
-		ctrl &= ~lane;
-
-	return tb_sw_write(sw, &ctrl, TB_CFG_SWITCH, cap + TB_LC_SX_CTRL, 1);
-}
-
-/**
- * tb_lc_configure_xdomain() - Inform LC that the link is XDomain
- * @port: Switch downstream port connected to another host
- *
- * Sets the lane configured for XDomain accordingly so that the LC knows
- * about this. Returns %0 in success and negative errno in failure.
- */
-int tb_lc_configure_xdomain(struct tb_port *port)
-{
-	return tb_lc_set_xdomain_configured(port, true);
-}
-
-/**
- * tb_lc_unconfigure_xdomain() - Unconfigure XDomain from port
- * @port: Switch downstream port that was connected to another host
- *
- * Unsets the lane XDomain configuration.
- */
-void tb_lc_unconfigure_xdomain(struct tb_port *port)
-{
-	tb_lc_set_xdomain_configured(port, false);
-}
-
-static int tb_lc_set_wake_one(struct tb_switch *sw, unsigned int offset,
-			      unsigned int flags)
-{
-	u32 ctrl;
+	struct tb_port *up, *down;
 	int ret;
 
-	/*
-	 * Enable wake on PCIe and USB4 (wake coming from another
-	 * router).
-	 */
-	ret = tb_sw_read(sw, &ctrl, TB_CFG_SWITCH,
-			 offset + TB_LC_SX_CTRL, 1);
+	if (!tb_route(sw) || tb_switch_is_icm(sw))
+		return 0;
+
+	up = tb_upstream_port(sw);
+	down = tb_port_at(tb_route(sw), tb_to_switch(sw->dev.parent));
+
+	/* Configure parent link toward this switch */
+	ret = tb_lc_configure_lane(down, true);
 	if (ret)
 		return ret;
 
-	ctrl &= ~(TB_LC_SX_CTRL_WOC | TB_LC_SX_CTRL_WOD | TB_LC_SX_CTRL_WOP |
-		  TB_LC_SX_CTRL_WOU4);
+	/* Configure upstream link from this switch to the parent */
+	ret = tb_lc_configure_lane(up, true);
+	if (ret)
+		tb_lc_configure_lane(down, false);
 
-	if (flags & TB_WAKE_ON_CONNECT)
-		ctrl |= TB_LC_SX_CTRL_WOC | TB_LC_SX_CTRL_WOD;
-	if (flags & TB_WAKE_ON_USB4)
-		ctrl |= TB_LC_SX_CTRL_WOU4;
-	if (flags & TB_WAKE_ON_PCIE)
-		ctrl |= TB_LC_SX_CTRL_WOP;
-
-	return tb_sw_write(sw, &ctrl, TB_CFG_SWITCH, offset + TB_LC_SX_CTRL, 1);
+	return ret;
 }
 
 /**
- * tb_lc_set_wake() - Enable/disable wake
- * @sw: Switch whose wakes to configure
- * @flags: Wakeup flags (%0 to disable)
+ * tb_lc_unconfigure_link() - Let LC know about unconfigured link
+ * @sw: Switch to unconfigure
  *
- * For each LC sets wake bits accordingly.
+ * Informs LC of both parent switch and @sw that the link between the
+ * two does not exist anymore.
  */
-int tb_lc_set_wake(struct tb_switch *sw, unsigned int flags)
+void tb_lc_unconfigure_link(struct tb_switch *sw)
 {
-	int start, size, nlc, ret, i;
-	u32 desc;
+	struct tb_port *up, *down;
 
-	if (sw->generation < 2)
-		return 0;
+	if (sw->is_unplugged || !tb_route(sw) || tb_switch_is_icm(sw))
+		return;
 
-	if (!tb_route(sw))
-		return 0;
+	up = tb_upstream_port(sw);
+	down = tb_port_at(tb_route(sw), tb_to_switch(sw->dev.parent));
 
-	ret = read_lc_desc(sw, &desc);
-	if (ret)
-		return ret;
-
-	/* Figure out number of link controllers */
-	nlc = desc & TB_LC_DESC_NLC_MASK;
-	start = (desc & TB_LC_DESC_SIZE_MASK) >> TB_LC_DESC_SIZE_SHIFT;
-	size = (desc & TB_LC_DESC_PORT_SIZE_MASK) >> TB_LC_DESC_PORT_SIZE_SHIFT;
-
-	/* For each link controller set sleep bit */
-	for (i = 0; i < nlc; i++) {
-		unsigned int offset = sw->cap_lc + start + i * size;
-
-		ret = tb_lc_set_wake_one(sw, offset, flags);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
+	tb_lc_configure_lane(up, false);
+	tb_lc_configure_lane(down, false);
 }
 
 /**

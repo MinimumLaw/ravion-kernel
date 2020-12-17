@@ -154,7 +154,8 @@ static struct attribute *ltc4151_attrs[] = {
 };
 ATTRIBUTE_GROUPS(ltc4151);
 
-static int ltc4151_probe(struct i2c_client *client)
+static int ltc4151_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = client->adapter;
 	struct device *dev = &client->dev;
@@ -205,7 +206,7 @@ static struct i2c_driver ltc4151_driver = {
 		.name	= "ltc4151",
 		.of_match_table = of_match_ptr(ltc4151_match),
 	},
-	.probe_new	= ltc4151_probe,
+	.probe		= ltc4151_probe,
 	.id_table	= ltc4151_id,
 };
 

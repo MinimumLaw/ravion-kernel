@@ -336,36 +336,31 @@ static void exynos_pcie_write_dbi(struct dw_pcie *pci, void __iomem *base,
 	exynos_pcie_sideband_dbi_w_mode(ep, false);
 }
 
-static int exynos_pcie_rd_own_conf(struct pci_bus *bus, unsigned int devfn,
-				   int where, int size, u32 *val)
+static int exynos_pcie_rd_own_conf(struct pcie_port *pp, int where, int size,
+				u32 *val)
 {
-	struct dw_pcie *pci = to_dw_pcie_from_pp(bus->sysdata);
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct exynos_pcie *ep = to_exynos_pcie(pci);
+	int ret;
 
-	if (PCI_SLOT(devfn)) {
-		*val = ~0;
-		return PCIBIOS_DEVICE_NOT_FOUND;
-	}
-
-	*val = dw_pcie_read_dbi(pci, where, size);
-	return PCIBIOS_SUCCESSFUL;
+	exynos_pcie_sideband_dbi_r_mode(ep, true);
+	ret = dw_pcie_read(pci->dbi_base + where, size, val);
+	exynos_pcie_sideband_dbi_r_mode(ep, false);
+	return ret;
 }
 
-static int exynos_pcie_wr_own_conf(struct pci_bus *bus, unsigned int devfn,
-				   int where, int size, u32 val)
+static int exynos_pcie_wr_own_conf(struct pcie_port *pp, int where, int size,
+				u32 val)
 {
-	struct dw_pcie *pci = to_dw_pcie_from_pp(bus->sysdata);
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct exynos_pcie *ep = to_exynos_pcie(pci);
+	int ret;
 
-	if (PCI_SLOT(devfn))
-		return PCIBIOS_DEVICE_NOT_FOUND;
-
-	dw_pcie_write_dbi(pci, where, size, val);
-	return PCIBIOS_SUCCESSFUL;
+	exynos_pcie_sideband_dbi_w_mode(ep, true);
+	ret = dw_pcie_write(pci->dbi_base + where, size, val);
+	exynos_pcie_sideband_dbi_w_mode(ep, false);
+	return ret;
 }
-
-static struct pci_ops exynos_pci_ops = {
-	.read = exynos_pcie_rd_own_conf,
-	.write = exynos_pcie_wr_own_conf,
-};
 
 static int exynos_pcie_link_up(struct dw_pcie *pci)
 {
@@ -384,8 +379,6 @@ static int exynos_pcie_host_init(struct pcie_port *pp)
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *ep = to_exynos_pcie(pci);
 
-	pp->bridge->ops = &exynos_pci_ops;
-
 	exynos_pcie_establish_link(ep);
 	exynos_pcie_enable_interrupts(ep);
 
@@ -393,6 +386,8 @@ static int exynos_pcie_host_init(struct pcie_port *pp)
 }
 
 static const struct dw_pcie_host_ops exynos_pcie_host_ops = {
+	.rd_own_conf = exynos_pcie_rd_own_conf,
+	.wr_own_conf = exynos_pcie_wr_own_conf,
 	.host_init = exynos_pcie_host_init,
 };
 

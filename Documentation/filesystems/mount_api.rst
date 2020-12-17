@@ -1,7 +1,7 @@
 .. SPDX-License-Identifier: GPL-2.0
 
 ====================
-Filesystem Mount API
+fILESYSTEM Mount API
 ====================
 
 .. CONTENTS
@@ -479,7 +479,7 @@ returned.
         int vfs_parse_fs_param(struct fs_context *fc,
 			       struct fs_parameter *param);
 
-     Supply a single mount parameter to the filesystem context.  This includes
+     Supply a single mount parameter to the filesystem context.  This include
      the specification of the source/device which is specified as the "source"
      parameter (which may be specified multiple times if the filesystem
      supports that).
@@ -592,7 +592,8 @@ The following helpers all wrap sget_fc():
 	    one.
 
 
-Parameter Description
+=====================
+PARAMETER DESCRIPTION
 =====================
 
 Parameters are described using structures defined in linux/fs_parser.h.

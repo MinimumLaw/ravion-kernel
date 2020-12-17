@@ -50,7 +50,11 @@
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 
-#define HEADER_SIZE	4u
+#undef attr
+#undef org
+#undef addr
+#define HEADER_SIZE	4
+
 #define CON_BUF_SIZE (CONFIG_BASE_SMALL ? 256 : PAGE_SIZE)
 
 /*
@@ -173,14 +177,12 @@ vcs_poll_data_get(struct file *file)
 	return poll;
 }
 
-/**
- * vcs_vc -- return VC for @inode
- * @inode: inode for which to return a VC
- * @viewed: returns whether this console is currently foreground (viewed)
- *
+/*
+ * Returns VC for inode.
  * Must be called with console_lock.
  */
-static struct vc_data *vcs_vc(struct inode *inode, bool *viewed)
+static struct vc_data*
+vcs_vc(struct inode *inode, int *viewed)
 {
 	unsigned int currcons = console(inode);
 
@@ -189,177 +191,54 @@ static struct vc_data *vcs_vc(struct inode *inode, bool *viewed)
 	if (currcons == 0) {
 		currcons = fg_console;
 		if (viewed)
-			*viewed = true;
+			*viewed = 1;
 	} else {
 		currcons--;
 		if (viewed)
-			*viewed = false;
+			*viewed = 0;
 	}
 	return vc_cons[currcons].d;
 }
 
-/**
- * vcs_size -- return size for a VC in @vc
- * @vc: which VC
- * @attr: does it use attributes?
- * @unicode: is it unicode?
- *
+/*
+ * Returns size for VC carried by inode.
  * Must be called with console_lock.
  */
-static int vcs_size(const struct vc_data *vc, bool attr, bool unicode)
+static int
+vcs_size(struct inode *inode)
 {
 	int size;
+	struct vc_data *vc;
 
 	WARN_CONSOLE_UNLOCKED();
 
+	vc = vcs_vc(inode, NULL);
+	if (!vc)
+		return -ENXIO;
+
 	size = vc->vc_rows * vc->vc_cols;
 
-	if (attr) {
-		if (unicode)
+	if (use_attributes(inode)) {
+		if (use_unicode(inode))
 			return -EOPNOTSUPP;
-
-		size = 2 * size + HEADER_SIZE;
-	} else if (unicode)
+		size = 2*size + HEADER_SIZE;
+	} else if (use_unicode(inode))
 		size *= 4;
-
 	return size;
 }
 
 static loff_t vcs_lseek(struct file *file, loff_t offset, int orig)
 {
-	struct inode *inode = file_inode(file);
-	struct vc_data *vc;
 	int size;
 
 	console_lock();
-	vc = vcs_vc(inode, NULL);
-	if (!vc) {
-		console_unlock();
-		return -ENXIO;
-	}
-
-	size = vcs_size(vc, use_attributes(inode), use_unicode(inode));
+	size = vcs_size(file_inode(file));
 	console_unlock();
 	if (size < 0)
 		return size;
 	return fixed_size_llseek(file, offset, orig, size);
 }
 
-static int vcs_read_buf_uni(struct vc_data *vc, char *con_buf,
-		unsigned int pos, unsigned int count, bool viewed)
-{
-	unsigned int nr, row, col, maxcol = vc->vc_cols;
-	int ret;
-
-	ret = vc_uniscr_check(vc);
-	if (ret)
-		return ret;
-
-	pos /= 4;
-	row = pos / maxcol;
-	col = pos % maxcol;
-	nr = maxcol - col;
-	do {
-		if (nr > count / 4)
-			nr = count / 4;
-		vc_uniscr_copy_line(vc, con_buf, viewed, row, col, nr);
-		con_buf += nr * 4;
-		count -= nr * 4;
-		row++;
-		col = 0;
-		nr = maxcol;
-	} while (count);
-
-	return 0;
-}
-
-static void vcs_read_buf_noattr(const struct vc_data *vc, char *con_buf,
-		unsigned int pos, unsigned int count, bool viewed)
-{
-	u16 *org;
-	unsigned int col, maxcol = vc->vc_cols;
-
-	org = screen_pos(vc, pos, viewed);
-	col = pos % maxcol;
-	pos += maxcol - col;
-
-	while (count-- > 0) {
-		*con_buf++ = (vcs_scr_readw(vc, org++) & 0xff);
-		if (++col == maxcol) {
-			org = screen_pos(vc, pos, viewed);
-			col = 0;
-			pos += maxcol;
-		}
-	}
-}
-
-static unsigned int vcs_read_buf(const struct vc_data *vc, char *con_buf,
-		unsigned int pos, unsigned int count, bool viewed,
-		unsigned int *skip)
-{
-	u16 *org, *con_buf16;
-	unsigned int col, maxcol = vc->vc_cols;
-	unsigned int filled = count;
-
-	if (pos < HEADER_SIZE) {
-		/* clamp header values if they don't fit */
-		con_buf[0] = min(vc->vc_rows, 0xFFu);
-		con_buf[1] = min(vc->vc_cols, 0xFFu);
-		getconsxy(vc, con_buf + 2);
-
-		*skip += pos;
-		count += pos;
-		if (count > CON_BUF_SIZE) {
-			count = CON_BUF_SIZE;
-			filled = count - pos;
-		}
-
-		/* Advance state pointers and move on. */
-		count -= min(HEADER_SIZE, count);
-		pos = HEADER_SIZE;
-		con_buf += HEADER_SIZE;
-		/* If count >= 0, then pos is even... */
-	} else if (pos & 1) {
-		/*
-		 * Skip first byte for output if start address is odd. Update
-		 * region sizes up/down depending on free space in buffer.
-		 */
-		(*skip)++;
-		if (count < CON_BUF_SIZE)
-			count++;
-		else
-			filled--;
-	}
-
-	if (!count)
-		return filled;
-
-	pos -= HEADER_SIZE;
-	pos /= 2;
-	col = pos % maxcol;
-
-	org = screen_pos(vc, pos, viewed);
-	pos += maxcol - col;
-
-	/*
-	 * Buffer has even length, so we can always copy character + attribute.
-	 * We do not copy last byte to userspace if count is odd.
-	 */
-	count = (count + 1) / 2;
-	con_buf16 = (u16 *)con_buf;
-
-	while (count) {
-		*con_buf16++ = vcs_scr_readw(vc, org++);
-		count--;
-		if (++col == maxcol) {
-			org = screen_pos(vc, pos, viewed);
-			col = 0;
-			pos += maxcol;
-		}
-	}
-
-	return filled;
-}
 
 static ssize_t
 vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
@@ -367,11 +246,11 @@ vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 	struct inode *inode = file_inode(file);
 	struct vc_data *vc;
 	struct vcs_poll_data *poll;
-	unsigned int read;
+	long pos, read;
+	int attr, uni_mode, row, col, maxcol, viewed;
+	unsigned short *org = NULL;
 	ssize_t ret;
 	char *con_buf;
-	loff_t pos;
-	bool viewed, attr, uni_mode;
 
 	con_buf = (char *) __get_free_page(GFP_KERNEL);
 	if (!con_buf)
@@ -404,14 +283,16 @@ vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 	read = 0;
 	ret = 0;
 	while (count) {
-		unsigned int this_round, skip = 0;
-		int size;
+		char *con_buf0, *con_buf_start;
+		long this_round, size;
+		ssize_t orig_count;
+		long p = pos;
 
 		/* Check whether we are above size each round,
 		 * as copy_to_user at the end of this loop
 		 * could sleep.
 		 */
-		size = vcs_size(vc, attr, uni_mode);
+		size = vcs_size(inode);
 		if (size < 0) {
 			if (read)
 				break;
@@ -432,17 +313,104 @@ vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 		 * attempt to move it to userspace.
 		 */
 
+		con_buf_start = con_buf0 = con_buf;
+		orig_count = this_round;
+		maxcol = vc->vc_cols;
 		if (uni_mode) {
-			ret = vcs_read_buf_uni(vc, con_buf, pos, this_round,
-					viewed);
+			unsigned int nr;
+
+			ret = vc_uniscr_check(vc);
 			if (ret)
 				break;
+			p /= 4;
+			row = p / vc->vc_cols;
+			col = p % maxcol;
+			nr = maxcol - col;
+			do {
+				if (nr > this_round/4)
+					nr = this_round/4;
+				vc_uniscr_copy_line(vc, con_buf0, viewed,
+						    row, col, nr);
+				con_buf0 += nr * 4;
+				this_round -= nr * 4;
+				row++;
+				col = 0;
+				nr = maxcol;
+			} while (this_round);
 		} else if (!attr) {
-			vcs_read_buf_noattr(vc, con_buf, pos, this_round,
-					viewed);
+			org = screen_pos(vc, p, viewed);
+			col = p % maxcol;
+			p += maxcol - col;
+			while (this_round-- > 0) {
+				*con_buf0++ = (vcs_scr_readw(vc, org++) & 0xff);
+				if (++col == maxcol) {
+					org = screen_pos(vc, p, viewed);
+					col = 0;
+					p += maxcol;
+				}
+			}
 		} else {
-			this_round = vcs_read_buf(vc, con_buf, pos, this_round,
-					viewed, &skip);
+			if (p < HEADER_SIZE) {
+				size_t tmp_count;
+
+				/* clamp header values if they don't fit */
+				con_buf0[0] = min(vc->vc_rows, 0xFFu);
+				con_buf0[1] = min(vc->vc_cols, 0xFFu);
+				getconsxy(vc, con_buf0 + 2);
+
+				con_buf_start += p;
+				this_round += p;
+				if (this_round > CON_BUF_SIZE) {
+					this_round = CON_BUF_SIZE;
+					orig_count = this_round - p;
+				}
+
+				tmp_count = HEADER_SIZE;
+				if (tmp_count > this_round)
+					tmp_count = this_round;
+
+				/* Advance state pointers and move on. */
+				this_round -= tmp_count;
+				p = HEADER_SIZE;
+				con_buf0 = con_buf + HEADER_SIZE;
+				/* If this_round >= 0, then p is even... */
+			} else if (p & 1) {
+				/* Skip first byte for output if start address is odd
+				 * Update region sizes up/down depending on free
+				 * space in buffer.
+				 */
+				con_buf_start++;
+				if (this_round < CON_BUF_SIZE)
+					this_round++;
+				else
+					orig_count--;
+			}
+			if (this_round > 0) {
+				unsigned short *tmp_buf = (unsigned short *)con_buf0;
+
+				p -= HEADER_SIZE;
+				p /= 2;
+				col = p % maxcol;
+
+				org = screen_pos(vc, p, viewed);
+				p += maxcol - col;
+
+				/* Buffer has even length, so we can always copy
+				 * character + attribute. We do not copy last byte
+				 * to userspace if this_round is odd.
+				 */
+				this_round = (this_round + 1) >> 1;
+
+				while (this_round) {
+					*tmp_buf++ = vcs_scr_readw(vc, org++);
+					this_round --;
+					if (++col == maxcol) {
+						org = screen_pos(vc, p, viewed);
+						col = 0;
+						p += maxcol;
+					}
+				}
+			}
 		}
 
 		/* Finally, release the console semaphore while we push
@@ -453,18 +421,18 @@ vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 		 */
 
 		console_unlock();
-		ret = copy_to_user(buf, con_buf + skip, this_round);
+		ret = copy_to_user(buf, con_buf_start, orig_count);
 		console_lock();
 
 		if (ret) {
-			read += this_round - ret;
+			read += (orig_count - ret);
 			ret = -EFAULT;
 			break;
 		}
-		buf += this_round;
-		pos += this_round;
-		read += this_round;
-		count -= this_round;
+		buf += orig_count;
+		pos += orig_count;
+		read += orig_count;
+		count -= orig_count;
 	}
 	*ppos += read;
 	if (read)
@@ -475,129 +443,18 @@ unlock_out:
 	return ret;
 }
 
-static u16 *vcs_write_buf_noattr(struct vc_data *vc, const char *con_buf,
-		unsigned int pos, unsigned int count, bool viewed, u16 **org0)
-{
-	u16 *org;
-	unsigned int col, maxcol = vc->vc_cols;
-
-	*org0 = org = screen_pos(vc, pos, viewed);
-	col = pos % maxcol;
-	pos += maxcol - col;
-
-	while (count > 0) {
-		unsigned char c = *con_buf++;
-
-		count--;
-		vcs_scr_writew(vc,
-			       (vcs_scr_readw(vc, org) & 0xff00) | c, org);
-		org++;
-		if (++col == maxcol) {
-			org = screen_pos(vc, pos, viewed);
-			col = 0;
-			pos += maxcol;
-		}
-	}
-
-	return org;
-}
-
-/*
- * Compilers (gcc 10) are unable to optimize the swap in cpu_to_le16. So do it
- * the poor man way.
- */
-static inline u16 vc_compile_le16(u8 hi, u8 lo)
-{
-#ifdef __BIG_ENDIAN
-	return (lo << 8u) | hi;
-#else
-	return (hi << 8u) | lo;
-#endif
-}
-
-static u16 *vcs_write_buf(struct vc_data *vc, const char *con_buf,
-		unsigned int pos, unsigned int count, bool viewed, u16 **org0)
-{
-	u16 *org;
-	unsigned int col, maxcol = vc->vc_cols;
-	unsigned char c;
-
-	/* header */
-	if (pos < HEADER_SIZE) {
-		char header[HEADER_SIZE];
-
-		getconsxy(vc, header + 2);
-		while (pos < HEADER_SIZE && count > 0) {
-			count--;
-			header[pos++] = *con_buf++;
-		}
-		if (!viewed)
-			putconsxy(vc, header + 2);
-	}
-
-	if (!count)
-		return NULL;
-
-	pos -= HEADER_SIZE;
-	col = (pos/2) % maxcol;
-
-	*org0 = org = screen_pos(vc, pos/2, viewed);
-
-	/* odd pos -- the first single character */
-	if (pos & 1) {
-		count--;
-		c = *con_buf++;
-		vcs_scr_writew(vc, vc_compile_le16(c, vcs_scr_readw(vc, org)),
-				org);
-		org++;
-		pos++;
-		if (++col == maxcol) {
-			org = screen_pos(vc, pos/2, viewed);
-			col = 0;
-		}
-	}
-
-	pos /= 2;
-	pos += maxcol - col;
-
-	/* even pos -- handle attr+character pairs */
-	while (count > 1) {
-		unsigned short w;
-
-		w = get_unaligned(((unsigned short *)con_buf));
-		vcs_scr_writew(vc, w, org++);
-		con_buf += 2;
-		count -= 2;
-		if (++col == maxcol) {
-			org = screen_pos(vc, pos, viewed);
-			col = 0;
-			pos += maxcol;
-		}
-	}
-
-	if (!count)
-		return org;
-
-	/* odd pos -- the remaining character */
-	c = *con_buf++;
-	vcs_scr_writew(vc, vc_compile_le16(vcs_scr_readw(vc, org) >> 8, c),
-				org);
-
-	return org;
-}
-
 static ssize_t
 vcs_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
 	struct inode *inode = file_inode(file);
 	struct vc_data *vc;
+	long pos;
+	long attr, size, written;
+	char *con_buf0;
+	int col, maxcol, viewed;
+	u16 *org0 = NULL, *org = NULL;
+	size_t ret;
 	char *con_buf;
-	u16 *org0, *org;
-	unsigned int written;
-	int size;
-	ssize_t ret;
-	loff_t pos;
-	bool viewed, attr;
 
 	if (use_unicode(inode))
 		return -EOPNOTSUPP;
@@ -619,11 +476,7 @@ vcs_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 	if (!vc)
 		goto unlock_out;
 
-	size = vcs_size(vc, attr, false);
-	if (size < 0) {
-		ret = size;
-		goto unlock_out;
-	}
+	size = vcs_size(inode);
 	ret = -EINVAL;
 	if (pos < 0 || pos > size)
 		goto unlock_out;
@@ -631,7 +484,9 @@ vcs_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 		count = size - pos;
 	written = 0;
 	while (count) {
-		unsigned int this_round = count;
+		long this_round = count;
+		size_t orig_count;
+		long p;
 
 		if (this_round > CON_BUF_SIZE)
 			this_round = CON_BUF_SIZE;
@@ -660,7 +515,7 @@ vcs_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 		 * the user buffer, so recheck.
 		 * Return data written up to now on failure.
 		 */
-		size = vcs_size(vc, attr, false);
+		size = vcs_size(inode);
 		if (size < 0) {
 			if (written)
 				break;
@@ -676,18 +531,95 @@ vcs_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 		 * under the lock using the local kernel buffer.
 		 */
 
-		if (attr)
-			org = vcs_write_buf(vc, con_buf, pos, this_round,
-					viewed, &org0);
-		else
-			org = vcs_write_buf_noattr(vc, con_buf, pos, this_round,
-					viewed, &org0);
+		con_buf0 = con_buf;
+		orig_count = this_round;
+		maxcol = vc->vc_cols;
+		p = pos;
+		if (!attr) {
+			org0 = org = screen_pos(vc, p, viewed);
+			col = p % maxcol;
+			p += maxcol - col;
 
-		count -= this_round;
-		written += this_round;
-		buf += this_round;
-		pos += this_round;
-		if (org)
+			while (this_round > 0) {
+				unsigned char c = *con_buf0++;
+
+				this_round--;
+				vcs_scr_writew(vc,
+					       (vcs_scr_readw(vc, org) & 0xff00) | c, org);
+				org++;
+				if (++col == maxcol) {
+					org = screen_pos(vc, p, viewed);
+					col = 0;
+					p += maxcol;
+				}
+			}
+		} else {
+			if (p < HEADER_SIZE) {
+				char header[HEADER_SIZE];
+
+				getconsxy(vc, header + 2);
+				while (p < HEADER_SIZE && this_round > 0) {
+					this_round--;
+					header[p++] = *con_buf0++;
+				}
+				if (!viewed)
+					putconsxy(vc, header + 2);
+			}
+			p -= HEADER_SIZE;
+			col = (p/2) % maxcol;
+			if (this_round > 0) {
+				org0 = org = screen_pos(vc, p/2, viewed);
+				if ((p & 1) && this_round > 0) {
+					char c;
+
+					this_round--;
+					c = *con_buf0++;
+#ifdef __BIG_ENDIAN
+					vcs_scr_writew(vc, c |
+					     (vcs_scr_readw(vc, org) & 0xff00), org);
+#else
+					vcs_scr_writew(vc, (c << 8) |
+					     (vcs_scr_readw(vc, org) & 0xff), org);
+#endif
+					org++;
+					p++;
+					if (++col == maxcol) {
+						org = screen_pos(vc, p/2, viewed);
+						col = 0;
+					}
+				}
+				p /= 2;
+				p += maxcol - col;
+			}
+			while (this_round > 1) {
+				unsigned short w;
+
+				w = get_unaligned(((unsigned short *)con_buf0));
+				vcs_scr_writew(vc, w, org++);
+				con_buf0 += 2;
+				this_round -= 2;
+				if (++col == maxcol) {
+					org = screen_pos(vc, p, viewed);
+					col = 0;
+					p += maxcol;
+				}
+			}
+			if (this_round > 0) {
+				unsigned char c;
+
+				c = *con_buf0++;
+#ifdef __BIG_ENDIAN
+				vcs_scr_writew(vc, (vcs_scr_readw(vc, org) & 0xff) | (c << 8), org);
+#else
+				vcs_scr_writew(vc, (vcs_scr_readw(vc, org) & 0xff00) | c, org);
+#endif
+			}
+		}
+		count -= orig_count;
+		written += orig_count;
+		buf += orig_count;
+		pos += orig_count;
+		if (org0)
 			update_region(vc, (unsigned long)(org0), org - org0);
 	}
 	*ppos += written;

@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.audio
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _AUDIO_SET_STREAMTYPE:
 
@@ -17,9 +23,9 @@ AUDIO_SET_STREAMTYPE
 Synopsis
 --------
 
-.. c:macro:: AUDIO_SET_STREAMTYPE
+.. c:function:: int  ioctl(fd, AUDIO_SET_STREAMTYPE, int type)
+    :name: AUDIO_SET_STREAMTYPE
 
-``int ioctl(fd, AUDIO_SET_STREAMTYPE, int type)``
 
 Arguments
 ---------
@@ -27,6 +33,7 @@ Arguments
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -
 
@@ -40,12 +47,14 @@ Arguments
 
        -  stream type
 
+
 Description
 -----------
 
 This ioctl tells the driver which kind of audio stream to expect. This
 is useful if the stream offers several audio sub-streams like LPCM and
 AC3.
+
 
 Return Value
 ------------
@@ -55,9 +64,11 @@ appropriately. The generic error codes are described at the
 :ref:`Generic Error Codes <gen-errors>` chapter.
 
 
+
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -  .. row 1
 

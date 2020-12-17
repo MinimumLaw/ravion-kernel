@@ -91,16 +91,10 @@ their control.
 Driver API
 ----------
 
-Alternate mode structs
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. kernel-doc:: include/linux/usb/typec_altmode.h
-   :functions: typec_altmode_driver typec_altmode_ops
-
 Alternate mode driver registering/unregistering
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. kernel-doc:: include/linux/usb/typec_altmode.h
+.. kernel-doc:: drivers/usb/typec/bus.c
    :functions: typec_altmode_register_driver typec_altmode_unregister_driver
 
 Alternate mode driver operations

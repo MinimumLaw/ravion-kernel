@@ -164,22 +164,7 @@ ENDPROC(at91_backup_mode)
 
 .macro at91_pm_ulp0_mode
 	ldr	pmc, .pmc_base
-	ldr	tmp2, .pm_mode
-	ldr	tmp3, .mckr_offset
 
-	/* Check if ULP0 fast variant has been requested. */
-	cmp	tmp2, #AT91_PM_ULP0_FAST
-	bne	0f
-
-	/* Set highest prescaler for power saving */
-	ldr	tmp1, [pmc, tmp3]
-	bic	tmp1, tmp1, #AT91_PMC_PRES
-	orr	tmp1, tmp1, #AT91_PMC_PRES_64
-	str	tmp1, [pmc, tmp3]
-	wait_mckrdy
-	b	1f
-
-0:
 	/* Turn off the crystal oscillator */
 	ldr	tmp1, [pmc, #AT91_CKGR_MOR]
 	bic	tmp1, tmp1, #AT91_PMC_MOSCEN
@@ -207,18 +192,7 @@ ENDPROC(at91_backup_mode)
 	/* Wait for interrupt */
 1:	at91_cpu_idle
 
-	/* Check if ULP0 fast variant has been requested. */
-	cmp	tmp2, #AT91_PM_ULP0_FAST
-	bne	5f
-
-	/* Set lowest prescaler for fast resume. */
-	ldr	tmp1, [pmc, tmp3]
-	bic	tmp1, tmp1, #AT91_PMC_PRES
-	str	tmp1, [pmc, tmp3]
-	wait_mckrdy
-	b	6f
-
-5:	/* Restore RC oscillator state */
+	/* Restore RC oscillator state */
 	ldr	tmp1, .saved_osc_status
 	tst	tmp1, #AT91_PMC_MOSCRCS
 	beq	4f
@@ -242,7 +216,6 @@ ENDPROC(at91_backup_mode)
 	str	tmp1, [pmc, #AT91_CKGR_MOR]
 
 	wait_moscrdy
-6:
 .endm
 
 /**
@@ -500,29 +473,23 @@ ENDPROC(at91_backup_mode)
 ENTRY(at91_ulp_mode)
 	ldr	pmc, .pmc_base
 	ldr	tmp2, .mckr_offset
-	ldr	tmp3, .pm_mode
 
 	/* Save Master clock setting */
 	ldr	tmp1, [pmc, tmp2]
 	str	tmp1, .saved_mckr
 
 	/*
-	 * Set master clock source to:
-	 * - MAINCK if using ULP0 fast variant
-	 * - slow clock, otherwise
+	 * Set the Master clock source to slow clock
 	 */
 	bic	tmp1, tmp1, #AT91_PMC_CSS
-	cmp	tmp3, #AT91_PM_ULP0_FAST
-	bne	save_mck
-	orr	tmp1, tmp1, #AT91_PMC_CSS_MAIN
-save_mck:
 	str	tmp1, [pmc, tmp2]
 
 	wait_mckrdy
 
 	at91_plla_disable
 
-	cmp	tmp3, #AT91_PM_ULP1
+	ldr	r0, .pm_mode
+	cmp	r0, #AT91_PM_ULP1
 	beq	ulp1_mode
 
 	at91_pm_ulp0_mode

@@ -259,7 +259,8 @@ static const struct regmap_config w83773_regmap_config = {
 	.val_bits = 8,
 };
 
-static int w83773_probe(struct i2c_client *client)
+static int w83773_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -295,7 +296,7 @@ static struct i2c_driver w83773_driver = {
 		.name	= "w83773g",
 		.of_match_table = of_match_ptr(w83773_of_match),
 	},
-	.probe_new = w83773_probe,
+	.probe = w83773_probe,
 	.id_table = w83773_id,
 };
 

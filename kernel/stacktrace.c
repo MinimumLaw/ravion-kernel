@@ -78,7 +78,8 @@ struct stacktrace_cookie {
 	unsigned int	len;
 };
 
-static bool stack_trace_consume_entry(void *cookie, unsigned long addr)
+static bool stack_trace_consume_entry(void *cookie, unsigned long addr,
+				      bool reliable)
 {
 	struct stacktrace_cookie *c = cookie;
 
@@ -93,11 +94,12 @@ static bool stack_trace_consume_entry(void *cookie, unsigned long addr)
 	return c->len < c->size;
 }
 
-static bool stack_trace_consume_entry_nosched(void *cookie, unsigned long addr)
+static bool stack_trace_consume_entry_nosched(void *cookie, unsigned long addr,
+					      bool reliable)
 {
 	if (in_sched_functions(addr))
 		return true;
-	return stack_trace_consume_entry(cookie, addr);
+	return stack_trace_consume_entry(cookie, addr, reliable);
 }
 
 /**

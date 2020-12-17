@@ -1053,10 +1053,16 @@ EXPORT_SYMBOL_GPL(fcoe_fcf_device_add);
 
 int __init fcoe_sysfs_setup(void)
 {
+	int error;
+
 	atomic_set(&ctlr_num, 0);
 	atomic_set(&fcf_num, 0);
 
-	return bus_register(&fcoe_bus_type);
+	error = bus_register(&fcoe_bus_type);
+	if (error)
+		return error;
+
+	return 0;
 }
 
 void __exit fcoe_sysfs_teardown(void)

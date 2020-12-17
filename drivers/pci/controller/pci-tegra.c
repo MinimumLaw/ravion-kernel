@@ -2564,14 +2564,36 @@ static int tegra_pcie_ports_seq_show(struct seq_file *s, void *v)
 	return 0;
 }
 
-static const struct seq_operations tegra_pcie_ports_sops = {
+static const struct seq_operations tegra_pcie_ports_seq_ops = {
 	.start = tegra_pcie_ports_seq_start,
 	.next = tegra_pcie_ports_seq_next,
 	.stop = tegra_pcie_ports_seq_stop,
 	.show = tegra_pcie_ports_seq_show,
 };
 
-DEFINE_SEQ_ATTRIBUTE(tegra_pcie_ports);
+static int tegra_pcie_ports_open(struct inode *inode, struct file *file)
+{
+	struct tegra_pcie *pcie = inode->i_private;
+	struct seq_file *s;
+	int err;
+
+	err = seq_open(file, &tegra_pcie_ports_seq_ops);
+	if (err)
+		return err;
+
+	s = file->private_data;
+	s->private = pcie;
+
+	return 0;
+}
+
+static const struct file_operations tegra_pcie_ports_ops = {
+	.owner = THIS_MODULE,
+	.open = tegra_pcie_ports_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
 
 static void tegra_pcie_debugfs_exit(struct tegra_pcie *pcie)
 {
@@ -2579,12 +2601,24 @@ static void tegra_pcie_debugfs_exit(struct tegra_pcie *pcie)
 	pcie->debugfs = NULL;
 }
 
-static void tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
+static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
 {
-	pcie->debugfs = debugfs_create_dir("pcie", NULL);
+	struct dentry *file;
 
-	debugfs_create_file("ports", S_IFREG | S_IRUGO, pcie->debugfs, pcie,
-			    &tegra_pcie_ports_fops);
+	pcie->debugfs = debugfs_create_dir("pcie", NULL);
+	if (!pcie->debugfs)
+		return -ENOMEM;
+
+	file = debugfs_create_file("ports", S_IFREG | S_IRUGO, pcie->debugfs,
+				   pcie, &tegra_pcie_ports_ops);
+	if (!file)
+		goto remove;
+
+	return 0;
+
+remove:
+	tegra_pcie_debugfs_exit(pcie);
+	return -ENOMEM;
 }
 
 static int tegra_pcie_probe(struct platform_device *pdev)
@@ -2638,8 +2672,11 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 		goto pm_runtime_put;
 	}
 
-	if (IS_ENABLED(CONFIG_DEBUG_FS))
-		tegra_pcie_debugfs_init(pcie);
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		err = tegra_pcie_debugfs_init(pcie);
+		if (err < 0)
+			dev_err(dev, "failed to setup debugfs: %d\n", err);
+	}
 
 	return 0;
 

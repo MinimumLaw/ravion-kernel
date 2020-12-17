@@ -15,8 +15,6 @@
 #define LIBBPF_API __attribute__((visibility("default")))
 #endif
 
-#define LIBBPF_DEPRECATED(msg) __attribute__((deprecated(msg)))
-
 /* Helper macro to declare and initialize libbpf options struct
  *
  * This dance with uninitialized declaration, followed by memset to zero,

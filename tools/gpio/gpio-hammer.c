@@ -22,46 +22,39 @@
 #include <linux/gpio.h>
 #include "gpio-utils.h"
 
-int hammer_device(const char *device_name, unsigned int *lines, int num_lines,
+int hammer_device(const char *device_name, unsigned int *lines, int nlines,
 		  unsigned int loops)
 {
-	struct gpio_v2_line_values values;
-	struct gpio_v2_line_config config;
+	struct gpiohandle_data data;
 	char swirr[] = "-\\|/";
 	int fd;
 	int ret;
 	int i, j;
 	unsigned int iteration = 0;
 
-	memset(&config, 0, sizeof(config));
-	config.flags = GPIO_V2_LINE_FLAG_OUTPUT;
-
-	ret = gpiotools_request_line(device_name, lines, num_lines,
-				     &config, "gpio-hammer");
+	memset(&data.values, 0, sizeof(data.values));
+	ret = gpiotools_request_linehandle(device_name, lines, nlines,
+					   GPIOHANDLE_REQUEST_OUTPUT, &data,
+					   "gpio-hammer");
 	if (ret < 0)
 		goto exit_error;
 	else
 		fd = ret;
 
-	values.mask = 0;
-	values.bits = 0;
-	for (i = 0; i < num_lines; i++)
-		gpiotools_set_bit(&values.mask, i);
-
-	ret = gpiotools_get_values(fd, &values);
+	ret = gpiotools_get_values(fd, &data);
 	if (ret < 0)
 		goto exit_close_error;
 
 	fprintf(stdout, "Hammer lines [");
-	for (i = 0; i < num_lines; i++) {
+	for (i = 0; i < nlines; i++) {
 		fprintf(stdout, "%d", lines[i]);
-		if (i != (num_lines - 1))
+		if (i != (nlines - 1))
 			fprintf(stdout, ", ");
 	}
 	fprintf(stdout, "] on %s, initial states: [", device_name);
-	for (i = 0; i < num_lines; i++) {
-		fprintf(stdout, "%d", gpiotools_test_bit(values.bits, i));
-		if (i != (num_lines - 1))
+	for (i = 0; i < nlines; i++) {
+		fprintf(stdout, "%d", data.values[i]);
+		if (i != (nlines - 1))
 			fprintf(stdout, ", ");
 	}
 	fprintf(stdout, "]\n");
@@ -70,15 +63,15 @@ int hammer_device(const char *device_name, unsigned int *lines, int num_lines,
 	j = 0;
 	while (1) {
 		/* Invert all lines so we blink */
-		for (i = 0; i < num_lines; i++)
-			gpiotools_change_bit(&values.bits, i);
+		for (i = 0; i < nlines; i++)
+			data.values[i] = !data.values[i];
 
-		ret = gpiotools_set_values(fd, &values);
+		ret = gpiotools_set_values(fd, &data);
 		if (ret < 0)
 			goto exit_close_error;
 
 		/* Re-read values to get status */
-		ret = gpiotools_get_values(fd, &values);
+		ret = gpiotools_get_values(fd, &data);
 		if (ret < 0)
 			goto exit_close_error;
 
@@ -88,10 +81,9 @@ int hammer_device(const char *device_name, unsigned int *lines, int num_lines,
 			j = 0;
 
 		fprintf(stdout, "[");
-		for (i = 0; i < num_lines; i++) {
-			fprintf(stdout, "%d: %d", lines[i],
-				gpiotools_test_bit(values.bits, i));
-			if (i != (num_lines - 1))
+		for (i = 0; i < nlines; i++) {
+			fprintf(stdout, "%d: %d", lines[i], data.values[i]);
+			if (i != (nlines - 1))
 				fprintf(stdout, ", ");
 		}
 		fprintf(stdout, "]\r");
@@ -105,7 +97,7 @@ int hammer_device(const char *device_name, unsigned int *lines, int num_lines,
 	ret = 0;
 
 exit_close_error:
-	gpiotools_release_line(fd);
+	gpiotools_release_linehandle(fd);
 exit_error:
 	return ret;
 }
@@ -129,7 +121,7 @@ int main(int argc, char **argv)
 	const char *device_name = NULL;
 	unsigned int lines[GPIOHANDLES_MAX];
 	unsigned int loops = 0;
-	int num_lines;
+	int nlines;
 	int c;
 	int i;
 
@@ -166,11 +158,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	num_lines = i;
+	nlines = i;
 
-	if (!device_name || !num_lines) {
+	if (!device_name || !nlines) {
 		print_usage();
 		return -1;
 	}
-	return hammer_device(device_name, lines, num_lines, loops);
+	return hammer_device(device_name, lines, nlines, loops);
 }

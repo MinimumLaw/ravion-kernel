@@ -28,7 +28,7 @@
 
 /**
  * octeon_mbox_read:
- * @mbox: Pointer mailbox
+ * @oct: Pointer mailbox
  *
  * Reads the 8-bytes of data from the mbox register
  * Writes back the acknowldgement inidcating completion of read
@@ -285,8 +285,7 @@ static int octeon_mbox_process_cmd(struct octeon_mbox *mbox,
 }
 
 /**
- * octeon_mbox_process_message
- * @mbox: mailbox
+ *octeon_mbox_process_message:
  *
  * Process the received mbox message.
  */

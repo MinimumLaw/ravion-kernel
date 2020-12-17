@@ -111,6 +111,4 @@ properties:
           - const: xlnx,zynqmp-zcu111
           - const: xlnx,zynqmp
 
-additionalProperties: true
-
 ...

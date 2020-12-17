@@ -231,6 +231,12 @@ Refer to the file kernel/module.c for more information.
 Hardware Interfaces
 ===================
 
+Interrupt Handling
+------------------
+
+.. kernel-doc:: kernel/irq/manage.c
+   :export:
+
 DMA Channels
 ------------
 

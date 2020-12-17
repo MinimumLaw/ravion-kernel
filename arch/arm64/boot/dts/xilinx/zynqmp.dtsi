@@ -131,6 +131,7 @@
 			};
 
 			zynqmp_clk: clock-controller {
+				u-boot,dm-pre-reloc;
 				#clock-cells = <1>;
 				compatible = "xlnx,zynqmp-clk";
 				clocks = <&pss_ref_clk>,
@@ -182,7 +183,7 @@
 		ranges;
 	};
 
-	amba_apu: axi@0 {
+	amba_apu: amba-apu@0 {
 		compatible = "simple-bus";
 		#address-cells = <2>;
 		#size-cells = <1>;
@@ -201,7 +202,7 @@
 		};
 	};
 
-	amba: axi {
+	amba: amba {
 		compatible = "simple-bus";
 		#address-cells = <2>;
 		#size-cells = <2>;

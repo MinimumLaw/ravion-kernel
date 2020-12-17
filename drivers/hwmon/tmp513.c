@@ -192,7 +192,7 @@ static int tmp51x_get_value(struct tmp51x_data *data, u8 reg, u8 pos,
 		/*
 		 * The valus is read in voltage in the chip but reported as
 		 * current to the user.
-		 * 2's complement number shifted by one to four depending
+		 * 2's compliment number shifted by one to four depending
 		 * on the pga gain setting. 1lsb = 10uV
 		 */
 		*val = sign_extend32(regval, 17 - tmp51x_get_pga_shift(data));
@@ -709,7 +709,8 @@ static int tmp51x_configure(struct device *dev, struct tmp51x_data *data)
 	return 0;
 }
 
-static int tmp51x_probe(struct i2c_client *client)
+static int tmp51x_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct tmp51x_data *data;
@@ -723,7 +724,7 @@ static int tmp51x_probe(struct i2c_client *client)
 	if (client->dev.of_node)
 		data->id = (enum tmp51x_ids)device_get_match_data(&client->dev);
 	else
-		data->id = i2c_match_id(tmp51x_id, client)->driver_data;
+		data->id = id->driver_data;
 
 	ret = tmp51x_configure(dev, data);
 	if (ret < 0) {
@@ -750,7 +751,7 @@ static int tmp51x_probe(struct i2c_client *client)
 	if (IS_ERR(hwmon_dev))
 		return PTR_ERR(hwmon_dev);
 
-	dev_dbg(dev, "power monitor %s\n", client->name);
+	dev_dbg(dev, "power monitor %s\n", id->name);
 
 	return 0;
 }
@@ -760,7 +761,7 @@ static struct i2c_driver tmp51x_driver = {
 		.name	= "tmp51x",
 		.of_match_table = of_match_ptr(tmp51x_of_match),
 	},
-	.probe_new	= tmp51x_probe,
+	.probe		= tmp51x_probe,
 	.id_table	= tmp51x_id,
 };
 

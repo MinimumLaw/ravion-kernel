@@ -278,7 +278,7 @@ static int walk_p4d_level(pgd_t *pgd, unsigned long addr, unsigned long end,
 	return rc;
 }
 
-DEFINE_MUTEX(cpa_mutex);
+static DEFINE_MUTEX(cpa_mutex);
 
 static int change_page_attr(unsigned long addr, unsigned long end,
 			    unsigned long flags)

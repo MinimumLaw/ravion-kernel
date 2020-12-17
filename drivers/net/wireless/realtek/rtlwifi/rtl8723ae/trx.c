@@ -362,13 +362,14 @@ void rtl8723e_tx_fill_desc(struct ieee80211_hw *hw,
 	bool lastseg = ((hdr->frame_control &
 			 cpu_to_le16(IEEE80211_FCTL_MOREFRAGS)) == 0);
 
-	dma_addr_t mapping = dma_map_single(&rtlpci->pdev->dev, skb->data,
-					    skb->len, DMA_TO_DEVICE);
+	dma_addr_t mapping = pci_map_single(rtlpci->pdev,
+					    skb->data, skb->len,
+					    PCI_DMA_TODEVICE);
 	u8 bw_40 = 0;
 
-	if (dma_mapping_error(&rtlpci->pdev->dev, mapping)) {
-		rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-			"DMA mapping error\n");
+	if (pci_dma_mapping_error(rtlpci->pdev, mapping)) {
+		RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+			 "DMA mapping error\n");
 		return;
 	}
 	if (mac->opmode == NL80211_IFTYPE_STATION) {
@@ -476,8 +477,8 @@ void rtl8723e_tx_fill_desc(struct ieee80211_hw *hw,
 
 		if (ieee80211_is_data_qos(fc)) {
 			if (mac->rdg_en) {
-				rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-					"Enable RDG function.\n");
+				RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+					 "Enable RDG function.\n");
 				set_tx_desc_rdg_enable(pdesc, 1);
 				set_tx_desc_htc(pdesc, 1);
 			}
@@ -516,7 +517,7 @@ void rtl8723e_tx_fill_desc(struct ieee80211_hw *hw,
 		set_tx_desc_bmc(pdesc, 1);
 	}
 
-	rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE, "\n");
+	RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE, "\n");
 }
 
 void rtl8723e_tx_fill_cmddesc(struct ieee80211_hw *hw,
@@ -528,15 +529,16 @@ void rtl8723e_tx_fill_cmddesc(struct ieee80211_hw *hw,
 	u8 fw_queue = QSLT_BEACON;
 	__le32 *pdesc = (__le32 *)pdesc8;
 
-	dma_addr_t mapping = dma_map_single(&rtlpci->pdev->dev, skb->data,
-					    skb->len, DMA_TO_DEVICE);
+	dma_addr_t mapping = pci_map_single(rtlpci->pdev,
+					    skb->data, skb->len,
+					    PCI_DMA_TODEVICE);
 
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)(skb->data);
 	__le16 fc = hdr->frame_control;
 
-	if (dma_mapping_error(&rtlpci->pdev->dev, mapping)) {
-		rtl_dbg(rtlpriv, COMP_SEND, DBG_TRACE,
-			"DMA mapping error\n");
+	if (pci_dma_mapping_error(rtlpci->pdev, mapping)) {
+		RT_TRACE(rtlpriv, COMP_SEND, DBG_TRACE,
+			 "DMA mapping error\n");
 		return;
 	}
 	clear_pci_tx_desc_content(pdesc, TX_DESC_SIZE);
@@ -589,7 +591,7 @@ void rtl8723e_set_desc(struct ieee80211_hw *hw, u8 *pdesc8,
 {
 	__le32 *pdesc = (__le32 *)pdesc8;
 
-	if (istx) {
+	if (istx == true) {
 		switch (desc_name) {
 		case HW_DESC_OWN:
 			set_tx_desc_own(pdesc, 1);
@@ -630,7 +632,7 @@ u64 rtl8723e_get_desc(struct ieee80211_hw *hw,
 	u32 ret = 0;
 	__le32 *pdesc = (__le32 *)pdesc8;
 
-	if (istx) {
+	if (istx == true) {
 		switch (desc_name) {
 		case HW_DESC_OWN:
 			ret = get_tx_desc_own(pdesc);

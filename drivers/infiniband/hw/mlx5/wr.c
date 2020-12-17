@@ -398,8 +398,7 @@ static void set_linv_mkey_seg(struct mlx5_mkey_seg *seg)
 	seg->status = MLX5_MKEY_STATUS_FREE;
 }
 
-static void set_reg_mkey_segment(struct mlx5_ib_dev *dev,
-				 struct mlx5_mkey_seg *seg,
+static void set_reg_mkey_segment(struct mlx5_mkey_seg *seg,
 				 const struct ib_send_wr *wr)
 {
 	const struct mlx5_umr_wr *umrwr = umr_wr(wr);
@@ -415,12 +414,10 @@ static void set_reg_mkey_segment(struct mlx5_ib_dev *dev,
 	MLX5_SET(mkc, seg, rr, !!(umrwr->access_flags & IB_ACCESS_REMOTE_READ));
 	MLX5_SET(mkc, seg, lw, !!(umrwr->access_flags & IB_ACCESS_LOCAL_WRITE));
 	MLX5_SET(mkc, seg, lr, 1);
-	if (MLX5_CAP_GEN(dev->mdev, relaxed_ordering_write_umr))
-		MLX5_SET(mkc, seg, relaxed_ordering_write,
-			 !!(umrwr->access_flags & IB_ACCESS_RELAXED_ORDERING));
-	if (MLX5_CAP_GEN(dev->mdev, relaxed_ordering_read_umr))
-		MLX5_SET(mkc, seg, relaxed_ordering_read,
-			 !!(umrwr->access_flags & IB_ACCESS_RELAXED_ORDERING));
+	MLX5_SET(mkc, seg, relaxed_ordering_write,
+		 !!(umrwr->access_flags & IB_ACCESS_RELAXED_ORDERING));
+	MLX5_SET(mkc, seg, relaxed_ordering_read,
+		 !!(umrwr->access_flags & IB_ACCESS_RELAXED_ORDERING));
 
 	if (umrwr->pd)
 		MLX5_SET(mkc, seg, pd, to_mpd(umrwr->pd)->pdn);
@@ -866,11 +863,13 @@ static int set_reg_wr(struct mlx5_ib_qp *qp,
 	bool atomic = wr->access & IB_ACCESS_REMOTE_ATOMIC;
 	u8 flags = 0;
 
-	/* Matches access in mlx5_set_umr_free_mkey() */
-	if (!mlx5_ib_can_reconfig_with_umr(dev, 0, wr->access)) {
-		mlx5_ib_warn(
-			to_mdev(qp->ibqp.device),
-			"Fast update for MR access flags is not possible\n");
+	if (!mlx5_ib_can_use_umr(dev, atomic, wr->access)) {
+		mlx5_ib_warn(to_mdev(qp->ibqp.device),
+			     "Fast update of %s for MR is disabled\n",
+			     (MLX5_CAP_GEN(dev->mdev,
+					   umr_modify_entity_size_disabled)) ?
+				     "entity size" :
+				     "atomic access");
 		return -EINVAL;
 	}
 
@@ -1264,7 +1263,7 @@ static int handle_qpt_reg_umr(struct mlx5_ib_dev *dev, struct mlx5_ib_qp *qp,
 	*seg += sizeof(struct mlx5_wqe_umr_ctrl_seg);
 	*size += sizeof(struct mlx5_wqe_umr_ctrl_seg) / 16;
 	handle_post_send_edge(&qp->sq, seg, *size, cur_edge);
-	set_reg_mkey_segment(dev, *seg, wr);
+	set_reg_mkey_segment(*seg, wr);
 	*seg += sizeof(struct mlx5_mkey_seg);
 	*size += sizeof(struct mlx5_mkey_seg) / 16;
 	handle_post_send_edge(&qp->sq, seg, *size, cur_edge);

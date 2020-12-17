@@ -62,8 +62,6 @@ allOf:
       required:
         - samsung,syscon-phandle
 
-unevaluatedProperties: false
-
 examples:
   - |
     watchdog@101d0000 {

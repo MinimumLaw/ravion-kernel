@@ -2167,7 +2167,7 @@ nfsd4_removexattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
 static __be32
 nfsd4_proc_null(struct svc_rqst *rqstp)
 {
-	return rpc_success;
+	return nfs_ok;
 }
 
 static inline void nfsd4_increment_op_stats(u32 opnum)
@@ -2459,14 +2459,15 @@ encode_op:
 		nfsd4_increment_op_stats(op->opnum);
 	}
 
+	cstate->status = status;
 	fh_put(current_fh);
 	fh_put(save_fh);
 	BUG_ON(cstate->replay_owner);
 out:
-	cstate->status = status;
 	/* Reset deferral mechanism for RPC deferrals */
 	set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
-	return rpc_success;
+	dprintk("nfsv4 compound returned %d\n", ntohl(status));
+	return status;
 }
 
 #define op_encode_hdr_size		(2)
@@ -2590,20 +2591,6 @@ static inline u32 nfsd4_read_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
 	rlen = min(op->u.read.rd_length, maxcount);
 
 	return (op_encode_hdr_size + 2 + XDR_QUADLEN(rlen)) * sizeof(__be32);
-}
-
-static inline u32 nfsd4_read_plus_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-{
-	u32 maxcount = svc_max_payload(rqstp);
-	u32 rlen = min(op->u.read.rd_length, maxcount);
-	/*
-	 * If we detect that the file changed during hole encoding, then we
-	 * recover by encoding the remaining reply as data. This means we need
-	 * to set aside enough room to encode two data segments.
-	 */
-	u32 seg_len = 2 * (1 + 2 + 1);
-
-	return (op_encode_hdr_size + 2 + seg_len + XDR_QUADLEN(rlen)) * sizeof(__be32);
 }
 
 static inline u32 nfsd4_readdir_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
@@ -3178,13 +3165,6 @@ static const struct nfsd4_operation nfsd4_ops[] = {
 		.op_name = "OP_COPY",
 		.op_rsize_bop = nfsd4_copy_rsize,
 	},
-	[OP_READ_PLUS] = {
-		.op_func = nfsd4_read,
-		.op_release = nfsd4_read_release,
-		.op_name = "OP_READ_PLUS",
-		.op_rsize_bop = nfsd4_read_plus_rsize,
-		.op_get_currentstateid = nfsd4_get_readstateid,
-	},
 	[OP_SEEK] = {
 		.op_func = nfsd4_seek,
 		.op_name = "OP_SEEK",
@@ -3253,7 +3233,7 @@ bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
 	if (!cstate->minorversion)
 		return false;
 
-	if (cstate->spo_must_allowed)
+	if (cstate->spo_must_allowed == true)
 		return true;
 
 	opiter = resp->opcnt;
@@ -3301,7 +3281,6 @@ struct nfsd4_voidargs { int dummy; };
 static const struct svc_procedure nfsd_procedures4[2] = {
 	[NFSPROC4_NULL] = {
 		.pc_func = nfsd4_proc_null,
-		.pc_decode = nfs4svc_decode_voidarg,
 		.pc_encode = nfs4svc_encode_voidres,
 		.pc_argsize = sizeof(struct nfsd4_voidargs),
 		.pc_ressize = sizeof(struct nfsd4_voidres),

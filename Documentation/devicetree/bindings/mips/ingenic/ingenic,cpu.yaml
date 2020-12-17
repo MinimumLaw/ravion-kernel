@@ -32,15 +32,11 @@ properties:
   clocks:
     maxItems: 1
 
-  device_type: true
-
 required:
   - device_type
   - compatible
   - reg
   - clocks
-
-additionalProperties: false
 
 examples:
   - |
@@ -56,6 +52,7 @@ examples:
                 reg = <0>;
 
                 clocks = <&cgu JZ4780_CLK_CPU>;
+                clock-names = "cpu";
         };
 
         cpu1: cpu@1 {
@@ -64,6 +61,7 @@ examples:
                 reg = <1>;
 
                 clocks = <&cgu JZ4780_CLK_CORE1>;
+                clock-names = "cpu";
         };
     };
 ...

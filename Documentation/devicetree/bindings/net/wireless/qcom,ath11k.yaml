@@ -17,9 +17,7 @@ description: |
 
 properties:
   compatible:
-    enum:
-      - qcom,ipq8074-wifi
-      - qcom,ipq6018-wifi
+    const: qcom,ipq8074-wifi
 
   reg:
     maxItems: 1

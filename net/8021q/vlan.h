@@ -36,7 +36,7 @@ struct vlan_info {
 	struct rcu_head		rcu;
 };
 
-static inline int vlan_proto_idx(__be16 proto)
+static inline unsigned int vlan_proto_idx(__be16 proto)
 {
 	switch (proto) {
 	case htons(ETH_P_8021Q):
@@ -44,8 +44,8 @@ static inline int vlan_proto_idx(__be16 proto)
 	case htons(ETH_P_8021AD):
 		return VLAN_PROTO_8021AD;
 	default:
-		WARN(1, "invalid VLAN protocol: 0x%04x\n", ntohs(proto));
-		return -EINVAL;
+		BUG();
+		return 0;
 	}
 }
 
@@ -64,24 +64,17 @@ static inline struct net_device *vlan_group_get_device(struct vlan_group *vg,
 						       __be16 vlan_proto,
 						       u16 vlan_id)
 {
-	int pidx = vlan_proto_idx(vlan_proto);
-
-	if (pidx < 0)
-		return NULL;
-
-	return __vlan_group_get_device(vg, pidx, vlan_id);
+	return __vlan_group_get_device(vg, vlan_proto_idx(vlan_proto), vlan_id);
 }
 
 static inline void vlan_group_set_device(struct vlan_group *vg,
 					 __be16 vlan_proto, u16 vlan_id,
 					 struct net_device *dev)
 {
-	int pidx = vlan_proto_idx(vlan_proto);
 	struct net_device **array;
-
-	if (!vg || pidx < 0)
+	if (!vg)
 		return;
-	array = vg->vlan_devices_arrays[pidx]
+	array = vg->vlan_devices_arrays[vlan_proto_idx(vlan_proto)]
 				       [vlan_id / VLAN_GROUP_ARRAY_PART_LEN];
 	array[vlan_id % VLAN_GROUP_ARRAY_PART_LEN] = dev;
 }

@@ -9,6 +9,7 @@
 #include <asm/assembler.h>
 
 	.macro SMCCC instr
+	.cfi_startproc
 	\instr	#0
 	ldr	x4, [sp]
 	stp	x0, x1, [x4, #ARM_SMCCC_RES_X0_OFFS]
@@ -20,6 +21,7 @@
 	b.ne	1f
 	str	x6, [x4, ARM_SMCCC_QUIRK_STATE_OFFS]
 1:	ret
+	.cfi_endproc
 	.endm
 
 /*

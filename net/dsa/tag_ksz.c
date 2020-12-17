@@ -123,7 +123,6 @@ static const struct dsa_device_ops ksz8795_netdev_ops = {
 	.xmit	= ksz8795_xmit,
 	.rcv	= ksz8795_rcv,
 	.overhead = KSZ_INGRESS_TAG_LEN,
-	.tail_tag = true,
 };
 
 DSA_TAG_DRIVER(ksz8795_netdev_ops);
@@ -200,7 +199,6 @@ static const struct dsa_device_ops ksz9477_netdev_ops = {
 	.xmit	= ksz9477_xmit,
 	.rcv	= ksz9477_rcv,
 	.overhead = KSZ9477_INGRESS_TAG_LEN,
-	.tail_tag = true,
 };
 
 DSA_TAG_DRIVER(ksz9477_netdev_ops);
@@ -239,7 +237,6 @@ static const struct dsa_device_ops ksz9893_netdev_ops = {
 	.xmit	= ksz9893_xmit,
 	.rcv	= ksz9477_rcv,
 	.overhead = KSZ_INGRESS_TAG_LEN,
-	.tail_tag = true,
 };
 
 DSA_TAG_DRIVER(ksz9893_netdev_ops);

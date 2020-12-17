@@ -183,6 +183,7 @@ static int loongson_pci_probe(struct platform_device *pdev)
 	struct device_node *node = dev->of_node;
 	struct pci_host_bridge *bridge;
 	struct resource *regs;
+	int err;
 
 	if (!node)
 		return -ENODEV;
@@ -221,7 +222,11 @@ static int loongson_pci_probe(struct platform_device *pdev)
 	bridge->ops = &loongson_pci_ops;
 	bridge->map_irq = loongson_map_irq;
 
-	return pci_host_probe(bridge);
+	err = pci_host_probe(bridge);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 static struct platform_driver loongson_pci_driver = {

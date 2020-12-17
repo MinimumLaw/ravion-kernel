@@ -132,4 +132,3 @@ ISA DMA Helpers
 Other Helper Macros
 -------------------
 .. kernel-doc:: include/sound/core.h
-.. kernel-doc:: sound/sound_core.c

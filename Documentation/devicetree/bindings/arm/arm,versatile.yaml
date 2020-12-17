@@ -68,6 +68,4 @@ required:
   - compatible
   - core-module@10000000
 
-additionalProperties: true
-
 ...

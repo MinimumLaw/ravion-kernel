@@ -15,7 +15,6 @@ struct scsi_host_template;
 struct Scsi_Host;
 struct scsi_nl_hdr;
 
-#define SCSI_CMD_RETRIES_NO_LIMIT -1
 
 /*
  * Scsi Error Handler Flags

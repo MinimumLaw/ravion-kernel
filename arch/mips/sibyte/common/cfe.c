@@ -114,14 +114,16 @@ static __init void prom_meminit(void)
 			if (initrd_start) {
 				if ((initrd_pstart > addr) &&
 				    (initrd_pstart < (addr + size))) {
-					memblock_add(addr,
-						     initrd_pstart - addr);
+					add_memory_region(addr,
+							  initrd_pstart - addr,
+							  BOOT_MEM_RAM);
 					rd_flag = 1;
 				}
 				if ((initrd_pend > addr) &&
 				    (initrd_pend < (addr + size))) {
-					memblock_add(initrd_pend,
-						(addr + size) - initrd_pend);
+					add_memory_region(initrd_pend,
+						(addr + size) - initrd_pend,
+						 BOOT_MEM_RAM);
 					rd_flag = 1;
 				}
 			}
@@ -140,7 +142,7 @@ static __init void prom_meminit(void)
 				 */
 				if (size > 512)
 					size -= 512;
-				memblock_add(addr, size);
+				add_memory_region(addr, size, BOOT_MEM_RAM);
 			}
 			board_mem_region_addrs[board_mem_region_count] = addr;
 			board_mem_region_sizes[board_mem_region_count] = size;
@@ -156,8 +158,8 @@ static __init void prom_meminit(void)
 	}
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (initrd_start) {
-		memblock_add(initrd_pstart, initrd_pend - initrd_pstart);
-		memblock_reserve(initrd_pstart, initrd_pend - initrd_pstart);
+		add_memory_region(initrd_pstart, initrd_pend - initrd_pstart,
+				  BOOT_MEM_RESERVED);
 	}
 #endif
 }

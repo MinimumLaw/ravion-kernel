@@ -19,7 +19,6 @@
 #include <linux/bitops.h>
 #include <linux/irqdomain.h>
 #include <linux/interrupt.h>
-#include <linux/memblock.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/physmap.h>
 #include <linux/reboot.h>
@@ -364,7 +363,7 @@ void __init ar5312_plat_mem_setup(void)
 	memsize = (bank0_ac ? (1 << (bank0_ac + 1)) : 0) +
 		  (bank1_ac ? (1 << (bank1_ac + 1)) : 0);
 	memsize <<= 20;
-	memblock_add(0, memsize);
+	add_memory_region(0, memsize, BOOT_MEM_RAM);
 	iounmap(sdram_base);
 
 	ar5312_rst_base = ioremap(AR5312_RST_BASE, AR5312_RST_SIZE);

@@ -164,9 +164,7 @@ static int osd101t2587_panel_add(struct osd101t2587_panel *osd101t2587)
 	if (ret)
 		return ret;
 
-	drm_panel_add(&osd101t2587->base);
-
-	return 0;
+	return drm_panel_add(&osd101t2587->base);
 }
 
 static int osd101t2587_panel_probe(struct mipi_dsi_device *dsi)

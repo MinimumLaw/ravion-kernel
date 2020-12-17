@@ -23,8 +23,6 @@ required:
   - compatible
   - reg
 
-additionalProperties: false
-
 examples:
   - |
     isa@0 {

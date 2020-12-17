@@ -1294,7 +1294,7 @@ static unsigned int CalculateVMAndRowBytes(
 	unsigned int MacroTileHeight;
 	unsigned int ExtraDPDEBytesFrame;
 	unsigned int PDEAndMetaPTEBytesFrame;
-	unsigned int PixelPTEReqHeightPTEs = 0;
+	unsigned int PixelPTEReqHeightPTEs;
 
 	if (DCCEnable == true) {
 		*MetaRequestHeight = 8 * BlockHeight256Bytes;

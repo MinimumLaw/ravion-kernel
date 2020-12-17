@@ -34,9 +34,6 @@ struct dc_bios;
 
 enum dce_version {
 	DCE_VERSION_UNKNOWN = (-1),
-	DCE_VERSION_6_0,
-	DCE_VERSION_6_1,
-	DCE_VERSION_6_4,
 	DCE_VERSION_8_0,
 	DCE_VERSION_8_1,
 	DCE_VERSION_8_3,

@@ -355,6 +355,10 @@ smp_callin (void)
 	extern void ia64_init_itm(void);
 	extern volatile int time_keeper_id;
 
+#ifdef CONFIG_PERFMON
+	extern void pfm_init_percpu(void);
+#endif
+
 	cpuid = smp_processor_id();
 	phys_id = hard_smp_processor_id();
 	itc_master = time_keeper_id;
@@ -384,6 +388,10 @@ smp_callin (void)
 	smp_setup_percpu_timer();
 
 	ia64_mca_cmc_vector_setup();	/* Setup vector on AP */
+
+#ifdef CONFIG_PERFMON
+	pfm_init_percpu();
+#endif
 
 	local_irq_enable();
 

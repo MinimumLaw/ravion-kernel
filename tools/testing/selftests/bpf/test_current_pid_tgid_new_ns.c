@@ -156,5 +156,4 @@ cleanup:
 			bpf_object__close(obj);
 		}
 	}
-	return 0;
 }

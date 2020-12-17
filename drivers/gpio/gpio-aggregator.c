@@ -333,13 +333,19 @@ static int gpio_fwd_get(struct gpio_chip *chip, unsigned int offset)
 	return gpiod_get_value(fwd->descs[offset]);
 }
 
-static int gpio_fwd_get_multiple(struct gpiochip_fwd *fwd, unsigned long *mask,
+static int gpio_fwd_get_multiple(struct gpio_chip *chip, unsigned long *mask,
 				 unsigned long *bits)
 {
+	struct gpiochip_fwd *fwd = gpiochip_get_data(chip);
+	unsigned long *values, flags = 0;
 	struct gpio_desc **descs;
-	unsigned long *values;
 	unsigned int i, j = 0;
 	int error;
+
+	if (chip->can_sleep)
+		mutex_lock(&fwd->mlock);
+	else
+		spin_lock_irqsave(&fwd->slock, flags);
 
 	/* Both values bitmap and desc pointers are stored in tmp[] */
 	values = &fwd->tmp[0];
@@ -350,32 +356,16 @@ static int gpio_fwd_get_multiple(struct gpiochip_fwd *fwd, unsigned long *mask,
 		descs[j++] = fwd->descs[i];
 
 	error = gpiod_get_array_value(j, descs, NULL, values);
-	if (error)
-		return error;
-
-	j = 0;
-	for_each_set_bit(i, mask, fwd->chip.ngpio)
-		__assign_bit(i, bits, test_bit(j++, values));
-
-	return 0;
-}
-
-static int gpio_fwd_get_multiple_locked(struct gpio_chip *chip,
-					unsigned long *mask, unsigned long *bits)
-{
-	struct gpiochip_fwd *fwd = gpiochip_get_data(chip);
-	unsigned long flags;
-	int error;
-
-	if (chip->can_sleep) {
-		mutex_lock(&fwd->mlock);
-		error = gpio_fwd_get_multiple(fwd, mask, bits);
-		mutex_unlock(&fwd->mlock);
-	} else {
-		spin_lock_irqsave(&fwd->slock, flags);
-		error = gpio_fwd_get_multiple(fwd, mask, bits);
-		spin_unlock_irqrestore(&fwd->slock, flags);
+	if (!error) {
+		j = 0;
+		for_each_set_bit(i, mask, fwd->chip.ngpio)
+			__assign_bit(i, bits, test_bit(j++, values));
 	}
+
+	if (chip->can_sleep)
+		mutex_unlock(&fwd->mlock);
+	else
+		spin_unlock_irqrestore(&fwd->slock, flags);
 
 	return error;
 }
@@ -387,12 +377,18 @@ static void gpio_fwd_set(struct gpio_chip *chip, unsigned int offset, int value)
 	gpiod_set_value(fwd->descs[offset], value);
 }
 
-static void gpio_fwd_set_multiple(struct gpiochip_fwd *fwd, unsigned long *mask,
+static void gpio_fwd_set_multiple(struct gpio_chip *chip, unsigned long *mask,
 				  unsigned long *bits)
 {
+	struct gpiochip_fwd *fwd = gpiochip_get_data(chip);
+	unsigned long *values, flags = 0;
 	struct gpio_desc **descs;
-	unsigned long *values;
 	unsigned int i, j = 0;
+
+	if (chip->can_sleep)
+		mutex_lock(&fwd->mlock);
+	else
+		spin_lock_irqsave(&fwd->slock, flags);
 
 	/* Both values bitmap and desc pointers are stored in tmp[] */
 	values = &fwd->tmp[0];
@@ -404,23 +400,11 @@ static void gpio_fwd_set_multiple(struct gpiochip_fwd *fwd, unsigned long *mask,
 	}
 
 	gpiod_set_array_value(j, descs, NULL, values);
-}
 
-static void gpio_fwd_set_multiple_locked(struct gpio_chip *chip,
-					 unsigned long *mask, unsigned long *bits)
-{
-	struct gpiochip_fwd *fwd = gpiochip_get_data(chip);
-	unsigned long flags;
-
-	if (chip->can_sleep) {
-		mutex_lock(&fwd->mlock);
-		gpio_fwd_set_multiple(fwd, mask, bits);
+	if (chip->can_sleep)
 		mutex_unlock(&fwd->mlock);
-	} else {
-		spin_lock_irqsave(&fwd->slock, flags);
-		gpio_fwd_set_multiple(fwd, mask, bits);
+	else
 		spin_unlock_irqrestore(&fwd->slock, flags);
-	}
 }
 
 static int gpio_fwd_set_config(struct gpio_chip *chip, unsigned int offset,
@@ -486,9 +470,9 @@ static struct gpiochip_fwd *gpiochip_fwd_create(struct device *dev,
 	chip->direction_input = gpio_fwd_direction_input;
 	chip->direction_output = gpio_fwd_direction_output;
 	chip->get = gpio_fwd_get;
-	chip->get_multiple = gpio_fwd_get_multiple_locked;
+	chip->get_multiple = gpio_fwd_get_multiple;
 	chip->set = gpio_fwd_set;
-	chip->set_multiple = gpio_fwd_set_multiple_locked;
+	chip->set_multiple = gpio_fwd_set_multiple;
 	chip->base = -1;
 	chip->ngpio = ngpios;
 	fwd->descs = descs;

@@ -690,9 +690,9 @@ xfs_attr_sf_findname(
 	sf = (struct xfs_attr_shortform *)args->dp->i_afp->if_u1.if_data;
 	sfe = &sf->list[0];
 	end = sf->hdr.count;
-	for (i = 0; i < end; sfe = xfs_attr_sf_nextentry(sfe),
+	for (i = 0; i < end; sfe = XFS_ATTR_SF_NEXTENTRY(sfe),
 			     base += size, i++) {
-		size = xfs_attr_sf_entsize(sfe);
+		size = XFS_ATTR_SF_ENTSIZE(sfe);
 		if (!xfs_attr_match(args, sfe->namelen, sfe->nameval,
 				    sfe->flags))
 			continue;
@@ -734,15 +734,15 @@ xfs_attr_shortform_add(
 
 	ifp = dp->i_afp;
 	ASSERT(ifp->if_flags & XFS_IFINLINE);
-	sf = (struct xfs_attr_shortform *)ifp->if_u1.if_data;
+	sf = (xfs_attr_shortform_t *)ifp->if_u1.if_data;
 	if (xfs_attr_sf_findname(args, &sfe, NULL) == -EEXIST)
 		ASSERT(0);
 
 	offset = (char *)sfe - (char *)sf;
-	size = xfs_attr_sf_entsize_byname(args->namelen, args->valuelen);
+	size = XFS_ATTR_SF_ENTSIZE_BYNAME(args->namelen, args->valuelen);
 	xfs_idata_realloc(dp, size, XFS_ATTR_FORK);
-	sf = (struct xfs_attr_shortform *)ifp->if_u1.if_data;
-	sfe = (struct xfs_attr_sf_entry *)((char *)sf + offset);
+	sf = (xfs_attr_shortform_t *)ifp->if_u1.if_data;
+	sfe = (xfs_attr_sf_entry_t *)((char *)sf + offset);
 
 	sfe->namelen = args->namelen;
 	sfe->valuelen = args->valuelen;
@@ -793,12 +793,12 @@ xfs_attr_shortform_remove(
 
 	dp = args->dp;
 	mp = dp->i_mount;
-	sf = (struct xfs_attr_shortform *)dp->i_afp->if_u1.if_data;
+	sf = (xfs_attr_shortform_t *)dp->i_afp->if_u1.if_data;
 
 	error = xfs_attr_sf_findname(args, &sfe, &base);
 	if (error != -EEXIST)
 		return error;
-	size = xfs_attr_sf_entsize(sfe);
+	size = XFS_ATTR_SF_ENTSIZE(sfe);
 
 	/*
 	 * Fix up the attribute fork data, covering the hole
@@ -843,8 +843,8 @@ xfs_attr_shortform_remove(
 int
 xfs_attr_shortform_lookup(xfs_da_args_t *args)
 {
-	struct xfs_attr_shortform *sf;
-	struct xfs_attr_sf_entry *sfe;
+	xfs_attr_shortform_t *sf;
+	xfs_attr_sf_entry_t *sfe;
 	int i;
 	struct xfs_ifork *ifp;
 
@@ -852,10 +852,10 @@ xfs_attr_shortform_lookup(xfs_da_args_t *args)
 
 	ifp = args->dp->i_afp;
 	ASSERT(ifp->if_flags & XFS_IFINLINE);
-	sf = (struct xfs_attr_shortform *)ifp->if_u1.if_data;
+	sf = (xfs_attr_shortform_t *)ifp->if_u1.if_data;
 	sfe = &sf->list[0];
 	for (i = 0; i < sf->hdr.count;
-				sfe = xfs_attr_sf_nextentry(sfe), i++) {
+				sfe = XFS_ATTR_SF_NEXTENTRY(sfe), i++) {
 		if (xfs_attr_match(args, sfe->namelen, sfe->nameval,
 				sfe->flags))
 			return -EEXIST;
@@ -879,10 +879,10 @@ xfs_attr_shortform_getvalue(
 	int			i;
 
 	ASSERT(args->dp->i_afp->if_flags == XFS_IFINLINE);
-	sf = (struct xfs_attr_shortform *)args->dp->i_afp->if_u1.if_data;
+	sf = (xfs_attr_shortform_t *)args->dp->i_afp->if_u1.if_data;
 	sfe = &sf->list[0];
 	for (i = 0; i < sf->hdr.count;
-				sfe = xfs_attr_sf_nextentry(sfe), i++) {
+				sfe = XFS_ATTR_SF_NEXTENTRY(sfe), i++) {
 		if (xfs_attr_match(args, sfe->namelen, sfe->nameval,
 				sfe->flags))
 			return xfs_attr_copy_value(args,
@@ -914,12 +914,12 @@ xfs_attr_shortform_to_leaf(
 
 	dp = args->dp;
 	ifp = dp->i_afp;
-	sf = (struct xfs_attr_shortform *)ifp->if_u1.if_data;
+	sf = (xfs_attr_shortform_t *)ifp->if_u1.if_data;
 	size = be16_to_cpu(sf->hdr.totsize);
 	tmpbuffer = kmem_alloc(size, 0);
 	ASSERT(tmpbuffer != NULL);
 	memcpy(tmpbuffer, ifp->if_u1.if_data, size);
-	sf = (struct xfs_attr_shortform *)tmpbuffer;
+	sf = (xfs_attr_shortform_t *)tmpbuffer;
 
 	xfs_idata_realloc(dp, -size, XFS_ATTR_FORK);
 	xfs_bmap_local_to_extents_empty(args->trans, dp, XFS_ATTR_FORK);
@@ -957,7 +957,7 @@ xfs_attr_shortform_to_leaf(
 		ASSERT(error != -ENOSPC);
 		if (error)
 			goto out;
-		sfe = xfs_attr_sf_nextentry(sfe);
+		sfe = XFS_ATTR_SF_NEXTENTRY(sfe);
 	}
 	error = 0;
 	*leaf_bp = bp;
@@ -998,8 +998,9 @@ xfs_attr_shortform_allfit(
 			return 0;
 		if (be16_to_cpu(name_loc->valuelen) >= XFS_ATTR_SF_ENTSIZE_MAX)
 			return 0;
-		bytes += xfs_attr_sf_entsize_byname(name_loc->namelen,
-					be16_to_cpu(name_loc->valuelen));
+		bytes += sizeof(struct xfs_attr_sf_entry) - 1
+				+ name_loc->namelen
+				+ be16_to_cpu(name_loc->valuelen);
 	}
 	if ((dp->i_mount->m_flags & XFS_MOUNT_ATTR2) &&
 	    (dp->i_df.if_format != XFS_DINODE_FMT_BTREE) &&
@@ -1044,7 +1045,7 @@ xfs_attr_shortform_verify(
 		 * xfs_attr_sf_entry is defined with a 1-byte variable
 		 * array at the end, so we must subtract that off.
 		 */
-		if (((char *)sfep + sizeof(*sfep)) >= endp)
+		if (((char *)sfep + sizeof(*sfep) - 1) >= endp)
 			return __this_address;
 
 		/* Don't allow names with known bad length. */
@@ -1056,7 +1057,7 @@ xfs_attr_shortform_verify(
 		 * within the data buffer.  The next entry starts after the
 		 * name component, so nextentry is an acceptable test.
 		 */
-		next_sfep = xfs_attr_sf_nextentry(sfep);
+		next_sfep = XFS_ATTR_SF_NEXTENTRY(sfep);
 		if ((char *)next_sfep > endp)
 			return __this_address;
 

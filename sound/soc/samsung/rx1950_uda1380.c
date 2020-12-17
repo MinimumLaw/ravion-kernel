@@ -12,13 +12,16 @@
 //          Vasily Khoruzhick <anarsoul@gmail.com>
 
 #include <linux/types.h>
-#include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 #include <linux/module.h>
 
 #include <sound/soc.h>
 #include <sound/jack.h>
 
+#include <mach/gpio-samsung.h>
 #include "regs-iis.h"
+#include <asm/mach-types.h>
+
 #include "s3c24xx-i2s.h"
 
 static int rx1950_uda1380_init(struct snd_soc_pcm_runtime *rtd);
@@ -55,6 +58,7 @@ static struct snd_soc_jack_pin hp_jack_pins[] = {
 
 static struct snd_soc_jack_gpio hp_jack_gpios[] = {
 	[0] = {
+		.gpio			= S3C2410_GPG(12),
 		.name			= "hp-gpio",
 		.report			= SND_JACK_HEADPHONE,
 		.invert			= 1,
@@ -119,6 +123,8 @@ static struct snd_soc_card rx1950_asoc = {
 	.num_dapm_routes = ARRAY_SIZE(audio_map),
 };
 
+static struct platform_device *s3c24xx_snd_device;
+
 static int rx1950_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -128,15 +134,13 @@ static int rx1950_startup(struct snd_pcm_substream *substream)
 					&hw_rates);
 }
 
-struct gpio_desc *gpiod_speaker_power;
-
 static int rx1950_spk_power(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *kcontrol, int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event))
-		gpiod_set_value(gpiod_speaker_power, 1);
+		gpio_set_value(S3C2410_GPA(1), 1);
 	else
-		gpiod_set_value(gpiod_speaker_power, 0);
+		gpio_set_value(S3C2410_GPA(1), 0);
 
 	return 0;
 }
@@ -210,35 +214,57 @@ static int rx1950_uda1380_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static int rx1950_probe(struct platform_device *pdev)
+static int __init rx1950_init(void)
 {
-	struct device *dev = &pdev->dev;
+	int ret;
+
+	if (!machine_is_rx1950())
+		return -ENODEV;
 
 	/* configure some gpios */
-	gpiod_speaker_power = devm_gpiod_get(dev, "speaker-power", GPIOD_OUT_LOW);
-	if (IS_ERR(gpiod_speaker_power)) {
-		dev_err(dev, "cannot get gpio\n");
-		return PTR_ERR(gpiod_speaker_power);
+	ret = gpio_request(S3C2410_GPA(1), "speaker-power");
+	if (ret)
+		goto err_gpio;
+
+	ret = gpio_direction_output(S3C2410_GPA(1), 0);
+	if (ret)
+		goto err_gpio_conf;
+
+	s3c24xx_snd_device = platform_device_alloc("soc-audio", -1);
+	if (!s3c24xx_snd_device) {
+		ret = -ENOMEM;
+		goto err_plat_alloc;
 	}
 
-	hp_jack_gpios[0].gpiod_dev = dev;
-	rx1950_asoc.dev = dev;
+	platform_set_drvdata(s3c24xx_snd_device, &rx1950_asoc);
+	ret = platform_device_add(s3c24xx_snd_device);
 
-	return devm_snd_soc_register_card(dev, &rx1950_asoc);
+	if (ret) {
+		platform_device_put(s3c24xx_snd_device);
+		goto err_plat_add;
+	}
+
+	return 0;
+
+err_plat_add:
+err_plat_alloc:
+err_gpio_conf:
+	gpio_free(S3C2410_GPA(1));
+
+err_gpio:
+	return ret;
 }
 
-struct platform_driver rx1950_audio = {
-	.driver = {
-		.name = "rx1950-audio",
-		.pm = &snd_soc_pm_ops,
-	},
-	.probe = rx1950_probe,
-};
+static void __exit rx1950_exit(void)
+{
+	platform_device_unregister(s3c24xx_snd_device);
+	gpio_free(S3C2410_GPA(1));
+}
 
-module_platform_driver(rx1950_audio);
+module_init(rx1950_init);
+module_exit(rx1950_exit);
 
 /* Module information */
 MODULE_AUTHOR("Vasily Khoruzhick");
 MODULE_DESCRIPTION("ALSA SoC RX1950");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:rx1950-audio");

@@ -280,7 +280,18 @@ static struct i2c_driver ee1004_driver = {
 	.remove = ee1004_remove,
 	.id_table = ee1004_ids,
 };
-module_i2c_driver(ee1004_driver);
+
+static int __init ee1004_init(void)
+{
+	return i2c_add_driver(&ee1004_driver);
+}
+module_init(ee1004_init);
+
+static void __exit ee1004_exit(void)
+{
+	i2c_del_driver(&ee1004_driver);
+}
+module_exit(ee1004_exit);
 
 MODULE_DESCRIPTION("Driver for EE1004-compliant DDR4 SPD EEPROMs");
 MODULE_AUTHOR("Jean Delvare");

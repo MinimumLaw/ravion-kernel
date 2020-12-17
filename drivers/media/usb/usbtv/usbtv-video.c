@@ -872,6 +872,7 @@ static void usbtv_release(struct v4l2_device *v4l2_dev)
 
 	v4l2_device_unregister(&usbtv->v4l2_dev);
 	v4l2_ctrl_handler_free(&usbtv->ctrl);
+	vb2_queue_release(&usbtv->vb2q);
 	kfree(usbtv);
 }
 
@@ -953,6 +954,7 @@ vdev_fail:
 v4l2_fail:
 ctrl_fail:
 	v4l2_ctrl_handler_free(&usbtv->ctrl);
+	vb2_queue_release(&usbtv->vb2q);
 
 	return ret;
 }
@@ -963,7 +965,7 @@ void usbtv_video_free(struct usbtv *usbtv)
 	mutex_lock(&usbtv->v4l2_lock);
 
 	usbtv_stop(usbtv);
-	vb2_video_unregister_device(&usbtv->vdev);
+	video_unregister_device(&usbtv->vdev);
 	v4l2_device_disconnect(&usbtv->v4l2_dev);
 
 	mutex_unlock(&usbtv->v4l2_lock);

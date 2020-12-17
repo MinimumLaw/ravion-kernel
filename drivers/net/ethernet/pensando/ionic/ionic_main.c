@@ -64,8 +64,6 @@ static const char *ionic_error_to_str(enum ionic_status_code code)
 		return "IONIC_RC_ERROR";
 	case IONIC_RC_ERDMA:
 		return "IONIC_RC_ERDMA";
-	case IONIC_RC_EBAD_FW:
-		return "IONIC_RC_EBAD_FW";
 	default:
 		return "IONIC_RC_UNKNOWN";
 	}
@@ -172,10 +170,6 @@ static const char *ionic_opcode_to_str(enum ionic_cmd_opcode opcode)
 		return "IONIC_CMD_FW_DOWNLOAD";
 	case IONIC_CMD_FW_CONTROL:
 		return "IONIC_CMD_FW_CONTROL";
-	case IONIC_CMD_FW_DOWNLOAD_V1:
-		return "IONIC_CMD_FW_DOWNLOAD_V1";
-	case IONIC_CMD_FW_CONTROL_V1:
-		return "IONIC_CMD_FW_CONTROL_V1";
 	case IONIC_CMD_VF_GETATTR:
 		return "IONIC_CMD_VF_GETATTR";
 	case IONIC_CMD_VF_SETATTR:
@@ -187,17 +181,15 @@ static const char *ionic_opcode_to_str(enum ionic_cmd_opcode opcode)
 
 static void ionic_adminq_flush(struct ionic_lif *lif)
 {
-	struct ionic_queue *q = &lif->adminqcq->q;
-	struct ionic_desc_info *desc_info;
+	struct ionic_queue *adminq = &lif->adminqcq->q;
 
 	spin_lock(&lif->adminq_lock);
 
-	while (q->tail_idx != q->head_idx) {
-		desc_info = &q->info[q->tail_idx];
-		memset(desc_info->desc, 0, sizeof(union ionic_adminq_cmd));
-		desc_info->cb = NULL;
-		desc_info->cb_arg = NULL;
-		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+	while (adminq->tail != adminq->head) {
+		memset(adminq->tail->desc, 0, sizeof(union ionic_adminq_cmd));
+		adminq->tail->cb = NULL;
+		adminq->tail->cb_arg = NULL;
+		adminq->tail = adminq->tail->next;
 	}
 	spin_unlock(&lif->adminq_lock);
 }
@@ -253,17 +245,18 @@ static void ionic_adminq_cb(struct ionic_queue *q,
 
 static int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 {
-	struct ionic_desc_info *desc_info;
-	struct ionic_queue *q;
+	struct ionic_queue *adminq;
 	int err = 0;
+
+	WARN_ON(in_interrupt());
 
 	if (!lif->adminqcq)
 		return -EIO;
 
-	q = &lif->adminqcq->q;
+	adminq = &lif->adminqcq->q;
 
 	spin_lock(&lif->adminq_lock);
-	if (!ionic_q_has_space(q, 1)) {
+	if (!ionic_q_has_space(adminq, 1)) {
 		err = -ENOSPC;
 		goto err_out;
 	}
@@ -272,14 +265,13 @@ static int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 	if (err)
 		goto err_out;
 
-	desc_info = &q->info[q->head_idx];
-	memcpy(desc_info->desc, &ctx->cmd, sizeof(ctx->cmd));
+	memcpy(adminq->head->desc, &ctx->cmd, sizeof(ctx->cmd));
 
 	dev_dbg(&lif->netdev->dev, "post admin queue command:\n");
 	dynamic_hex_dump("cmd ", DUMP_PREFIX_OFFSET, 16, 1,
 			 &ctx->cmd, sizeof(ctx->cmd), true);
 
-	ionic_q_post(q, true, ionic_adminq_cb, ctx);
+	ionic_q_post(adminq, true, ionic_adminq_cb, ctx);
 
 err_out:
 	spin_unlock(&lif->adminq_lock);
@@ -309,9 +301,35 @@ int ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 	return ionic_adminq_check_err(lif, ctx, (remaining == 0));
 }
 
+int ionic_napi(struct napi_struct *napi, int budget, ionic_cq_cb cb,
+	       ionic_cq_done_cb done_cb, void *done_arg)
+{
+	struct ionic_qcq *qcq = napi_to_qcq(napi);
+	struct ionic_cq *cq = &qcq->cq;
+	u32 work_done, flags = 0;
+
+	work_done = ionic_cq_service(cq, budget, cb, done_cb, done_arg);
+
+	if (work_done < budget && napi_complete_done(napi, work_done)) {
+		flags |= IONIC_INTR_CRED_UNMASK;
+		DEBUG_STATS_INTR_REARM(cq->bound_intr);
+	}
+
+	if (work_done || flags) {
+		flags |= IONIC_INTR_CRED_RESET_COALESCE;
+		ionic_intr_credits(cq->lif->ionic->idev.intr_ctrl,
+				   cq->bound_intr->index,
+				   work_done, flags);
+	}
+
+	DEBUG_STATS_NAPI_POLL(qcq, work_done);
+
+	return work_done;
+}
+
 static void ionic_dev_cmd_clean(struct ionic *ionic)
 {
-	union __iomem ionic_dev_cmd_regs *regs = ionic->idev.dev_cmd_regs;
+	union ionic_dev_cmd_regs *regs = ionic->idev.dev_cmd_regs;
 
 	iowrite32(0, &regs->doorbell);
 	memset_io(&regs->cmd, 0, sizeof(regs->cmd));
@@ -328,27 +346,24 @@ int ionic_dev_cmd_wait(struct ionic *ionic, unsigned long max_seconds)
 	int done;
 	int err;
 
+	WARN_ON(in_interrupt());
+
 	/* Wait for dev cmd to complete, retrying if we get EAGAIN,
 	 * but don't wait any longer than max_seconds.
 	 */
 	max_wait = jiffies + (max_seconds * HZ);
 try_again:
-	opcode = readb(&idev->dev_cmd_regs->cmd.cmd.opcode);
 	start_time = jiffies;
 	do {
 		done = ionic_dev_cmd_done(idev);
 		if (done)
 			break;
-		usleep_range(100, 200);
-
-		/* Don't check the heartbeat on FW_CONTROL commands as they are
-		 * notorious for interrupting the firmware's heartbeat update.
-		 */
-		if (opcode != IONIC_CMD_FW_CONTROL)
-			hb = ionic_heartbeat_check(ionic);
+		msleep(5);
+		hb = ionic_heartbeat_check(ionic);
 	} while (!done && !hb && time_before(jiffies, max_wait));
 	duration = jiffies - start_time;
 
+	opcode = idev->dev_cmd_regs->cmd.cmd.opcode;
 	dev_dbg(ionic->dev, "DEVCMD %s (%d) done=%d took %ld secs (%ld jiffies)\n",
 		ionic_opcode_to_str(opcode), opcode,
 		done, duration / HZ, duration);
@@ -372,9 +387,8 @@ try_again:
 
 	err = ionic_dev_cmd_status(&ionic->idev);
 	if (err) {
-		if (err == IONIC_RC_EAGAIN &&
-		    time_before(jiffies, (max_wait - HZ))) {
-			dev_dbg(ionic->dev, "DEV_CMD %s (%d), %s (%d) retrying...\n",
+		if (err == IONIC_RC_EAGAIN && !time_after(jiffies, max_wait)) {
+			dev_err(ionic->dev, "DEV_CMD %s (%d) error, %s (%d) retrying...\n",
 				ionic_opcode_to_str(opcode), opcode,
 				ionic_error_to_str(err), err);
 
@@ -384,10 +398,9 @@ try_again:
 			goto try_again;
 		}
 
-		if (!(opcode == IONIC_CMD_FW_CONTROL && err == IONIC_RC_EAGAIN))
-			dev_err(ionic->dev, "DEV_CMD %s (%d) error, %s (%d) failed\n",
-				ionic_opcode_to_str(opcode), opcode,
-				ionic_error_to_str(err), err);
+		dev_err(ionic->dev, "DEV_CMD %s (%d) error, %s (%d) failed\n",
+			ionic_opcode_to_str(opcode), opcode,
+			ionic_error_to_str(err), err);
 
 		return ionic_error_to_errno(err);
 	}
@@ -431,23 +444,17 @@ int ionic_identify(struct ionic *ionic)
 		sz = min(sizeof(ident->dev), sizeof(idev->dev_cmd_regs->data));
 		memcpy_fromio(&ident->dev, &idev->dev_cmd_regs->data, sz);
 	}
+
 	mutex_unlock(&ionic->dev_cmd_lock);
 
-	if (err) {
-		dev_err(ionic->dev, "Cannot identify ionic: %dn", err);
-		goto err_out;
-	}
+	if (err)
+		goto err_out_unmap;
 
-	err = ionic_lif_identify(ionic, IONIC_LIF_TYPE_CLASSIC,
-				 &ionic->ident.lif);
-	if (err) {
-		dev_err(ionic->dev, "Cannot identify LIFs: %d\n", err);
-		goto err_out;
-	}
+	ionic_debugfs_add_ident(ionic);
 
 	return 0;
 
-err_out:
+err_out_unmap:
 	return err;
 }
 

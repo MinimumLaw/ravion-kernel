@@ -61,8 +61,6 @@ patternProperties:
           - cfi-flash
           - jedec,spi-nor
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/renesas-cpg-mssr.h>

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * QLogic Fibre Channel HBA Driver
  * Copyright (c)  2003-2014 QLogic Corporation
+ *
+ * See LICENSE.qla2xxx for copyright and licensing details.
  */
 #include "qla_def.h"
 #include "qla_gbl.h"
@@ -3633,31 +3634,6 @@ out:
 	return ha->flags.lr_detected;
 }
 
-void qla_init_iocb_limit(scsi_qla_host_t *vha)
-{
-	u16 i, num_qps;
-	u32 limit;
-	struct qla_hw_data *ha = vha->hw;
-
-	num_qps = ha->num_qpairs + 1;
-	limit = (ha->orig_fw_iocb_count * QLA_IOCB_PCT_LIMIT) / 100;
-
-	ha->base_qpair->fwres.iocbs_total = ha->orig_fw_iocb_count;
-	ha->base_qpair->fwres.iocbs_limit = limit;
-	ha->base_qpair->fwres.iocbs_qp_limit = limit / num_qps;
-	ha->base_qpair->fwres.iocbs_used = 0;
-	for (i = 0; i < ha->max_qpairs; i++) {
-		if (ha->queue_pair_map[i])  {
-			ha->queue_pair_map[i]->fwres.iocbs_total =
-				ha->orig_fw_iocb_count;
-			ha->queue_pair_map[i]->fwres.iocbs_limit = limit;
-			ha->queue_pair_map[i]->fwres.iocbs_qp_limit =
-				limit / num_qps;
-			ha->queue_pair_map[i]->fwres.iocbs_used = 0;
-		}
-	}
-}
-
 /**
  * qla2x00_setup_chip() - Load and start RISC firmware.
  * @vha: HA context
@@ -3726,7 +3702,9 @@ execute_fw_with_lr:
 					goto execute_fw_with_lr;
 				}
 
-				if (IS_ZIO_THRESHOLD_CAPABLE(ha))
+				if ((IS_QLA83XX(ha) || IS_QLA27XX(ha) ||
+				    IS_QLA28XX(ha)) &&
+				    (ha->zio_mode == QLA_ZIO_MODE_6))
 					qla27xx_set_zio_threshold(vha,
 					    ha->last_zio_threshold);
 
@@ -3757,7 +3735,6 @@ enable_82xx_npiv:
 						    MIN_MULTI_ID_FABRIC - 1;
 				}
 				qla2x00_get_resource_cnts(vha);
-				qla_init_iocb_limit(vha);
 
 				/*
 				 * Allocate the array of outstanding commands
@@ -4992,29 +4969,6 @@ qla2x00_free_fcport(fc_port_t *fcport)
 	kfree(fcport);
 }
 
-static void qla_get_login_template(scsi_qla_host_t *vha)
-{
-	struct qla_hw_data *ha = vha->hw;
-	int rval;
-	u32 *bp, sz;
-	__be32 *q;
-
-	memset(ha->init_cb, 0, ha->init_cb_size);
-	sz = min_t(int, sizeof(struct fc_els_flogi), ha->init_cb_size);
-	rval = qla24xx_get_port_login_templ(vha, ha->init_cb_dma,
-					    ha->init_cb, sz);
-	if (rval != QLA_SUCCESS) {
-		ql_dbg(ql_dbg_init, vha, 0x00d1,
-		       "PLOGI ELS param read fail.\n");
-		return;
-	}
-	q = (__be32 *)&ha->plogi_els_payld.fl_csp;
-
-	bp = (uint32_t *)ha->init_cb;
-	cpu_to_be32_array(q, bp, sz / 4);
-	ha->flags.plogi_template_valid = 1;
-}
-
 /*
  * qla2x00_configure_loop
  *      Updates Fibre Channel Device Database with what is actually on loop.
@@ -5058,7 +5012,6 @@ qla2x00_configure_loop(scsi_qla_host_t *vha)
 	clear_bit(RSCN_UPDATE, &vha->dpc_flags);
 
 	qla2x00_get_data_rate(vha);
-	qla_get_login_template(vha);
 
 	/* Determine what we need to do */
 	if ((ha->current_topology == ISP_CFG_FL ||
@@ -5143,11 +5096,32 @@ qla2x00_configure_loop(scsi_qla_host_t *vha)
 
 static int qla2x00_configure_n2n_loop(scsi_qla_host_t *vha)
 {
+	struct qla_hw_data *ha = vha->hw;
 	unsigned long flags;
 	fc_port_t *fcport;
+	int rval;
 
-	if (test_and_clear_bit(N2N_LOGIN_NEEDED, &vha->dpc_flags))
-		set_bit(RELOGIN_NEEDED, &vha->dpc_flags);
+	if (test_and_clear_bit(N2N_LOGIN_NEEDED, &vha->dpc_flags)) {
+		/* borrowing */
+		u32 *bp, sz;
+
+		memset(ha->init_cb, 0, ha->init_cb_size);
+		sz = min_t(int, sizeof(struct els_plogi_payload),
+			   ha->init_cb_size);
+		rval = qla24xx_get_port_login_templ(vha, ha->init_cb_dma,
+						    ha->init_cb, sz);
+		if (rval == QLA_SUCCESS) {
+			__be32 *q = &ha->plogi_els_payld.data[0];
+
+			bp = (uint32_t *)ha->init_cb;
+			cpu_to_be32_array(q, bp, sz / 4);
+			memcpy(bp, q, sizeof(ha->plogi_els_payld.data));
+		} else {
+			ql_dbg(ql_dbg_init, vha, 0x00d1,
+			       "PLOGI ELS param read fail.\n");
+			goto skip_login;
+		}
+	}
 
 	list_for_each_entry(fcport, &vha->vp_fcports, list) {
 		if (fcport->n2n_flag) {
@@ -5156,6 +5130,7 @@ static int qla2x00_configure_n2n_loop(scsi_qla_host_t *vha)
 		}
 	}
 
+skip_login:
 	spin_lock_irqsave(&vha->work_lock, flags);
 	vha->scan.scan_retry++;
 	spin_unlock_irqrestore(&vha->work_lock, flags);
@@ -5522,8 +5497,6 @@ qla2x00_update_fcport(scsi_qla_host_t *vha, fc_port_t *fcport)
 	}
 
 	qla2x00_iidma_fcport(vha, fcport);
-
-	qla2x00_dfs_create_rport(vha, fcport);
 
 	if (NVME_TARGET(vha->hw, fcport)) {
 		qla_nvme_register_remote(vha, fcport);
@@ -7148,9 +7121,10 @@ qla24xx_reset_adapter(scsi_qla_host_t *vha)
 	unsigned long flags = 0;
 	struct qla_hw_data *ha = vha->hw;
 	struct device_reg_24xx __iomem *reg = &ha->iobase->isp24;
+	int rval = QLA_SUCCESS;
 
 	if (IS_P3P_TYPE(ha))
-		return QLA_SUCCESS;
+		return rval;
 
 	vha->flags.online = 0;
 	ha->isp_ops->disable_intrs(ha);
@@ -7165,7 +7139,7 @@ qla24xx_reset_adapter(scsi_qla_host_t *vha)
 	if (IS_NOPOLLING_TYPE(ha))
 		ha->isp_ops->enable_intrs(ha);
 
-	return QLA_SUCCESS;
+	return rval;
 }
 
 /* On sparc systems, obtain port and node WWN from firmware

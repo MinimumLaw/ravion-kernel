@@ -10,3 +10,4 @@ Contents:
 
    linux_caif
    caif
+   spi_porting

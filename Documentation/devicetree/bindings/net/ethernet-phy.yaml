@@ -177,8 +177,6 @@ properties:
 required:
   - reg
 
-additionalProperties: true
-
 examples:
   - |
     ethernet {

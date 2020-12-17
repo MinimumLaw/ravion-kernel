@@ -130,14 +130,6 @@ properties:
     type: object
     $ref: /schemas/pinctrl/cirrus,lochnagar.yaml#
 
-  lochnagar-hwmon:
-    type: object
-    $ref: /schemas/hwmon/cirrus,lochnagar.yaml#
-
-  lochnagar-sc:
-    type: object
-    $ref: /schemas/sound/cirrus,lochnagar.yaml#
-
   VDDCORE:
     description:
       Initialisation data for the VDDCORE regulator, which supplies the
@@ -257,7 +249,7 @@ required:
   - lochnagar-clk
   - lochnagar-pinctrl
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |

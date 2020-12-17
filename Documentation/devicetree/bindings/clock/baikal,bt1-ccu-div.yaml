@@ -134,11 +134,7 @@ properties:
   "#reset-cells":
     const: 1
 
-  clocks: true
-
-  clock-names: true
-
-additionalProperties: false
+unevaluatedProperties: false
 
 required:
   - compatible

@@ -31,8 +31,6 @@ properties:
       Documentation/devicetree/bindings/nvmem/nvmem.txt and also
       examples below.
 
-  opp-shared: true
-
 required:
   - compatible
   - nvmem-cells
@@ -55,7 +53,7 @@ patternProperties:
 
     unevaluatedProperties: false
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |

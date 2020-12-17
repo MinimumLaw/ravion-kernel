@@ -19,7 +19,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-fwnode.h>
 #include <media/videobuf2-v4l2.h>
 
 /* Number of HW buffers */
@@ -93,7 +92,7 @@ struct rvin_video_format {
  * @asd:	sub-device descriptor for async framework
  * @subdev:	subdevice matched using async framework
  * @mbus_type:	media bus type
- * @bus:	media bus parallel configuration
+ * @mbus_flags:	media bus configuration flags
  * @source_pad:	source pad of remote subdevice
  * @sink_pad:	sink pad of remote subdevice
  *
@@ -103,7 +102,7 @@ struct rvin_parallel_entity {
 	struct v4l2_subdev *subdev;
 
 	enum v4l2_mbus_type mbus_type;
-	struct v4l2_fwnode_bus_parallel bus;
+	unsigned int mbus_flags;
 
 	unsigned int source_pad;
 	unsigned int sink_pad;

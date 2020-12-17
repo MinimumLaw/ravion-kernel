@@ -30,9 +30,6 @@ properties:
       - const: syscon
       - const: simple-mfd
 
-  reg:
-    maxItems: 1
-
   "#address-cells":
     const: 1
 
@@ -41,8 +38,8 @@ properties:
 
   ranges: true
 
-patternProperties:
-  # Optional children
+# Optional children
+
   "^serdes-ln-ctrl@[0-9a-f]+$":
     type: object
     description: |
@@ -57,7 +54,7 @@ required:
   - "#size-cells"
   - ranges
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |

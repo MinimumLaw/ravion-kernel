@@ -116,8 +116,6 @@ allOf:
       dependencies:
         adi,sync-mode: [ clocks ]
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/interrupt-controller/irq.h>

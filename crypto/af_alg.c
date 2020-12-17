@@ -254,14 +254,6 @@ static int alg_setsockopt(struct socket *sock, int level, int optname,
 		if (!type->setauthsize)
 			goto unlock;
 		err = type->setauthsize(ask->private, optlen);
-		break;
-	case ALG_SET_DRBG_ENTROPY:
-		if (sock->state == SS_CONNECTED)
-			goto unlock;
-		if (!type->setentropy)
-			goto unlock;
-
-		err = type->setentropy(ask->private, optval, optlen);
 	}
 
 unlock:
@@ -294,11 +286,6 @@ int af_alg_accept(struct sock *sk, struct socket *newsock, bool kern)
 	security_sock_graft(sk2, newsock);
 	security_sk_clone(sk, sk2);
 
-	/*
-	 * newsock->ops assigned here to allow type->accept call to override
-	 * them when required.
-	 */
-	newsock->ops = type->ops;
 	err = type->accept(ask->private, sk2);
 
 	nokey = err == -ENOKEY;
@@ -317,6 +304,7 @@ int af_alg_accept(struct sock *sk, struct socket *newsock, bool kern)
 	alg_sk(sk2)->parent = sk;
 	alg_sk(sk2)->type = type;
 
+	newsock->ops = type->ops;
 	newsock->state = SS_CONNECTED;
 
 	if (nokey)

@@ -15,8 +15,7 @@
 #include <linux/pseudo_fs.h>
 #include <linux/poll.h>
 #include <linux/sched/signal.h>
-#include <linux/interrupt.h>
-#include <asm/xive.h>
+
 #include <misc/ocxl.h>
 
 #include <uapi/misc/cxl.h>
@@ -181,7 +180,7 @@ static int afu_map_irq(u64 flags, struct ocxlflash_context *ctx, int num,
 	struct ocxl_hw_afu *afu = ctx->hw_afu;
 	struct device *dev = afu->dev;
 	struct ocxlflash_irqs *irq;
-	struct xive_irq_data *xd;
+	void __iomem *vtrig;
 	u32 virq;
 	int rc = 0;
 
@@ -205,15 +204,15 @@ static int afu_map_irq(u64 flags, struct ocxlflash_context *ctx, int num,
 		goto err1;
 	}
 
-	xd = irq_get_handler_data(virq);
-	if (unlikely(!xd)) {
-		dev_err(dev, "%s: Can't get interrupt data\n", __func__);
-		rc = -ENXIO;
+	vtrig = ioremap(irq->ptrig, PAGE_SIZE);
+	if (unlikely(!vtrig)) {
+		dev_err(dev, "%s: Trigger page mapping failed\n", __func__);
+		rc = -ENOMEM;
 		goto err2;
 	}
 
 	irq->virq = virq;
-	irq->vtrig = xd->trig_mmio;
+	irq->vtrig = vtrig;
 out:
 	return rc;
 err2:
@@ -260,6 +259,8 @@ static void afu_unmap_irq(u64 flags, struct ocxlflash_context *ctx, int num,
 	}
 
 	irq = &ctx->irqs[num];
+	if (irq->vtrig)
+		iounmap(irq->vtrig);
 
 	if (irq_find_mapping(NULL, irq->hwirq)) {
 		free_irq(irq->virq, cookie);
@@ -614,6 +615,7 @@ static int alloc_afu_irqs(struct ocxlflash_context *ctx, int num)
 	struct ocxl_hw_afu *afu = ctx->hw_afu;
 	struct device *dev = afu->dev;
 	struct ocxlflash_irqs *irqs;
+	u64 addr;
 	int rc = 0;
 	int hwirq;
 	int i;
@@ -638,7 +640,7 @@ static int alloc_afu_irqs(struct ocxlflash_context *ctx, int num)
 	}
 
 	for (i = 0; i < num; i++) {
-		rc = ocxl_link_irq_alloc(afu->link_token, &hwirq);
+		rc = ocxl_link_irq_alloc(afu->link_token, &hwirq, &addr);
 		if (unlikely(rc)) {
 			dev_err(dev, "%s: ocxl_link_irq_alloc failed rc=%d\n",
 				__func__, rc);
@@ -646,6 +648,7 @@ static int alloc_afu_irqs(struct ocxlflash_context *ctx, int num)
 		}
 
 		irqs[i].hwirq = hwirq;
+		irqs[i].ptrig = addr;
 	}
 
 	ctx->irqs = irqs;

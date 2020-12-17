@@ -13,12 +13,12 @@
 #include <bpf/bpf_core_read.h>
 #include "trace_common.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct sockaddr_in);
-	__type(value, struct sockaddr_in);
-	__uint(max_entries, 256);
-} dnat_map SEC(".maps");
+struct bpf_map_def SEC("maps") dnat_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct sockaddr_in),
+	.value_size = sizeof(struct sockaddr_in),
+	.max_entries = 256,
+};
 
 /* kprobe is NOT a stable ABI
  * kernel functions can be removed, renamed or completely change semantics.

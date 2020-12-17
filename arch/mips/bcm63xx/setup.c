@@ -146,7 +146,7 @@ void __init plat_time_init(void)
 
 void __init plat_mem_setup(void)
 {
-	memblock_add(0, bcm63xx_get_memory_size());
+	add_memory_region(0, bcm63xx_get_memory_size(), BOOT_MEM_RAM);
 
 	_machine_halt = bcm63xx_machine_halt;
 	_machine_restart = __bcm63xx_machine_reboot;

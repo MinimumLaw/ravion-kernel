@@ -653,7 +653,7 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&dss_dpi_pins>;
@@ -677,12 +677,12 @@
 };
 
 &dsi2 {
-	status = "okay";
+	status = "ok";
 	vdd-supply = <&ldo4_reg>;
 };
 
 &hdmi {
-	status = "okay";
+	status = "ok";
 	vdda-supply = <&ldo4_reg>;
 
 	pinctrl-names = "default";

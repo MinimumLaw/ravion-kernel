@@ -16,5 +16,4 @@ properties:
       - const: moxa,moxart-uc-7112-lx
       - const: moxa,moxart
 
-additionalProperties: true
 ...

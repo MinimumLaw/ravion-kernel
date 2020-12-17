@@ -128,11 +128,7 @@
 };
 
 &cpu0 {
-	cpu-supply = <&vdd_arm>;
-};
-
-&cpu1 {
-	cpu-supply = <&vdd_arm>;
+	cpu0-supply = <&vdd_arm>;
 };
 
 &emac {

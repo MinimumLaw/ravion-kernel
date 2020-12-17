@@ -1299,9 +1299,9 @@ static irqreturn_t idmac_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static void ipu_gc_tasklet(struct tasklet_struct *t)
+static void ipu_gc_tasklet(unsigned long arg)
 {
-	struct ipu *ipu = from_tasklet(ipu, t, tasklet);
+	struct ipu *ipu = (struct ipu *)arg;
 	int i;
 
 	for (i = 0; i < IPU_CHANNELS_NUM; i++) {
@@ -1740,7 +1740,7 @@ static int __init ipu_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_idmac_init;
 
-	tasklet_setup(&ipu_data.tasklet, ipu_gc_tasklet);
+	tasklet_init(&ipu_data.tasklet, ipu_gc_tasklet, (unsigned long)&ipu_data);
 
 	ipu_data.dev = &pdev->dev;
 

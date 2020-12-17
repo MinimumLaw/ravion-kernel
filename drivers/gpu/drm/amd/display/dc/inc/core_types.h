@@ -101,7 +101,7 @@ struct resource_funcs {
 					struct dc *dc,
 					struct dc_state *context,
 					bool fast_validate);
-	void (*calculate_wm_and_dlg)(
+	void (*calculate_wm)(
 				struct dc *dc, struct dc_state *context,
 				display_e2e_pipe_params_st *pipes,
 				int pipe_cnt,
@@ -300,7 +300,6 @@ union pipe_update_flags {
 		uint32_t gamut_remap : 1;
 		uint32_t scaler : 1;
 		uint32_t viewport : 1;
-		uint32_t plane_changed : 1;
 	} bits;
 	uint32_t raw;
 };
@@ -397,7 +396,6 @@ struct dc_state {
 	struct dc_stream_state *streams[MAX_PIPES];
 	struct dc_stream_status stream_status[MAX_PIPES];
 	uint8_t stream_count;
-	uint8_t stream_mask;
 
 	struct resource_context res_ctx;
 
@@ -412,10 +410,6 @@ struct dc_state {
 	struct clk_mgr *clk_mgr;
 
 	struct kref refcount;
-
-	struct {
-		unsigned int stutter_period_us;
-	} perf_params;
 };
 
 #endif /* _CORE_TYPES_H_ */

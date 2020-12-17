@@ -3,7 +3,6 @@
  * LED Driver for SGI Octane machines
  */
 
-#include <asm/io.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>

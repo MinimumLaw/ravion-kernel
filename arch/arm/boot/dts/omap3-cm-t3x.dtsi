@@ -246,7 +246,7 @@
 };
 
 &venc {
-	status = "okay";
+	status = "ok";
 
 	port {
 		venc_out: endpoint {
@@ -257,7 +257,7 @@
 };
 
 &mcbsp2 {
-	status = "okay";
+	status = "ok";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcbsp2_pins>;

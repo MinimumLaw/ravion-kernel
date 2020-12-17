@@ -52,8 +52,6 @@ properties:
   avdd-supply:
     description: avdd supply can be used as reference for conversion.
 
-  spi-max-frequency: true
-
 required:
   - compatible
   - reg
@@ -109,8 +107,6 @@ patternProperties:
     required:
       - reg
       - diff-channels
-
-additionalProperties: false
 
 examples:
   - |

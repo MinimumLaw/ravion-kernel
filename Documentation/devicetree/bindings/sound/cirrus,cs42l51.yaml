@@ -46,8 +46,6 @@ required:
   - reg
   - "#sound-dai-cells"
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/gpio/gpio.h>

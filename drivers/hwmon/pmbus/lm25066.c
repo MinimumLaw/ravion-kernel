@@ -211,8 +211,6 @@ struct lm25066_data {
 
 #define to_lm25066_data(x)  container_of(x, struct lm25066_data, info)
 
-static const struct i2c_device_id lm25066_id[];
-
 static int lm25066_read_word_data(struct i2c_client *client, int page,
 				  int phase, int reg)
 {
@@ -418,7 +416,8 @@ static int lm25066_write_word_data(struct i2c_client *client, int page, int reg,
 	return ret;
 }
 
-static int lm25066_probe(struct i2c_client *client)
+static int lm25066_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
 	int config;
 	struct lm25066_data *data;
@@ -438,7 +437,7 @@ static int lm25066_probe(struct i2c_client *client)
 	if (config < 0)
 		return config;
 
-	data->id = i2c_match_id(lm25066_id, client)->driver_data;
+	data->id = id->driver_data;
 	info = &data->info;
 
 	info->pages = 1;
@@ -488,7 +487,7 @@ static int lm25066_probe(struct i2c_client *client)
 		info->b[PSC_POWER] = coeff[PSC_POWER].b;
 	}
 
-	return pmbus_do_probe(client, info);
+	return pmbus_do_probe(client, id, info);
 }
 
 static const struct i2c_device_id lm25066_id[] = {
@@ -507,7 +506,7 @@ static struct i2c_driver lm25066_driver = {
 	.driver = {
 		   .name = "lm25066",
 		   },
-	.probe_new = lm25066_probe,
+	.probe = lm25066_probe,
 	.remove = pmbus_do_remove,
 	.id_table = lm25066_id,
 };

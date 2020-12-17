@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: MC
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _media_ioc_enum_entities:
 
@@ -12,21 +18,23 @@ Name
 
 MEDIA_IOC_ENUM_ENTITIES - Enumerate entities and their properties
 
+
 Synopsis
 ========
 
-.. c:macro:: MEDIA_IOC_ENUM_ENTITIES
+.. c:function:: int ioctl( int fd, MEDIA_IOC_ENUM_ENTITIES, struct media_entity_desc *argp )
+    :name: MEDIA_IOC_ENUM_ENTITIES
 
-``int ioctl(int fd, MEDIA_IOC_ENUM_ENTITIES, struct media_entity_desc *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <media-func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`media_entity_desc`.
+
 
 Description
 ===========
@@ -47,6 +55,7 @@ one ('next entity'), or the ``EINVAL`` error code if there is none.
 Entity IDs can be non-contiguous. Applications must *not* try to
 enumerate entities by calling MEDIA_IOC_ENUM_ENTITIES with increasing
 id's until they get an error.
+
 
 .. c:type:: media_entity_desc
 
@@ -133,6 +142,7 @@ id's until they get an error.
        -
     *  - }
        -
+
 
 Return Value
 ============

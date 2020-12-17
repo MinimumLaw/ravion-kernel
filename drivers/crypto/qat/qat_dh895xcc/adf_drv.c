@@ -18,9 +18,12 @@
 #include <adf_cfg.h>
 #include "adf_dh895xcc_hw_data.h"
 
+#define ADF_SYSTEM_DEVICE(device_id) \
+	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, device_id)}
+
 static const struct pci_device_id adf_pci_tbl[] = {
-	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_QAT_DH895XCC), },
-	{ }
+	ADF_SYSTEM_DEVICE(ADF_DH895XCC_PCI_DEVICE_ID),
+	{0,}
 };
 MODULE_DEVICE_TABLE(pci, adf_pci_tbl);
 
@@ -55,7 +58,7 @@ static void adf_cleanup_accel(struct adf_accel_dev *accel_dev)
 
 	if (accel_dev->hw_device) {
 		switch (accel_pci_dev->pci_dev->device) {
-		case PCI_DEVICE_ID_INTEL_QAT_DH895XCC:
+		case ADF_DH895XCC_PCI_DEVICE_ID:
 			adf_clean_hw_data_dh895xcc(accel_dev->hw_device);
 			break;
 		default:
@@ -80,7 +83,7 @@ static int adf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	int ret;
 
 	switch (ent->device) {
-	case PCI_DEVICE_ID_INTEL_QAT_DH895XCC:
+	case ADF_DH895XCC_PCI_DEVICE_ID:
 		break;
 	default:
 		dev_err(&pdev->dev, "Invalid device 0x%x.\n", ent->device);
@@ -140,8 +143,10 @@ static int adf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 
 	/* Create dev top level debugfs entry */
-	snprintf(name, sizeof(name), "%s%s_%s", ADF_DEVICE_NAME_PREFIX,
-		 hw_data->dev_class->name, pci_name(pdev));
+	snprintf(name, sizeof(name), "%s%s_%02x:%02d.%d",
+		 ADF_DEVICE_NAME_PREFIX, hw_data->dev_class->name,
+		 pdev->bus->number, PCI_SLOT(pdev->devfn),
+		 PCI_FUNC(pdev->devfn));
 
 	accel_dev->debugfs_dir = debugfs_create_dir(name, NULL);
 
@@ -200,7 +205,7 @@ static int adf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 	pci_set_master(pdev);
 
-	if (adf_enable_aer(accel_dev)) {
+	if (adf_enable_aer(accel_dev, &adf_driver)) {
 		dev_err(&pdev->dev, "Failed to enable aer\n");
 		ret = -EFAULT;
 		goto out_err_free_reg;

@@ -141,7 +141,7 @@ int generic_fadvise(struct file *file, loff_t offset, loff_t len, int advice)
 		}
 
 		if (end_index >= start_index) {
-			unsigned long nr_pagevec = 0;
+			unsigned long count;
 
 			/*
 			 * It's common to FADV_DONTNEED right after
@@ -154,9 +154,8 @@ int generic_fadvise(struct file *file, loff_t offset, loff_t len, int advice)
 			 */
 			lru_add_drain();
 
-			invalidate_mapping_pagevec(mapping,
-						start_index, end_index,
-						&nr_pagevec);
+			count = invalidate_mapping_pages(mapping,
+						start_index, end_index);
 
 			/*
 			 * If fewer pages were invalidated than expected then
@@ -164,7 +163,7 @@ int generic_fadvise(struct file *file, loff_t offset, loff_t len, int advice)
 			 * a per-cpu pagevec for a remote CPU. Drain all
 			 * pagevecs and try again.
 			 */
-			if (nr_pagevec) {
+			if (count < (end_index - start_index + 1)) {
 				lru_add_drain_all();
 				invalidate_mapping_pages(mapping, start_index,
 						end_index);

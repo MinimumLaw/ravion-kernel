@@ -695,12 +695,14 @@ int mwifiex_dnld_fw(struct mwifiex_adapter *adapter,
 	int ret;
 	u32 poll_num = 1;
 
-	/* check if firmware is already running */
-	ret = adapter->if_ops.check_fw_status(adapter, poll_num);
-	if (!ret) {
-		mwifiex_dbg(adapter, MSG,
-			    "WLAN FW already running! Skip FW dnld\n");
-		return 0;
+	if (adapter->if_ops.check_fw_status) {
+		/* check if firmware is already running */
+		ret = adapter->if_ops.check_fw_status(adapter, poll_num);
+		if (!ret) {
+			mwifiex_dbg(adapter, MSG,
+				    "WLAN FW already running! Skip FW dnld\n");
+			return 0;
+		}
 	}
 
 	/* check if we are the winner for downloading FW */

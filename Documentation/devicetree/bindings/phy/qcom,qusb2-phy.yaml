@@ -158,7 +158,6 @@ required:
   - vdda-phy-dpdm-supply
   - resets
 
-additionalProperties: false
 
 examples:
   - |

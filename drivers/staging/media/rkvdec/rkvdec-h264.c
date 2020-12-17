@@ -109,6 +109,7 @@ struct rkvdec_h264_reflists {
 struct rkvdec_h264_run {
 	struct rkvdec_run base;
 	const struct v4l2_ctrl_h264_decode_params *decode_params;
+	const struct v4l2_ctrl_h264_slice_params *slices_params;
 	const struct v4l2_ctrl_h264_sps *sps;
 	const struct v4l2_ctrl_h264_pps *pps;
 	const struct v4l2_ctrl_h264_scaling_matrix *scaling_matrix;
@@ -708,9 +709,9 @@ static void assemble_hw_pps(struct rkvdec_ctx *ctx,
 	WRITE_PPS(pps->second_chroma_qp_index_offset,
 		  SECOND_CHROMA_QP_INDEX_OFFSET);
 
-	WRITE_PPS(!!(pps->flags & V4L2_H264_PPS_FLAG_SCALING_MATRIX_PRESENT),
-		  SCALING_LIST_ENABLE_FLAG);
-	/* To be on the safe side, program the scaling matrix address */
+	/* always use the matrix sent from userspace */
+	WRITE_PPS(1, SCALING_LIST_ENABLE_FLAG);
+
 	scaling_distance = offsetof(struct rkvdec_h264_priv_tbl, scaling_list);
 	scaling_list_address = h264_ctx->priv_tbl.dma + scaling_distance;
 	WRITE_PPS(scaling_list_address, SCALING_LIST_ADDRESS);
@@ -729,6 +730,7 @@ static void assemble_hw_rps(struct rkvdec_ctx *ctx,
 			    struct rkvdec_h264_run *run)
 {
 	const struct v4l2_ctrl_h264_decode_params *dec_params = run->decode_params;
+	const struct v4l2_ctrl_h264_slice_params *sl_params = &run->slices_params[0];
 	const struct v4l2_h264_dpb_entry *dpb = dec_params->dpb;
 	struct rkvdec_h264_ctx *h264_ctx = ctx->priv;
 	const struct v4l2_ctrl_h264_sps *sps = run->sps;
@@ -752,7 +754,7 @@ static void assemble_hw_rps(struct rkvdec_ctx *ctx,
 			continue;
 
 		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_LONG_TERM ||
-		    dpb[i].frame_num < dec_params->frame_num) {
+		    dpb[i].frame_num < sl_params->frame_num) {
 			p[i] = dpb[i].frame_num;
 			continue;
 		}
@@ -792,12 +794,8 @@ static void assemble_hw_scaling_list(struct rkvdec_ctx *ctx,
 				     struct rkvdec_h264_run *run)
 {
 	const struct v4l2_ctrl_h264_scaling_matrix *scaling = run->scaling_matrix;
-	const struct v4l2_ctrl_h264_pps *pps = run->pps;
 	struct rkvdec_h264_ctx *h264_ctx = ctx->priv;
 	struct rkvdec_h264_priv_tbl *tbl = h264_ctx->priv_tbl.cpu;
-
-	if (!(pps->flags & V4L2_H264_PPS_FLAG_SCALING_MATRIX_PRESENT))
-		return;
 
 	BUILD_BUG_ON(sizeof(tbl->scaling_list.scaling_list_4x4) !=
 		     sizeof(scaling->scaling_list_4x4));
@@ -951,17 +949,16 @@ static void config_registers(struct rkvdec_ctx *ctx,
 	for (i = 0; i < ARRAY_SIZE(dec_params->dpb); i++) {
 		struct vb2_buffer *vb_buf = get_ref_buf(ctx, run, i);
 
-		refer_addr = vb2_dma_contig_plane_dma_addr(vb_buf, 0);
+		refer_addr = vb2_dma_contig_plane_dma_addr(vb_buf, 0) |
+			     RKVDEC_COLMV_USED_FLAG_REF;
 
-		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_ACTIVE)
-			refer_addr |= RKVDEC_COLMV_USED_FLAG_REF;
-		if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_FIELD)
-			refer_addr |= RKVDEC_FIELD_REF;
-
-		if (dpb[i].fields & V4L2_H264_TOP_FIELD_REF)
-			refer_addr |= RKVDEC_TOPFIELD_USED_REF;
-		if (dpb[i].fields & V4L2_H264_BOTTOM_FIELD_REF)
+		if (!(dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_FIELD))
+			refer_addr |= RKVDEC_TOPFIELD_USED_REF |
+				      RKVDEC_BOTFIELD_USED_REF;
+		else if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_BOTTOM_FIELD)
 			refer_addr |= RKVDEC_BOTFIELD_USED_REF;
+		else
+			refer_addr |= RKVDEC_TOPFIELD_USED_REF;
 
 		writel_relaxed(dpb[i].top_field_order_cnt,
 			       rkvdec->regs +  poc_reg_tbl_top_field[i]);
@@ -1070,6 +1067,9 @@ static void rkvdec_h264_run_preamble(struct rkvdec_ctx *ctx,
 			      V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS);
 	run->decode_params = ctrl ? ctrl->p_cur.p : NULL;
 	ctrl = v4l2_ctrl_find(&ctx->ctrl_hdl,
+			      V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS);
+	run->slices_params = ctrl ? ctrl->p_cur.p : NULL;
+	ctrl = v4l2_ctrl_find(&ctx->ctrl_hdl,
 			      V4L2_CID_MPEG_VIDEO_H264_SPS);
 	run->sps = ctrl ? ctrl->p_cur.p : NULL;
 	ctrl = v4l2_ctrl_find(&ctx->ctrl_hdl,
@@ -1093,7 +1093,8 @@ static int rkvdec_h264_run(struct rkvdec_ctx *ctx)
 
 	/* Build the P/B{0,1} ref lists. */
 	v4l2_h264_init_reflist_builder(&reflist_builder, run.decode_params,
-				       run.sps, run.decode_params->dpb);
+				       &run.slices_params[0], run.sps,
+				       run.decode_params->dpb);
 	h264_ctx->reflists.num_valid = reflist_builder.num_valid;
 	v4l2_h264_build_p_ref_list(&reflist_builder, h264_ctx->reflists.p);
 	v4l2_h264_build_b_ref_lists(&reflist_builder, h264_ctx->reflists.b0,

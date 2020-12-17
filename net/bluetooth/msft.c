@@ -12,13 +12,12 @@
 struct msft_cp_read_supported_features {
 	__u8   sub_opcode;
 } __packed;
-
 struct msft_rp_read_supported_features {
 	__u8   status;
 	__u8   sub_opcode;
 	__le64 features;
 	__u8   evt_prefix_len;
-	__u8   evt_prefix[];
+	__u8   evt_prefix[0];
 } __packed;
 
 struct msft_data {

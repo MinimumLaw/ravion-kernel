@@ -88,8 +88,6 @@ required:
   - ti,sci-dev-id
   - ti,interrupt-ranges
 
-unevaluatedProperties: false
-
 examples:
   - |
     main_gpio_intr: interrupt-controller0 {

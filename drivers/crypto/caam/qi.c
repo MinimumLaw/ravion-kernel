@@ -11,7 +11,6 @@
 #include <linux/kthread.h>
 #include <soc/fsl/qman.h>
 
-#include "debugfs.h"
 #include "regs.h"
 #include "qi.h"
 #include "desc.h"
@@ -73,6 +72,15 @@ static struct caam_qi_priv qipriv ____cacheline_aligned;
  */
 bool caam_congested __read_mostly;
 EXPORT_SYMBOL(caam_congested);
+
+#ifdef CONFIG_DEBUG_FS
+/*
+ * This is a counter for the number of times the congestion group (where all
+ * the request and response queueus are) reached congestion. Incremented
+ * each time the congestion callback is called with congested == true.
+ */
+static u64 times_congested;
+#endif
 
 /*
  * This is a a cache of buffers, from which the users of CAAM QI driver
@@ -536,8 +544,9 @@ static void cgr_cb(struct qman_portal *qm, struct qman_cgr *cgr, int congested)
 	caam_congested = congested;
 
 	if (congested) {
-		caam_debugfs_qi_congested();
-
+#ifdef CONFIG_DEBUG_FS
+		times_congested++;
+#endif
 		pr_debug_ratelimited("CAAM entered congestion\n");
 
 	} else {
@@ -766,7 +775,10 @@ int caam_qi_init(struct platform_device *caam_pdev)
 		return -ENOMEM;
 	}
 
-	caam_debugfs_qi_init(ctrlpriv);
+#ifdef CONFIG_DEBUG_FS
+	debugfs_create_file("qi_congested", 0444, ctrlpriv->ctl,
+			    &times_congested, &caam_fops_u64_ro);
+#endif
 
 	err = devm_add_action_or_reset(qidev, caam_qi_shutdown, ctrlpriv);
 	if (err)

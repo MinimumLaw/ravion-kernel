@@ -886,9 +886,7 @@ static int netdev_open(struct net_device *dev)
 		tx_ring_size = ((sizeof(starfire_tx_desc) * TX_RING_SIZE + QUEUE_ALIGN - 1) / QUEUE_ALIGN) * QUEUE_ALIGN;
 		rx_ring_size = sizeof(struct starfire_rx_desc) * RX_RING_SIZE;
 		np->queue_mem_size = tx_done_q_size + rx_done_q_size + tx_ring_size + rx_ring_size;
-		np->queue_mem = dma_alloc_coherent(&np->pci_dev->dev,
-						   np->queue_mem_size,
-						   &np->queue_mem_dma, GFP_ATOMIC);
+		np->queue_mem = pci_alloc_consistent(np->pci_dev, np->queue_mem_size, &np->queue_mem_dma);
 		if (np->queue_mem == NULL) {
 			free_irq(irq, dev);
 			return -ENOMEM;
@@ -1138,11 +1136,9 @@ static void init_ring(struct net_device *dev)
 		np->rx_info[i].skb = skb;
 		if (skb == NULL)
 			break;
-		np->rx_info[i].mapping = dma_map_single(&np->pci_dev->dev,
-							skb->data,
-							np->rx_buf_sz,
-							DMA_FROM_DEVICE);
-		if (dma_mapping_error(&np->pci_dev->dev, np->rx_info[i].mapping)) {
+		np->rx_info[i].mapping = pci_map_single(np->pci_dev, skb->data, np->rx_buf_sz, PCI_DMA_FROMDEVICE);
+		if (pci_dma_mapping_error(np->pci_dev,
+					  np->rx_info[i].mapping)) {
 			dev_kfree_skb(skb);
 			np->rx_info[i].skb = NULL;
 			break;
@@ -1221,19 +1217,18 @@ static netdev_tx_t start_tx(struct sk_buff *skb, struct net_device *dev)
 			status |= skb_first_frag_len(skb) | (skb_num_frags(skb) << 16);
 
 			np->tx_info[entry].mapping =
-				dma_map_single(&np->pci_dev->dev, skb->data,
-					       skb_first_frag_len(skb),
-					       DMA_TO_DEVICE);
+				pci_map_single(np->pci_dev, skb->data, skb_first_frag_len(skb), PCI_DMA_TODEVICE);
 		} else {
 			const skb_frag_t *this_frag = &skb_shinfo(skb)->frags[i - 1];
 			status |= skb_frag_size(this_frag);
 			np->tx_info[entry].mapping =
-				dma_map_single(&np->pci_dev->dev,
+				pci_map_single(np->pci_dev,
 					       skb_frag_address(this_frag),
 					       skb_frag_size(this_frag),
-					       DMA_TO_DEVICE);
+					       PCI_DMA_TODEVICE);
 		}
-		if (dma_mapping_error(&np->pci_dev->dev, np->tx_info[entry].mapping)) {
+		if (pci_dma_mapping_error(np->pci_dev,
+					  np->tx_info[entry].mapping)) {
 			dev->stats.tx_dropped++;
 			goto err_out;
 		}
@@ -1276,16 +1271,18 @@ err_out:
 	entry = prev_tx % TX_RING_SIZE;
 	np->tx_info[entry].skb = NULL;
 	if (i > 0) {
-		dma_unmap_single(&np->pci_dev->dev,
+		pci_unmap_single(np->pci_dev,
 				 np->tx_info[entry].mapping,
-				 skb_first_frag_len(skb), DMA_TO_DEVICE);
+				 skb_first_frag_len(skb),
+				 PCI_DMA_TODEVICE);
 		np->tx_info[entry].mapping = 0;
 		entry = (entry + np->tx_info[entry].used_slots) % TX_RING_SIZE;
 		for (j = 1; j < i; j++) {
-			dma_unmap_single(&np->pci_dev->dev,
+			pci_unmap_single(np->pci_dev,
 					 np->tx_info[entry].mapping,
-					 skb_frag_size(&skb_shinfo(skb)->frags[j - 1]),
-					 DMA_TO_DEVICE);
+					 skb_frag_size(
+						&skb_shinfo(skb)->frags[j-1]),
+					 PCI_DMA_TODEVICE);
 			entry++;
 		}
 	}
@@ -1359,20 +1356,20 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
 				u16 entry = (tx_status & 0x7fff) / sizeof(starfire_tx_desc);
 				struct sk_buff *skb = np->tx_info[entry].skb;
 				np->tx_info[entry].skb = NULL;
-				dma_unmap_single(&np->pci_dev->dev,
+				pci_unmap_single(np->pci_dev,
 						 np->tx_info[entry].mapping,
 						 skb_first_frag_len(skb),
-						 DMA_TO_DEVICE);
+						 PCI_DMA_TODEVICE);
 				np->tx_info[entry].mapping = 0;
 				np->dirty_tx += np->tx_info[entry].used_slots;
 				entry = (entry + np->tx_info[entry].used_slots) % TX_RING_SIZE;
 				{
 					int i;
 					for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
-						dma_unmap_single(&np->pci_dev->dev,
+						pci_unmap_single(np->pci_dev,
 								 np->tx_info[entry].mapping,
 								 skb_frag_size(&skb_shinfo(skb)->frags[i]),
-								 DMA_TO_DEVICE);
+								 PCI_DMA_TODEVICE);
 						np->dirty_tx++;
 						entry++;
 					}
@@ -1464,18 +1461,16 @@ static int __netdev_rx(struct net_device *dev, int *quota)
 		if (pkt_len < rx_copybreak &&
 		    (skb = netdev_alloc_skb(dev, pkt_len + 2)) != NULL) {
 			skb_reserve(skb, 2);	/* 16 byte align the IP header */
-			dma_sync_single_for_cpu(&np->pci_dev->dev,
-						np->rx_info[entry].mapping,
-						pkt_len, DMA_FROM_DEVICE);
+			pci_dma_sync_single_for_cpu(np->pci_dev,
+						    np->rx_info[entry].mapping,
+						    pkt_len, PCI_DMA_FROMDEVICE);
 			skb_copy_to_linear_data(skb, np->rx_info[entry].skb->data, pkt_len);
-			dma_sync_single_for_device(&np->pci_dev->dev,
-						   np->rx_info[entry].mapping,
-						   pkt_len, DMA_FROM_DEVICE);
+			pci_dma_sync_single_for_device(np->pci_dev,
+						       np->rx_info[entry].mapping,
+						       pkt_len, PCI_DMA_FROMDEVICE);
 			skb_put(skb, pkt_len);
 		} else {
-			dma_unmap_single(&np->pci_dev->dev,
-					 np->rx_info[entry].mapping,
-					 np->rx_buf_sz, DMA_FROM_DEVICE);
+			pci_unmap_single(np->pci_dev, np->rx_info[entry].mapping, np->rx_buf_sz, PCI_DMA_FROMDEVICE);
 			skb = np->rx_info[entry].skb;
 			skb_put(skb, pkt_len);
 			np->rx_info[entry].skb = NULL;
@@ -1593,9 +1588,9 @@ static void refill_rx_ring(struct net_device *dev)
 			if (skb == NULL)
 				break;	/* Better luck next round. */
 			np->rx_info[entry].mapping =
-				dma_map_single(&np->pci_dev->dev, skb->data,
-					       np->rx_buf_sz, DMA_FROM_DEVICE);
-			if (dma_mapping_error(&np->pci_dev->dev, np->rx_info[entry].mapping)) {
+				pci_map_single(np->pci_dev, skb->data, np->rx_buf_sz, PCI_DMA_FROMDEVICE);
+			if (pci_dma_mapping_error(np->pci_dev,
+						np->rx_info[entry].mapping)) {
 				dev_kfree_skb(skb);
 				np->rx_info[entry].skb = NULL;
 				break;
@@ -1968,9 +1963,7 @@ static int netdev_close(struct net_device *dev)
 	for (i = 0; i < RX_RING_SIZE; i++) {
 		np->rx_ring[i].rxaddr = cpu_to_dma(0xBADF00D0); /* An invalid address. */
 		if (np->rx_info[i].skb != NULL) {
-			dma_unmap_single(&np->pci_dev->dev,
-					 np->rx_info[i].mapping,
-					 np->rx_buf_sz, DMA_FROM_DEVICE);
+			pci_unmap_single(np->pci_dev, np->rx_info[i].mapping, np->rx_buf_sz, PCI_DMA_FROMDEVICE);
 			dev_kfree_skb(np->rx_info[i].skb);
 		}
 		np->rx_info[i].skb = NULL;
@@ -1980,8 +1973,9 @@ static int netdev_close(struct net_device *dev)
 		struct sk_buff *skb = np->tx_info[i].skb;
 		if (skb == NULL)
 			continue;
-		dma_unmap_single(&np->pci_dev->dev, np->tx_info[i].mapping,
-				 skb_first_frag_len(skb), DMA_TO_DEVICE);
+		pci_unmap_single(np->pci_dev,
+				 np->tx_info[i].mapping,
+				 skb_first_frag_len(skb), PCI_DMA_TODEVICE);
 		np->tx_info[i].mapping = 0;
 		dev_kfree_skb(skb);
 		np->tx_info[i].skb = NULL;
@@ -2024,8 +2018,7 @@ static void starfire_remove_one(struct pci_dev *pdev)
 	unregister_netdev(dev);
 
 	if (np->queue_mem)
-		dma_free_coherent(&pdev->dev, np->queue_mem_size,
-				  np->queue_mem, np->queue_mem_dma);
+		pci_free_consistent(pdev, np->queue_mem_size, np->queue_mem, np->queue_mem_dma);
 
 
 	/* XXX: add wakeup code -- requires firmware for MagicPacket */

@@ -230,9 +230,6 @@ static int afs_parse_source(struct fs_context *fc, struct fs_parameter *param)
 
 	_enter(",%s", name);
 
-	if (fc->source)
-		return invalf(fc, "kAFS: Multiple sources not supported");
-
 	if (!name) {
 		printk(KERN_ERR "kAFS: no volume name specified\n");
 		return -EINVAL;
@@ -297,8 +294,7 @@ static int afs_parse_source(struct fs_context *fc, struct fs_parameter *param)
 			       cellnamesz, cellnamesz, cellname ?: "");
 			return PTR_ERR(cell);
 		}
-		afs_unuse_cell(ctx->net, ctx->cell, afs_cell_trace_unuse_parse);
-		afs_see_cell(cell, afs_cell_trace_see_source);
+		afs_unuse_cell(ctx->net, ctx->cell);
 		ctx->cell = cell;
 	}
 
@@ -393,9 +389,8 @@ static int afs_validate_fc(struct fs_context *fc)
 				_debug("switch to alias");
 				key_put(ctx->key);
 				ctx->key = NULL;
-				cell = afs_use_cell(ctx->cell->alias_of,
-						    afs_cell_trace_use_fc_alias);
-				afs_unuse_cell(ctx->net, ctx->cell, afs_cell_trace_unuse_fc);
+				cell = afs_use_cell(ctx->cell->alias_of);
+				afs_unuse_cell(ctx->net, ctx->cell);
 				ctx->cell = cell;
 				goto reget_key;
 			}
@@ -461,6 +456,7 @@ static int afs_fill_super(struct super_block *sb, struct afs_fs_context *ctx)
 	ret = super_setup_bdi(sb);
 	if (ret)
 		return ret;
+	sb->s_bdi->ra_pages	= VM_READAHEAD_PAGES;
 
 	/* allocate the root inode and dentry */
 	if (as->dyn_root) {
@@ -512,7 +508,7 @@ static struct afs_super_info *afs_alloc_sbi(struct fs_context *fc)
 		if (ctx->dyn_root) {
 			as->dyn_root = true;
 		} else {
-			as->cell = afs_use_cell(ctx->cell, afs_cell_trace_use_sbi);
+			as->cell = afs_use_cell(ctx->cell);
 			as->volume = afs_get_volume(ctx->volume,
 						    afs_volume_trace_get_alloc_sbi);
 		}
@@ -525,7 +521,7 @@ static void afs_destroy_sbi(struct afs_super_info *as)
 	if (as) {
 		struct afs_net *net = afs_net(as->net_ns);
 		afs_put_volume(net, as->volume, afs_volume_trace_put_destroy_sbi);
-		afs_unuse_cell(net, as->cell, afs_cell_trace_unuse_sbi);
+		afs_unuse_cell(net, as->cell);
 		put_net(as->net_ns);
 		kfree(as);
 	}
@@ -611,7 +607,7 @@ static void afs_free_fc(struct fs_context *fc)
 
 	afs_destroy_sbi(fc->s_fs_info);
 	afs_put_volume(ctx->net, ctx->volume, afs_volume_trace_put_free_fc);
-	afs_unuse_cell(ctx->net, ctx->cell, afs_cell_trace_unuse_fc);
+	afs_unuse_cell(ctx->net, ctx->cell);
 	key_put(ctx->key);
 	kfree(ctx);
 }
@@ -638,7 +634,7 @@ static int afs_init_fs_context(struct fs_context *fc)
 	ctx->net = afs_net(fc->net_ns);
 
 	/* Default to the workstation cell. */
-	cell = afs_find_cell(ctx->net, NULL, 0, afs_cell_trace_use_fc);
+	cell = afs_find_cell(ctx->net, NULL, 0);
 	if (IS_ERR(cell))
 		cell = NULL;
 	ctx->cell = cell;

@@ -299,6 +299,7 @@ static int board_added(struct slot *p_slot)
 	if (p_slot->status == 0xFF) {
 		/* power fault occurred, but it was benign */
 		ctrl_dbg(ctrl, "%s: Power fault\n", __func__);
+		rc = POWER_FAILURE;
 		p_slot->status = 0;
 		goto err_exit;
 	}

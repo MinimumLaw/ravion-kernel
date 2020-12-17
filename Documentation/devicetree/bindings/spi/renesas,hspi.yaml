@@ -40,8 +40,6 @@ required:
   - '#address-cells'
   - '#size-cells'
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/r8a7778-clock.h>

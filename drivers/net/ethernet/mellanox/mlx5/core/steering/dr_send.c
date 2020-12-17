@@ -466,10 +466,10 @@ int mlx5dr_send_postsend_htbl(struct mlx5dr_domain *dmn,
 		 * need to add the bit_mask
 		 */
 		for (j = 0; j < num_stes_per_iter; j++) {
-			struct mlx5dr_ste *ste = &htbl->ste_arr[ste_index + j];
+			u8 *hw_ste = htbl->ste_arr[ste_index + j].hw_ste;
 			u32 ste_off = j * DR_STE_SIZE;
 
-			if (mlx5dr_ste_is_not_used(ste)) {
+			if (mlx5dr_ste_is_not_valid_entry(hw_ste)) {
 				memcpy(data + ste_off,
 				       formatted_ste, DR_STE_SIZE);
 			} else {
@@ -831,7 +831,7 @@ static struct mlx5dr_mr *dr_reg_mr(struct mlx5_core_dev *mdev,
 	if (!mr)
 		return NULL;
 
-	dma_device = mlx5_core_dma_dev(mdev);
+	dma_device = &mdev->pdev->dev;
 	dma_addr = dma_map_single(dma_device, buf, size,
 				  DMA_BIDIRECTIONAL);
 	err = dma_mapping_error(dma_device, dma_addr);
@@ -860,7 +860,7 @@ static struct mlx5dr_mr *dr_reg_mr(struct mlx5_core_dev *mdev,
 static void dr_dereg_mr(struct mlx5_core_dev *mdev, struct mlx5dr_mr *mr)
 {
 	mlx5_core_destroy_mkey(mdev, &mr->mkey);
-	dma_unmap_single(mlx5_core_dma_dev(mdev), mr->dma_addr, mr->size,
+	dma_unmap_single(&mdev->pdev->dev, mr->dma_addr, mr->size,
 			 DMA_BIDIRECTIONAL);
 	kfree(mr);
 }

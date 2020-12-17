@@ -33,17 +33,16 @@
 	};
 
 	cpus {
-		#address-cells = <1>;
+		#address-cells = <0>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		cpu {
 			compatible = "arm,arm926ej-s";
 			device_type = "cpu";
-			reg = <0>;
 		};
 	};
 
-	memory@20000000 {
+	memory {
 		device_type = "memory";
 		reg = <0x20000000 0x08000000>;
 	};
@@ -65,9 +64,6 @@
 	sram: sram@300000 {
 		compatible = "mmio-sram";
 		reg = <0x00300000 0x28000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x00300000 0x28000>;
 	};
 
 	ahb {

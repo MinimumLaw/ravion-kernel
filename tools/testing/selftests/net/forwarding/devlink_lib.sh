@@ -5,7 +5,7 @@
 # Defines
 
 if [[ ! -v DEVLINK_DEV ]]; then
-	DEVLINK_DEV=$(devlink port show "${NETIFS[p1]:-$NETIF_NO_CABLE}" -j \
+	DEVLINK_DEV=$(devlink port show "${NETIFS[p1]}" -j \
 			     | jq -r '.port | keys[]' | cut -d/ -f-2)
 	if [ -z "$DEVLINK_DEV" ]; then
 		echo "SKIP: ${NETIFS[p1]} has no devlink device registered for it"
@@ -117,12 +117,6 @@ devlink_reload()
 
 declare -A DEVLINK_ORIG
 
-# Changing pool type from static to dynamic causes reinterpretation of threshold
-# values. They therefore need to be saved before pool type is changed, then the
-# pool type can be changed, and then the new values need to be set up. Therefore
-# instead of saving the current state implicitly in the _set call, provide
-# functions for all three primitives: save, set, and restore.
-
 devlink_port_pool_threshold()
 {
 	local port=$1; shift
@@ -132,21 +126,14 @@ devlink_port_pool_threshold()
 		| jq '.port_pool."'"$port"'"[].threshold'
 }
 
-devlink_port_pool_th_save()
-{
-	local port=$1; shift
-	local pool=$1; shift
-	local key="port_pool($port,$pool).threshold"
-
-	DEVLINK_ORIG[$key]=$(devlink_port_pool_threshold $port $pool)
-}
-
 devlink_port_pool_th_set()
 {
 	local port=$1; shift
 	local pool=$1; shift
 	local th=$1; shift
+	local key="port_pool($port,$pool).threshold"
 
+	DEVLINK_ORIG[$key]=$(devlink_port_pool_threshold $port $pool)
 	devlink sb port pool set $port pool $pool th $th
 }
 
@@ -155,13 +142,8 @@ devlink_port_pool_th_restore()
 	local port=$1; shift
 	local pool=$1; shift
 	local key="port_pool($port,$pool).threshold"
-	local -a orig=(${DEVLINK_ORIG[$key]})
 
-	if [[ -z $orig ]]; then
-		echo "WARNING: Mismatched devlink_port_pool_th_restore"
-	else
-		devlink sb port pool set $port pool $pool th $orig
-	fi
+	devlink sb port pool set $port pool $pool th ${DEVLINK_ORIG[$key]}
 }
 
 devlink_pool_size_thtype()
@@ -172,20 +154,14 @@ devlink_pool_size_thtype()
 	    | jq -r '.pool[][] | (.size, .thtype)'
 }
 
-devlink_pool_size_thtype_save()
-{
-	local pool=$1; shift
-	local key="pool($pool).size_thtype"
-
-	DEVLINK_ORIG[$key]=$(devlink_pool_size_thtype $pool)
-}
-
 devlink_pool_size_thtype_set()
 {
 	local pool=$1; shift
 	local thtype=$1; shift
 	local size=$1; shift
+	local key="pool($pool).size_thtype"
 
+	DEVLINK_ORIG[$key]=$(devlink_pool_size_thtype $pool)
 	devlink sb pool set "$DEVLINK_DEV" pool $pool size $size thtype $thtype
 }
 
@@ -195,12 +171,8 @@ devlink_pool_size_thtype_restore()
 	local key="pool($pool).size_thtype"
 	local -a orig=(${DEVLINK_ORIG[$key]})
 
-	if [[ -z ${orig[0]} ]]; then
-		echo "WARNING: Mismatched devlink_pool_size_thtype_restore"
-	else
-		devlink sb pool set "$DEVLINK_DEV" pool $pool \
-			size ${orig[0]} thtype ${orig[1]}
-	fi
+	devlink sb pool set "$DEVLINK_DEV" pool $pool \
+		size ${orig[0]} thtype ${orig[1]}
 }
 
 devlink_tc_bind_pool_th()
@@ -213,16 +185,6 @@ devlink_tc_bind_pool_th()
 	    | jq -r '.tc_bind[][] | (.pool, .threshold)'
 }
 
-devlink_tc_bind_pool_th_save()
-{
-	local port=$1; shift
-	local tc=$1; shift
-	local dir=$1; shift
-	local key="tc_bind($port,$dir,$tc).pool_th"
-
-	DEVLINK_ORIG[$key]=$(devlink_tc_bind_pool_th $port $tc $dir)
-}
-
 devlink_tc_bind_pool_th_set()
 {
 	local port=$1; shift
@@ -230,7 +192,9 @@ devlink_tc_bind_pool_th_set()
 	local dir=$1; shift
 	local pool=$1; shift
 	local th=$1; shift
+	local key="tc_bind($port,$dir,$tc).pool_th"
 
+	DEVLINK_ORIG[$key]=$(devlink_tc_bind_pool_th $port $tc $dir)
 	devlink sb tc bind set $port tc $tc type $dir pool $pool th $th
 }
 
@@ -242,12 +206,8 @@ devlink_tc_bind_pool_th_restore()
 	local key="tc_bind($port,$dir,$tc).pool_th"
 	local -a orig=(${DEVLINK_ORIG[$key]})
 
-	if [[ -z ${orig[0]} ]]; then
-		echo "WARNING: Mismatched devlink_tc_bind_pool_th_restore"
-	else
-		devlink sb tc bind set $port tc $tc type $dir \
-			pool ${orig[0]} th ${orig[1]}
-	fi
+	devlink sb tc bind set $port tc $tc type $dir \
+		pool ${orig[0]} th ${orig[1]}
 }
 
 devlink_traps_num_get()
@@ -548,10 +508,4 @@ devlink_cpu_port_get()
 				sed -n '1p')
 
 	echo "$DEVLINK_DEV/$cpu_dl_port_num"
-}
-
-devlink_cell_size_get()
-{
-	devlink sb pool show "$DEVLINK_DEV" pool 0 -j \
-	    | jq '.pool[][].cell_size'
 }

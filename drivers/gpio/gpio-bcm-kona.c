@@ -590,7 +590,10 @@ static int bcm_kona_gpio_probe(struct platform_device *pdev)
 		dev_err(dev, "Couldn't determine # GPIO banks\n");
 		return -ENOENT;
 	} else if (ret < 0) {
-		return dev_err_probe(dev, ret, "Couldn't determine GPIO banks\n");
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Couldn't determine GPIO banks: (%pe)\n",
+				ERR_PTR(ret));
+		return ret;
 	}
 	kona_gpio->num_bank = ret;
 

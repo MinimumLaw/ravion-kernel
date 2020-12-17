@@ -138,24 +138,24 @@ static void free_port_memory(struct icom_port *icom_port)
 
 	trace(icom_port, "RET_PORT_MEM", 0);
 	if (icom_port->recv_buf) {
-		dma_free_coherent(&dev->dev, 4096, icom_port->recv_buf,
-				  icom_port->recv_buf_pci);
+		pci_free_consistent(dev, 4096, icom_port->recv_buf,
+				    icom_port->recv_buf_pci);
 		icom_port->recv_buf = NULL;
 	}
 	if (icom_port->xmit_buf) {
-		dma_free_coherent(&dev->dev, 4096, icom_port->xmit_buf,
-				  icom_port->xmit_buf_pci);
+		pci_free_consistent(dev, 4096, icom_port->xmit_buf,
+				    icom_port->xmit_buf_pci);
 		icom_port->xmit_buf = NULL;
 	}
 	if (icom_port->statStg) {
-		dma_free_coherent(&dev->dev, 4096, icom_port->statStg,
-				  icom_port->statStg_pci);
+		pci_free_consistent(dev, 4096, icom_port->statStg,
+				    icom_port->statStg_pci);
 		icom_port->statStg = NULL;
 	}
 
 	if (icom_port->xmitRestart) {
-		dma_free_coherent(&dev->dev, 4096, icom_port->xmitRestart,
-				  icom_port->xmitRestart_pci);
+		pci_free_consistent(dev, 4096, icom_port->xmitRestart,
+				    icom_port->xmitRestart_pci);
 		icom_port->xmitRestart = NULL;
 	}
 }
@@ -169,8 +169,7 @@ static int get_port_memory(struct icom_port *icom_port)
 	struct pci_dev *dev = icom_port->adapter->pci_dev;
 
 	icom_port->xmit_buf =
-	    dma_alloc_coherent(&dev->dev, 4096, &icom_port->xmit_buf_pci,
-			       GFP_KERNEL);
+	    pci_alloc_consistent(dev, 4096, &icom_port->xmit_buf_pci);
 	if (!icom_port->xmit_buf) {
 		dev_err(&dev->dev, "Can not allocate Transmit buffer\n");
 		return -ENOMEM;
@@ -180,8 +179,7 @@ static int get_port_memory(struct icom_port *icom_port)
 	      (unsigned long) icom_port->xmit_buf);
 
 	icom_port->recv_buf =
-	    dma_alloc_coherent(&dev->dev, 4096, &icom_port->recv_buf_pci,
-			       GFP_KERNEL);
+	    pci_alloc_consistent(dev, 4096, &icom_port->recv_buf_pci);
 	if (!icom_port->recv_buf) {
 		dev_err(&dev->dev, "Can not allocate Receive buffer\n");
 		free_port_memory(icom_port);
@@ -191,8 +189,7 @@ static int get_port_memory(struct icom_port *icom_port)
 	      (unsigned long) icom_port->recv_buf);
 
 	icom_port->statStg =
-	    dma_alloc_coherent(&dev->dev, 4096, &icom_port->statStg_pci,
-			       GFP_KERNEL);
+	    pci_alloc_consistent(dev, 4096, &icom_port->statStg_pci);
 	if (!icom_port->statStg) {
 		dev_err(&dev->dev, "Can not allocate Status buffer\n");
 		free_port_memory(icom_port);
@@ -202,8 +199,7 @@ static int get_port_memory(struct icom_port *icom_port)
 	      (unsigned long) icom_port->statStg);
 
 	icom_port->xmitRestart =
-	    dma_alloc_coherent(&dev->dev, 4096, &icom_port->xmitRestart_pci,
-			       GFP_KERNEL);
+	    pci_alloc_consistent(dev, 4096, &icom_port->xmitRestart_pci);
 	if (!icom_port->xmitRestart) {
 		dev_err(&dev->dev,
 			"Can not allocate xmit Restart buffer\n");
@@ -418,7 +414,7 @@ static void load_code(struct icom_port *icom_port)
 	/*Set up data in icom DRAM to indicate where personality
 	 *code is located and its length.
 	 */
-	new_page = dma_alloc_coherent(&dev->dev, 4096, &temp_pci, GFP_KERNEL);
+	new_page = pci_alloc_consistent(dev, 4096, &temp_pci);
 
 	if (!new_page) {
 		dev_err(&dev->dev, "Can not allocate DMA buffer\n");
@@ -498,7 +494,7 @@ static void load_code(struct icom_port *icom_port)
 	}
 
 	if (new_page != NULL)
-		dma_free_coherent(&dev->dev, 4096, new_page, temp_pci);
+		pci_free_consistent(dev, 4096, new_page, temp_pci);
 }
 
 static int startup(struct icom_port *icom_port)

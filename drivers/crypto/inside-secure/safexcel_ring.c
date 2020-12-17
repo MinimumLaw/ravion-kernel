@@ -236,8 +236,8 @@ struct safexcel_result_desc *safexcel_add_rdesc(struct safexcel_crypto_priv *pri
 
 	rdesc->particle_size = len;
 	rdesc->rsvd0 = 0;
-	rdesc->descriptor_overflow = 1; /* assume error */
-	rdesc->buffer_overflow = 1;     /* assume error */
+	rdesc->descriptor_overflow = 0;
+	rdesc->buffer_overflow = 0;
 	rdesc->last_seg = last;
 	rdesc->first_seg = first;
 	rdesc->result_size = EIP197_RD64_RESULT_SIZE;
@@ -245,10 +245,9 @@ struct safexcel_result_desc *safexcel_add_rdesc(struct safexcel_crypto_priv *pri
 	rdesc->data_lo = lower_32_bits(data);
 	rdesc->data_hi = upper_32_bits(data);
 
-	/* Clear length in result token */
+	/* Clear length & error code in result token */
 	rtoken->packet_length = 0;
-	/* Assume errors - HW will clear if not the case */
-	rtoken->error_code = 0x7fff;
+	rtoken->error_code = 0;
 
 	return rdesc;
 }

@@ -558,8 +558,9 @@ static void via_teardown_subdevs(void)
 /*
  * Power management functions
  */
-static __maybe_unused LIST_HEAD(viafb_pm_hooks);
-static __maybe_unused DEFINE_MUTEX(viafb_pm_hooks_lock);
+#ifdef CONFIG_PM
+static LIST_HEAD(viafb_pm_hooks);
+static DEFINE_MUTEX(viafb_pm_hooks_lock);
 
 void viafb_pm_register(struct viafb_pm_hooks *hooks)
 {
@@ -579,10 +580,12 @@ void viafb_pm_unregister(struct viafb_pm_hooks *hooks)
 }
 EXPORT_SYMBOL_GPL(viafb_pm_unregister);
 
-static int __maybe_unused via_suspend(struct device *dev)
+static int via_suspend(struct pci_dev *pdev, pm_message_t state)
 {
 	struct viafb_pm_hooks *hooks;
 
+	if (state.event != PM_EVENT_SUSPEND)
+		return 0;
 	/*
 	 * "I've occasionally hit a few drivers that caused suspend
 	 * failures, and each and every time it was a driver bug, and
@@ -597,12 +600,23 @@ static int __maybe_unused via_suspend(struct device *dev)
 		hooks->suspend(hooks->private);
 	mutex_unlock(&viafb_pm_hooks_lock);
 
+	pci_save_state(pdev);
+	pci_disable_device(pdev);
+	pci_set_power_state(pdev, pci_choose_state(pdev, state));
 	return 0;
 }
 
-static int __maybe_unused via_resume(struct device *dev)
+static int via_resume(struct pci_dev *pdev)
 {
 	struct viafb_pm_hooks *hooks;
+
+	/* Get the bus side powered up */
+	pci_set_power_state(pdev, PCI_D0);
+	pci_restore_state(pdev);
+	if (pci_enable_device(pdev))
+		return 0;
+
+	pci_set_master(pdev);
 
 	/* Now bring back any subdevs */
 	mutex_lock(&viafb_pm_hooks_lock);
@@ -612,6 +626,7 @@ static int __maybe_unused via_resume(struct device *dev)
 
 	return 0;
 }
+#endif /* CONFIG_PM */
 
 static int via_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
@@ -697,23 +712,15 @@ static const struct pci_device_id via_pci_table[] = {
 };
 MODULE_DEVICE_TABLE(pci, via_pci_table);
 
-static const struct dev_pm_ops via_pm_ops = {
-#ifdef CONFIG_PM_SLEEP
-	.suspend	= via_suspend,
-	.resume		= via_resume,
-	.freeze		= NULL,
-	.thaw		= via_resume,
-	.poweroff	= NULL,
-	.restore	= via_resume,
-#endif
-};
-
 static struct pci_driver via_driver = {
 	.name		= "viafb",
 	.id_table	= via_pci_table,
 	.probe		= via_pci_probe,
 	.remove		= via_pci_remove,
-	.driver.pm	= &via_pm_ops,
+#ifdef CONFIG_PM
+	.suspend	= via_suspend,
+	.resume		= via_resume,
+#endif
 };
 
 static int __init via_core_init(void)

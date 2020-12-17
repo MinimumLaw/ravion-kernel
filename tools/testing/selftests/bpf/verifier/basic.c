@@ -2,7 +2,7 @@
 	"empty prog",
 	.insns = {
 	},
-	.errstr = "last insn is not an exit or jmp",
+	.errstr = "unknown opcode 00",
 	.result = REJECT,
 },
 {

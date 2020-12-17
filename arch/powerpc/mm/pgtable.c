@@ -184,6 +184,9 @@ void set_pte_at(struct mm_struct *mm, unsigned long addr, pte_t *ptep,
 	 */
 	VM_WARN_ON(pte_hw_valid(*ptep) && !pte_protnone(*ptep));
 
+	/* Add the pte bit when trying to set a pte */
+	pte = pte_mkpte(pte);
+
 	/* Note: mm->context.id might not yet have been assigned as
 	 * this context might not have been activated yet when this
 	 * is called.
@@ -263,7 +266,8 @@ void set_huge_pte_at(struct mm_struct *mm, unsigned long addr, pte_t *ptep, pte_
 	pmd_t *pmd = pmd_off(mm, addr);
 	pte_basic_t val;
 	pte_basic_t *entry = &ptep->pte;
-	int num, i;
+	int num = is_hugepd(*((hugepd_t *)pmd)) ? 1 : SZ_512K / SZ_4K;
+	int i;
 
 	/*
 	 * Make sure hardware valid bit is not set. We don't do
@@ -271,12 +275,11 @@ void set_huge_pte_at(struct mm_struct *mm, unsigned long addr, pte_t *ptep, pte_
 	 */
 	VM_WARN_ON(pte_hw_valid(*ptep) && !pte_protnone(*ptep));
 
+	pte = pte_mkpte(pte);
+
 	pte = set_pte_filter(pte);
 
 	val = pte_val(pte);
-
-	num = number_of_cells_per_pte(pmd, val, 1);
-
 	for (i = 0; i < num; i++, entry++, val += SZ_4K)
 		*entry = val;
 }

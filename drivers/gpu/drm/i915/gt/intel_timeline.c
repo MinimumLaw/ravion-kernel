@@ -219,8 +219,7 @@ static void cacheline_free(struct intel_timeline_cacheline *cl)
 
 static int intel_timeline_init(struct intel_timeline *timeline,
 			       struct intel_gt *gt,
-			       struct i915_vma *hwsp,
-			       unsigned int offset)
+			       struct i915_vma *hwsp)
 {
 	void *vaddr;
 
@@ -251,7 +250,8 @@ static int intel_timeline_init(struct intel_timeline *timeline,
 
 		vaddr = page_mask_bits(cl->vaddr);
 	} else {
-		timeline->hwsp_offset = offset;
+		timeline->hwsp_offset = I915_GEM_HWS_SEQNO_ADDR;
+
 		vaddr = i915_gem_object_pin_map(hwsp->obj, I915_MAP_WB);
 		if (IS_ERR(vaddr))
 			return PTR_ERR(vaddr);
@@ -301,9 +301,7 @@ static void intel_timeline_fini(struct intel_timeline *timeline)
 }
 
 struct intel_timeline *
-__intel_timeline_create(struct intel_gt *gt,
-			struct i915_vma *global_hwsp,
-			unsigned int offset)
+intel_timeline_create(struct intel_gt *gt, struct i915_vma *global_hwsp)
 {
 	struct intel_timeline *timeline;
 	int err;
@@ -312,7 +310,7 @@ __intel_timeline_create(struct intel_gt *gt,
 	if (!timeline)
 		return ERR_PTR(-ENOMEM);
 
-	err = intel_timeline_init(timeline, gt, global_hwsp, offset);
+	err = intel_timeline_init(timeline, gt, global_hwsp);
 	if (err) {
 		kfree(timeline);
 		return ERR_PTR(err);
@@ -321,20 +319,14 @@ __intel_timeline_create(struct intel_gt *gt,
 	return timeline;
 }
 
-void __intel_timeline_pin(struct intel_timeline *tl)
-{
-	GEM_BUG_ON(!atomic_read(&tl->pin_count));
-	atomic_inc(&tl->pin_count);
-}
-
-int intel_timeline_pin(struct intel_timeline *tl, struct i915_gem_ww_ctx *ww)
+int intel_timeline_pin(struct intel_timeline *tl)
 {
 	int err;
 
 	if (atomic_add_unless(&tl->pin_count, 1, 0))
 		return 0;
 
-	err = i915_ggtt_pin(tl->hwsp_ggtt, ww, 0, PIN_HIGH);
+	err = i915_ggtt_pin(tl->hwsp_ggtt, 0, PIN_HIGH);
 	if (err)
 		return err;
 
@@ -477,7 +469,7 @@ __intel_timeline_get_seqno(struct intel_timeline *tl,
 		goto err_rollback;
 	}
 
-	err = i915_ggtt_pin(vma, NULL, 0, PIN_HIGH);
+	err = i915_ggtt_pin(vma, 0, PIN_HIGH);
 	if (err) {
 		__idle_hwsp_free(vma->private, cacheline);
 		goto err_rollback;
@@ -496,9 +488,7 @@ __intel_timeline_get_seqno(struct intel_timeline *tl,
 	 * free it after the current request is retired, which ensures that
 	 * all writes into the cacheline from previous requests are complete.
 	 */
-	err = i915_active_ref(&tl->hwsp_cacheline->active,
-			      tl->fence_context,
-			      &rq->fence);
+	err = i915_active_ref(&tl->hwsp_cacheline->active, tl, &rq->fence);
 	if (err)
 		goto err_cacheline;
 

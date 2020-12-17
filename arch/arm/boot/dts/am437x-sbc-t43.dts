@@ -136,7 +136,7 @@
 };
 
 &dss {
-	status = "okay";
+	status = "ok";
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&dss_pinctrl_default>;

@@ -347,7 +347,7 @@ static int gcm_encrypt(struct aead_request *req)
 	u8 buf[AES_BLOCK_SIZE];
 	u8 iv[AES_BLOCK_SIZE];
 	u64 dg[2] = {};
-	be128 lengths;
+	u128 lengths;
 	u8 *tag;
 	int err;
 
@@ -461,7 +461,7 @@ static int gcm_decrypt(struct aead_request *req)
 	u8 buf[AES_BLOCK_SIZE];
 	u8 iv[AES_BLOCK_SIZE];
 	u64 dg[2] = {};
-	be128 lengths;
+	u128 lengths;
 	u8 *tag;
 	int err;
 

@@ -166,7 +166,7 @@ struct clk *rockchip_clk_register_halfdiv(const char *name,
 					  unsigned long flags,
 					  spinlock_t *lock)
 {
-	struct clk_hw *hw = ERR_PTR(-ENOMEM);
+	struct clk *clk = ERR_PTR(-ENOMEM);
 	struct clk_mux *mux = NULL;
 	struct clk_gate *gate = NULL;
 	struct clk_divider *div = NULL;
@@ -212,18 +212,16 @@ struct clk *rockchip_clk_register_halfdiv(const char *name,
 		div_ops = &clk_half_divider_ops;
 	}
 
-	hw = clk_hw_register_composite(NULL, name, parent_names, num_parents,
-				       mux ? &mux->hw : NULL, mux_ops,
-				       div ? &div->hw : NULL, div_ops,
-				       gate ? &gate->hw : NULL, gate_ops,
-				       flags);
-	if (IS_ERR(hw))
-		goto err_div;
+	clk = clk_register_composite(NULL, name, parent_names, num_parents,
+				     mux ? &mux->hw : NULL, mux_ops,
+				     div ? &div->hw : NULL, div_ops,
+				     gate ? &gate->hw : NULL, gate_ops,
+				     flags);
 
-	return hw->clk;
+	return clk;
 err_div:
 	kfree(gate);
 err_gate:
 	kfree(mux);
-	return ERR_CAST(hw);
+	return ERR_PTR(-ENOMEM);
 }

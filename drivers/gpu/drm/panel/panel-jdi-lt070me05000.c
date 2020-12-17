@@ -440,9 +440,9 @@ static int jdi_panel_add(struct jdi_panel *jdi)
 	drm_panel_init(&jdi->base, &jdi->dsi->dev, &jdi_panel_funcs,
 		       DRM_MODE_CONNECTOR_DSI);
 
-	drm_panel_add(&jdi->base);
+	ret = drm_panel_add(&jdi->base);
 
-	return 0;
+	return ret;
 }
 
 static void jdi_panel_del(struct jdi_panel *jdi)

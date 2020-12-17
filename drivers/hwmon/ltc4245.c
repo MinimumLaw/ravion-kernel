@@ -440,7 +440,8 @@ static bool ltc4245_use_extra_gpios(struct i2c_client *client)
 	return false;
 }
 
-static int ltc4245_probe(struct i2c_client *client)
+static int ltc4245_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = client->adapter;
 	struct ltc4245_data *data;
@@ -479,7 +480,7 @@ static struct i2c_driver ltc4245_driver = {
 	.driver = {
 		.name	= "ltc4245",
 	},
-	.probe_new	= ltc4245_probe,
+	.probe		= ltc4245_probe,
 	.id_table	= ltc4245_id,
 };
 

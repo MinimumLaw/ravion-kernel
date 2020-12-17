@@ -330,36 +330,33 @@ static void kirin_pcie_sideband_dbi_r_mode(struct kirin_pcie *kirin_pcie,
 	kirin_apb_ctrl_writel(kirin_pcie, val, SOC_PCIECTRL_CTRL1_ADDR);
 }
 
-static int kirin_pcie_rd_own_conf(struct pci_bus *bus, unsigned int devfn,
+static int kirin_pcie_rd_own_conf(struct pcie_port *pp,
 				  int where, int size, u32 *val)
 {
-	struct dw_pcie *pci = to_dw_pcie_from_pp(bus->sysdata);
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct kirin_pcie *kirin_pcie = to_kirin_pcie(pci);
+	int ret;
 
-	if (PCI_SLOT(devfn)) {
-		*val = ~0;
-		return PCIBIOS_DEVICE_NOT_FOUND;
-	}
+	kirin_pcie_sideband_dbi_r_mode(kirin_pcie, true);
+	ret = dw_pcie_read(pci->dbi_base + where, size, val);
+	kirin_pcie_sideband_dbi_r_mode(kirin_pcie, false);
 
-	*val = dw_pcie_read_dbi(pci, where, size);
-	return PCIBIOS_SUCCESSFUL;
+	return ret;
 }
 
-static int kirin_pcie_wr_own_conf(struct pci_bus *bus, unsigned int devfn,
+static int kirin_pcie_wr_own_conf(struct pcie_port *pp,
 				  int where, int size, u32 val)
 {
-	struct dw_pcie *pci = to_dw_pcie_from_pp(bus->sysdata);
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct kirin_pcie *kirin_pcie = to_kirin_pcie(pci);
+	int ret;
 
-	if (PCI_SLOT(devfn))
-		return PCIBIOS_DEVICE_NOT_FOUND;
+	kirin_pcie_sideband_dbi_w_mode(kirin_pcie, true);
+	ret = dw_pcie_write(pci->dbi_base + where, size, val);
+	kirin_pcie_sideband_dbi_w_mode(kirin_pcie, false);
 
-	dw_pcie_write_dbi(pci, where, size, val);
-	return PCIBIOS_SUCCESSFUL;
+	return ret;
 }
-
-static struct pci_ops kirin_pci_ops = {
-	.read = kirin_pcie_rd_own_conf,
-	.write = kirin_pcie_wr_own_conf,
-};
 
 static u32 kirin_pcie_read_dbi(struct dw_pcie *pci, void __iomem *base,
 			       u32 reg, size_t size)
@@ -426,10 +423,10 @@ static int kirin_pcie_establish_link(struct pcie_port *pp)
 
 static int kirin_pcie_host_init(struct pcie_port *pp)
 {
-	pp->bridge->ops = &kirin_pci_ops;
-
 	kirin_pcie_establish_link(pp);
-	dw_pcie_msi_init(pp);
+
+	if (IS_ENABLED(CONFIG_PCI_MSI))
+		dw_pcie_msi_init(pp);
 
 	return 0;
 }
@@ -441,6 +438,8 @@ static const struct dw_pcie_ops kirin_dw_pcie_ops = {
 };
 
 static const struct dw_pcie_host_ops kirin_pcie_host_ops = {
+	.rd_own_conf = kirin_pcie_rd_own_conf,
+	.wr_own_conf = kirin_pcie_wr_own_conf,
 	.host_init = kirin_pcie_host_init,
 };
 
@@ -508,12 +507,8 @@ static int kirin_pcie_probe(struct platform_device *pdev)
 
 	kirin_pcie->gpio_id_reset = of_get_named_gpio(dev->of_node,
 						      "reset-gpios", 0);
-	if (kirin_pcie->gpio_id_reset == -EPROBE_DEFER) {
-		return -EPROBE_DEFER;
-	} else if (!gpio_is_valid(kirin_pcie->gpio_id_reset)) {
-		dev_err(dev, "unable to get a valid gpio pin\n");
+	if (kirin_pcie->gpio_id_reset < 0)
 		return -ENODEV;
-	}
 
 	ret = kirin_pcie_power_on(kirin_pcie);
 	if (ret)

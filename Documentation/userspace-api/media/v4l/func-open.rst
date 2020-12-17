@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _func-open:
 
@@ -12,6 +18,7 @@ Name
 
 v4l2-open - Open a V4L2 device
 
+
 Synopsis
 ========
 
@@ -19,7 +26,9 @@ Synopsis
 
     #include <fcntl.h>
 
+
 .. c:function:: int open( const char *device_name, int flags )
+    :name: v4l2-open
 
 Arguments
 =========
@@ -32,7 +41,7 @@ Arguments
     technicality, input devices still support only reading and output
     devices only writing.
 
-    When the ``O_NONBLOCK`` flag is given, the :c:func:`read()`
+    When the ``O_NONBLOCK`` flag is given, the :ref:`read() <func-read>`
     function and the :ref:`VIDIOC_DQBUF <VIDIOC_QBUF>` ioctl will
     return the ``EAGAIN`` error code when no data is available or no
     buffer is in the driver outgoing queue, otherwise these functions
@@ -41,20 +50,22 @@ Arguments
 
     Other flags have no effect.
 
+
 Description
 ===========
 
-To open a V4L2 device applications call :c:func:`open()` with the
+To open a V4L2 device applications call :ref:`open() <func-open>` with the
 desired device name. This function has no side effects; all data format
 parameters, current input or output, control values or other properties
-remain unchanged. At the first :c:func:`open()` call after loading the
+remain unchanged. At the first :ref:`open() <func-open>` call after loading the
 driver they will be reset to default values, drivers are never in an
 undefined state.
+
 
 Return Value
 ============
 
-On success :c:func:`open()` returns the new file descriptor. On error
+On success :ref:`open() <func-open>` returns the new file descriptor. On error
 -1 is returned, and the ``errno`` variable is set appropriately.
 Possible error codes are:
 

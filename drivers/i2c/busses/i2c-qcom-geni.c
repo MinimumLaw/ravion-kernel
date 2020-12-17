@@ -210,8 +210,9 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 	u32 dma;
 	u32 val;
 	struct i2c_msg *cur;
+	unsigned long flags;
 
-	spin_lock(&gi2c->lock);
+	spin_lock_irqsave(&gi2c->lock, flags);
 	m_stat = readl_relaxed(base + SE_GENI_M_IRQ_STATUS);
 	rx_st = readl_relaxed(base + SE_GENI_RX_FIFO_STATUS);
 	dm_tx_st = readl_relaxed(base + SE_DMA_TX_IRQ_STAT);
@@ -293,7 +294,7 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 	    dm_rx_st & RX_DMA_DONE || dm_rx_st & RX_RESET_DONE)
 		complete(&gi2c->done);
 
-	spin_unlock(&gi2c->lock);
+	spin_unlock_irqrestore(&gi2c->lock, flags);
 
 	return IRQ_HANDLED;
 }

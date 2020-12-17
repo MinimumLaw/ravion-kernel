@@ -48,8 +48,6 @@ struct max34440_data {
 
 #define to_max34440_data(x)  container_of(x, struct max34440_data, info)
 
-static const struct i2c_device_id max34440_id[];
-
 static int max34440_read_word_data(struct i2c_client *client, int page,
 				   int phase, int reg)
 {
@@ -483,7 +481,8 @@ static struct pmbus_driver_info max34440_info[] = {
 	},
 };
 
-static int max34440_probe(struct i2c_client *client)
+static int max34440_probe(struct i2c_client *client,
+			  const struct i2c_device_id *id)
 {
 	struct max34440_data *data;
 	int rv;
@@ -492,8 +491,8 @@ static int max34440_probe(struct i2c_client *client)
 			    GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	data->id = i2c_match_id(max34440_id, client)->driver_data;
-	data->info = max34440_info[data->id];
+	data->id = id->driver_data;
+	data->info = max34440_info[id->driver_data];
 
 	if (data->id == max34451) {
 		rv = max34451_set_supported_funcs(client, data);
@@ -501,7 +500,7 @@ static int max34440_probe(struct i2c_client *client)
 			return rv;
 	}
 
-	return pmbus_do_probe(client, &data->info);
+	return pmbus_do_probe(client, id, &data->info);
 }
 
 static const struct i2c_device_id max34440_id[] = {
@@ -520,7 +519,7 @@ static struct i2c_driver max34440_driver = {
 	.driver = {
 		   .name = "max34440",
 		   },
-	.probe_new = max34440_probe,
+	.probe = max34440_probe,
 	.remove = pmbus_do_remove,
 	.id_table = max34440_id,
 };

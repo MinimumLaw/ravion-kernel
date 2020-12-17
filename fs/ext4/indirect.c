@@ -163,7 +163,7 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
 		}
 
 		if (!bh_uptodate_or_lock(bh)) {
-			if (ext4_read_bh(bh, 0, NULL) < 0) {
+			if (bh_submit_read(bh) < 0) {
 				put_bh(bh);
 				goto failure;
 			}
@@ -593,8 +593,7 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
 	if (ext4_has_feature_bigalloc(inode->i_sb)) {
 		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
 				 "non-extent mapped inodes with bigalloc");
-		err = -EFSCORRUPTED;
-		goto out;
+		return -EFSCORRUPTED;
 	}
 
 	/* Set up for the direct block allocation */
@@ -1013,14 +1012,14 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 			}
 
 			/* Go read the buffer for the next level down */
-			bh = ext4_sb_bread(inode->i_sb, nr, 0);
+			bh = sb_bread(inode->i_sb, nr);
 
 			/*
 			 * A read failure? Report error and clear slot
 			 * (should be rare).
 			 */
-			if (IS_ERR(bh)) {
-				ext4_error_inode_block(inode, nr, -PTR_ERR(bh),
+			if (!bh) {
+				ext4_error_inode_block(inode, nr, EIO,
 						       "Read failure");
 				continue;
 			}
@@ -1034,7 +1033,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 			brelse(bh);
 
 			/*
-			 * Everything below this pointer has been
+			 * Everything below this this pointer has been
 			 * released.  Now let this top-of-subtree go.
 			 *
 			 * We want the freeing of this indirect block to be

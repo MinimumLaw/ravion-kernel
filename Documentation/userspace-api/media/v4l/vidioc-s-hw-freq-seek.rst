@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_S_HW_FREQ_SEEK:
 
@@ -12,21 +18,23 @@ Name
 
 VIDIOC_S_HW_FREQ_SEEK - Perform a hardware frequency seek
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_S_HW_FREQ_SEEK
+.. c:function:: int ioctl( int fd, VIDIOC_S_HW_FREQ_SEEK, struct v4l2_hw_freq_seek *argp )
+    :name: VIDIOC_S_HW_FREQ_SEEK
 
-``int ioctl(int fd, VIDIOC_S_HW_FREQ_SEEK, struct v4l2_hw_freq_seek *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_hw_freq_seek`.
+
 
 Description
 ===========
@@ -57,6 +65,7 @@ set.
 
 If this ioctl is called from a non-blocking filehandle, then ``EAGAIN``
 error code is returned and no seek takes place.
+
 
 .. tabularcolumns:: |p{4.4cm}|p{4.4cm}|p{8.7cm}|
 
@@ -113,6 +122,7 @@ error code is returned and no seek takes place.
       - ``reserved``\ [5]
       - Reserved for future extensions. Applications must set the array to
 	zero.
+
 
 Return Value
 ============

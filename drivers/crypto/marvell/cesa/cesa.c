@@ -437,6 +437,7 @@ static int mv_cesa_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mv_cesa_dev *cesa;
 	struct mv_cesa_engine *engines;
+	struct resource *res;
 	int irq, ret, i, cpu;
 	u32 sram_size;
 
@@ -474,7 +475,8 @@ static int mv_cesa_probe(struct platform_device *pdev)
 
 	spin_lock_init(&cesa->lock);
 
-	cesa->regs = devm_platform_ioremap_resource_byname(pdev, "regs");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
+	cesa->regs = devm_ioremap_resource(dev, res);
 	if (IS_ERR(cesa->regs))
 		return PTR_ERR(cesa->regs);
 

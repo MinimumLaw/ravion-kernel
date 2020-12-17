@@ -7,7 +7,6 @@
  */
 
 /dts-v1/;
-#include <dt-bindings/clock/maxim,max77686.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "exynos5250.dtsi"
@@ -130,14 +129,13 @@
 		reg = <0x50>;
 	};
 
-	max77686: pmic@9 {
+	max77686@9 {
 		compatible = "maxim,max77686";
 		reg = <0x09>;
 		interrupt-parent = <&gpx3>;
 		interrupts = <2 IRQ_TYPE_NONE>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&max77686_irq>;
-		#clock-cells = <1>;
 		wakeup-source;
 
 		voltage-regulators {
@@ -326,6 +324,12 @@
 	status = "okay";
 	samsung,i2c-sda-delay = <100>;
 	samsung,i2c-max-bus-freq = <40000>;
+	samsung,i2c-slave-addr = <0x38>;
+
+	sata_phy_i2c: sata-phy@38 {
+		compatible = "samsung,exynos-sataphy-i2c";
+		reg = <0x38>;
+	};
 };
 
 &i2s0 {
@@ -364,8 +368,6 @@
 
 &rtc {
 	status = "okay";
-	clocks = <&clock CLK_RTC>, <&max77686 MAX77686_CLK_AP>;
-	clock-names = "rtc", "rtc_src";
 };
 
 &sata {
@@ -375,10 +377,6 @@
 &sata_phy {
 	status = "okay";
 	samsung,exynos-sataphy-i2c-phandle = <&sata_phy_i2c>;
-};
-
-&sata_phy_i2c {
-	status = "okay";
 };
 
 &spi_1 {

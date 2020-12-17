@@ -3,7 +3,6 @@
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * (C) Copyright 2020 Hewlett Packard Enterprise Development LP
  * Copyright (c) 2004-2008 Silicon Graphics, Inc.  All Rights Reserved.
  */
 
@@ -234,7 +233,7 @@ xp_init(void)
 	for (ch_number = 0; ch_number < XPC_MAX_NCHANNELS; ch_number++)
 		mutex_init(&xpc_registrations[ch_number].mutex);
 
-	if (is_uv_system())
+	if (is_uv())
 		ret = xp_init_uv();
 	else
 		ret = 0;
@@ -250,7 +249,7 @@ module_init(xp_init);
 static void __exit
 xp_exit(void)
 {
-	if (is_uv_system())
+	if (is_uv())
 		xp_exit_uv();
 }
 

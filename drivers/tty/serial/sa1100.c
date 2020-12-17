@@ -879,20 +879,22 @@ static int sa1100_serial_add_one_port(struct sa1100_port *sport, struct platform
 
 static int sa1100_serial_probe(struct platform_device *dev)
 {
-	struct resource *res;
+	struct resource *res = dev->resource;
 	int i;
 
-	res = platform_get_resource(dev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -EINVAL;
-
-	for (i = 0; i < NR_PORTS; i++)
-		if (sa1100_ports[i].port.mapbase == res->start)
+	for (i = 0; i < dev->num_resources; i++, res++)
+		if (res->flags & IORESOURCE_MEM)
 			break;
-	if (i == NR_PORTS)
-		return -ENODEV;
 
-	sa1100_serial_add_one_port(&sa1100_ports[i], dev);
+	if (i < dev->num_resources) {
+		for (i = 0; i < NR_PORTS; i++) {
+			if (sa1100_ports[i].port.mapbase != res->start)
+				continue;
+
+			sa1100_serial_add_one_port(&sa1100_ports[i], dev);
+			break;
+		}
+	}
 
 	return 0;
 }

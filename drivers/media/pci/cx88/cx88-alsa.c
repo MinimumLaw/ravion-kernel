@@ -42,12 +42,12 @@
  */
 
 struct cx88_audio_buffer {
-	unsigned int		bpl;
-	struct cx88_riscmem	risc;
+	unsigned int               bpl;
+	struct cx88_riscmem        risc;
 	void			*vaddr;
 	struct scatterlist	*sglist;
 	int                     sglen;
-	unsigned long		nr_pages;
+	int                     nr_pages;
 };
 
 struct cx88_audio_dev {
@@ -271,8 +271,7 @@ static irqreturn_t cx8801_irq(int irq, void *dev_id)
 	return IRQ_RETVAL(handled);
 }
 
-static int cx88_alsa_dma_init(struct cx88_audio_dev *chip,
-			      unsigned long nr_pages)
+static int cx88_alsa_dma_init(struct cx88_audio_dev *chip, int nr_pages)
 {
 	struct cx88_audio_buffer *buf = chip->buf;
 	struct page *pg;
@@ -280,11 +279,11 @@ static int cx88_alsa_dma_init(struct cx88_audio_dev *chip,
 
 	buf->vaddr = vmalloc_32(nr_pages << PAGE_SHIFT);
 	if (!buf->vaddr) {
-		dprintk(1, "vmalloc_32(%lu pages) failed\n", nr_pages);
+		dprintk(1, "vmalloc_32(%d pages) failed\n", nr_pages);
 		return -ENOMEM;
 	}
 
-	dprintk(1, "vmalloc is at addr %p, size=%lu\n",
+	dprintk(1, "vmalloc is at addr %p, size=%d\n",
 		buf->vaddr, nr_pages << PAGE_SHIFT);
 
 	memset(buf->vaddr, 0, nr_pages << PAGE_SHIFT);
@@ -317,7 +316,7 @@ static int cx88_alsa_dma_map(struct cx88_audio_dev *dev)
 	struct cx88_audio_buffer *buf = dev->buf;
 
 	buf->sglen = dma_map_sg(&dev->pci->dev, buf->sglist,
-			buf->nr_pages, DMA_FROM_DEVICE);
+			buf->nr_pages, PCI_DMA_FROMDEVICE);
 
 	if (buf->sglen == 0) {
 		pr_warn("%s: cx88_alsa_map_sg failed\n", __func__);
@@ -333,8 +332,8 @@ static int cx88_alsa_dma_unmap(struct cx88_audio_dev *dev)
 	if (!buf->sglen)
 		return 0;
 
-	dma_unmap_sg(&dev->pci->dev, buf->sglist, buf->nr_pages,
-		     DMA_FROM_DEVICE);
+	dma_unmap_sg(&dev->pci->dev, buf->sglist, buf->sglen,
+		     PCI_DMA_FROMDEVICE);
 	buf->sglen = 0;
 	return 0;
 }

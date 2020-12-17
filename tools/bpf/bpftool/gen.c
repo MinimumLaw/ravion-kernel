@@ -19,8 +19,10 @@
 #include <sys/mman.h>
 #include <bpf/btf.h>
 
+#include "bpf/libbpf_internal.h"
 #include "json_writer.h"
 #include "main.h"
+
 
 #define MAX_OBJ_NAME_LEN 64
 

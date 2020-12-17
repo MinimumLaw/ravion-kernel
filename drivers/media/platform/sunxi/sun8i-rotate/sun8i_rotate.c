@@ -747,8 +747,11 @@ static int rotate_probe(struct platform_device *pdev)
 	dev->dev = &pdev->dev;
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0)
+	if (irq <= 0) {
+		dev_err(dev->dev, "Failed to get IRQ\n");
+
 		return irq;
+	}
 
 	ret = devm_request_irq(dev->dev, irq, rotate_irq,
 			       0, dev_name(dev->dev), dev);

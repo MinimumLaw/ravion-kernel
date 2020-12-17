@@ -288,7 +288,9 @@ struct xen_blkif_ring {
 	struct work_struct	persistent_purge_work;
 
 	/* Buffer of free pages to map grant refs. */
-	struct gnttab_page_cache free_pages;
+	spinlock_t		free_pages_lock;
+	int			free_pages_num;
+	struct list_head	free_pages;
 
 	struct work_struct	free_work;
 	/* Thread shutdown wait queue. */

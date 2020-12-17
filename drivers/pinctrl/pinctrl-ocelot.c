@@ -1120,7 +1120,7 @@ static int ocelot_gpiochip_register(struct platform_device *pdev,
 {
 	struct gpio_chip *gc;
 	struct gpio_irq_chip *girq;
-	int irq;
+	int ret, irq;
 
 	info->gpio_chip = ocelot_gpiolib_chip;
 
@@ -1147,7 +1147,11 @@ static int ocelot_gpiochip_register(struct platform_device *pdev,
 		girq->handler = handle_edge_irq;
 	}
 
-	return devm_gpiochip_add_data(&pdev->dev, gc, info);
+	ret = devm_gpiochip_add_data(&pdev->dev, gc, info);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static const struct of_device_id ocelot_pinctrl_of_match[] = {

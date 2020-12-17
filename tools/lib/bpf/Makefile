@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
 # Most of this file is copied from tools/lib/traceevent/Makefile
 
-RM ?= rm
-srctree = $(abs_srctree)
-
 LIBBPF_VERSION := $(shell \
 	grep -oE '^LIBBPF_([0-9.]+)' libbpf.map | \
 	sort -rV | head -n1 | cut -d'_' -f2)
@@ -59,7 +56,7 @@ ifndef VERBOSE
 endif
 
 FEATURE_USER = .libbpf
-FEATURE_TESTS = libelf zlib bpf
+FEATURE_TESTS = libelf libelf-mmap zlib bpf reallocarray
 FEATURE_DISPLAY = libelf zlib bpf
 
 INCLUDES = -I. -I$(srctree)/tools/include -I$(srctree)/tools/include/uapi
@@ -98,18 +95,27 @@ PC_FILE		= libbpf.pc
 ifdef EXTRA_CFLAGS
   CFLAGS := $(EXTRA_CFLAGS)
 else
-  CFLAGS := -g -O2
+  CFLAGS := -g -Wall
+endif
+
+ifeq ($(feature-libelf-mmap), 1)
+  override CFLAGS += -DHAVE_LIBELF_MMAP_SUPPORT
+endif
+
+ifeq ($(feature-reallocarray), 0)
+  override CFLAGS += -DCOMPAT_NEED_REALLOCARRAY
 endif
 
 # Append required CFLAGS
-override CFLAGS += $(EXTRA_WARNINGS) -Wno-switch-enum
+override CFLAGS += $(EXTRA_WARNINGS)
 override CFLAGS += -Werror -Wall
+override CFLAGS += -fPIC
 override CFLAGS += $(INCLUDES)
 override CFLAGS += -fvisibility=hidden
 override CFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 
 # flags specific for shared library
-SHLIB_FLAGS := -DSHARED -fPIC
+SHLIB_FLAGS := -DSHARED
 
 ifeq ($(VERBOSE),1)
   Q =
@@ -192,7 +198,7 @@ $(OUTPUT)libbpf.so.$(LIBBPF_VERSION): $(BPF_IN_SHARED)
 	@ln -sf $(@F) $(OUTPUT)libbpf.so.$(LIBBPF_MAJOR_VERSION)
 
 $(OUTPUT)libbpf.a: $(BPF_IN_STATIC)
-	$(QUIET_LINK)$(RM) -f $@; $(AR) rcs $@ $^
+	$(QUIET_LINK)$(RM) $@; $(AR) rcs $@ $^
 
 $(OUTPUT)libbpf.pc:
 	$(QUIET_GEN)sed -e "s|@PREFIX@|$(prefix)|" \
@@ -267,10 +273,10 @@ install: install_lib install_pkgconfig install_headers
 ### Cleaning rules
 
 config-clean:
-	$(call QUIET_CLEAN, feature-detect)
+	$(call QUIET_CLEAN, config)
 	$(Q)$(MAKE) -C $(srctree)/tools/build/feature/ clean >/dev/null
 
-clean: config-clean
+clean:
 	$(call QUIET_CLEAN, libbpf) $(RM) -rf $(CMD_TARGETS)		     \
 		*~ .*.d .*.cmd LIBBPF-CFLAGS $(BPF_HELPER_DEFS)		     \
 		$(SHARED_OBJDIR) $(STATIC_OBJDIR)			     \
@@ -297,7 +303,7 @@ cscope:
 	cscope -b -q -I $(srctree)/include -f cscope.out
 
 tags:
-	$(RM) -f TAGS tags
+	rm -f TAGS tags
 	ls *.c *.h | xargs $(TAGS_PROG) -a
 
 # Declare the contents of the .PHONY variable as phony.  We keep that

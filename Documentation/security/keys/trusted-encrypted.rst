@@ -39,9 +39,10 @@ With the IBM TSS 2 stack::
 
 Or with the Intel TSS 2 stack::
 
-  #> tpm2_createprimary --hierarchy o -G rsa2048 -c key.ctxt
+  #> tpm2_createprimary --hierarchy o -G rsa2048 -o key.ctxt
   [...]
-  #> tpm2_evictcontrol -c key.ctxt 0x81000001
+  handle: 0x800000FF
+  #> tpm2_evictcontrol -c key.ctxt -p 0x81000001
   persistentHandle: 0x81000001
 
 Usage::

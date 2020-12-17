@@ -122,6 +122,9 @@
 	status = "okay";
 
 	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		csi_ep: endpoint {
 			remote-endpoint = <&ov5640_ep>;
 			bus-width = <8>;
@@ -418,15 +421,15 @@
 				    "Headphone", "Headphone Jack",
 				    "Speaker", "Internal Speaker";
 	simple-audio-card,routing =
-			"Left DAC", "DACL",
-			"Right DAC", "DACR",
+			"Left DAC", "AIF1 Slot 0 Left",
+			"Right DAC", "AIF1 Slot 0 Right",
 			"Speaker Amp INL", "LINEOUT",
 			"Speaker Amp INR", "LINEOUT",
 			"Internal Speaker", "Speaker Amp OUTL",
 			"Internal Speaker", "Speaker Amp OUTR",
 			"Headphone Jack", "HP",
-			"ADCL", "Left ADC",
-			"ADCR", "Right ADC",
+			"AIF1 Slot 0 Left ADC", "Left ADC",
+			"AIF1 Slot 0 Right ADC", "Right ADC",
 			"Internal Microphone Left", "MBIAS",
 			"MIC1", "Internal Microphone Left",
 			"Internal Microphone Right", "HBIAS",

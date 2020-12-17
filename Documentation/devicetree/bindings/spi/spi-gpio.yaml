@@ -53,8 +53,6 @@ required:
   - num-chipselects
   - sck-gpios
 
-unevaluatedProperties: false
-
 examples:
   - |
     spi {

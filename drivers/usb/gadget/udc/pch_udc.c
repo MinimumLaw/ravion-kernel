@@ -12,8 +12,11 @@
 #include <linux/interrupt.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
-#include <linux/gpio/consumer.h>
+#include <linux/gpio.h>
 #include <linux/irq.h>
+
+/* GPIO port for VBUS detecting */
+static int vbus_gpio_port = -1;		/* GPIO port number (-1:Not used) */
 
 #define PCH_VBUS_PERIOD		3000	/* VBUS polling period (msec) */
 #define PCH_VBUS_INTERVAL	10	/* VBUS polling interval (msec) */
@@ -298,13 +301,13 @@ struct pch_udc_ep {
 /**
  * struct pch_vbus_gpio_data - Structure holding GPIO informaton
  *					for detecting VBUS
- * @port:		gpio descriptor for the VBUS GPIO
+ * @port:		gpio port number
  * @intr:		gpio interrupt number
  * @irq_work_fall:	Structure for WorkQueue
  * @irq_work_rise:	Structure for WorkQueue
  */
 struct pch_vbus_gpio_data {
-	struct gpio_desc	*port;
+	int			port;
 	int			intr;
 	struct work_struct	irq_work_fall;
 	struct work_struct	irq_work_rise;
@@ -1251,7 +1254,7 @@ static int pch_vbus_gpio_get_value(struct pch_udc_dev *dev)
 	int vbus = 0;
 
 	if (dev->vbus_gpio.port)
-		vbus = gpiod_get_value(dev->vbus_gpio.port) ? 1 : 0;
+		vbus = gpio_get_value(dev->vbus_gpio.port) ? 1 : 0;
 	else
 		vbus = -1;
 
@@ -1353,30 +1356,42 @@ static irqreturn_t pch_vbus_gpio_irq(int irq, void *data)
 /**
  * pch_vbus_gpio_init() - This API initializes GPIO port detecting VBUS.
  * @dev:		Reference to the driver structure
+ * @vbus_gpio_port:	Number of GPIO port to detect gpio
  *
  * Return codes:
  *	0: Success
  *	-EINVAL: GPIO port is invalid or can't be initialized.
  */
-static int pch_vbus_gpio_init(struct pch_udc_dev *dev)
+static int pch_vbus_gpio_init(struct pch_udc_dev *dev, int vbus_gpio_port)
 {
 	int err;
 	int irq_num = 0;
-	struct gpio_desc *gpiod;
 
-	dev->vbus_gpio.port = NULL;
+	dev->vbus_gpio.port = 0;
 	dev->vbus_gpio.intr = 0;
 
-	/* Retrieve the GPIO line from the USB gadget device */
-	gpiod = devm_gpiod_get(dev->gadget.dev.parent, NULL, GPIOD_IN);
-	if (IS_ERR(gpiod))
-		return PTR_ERR(gpiod);
-	gpiod_set_consumer_name(gpiod, "pch_vbus");
+	if (vbus_gpio_port <= -1)
+		return -EINVAL;
 
-	dev->vbus_gpio.port = gpiod;
+	err = gpio_is_valid(vbus_gpio_port);
+	if (!err) {
+		pr_err("%s: gpio port %d is invalid\n",
+			__func__, vbus_gpio_port);
+		return -EINVAL;
+	}
+
+	err = gpio_request(vbus_gpio_port, "pch_vbus");
+	if (err) {
+		pr_err("%s: can't request gpio port %d, err: %d\n",
+			__func__, vbus_gpio_port, err);
+		return -EINVAL;
+	}
+
+	dev->vbus_gpio.port = vbus_gpio_port;
+	gpio_direction_input(vbus_gpio_port);
 	INIT_WORK(&dev->vbus_gpio.irq_work_fall, pch_vbus_gpio_work_fall);
 
-	irq_num = gpiod_to_irq(gpiod);
+	irq_num = gpio_to_irq(vbus_gpio_port);
 	if (irq_num > 0) {
 		irq_set_irq_type(irq_num, IRQ_TYPE_EDGE_BOTH);
 		err = request_irq(irq_num, pch_vbus_gpio_irq, 0,
@@ -1402,6 +1417,9 @@ static void pch_vbus_gpio_free(struct pch_udc_dev *dev)
 {
 	if (dev->vbus_gpio.intr)
 		free_irq(dev->vbus_gpio.intr, dev);
+
+	if (dev->vbus_gpio.port)
+		gpio_free(dev->vbus_gpio.port);
 }
 
 /**
@@ -2876,7 +2894,7 @@ static int pch_udc_pcd_init(struct pch_udc_dev *dev)
 {
 	pch_udc_init(dev);
 	pch_udc_pcd_reinit(dev);
-	pch_vbus_gpio_init(dev);
+	pch_vbus_gpio_init(dev, vbus_gpio_port);
 	return 0;
 }
 
@@ -3077,13 +3095,6 @@ static int pch_udc_probe(struct pci_dev *pdev,
 		return retval;
 
 	dev->base_addr = pcim_iomap_table(pdev)[bar];
-
-	/*
-	 * FIXME: add a GPIO descriptor table to pdev.dev using
-	 * gpiod_add_descriptor_table() from <linux/gpio/machine.h> based on
-	 * the PCI subsystem ID. The system-dependent GPIO is necessary for
-	 * VBUS operation.
-	 */
 
 	/* initialize the hardware */
 	if (pch_udc_pcd_init(dev))

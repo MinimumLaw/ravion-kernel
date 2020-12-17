@@ -14,7 +14,6 @@
 #include <linux/types.h>
 #include <linux/pgtable.h>
 #include <asm/mmiowb.h>
-#include <asm/early_ioremap.h>
 
 /*
  * MMIO access functions are separated out to break dependency cycles

@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_EXPBUF:
 
@@ -12,21 +18,23 @@ Name
 
 VIDIOC_EXPBUF - Export a buffer as a DMABUF file descriptor.
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_EXPBUF
+.. c:function:: int ioctl( int fd, VIDIOC_EXPBUF, struct v4l2_exportbuffer *argp )
+    :name: VIDIOC_EXPBUF
 
-``int ioctl(int fd, VIDIOC_EXPBUF, struct v4l2_exportbuffer *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_exportbuffer`.
+
 
 Description
 ===========
@@ -62,8 +70,10 @@ for details about importing DMABUF files into V4L2 nodes. It is
 recommended to close a DMABUF file when it is no longer used to allow
 the associated memory to be reclaimed.
 
+
 Examples
 ========
+
 
 .. code-block:: c
 
@@ -83,6 +93,7 @@ Examples
 
 	return 0;
     }
+
 
 .. code-block:: c
 
@@ -109,6 +120,7 @@ Examples
 
 	return 0;
     }
+
 
 .. c:type:: v4l2_exportbuffer
 
@@ -149,6 +161,7 @@ Examples
       - ``reserved[11]``
       - Reserved field for future use. Drivers and applications must set
 	the array to zero.
+
 
 Return Value
 ============

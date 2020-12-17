@@ -458,7 +458,15 @@ static int cfhsi_rx_desc(struct cfhsi_desc *desc, struct cfhsi *cfhsi)
 		skb_reset_mac_header(skb);
 		skb->dev = cfhsi->ndev;
 
-		netif_rx_any_context(skb);
+		/*
+		 * We are in a callback handler and
+		 * unfortunately we don't know what context we're
+		 * running in.
+		 */
+		if (in_interrupt())
+			netif_rx(skb);
+		else
+			netif_rx_ni(skb);
 
 		/* Update network statistics. */
 		cfhsi->ndev->stats.rx_packets++;
@@ -579,7 +587,14 @@ static int cfhsi_rx_pld(struct cfhsi_desc *desc, struct cfhsi *cfhsi)
 		skb_reset_mac_header(skb);
 		skb->dev = cfhsi->ndev;
 
-		netif_rx_any_context(skb);
+		/*
+		 * We're called in callback from HSI
+		 * and don't know the context we're running in.
+		 */
+		if (in_interrupt())
+			netif_rx(skb);
+		else
+			netif_rx_ni(skb);
 
 		/* Update network statistics. */
 		cfhsi->ndev->stats.rx_packets++;

@@ -248,6 +248,8 @@ struct cec_adapter {
 #endif
 
 	struct dentry *cec_dir;
+	struct dentry *status_file;
+	struct dentry *error_inj_file;
 
 	u32 sequence;
 

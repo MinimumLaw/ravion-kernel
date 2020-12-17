@@ -40,13 +40,13 @@ static DEFINE_MUTEX(rpadlpar_mutex);
 static struct device_node *find_vio_slot_node(char *drc_name)
 {
 	struct device_node *parent = of_find_node_by_name(NULL, "vdevice");
-	struct device_node *dn;
+	struct device_node *dn = NULL;
 	int rc;
 
 	if (!parent)
 		return NULL;
 
-	for_each_child_of_node(parent, dn) {
+	while ((dn = of_get_next_child(parent, dn))) {
 		rc = rpaphp_check_drc_props(dn, drc_name, NULL);
 		if (rc == 0)
 			break;
@@ -60,10 +60,10 @@ static struct device_node *find_vio_slot_node(char *drc_name)
 static struct device_node *find_php_slot_pci_node(char *drc_name,
 						  char *drc_type)
 {
-	struct device_node *np;
+	struct device_node *np = NULL;
 	int rc;
 
-	for_each_node_by_name(np, "pci") {
+	while ((np = of_find_node_by_name(np, "pci"))) {
 		rc = rpaphp_check_drc_props(np, drc_name, drc_type);
 		if (rc == 0)
 			break;

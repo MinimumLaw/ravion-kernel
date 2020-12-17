@@ -96,7 +96,7 @@ struct siu_info {
 };
 
 struct siu_stream {
-	struct work_struct		work;
+	struct tasklet_struct		tasklet;
 	struct snd_pcm_substream	*substream;
 	snd_pcm_format_t		format;
 	size_t				buf_bytes;

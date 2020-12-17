@@ -315,7 +315,11 @@ static int tm5p5_nt35596_probe(struct mipi_dsi_device *dsi)
 		return ret;
 	}
 
-	drm_panel_add(&ctx->panel);
+	ret = drm_panel_add(&ctx->panel);
+	if (ret < 0) {
+		dev_err(dev, "Failed to add panel: %d\n", ret);
+		return ret;
+	}
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0) {

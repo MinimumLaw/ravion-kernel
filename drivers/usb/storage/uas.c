@@ -279,17 +279,17 @@ static bool uas_evaluate_response_iu(struct response_iu *riu, struct scsi_cmnd *
 
 	switch (response_code) {
 	case RC_INCORRECT_LUN:
-		set_host_byte(cmnd, DID_BAD_TARGET);
+		cmnd->result = DID_BAD_TARGET << 16;
 		break;
 	case RC_TMF_SUCCEEDED:
-		set_host_byte(cmnd, DID_OK);
+		cmnd->result = DID_OK << 16;
 		break;
 	case RC_TMF_NOT_SUPPORTED:
-		set_host_byte(cmnd, DID_TARGET_FAILURE);
+		cmnd->result = DID_TARGET_FAILURE << 16;
 		break;
 	default:
 		uas_log_cmd_state(cmnd, "response iu", response_code);
-		set_host_byte(cmnd, DID_ERROR);
+		cmnd->result = DID_ERROR << 16;
 		break;
 	}
 
@@ -660,7 +660,7 @@ static int uas_queuecommand_lck(struct scsi_cmnd *cmnd,
 	spin_lock_irqsave(&devinfo->lock, flags);
 
 	if (devinfo->resetting) {
-		set_host_byte(cmnd, DID_ERROR);
+		cmnd->result = DID_ERROR << 16;
 		cmnd->scsi_done(cmnd);
 		goto zombie;
 	}
@@ -704,7 +704,7 @@ static int uas_queuecommand_lck(struct scsi_cmnd *cmnd,
 	 * of queueing, no matter how fatal the error
 	 */
 	if (err == -ENODEV) {
-		set_host_byte(cmnd, DID_ERROR);
+		cmnd->result = DID_ERROR << 16;
 		cmnd->scsi_done(cmnd);
 		goto zombie;
 	}

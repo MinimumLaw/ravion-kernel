@@ -2729,7 +2729,7 @@ static int create_gang(struct intel_engine_cs *engine,
 	i915_gem_object_put(obj);
 	intel_context_put(ce);
 
-	rq->mock.link.next = &(*prev)->mock.link;
+	rq->client_link.next = &(*prev)->client_link;
 	*prev = rq;
 	return 0;
 
@@ -2970,7 +2970,8 @@ static int live_preempt_gang(void *arg)
 		}
 
 		while (rq) { /* wait for each rq from highest to lowest prio */
-			struct i915_request *n = list_next_entry(rq, mock.link);
+			struct i915_request *n =
+				list_next_entry(rq, client_link);
 
 			if (err == 0 && i915_request_wait(rq, 0, HZ / 5) < 0) {
 				struct drm_printer p =
@@ -3089,7 +3090,7 @@ static struct i915_vma *create_global(struct intel_gt *gt, size_t sz)
 		return vma;
 	}
 
-	err = i915_ggtt_pin(vma, NULL, 0, 0);
+	err = i915_ggtt_pin(vma, 0, 0);
 	if (err) {
 		i915_vma_put(vma);
 		return ERR_PTR(err);
@@ -4996,7 +4997,6 @@ static int __live_lrc_state(struct intel_engine_cs *engine,
 {
 	struct intel_context *ce;
 	struct i915_request *rq;
-	struct i915_gem_ww_ctx ww;
 	enum {
 		RING_START_IDX = 0,
 		RING_TAIL_IDX,
@@ -5011,11 +5011,7 @@ static int __live_lrc_state(struct intel_engine_cs *engine,
 	if (IS_ERR(ce))
 		return PTR_ERR(ce);
 
-	i915_gem_ww_ctx_init(&ww, false);
-retry:
-	err = i915_gem_object_lock(scratch->obj, &ww);
-	if (!err)
-		err = intel_context_pin_ww(ce, &ww);
+	err = intel_context_pin(ce);
 	if (err)
 		goto err_put;
 
@@ -5044,9 +5040,11 @@ retry:
 	*cs++ = i915_ggtt_offset(scratch) + RING_TAIL_IDX * sizeof(u32);
 	*cs++ = 0;
 
+	i915_vma_lock(scratch);
 	err = i915_request_await_object(rq, scratch->obj, true);
 	if (!err)
 		err = i915_vma_move_to_active(scratch, rq, EXEC_OBJECT_WRITE);
+	i915_vma_unlock(scratch);
 
 	i915_request_get(rq);
 	i915_request_add(rq);
@@ -5083,12 +5081,6 @@ err_rq:
 err_unpin:
 	intel_context_unpin(ce);
 err_put:
-	if (err == -EDEADLK) {
-		err = i915_gem_ww_ctx_backoff(&ww);
-		if (!err)
-			goto retry;
-	}
-	i915_gem_ww_ctx_fini(&ww);
 	intel_context_put(ce);
 	return err;
 }

@@ -26,7 +26,6 @@
 #include <linux/crc32.h>
 #include <linux/delay.h>
 
-#include <drm/drm_drv.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
@@ -163,8 +162,7 @@ static void qxl_update_offset_props(struct qxl_device *qdev)
 void qxl_display_read_client_monitors_config(struct qxl_device *qdev)
 {
 	struct drm_device *dev = &qdev->ddev;
-	struct drm_modeset_acquire_ctx ctx;
-	int status, retries, ret;
+	int status, retries;
 
 	for (retries = 0; retries < 10; retries++) {
 		status = qxl_display_copy_rom_client_monitors_config(qdev);
@@ -185,9 +183,9 @@ void qxl_display_read_client_monitors_config(struct qxl_device *qdev)
 		return;
 	}
 
-	DRM_MODESET_LOCK_ALL_BEGIN(dev, ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE, ret);
+	drm_modeset_lock_all(dev);
 	qxl_update_offset_props(qdev);
-	DRM_MODESET_LOCK_ALL_END(dev, ctx, ret);
+	drm_modeset_unlock_all(dev);
 	if (!drm_helper_hpd_irq_event(dev)) {
 		/* notify that the monitor configuration changed, to
 		   adjust at the arbitrary resolution */
@@ -405,17 +403,18 @@ static int qxl_framebuffer_surface_dirty(struct drm_framebuffer *fb,
 	struct qxl_device *qdev = to_qxl(fb->dev);
 	struct drm_clip_rect norect;
 	struct qxl_bo *qobj;
-	struct drm_modeset_acquire_ctx ctx;
 	bool is_primary;
-	int inc = 1, ret;
+	int inc = 1;
 
-	DRM_MODESET_LOCK_ALL_BEGIN(fb->dev, ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE, ret);
+	drm_modeset_lock_all(fb->dev);
 
 	qobj = gem_to_qxl_bo(fb->obj[0]);
 	/* if we aren't primary surface ignore this */
 	is_primary = qobj->shadow ? qobj->shadow->is_primary : qobj->is_primary;
-	if (!is_primary)
-		goto out_lock_end;
+	if (!is_primary) {
+		drm_modeset_unlock_all(fb->dev);
+		return 0;
+	}
 
 	if (!num_clips) {
 		num_clips = 1;
@@ -431,8 +430,7 @@ static int qxl_framebuffer_surface_dirty(struct drm_framebuffer *fb,
 	qxl_draw_dirty_fb(qdev, fb, qobj, flags, color,
 			  clips, num_clips, inc, 0);
 
-out_lock_end:
-	DRM_MODESET_LOCK_ALL_END(fb->dev, ctx, ret);
+	drm_modeset_unlock_all(fb->dev);
 
 	return 0;
 }

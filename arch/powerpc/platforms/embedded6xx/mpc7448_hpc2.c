@@ -147,8 +147,7 @@ static void __noreturn mpc7448_hpc2_restart(char *cmd)
 	local_irq_disable();
 
 	/* Set exception prefix high - to the firmware */
-	mtmsr(mfmsr() | MSR_IP);
-	isync();
+	_nmask_and_or_msr(0, MSR_IP);
 
 	for (;;) ;		/* Spin until reset happens */
 }

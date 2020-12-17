@@ -54,9 +54,6 @@ static struct {
 
 static struct timekeeper shadow_timekeeper;
 
-/* flag for if timekeeping is suspended */
-int __read_mostly timekeeping_suspended;
-
 /**
  * struct tk_fast - NMI safe timekeeper
  * @seq:	Sequence counter for protecting updates. The lowest bit
@@ -67,7 +64,7 @@ int __read_mostly timekeeping_suspended;
  * See @update_fast_timekeeper() below.
  */
 struct tk_fast {
-	seqcount_latch_t	seq;
+	seqcount_raw_spinlock_t	seq;
 	struct tk_read_base	base[2];
 };
 
@@ -76,41 +73,27 @@ static u64 cycles_at_suspend;
 
 static u64 dummy_clock_read(struct clocksource *cs)
 {
-	if (timekeeping_suspended)
-		return cycles_at_suspend;
-	return local_clock();
+	return cycles_at_suspend;
 }
 
 static struct clocksource dummy_clock = {
 	.read = dummy_clock_read,
 };
 
-/*
- * Boot time initialization which allows local_clock() to be utilized
- * during early boot when clocksources are not available. local_clock()
- * returns nanoseconds already so no conversion is required, hence mult=1
- * and shift=0. When the first proper clocksource is installed then
- * the fast time keepers are updated with the correct values.
- */
-#define FAST_TK_INIT						\
-	{							\
-		.clock		= &dummy_clock,			\
-		.mask		= CLOCKSOURCE_MASK(64),		\
-		.mult		= 1,				\
-		.shift		= 0,				\
-	}
-
 static struct tk_fast tk_fast_mono ____cacheline_aligned = {
-	.seq     = SEQCNT_LATCH_ZERO(tk_fast_mono.seq),
-	.base[0] = FAST_TK_INIT,
-	.base[1] = FAST_TK_INIT,
+	.seq     = SEQCNT_RAW_SPINLOCK_ZERO(tk_fast_mono.seq, &timekeeper_lock),
+	.base[0] = { .clock = &dummy_clock, },
+	.base[1] = { .clock = &dummy_clock, },
 };
 
 static struct tk_fast tk_fast_raw  ____cacheline_aligned = {
-	.seq     = SEQCNT_LATCH_ZERO(tk_fast_raw.seq),
-	.base[0] = FAST_TK_INIT,
-	.base[1] = FAST_TK_INIT,
+	.seq     = SEQCNT_RAW_SPINLOCK_ZERO(tk_fast_raw.seq, &timekeeper_lock),
+	.base[0] = { .clock = &dummy_clock, },
+	.base[1] = { .clock = &dummy_clock, },
 };
+
+/* flag for if timekeeping is suspended */
+int __read_mostly timekeeping_suspended;
 
 static inline void tk_normalize_xtime(struct timekeeper *tk)
 {
@@ -484,7 +467,7 @@ static __always_inline u64 __ktime_get_fast_ns(struct tk_fast *tkf)
 					tk_clock_read(tkr),
 					tkr->cycle_last,
 					tkr->mask));
-	} while (read_seqcount_latch_retry(&tkf->seq, seq));
+	} while (read_seqcount_retry(&tkf->seq, seq));
 
 	return now;
 }
@@ -530,29 +513,29 @@ u64 notrace ktime_get_boot_fast_ns(void)
 }
 EXPORT_SYMBOL_GPL(ktime_get_boot_fast_ns);
 
+
 /*
  * See comment for __ktime_get_fast_ns() vs. timestamp ordering
  */
-static __always_inline u64 __ktime_get_real_fast(struct tk_fast *tkf, u64 *mono)
+static __always_inline u64 __ktime_get_real_fast_ns(struct tk_fast *tkf)
 {
 	struct tk_read_base *tkr;
-	u64 basem, baser, delta;
 	unsigned int seq;
+	u64 now;
 
 	do {
 		seq = raw_read_seqcount_latch(&tkf->seq);
 		tkr = tkf->base + (seq & 0x01);
-		basem = ktime_to_ns(tkr->base);
-		baser = ktime_to_ns(tkr->base_real);
+		now = ktime_to_ns(tkr->base_real);
 
-		delta = timekeeping_delta_to_ns(tkr,
-				clocksource_delta(tk_clock_read(tkr),
-				tkr->cycle_last, tkr->mask));
-	} while (read_seqcount_latch_retry(&tkf->seq, seq));
+		now += timekeeping_delta_to_ns(tkr,
+				clocksource_delta(
+					tk_clock_read(tkr),
+					tkr->cycle_last,
+					tkr->mask));
+	} while (read_seqcount_retry(&tkf->seq, seq));
 
-	if (mono)
-		*mono = basem + delta;
-	return baser + delta;
+	return now;
 }
 
 /**
@@ -560,63 +543,9 @@ static __always_inline u64 __ktime_get_real_fast(struct tk_fast *tkf, u64 *mono)
  */
 u64 ktime_get_real_fast_ns(void)
 {
-	return __ktime_get_real_fast(&tk_fast_mono, NULL);
+	return __ktime_get_real_fast_ns(&tk_fast_mono);
 }
 EXPORT_SYMBOL_GPL(ktime_get_real_fast_ns);
-
-/**
- * ktime_get_fast_timestamps: - NMI safe timestamps
- * @snapshot:	Pointer to timestamp storage
- *
- * Stores clock monotonic, boottime and realtime timestamps.
- *
- * Boot time is a racy access on 32bit systems if the sleep time injection
- * happens late during resume and not in timekeeping_resume(). That could
- * be avoided by expanding struct tk_read_base with boot offset for 32bit
- * and adding more overhead to the update. As this is a hard to observe
- * once per resume event which can be filtered with reasonable effort using
- * the accurate mono/real timestamps, it's probably not worth the trouble.
- *
- * Aside of that it might be possible on 32 and 64 bit to observe the
- * following when the sleep time injection happens late:
- *
- * CPU 0				CPU 1
- * timekeeping_resume()
- * ktime_get_fast_timestamps()
- *	mono, real = __ktime_get_real_fast()
- *					inject_sleep_time()
- *					   update boot offset
- *	boot = mono + bootoffset;
- *
- * That means that boot time already has the sleep time adjustment, but
- * real time does not. On the next readout both are in sync again.
- *
- * Preventing this for 64bit is not really feasible without destroying the
- * careful cache layout of the timekeeper because the sequence count and
- * struct tk_read_base would then need two cache lines instead of one.
- *
- * Access to the time keeper clock source is disabled accross the innermost
- * steps of suspend/resume. The accessors still work, but the timestamps
- * are frozen until time keeping is resumed which happens very early.
- *
- * For regular suspend/resume there is no observable difference vs. sched
- * clock, but it might affect some of the nasty low level debug printks.
- *
- * OTOH, access to sched clock is not guaranteed accross suspend/resume on
- * all systems either so it depends on the hardware in use.
- *
- * If that turns out to be a real problem then this could be mitigated by
- * using sched clock in a similar way as during early boot. But it's not as
- * trivial as on early boot because it needs some careful protection
- * against the clock monotonic timestamp jumping backwards on resume.
- */
-void ktime_get_fast_timestamps(struct ktime_timestamps *snapshot)
-{
-	struct timekeeper *tk = &tk_core.timekeeper;
-
-	snapshot->real = __ktime_get_real_fast(&tk_fast_mono, &snapshot->mono);
-	snapshot->boot = snapshot->mono + ktime_to_ns(data_race(tk->offs_boot));
-}
 
 /**
  * halt_fast_timekeeper - Prevent fast timekeeper from accessing clocksource.

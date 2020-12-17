@@ -261,9 +261,7 @@ static int lg4573_probe(struct spi_device *spi)
 	drm_panel_init(&ctx->panel, &spi->dev, &lg4573_drm_funcs,
 		       DRM_MODE_CONNECTOR_DPI);
 
-	drm_panel_add(&ctx->panel);
-
-	return 0;
+	return drm_panel_add(&ctx->panel);
 }
 
 static int lg4573_remove(struct spi_device *spi)

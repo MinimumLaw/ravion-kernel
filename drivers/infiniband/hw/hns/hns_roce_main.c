@@ -141,8 +141,8 @@ static int hns_roce_netdev_event(struct notifier_block *self,
 	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
 	struct hns_roce_ib_iboe *iboe = NULL;
 	struct hns_roce_dev *hr_dev = NULL;
-	int ret;
-	u8 port;
+	u8 port = 0;
+	int ret = 0;
 
 	hr_dev = container_of(self, struct hns_roce_dev, iboe.nb);
 	iboe = &hr_dev->iboe;
@@ -323,8 +323,6 @@ static int hns_roce_alloc_ucontext(struct ib_ucontext *uctx,
 		mutex_init(&context->page_mutex);
 	}
 
-	resp.cqe_size = hr_dev->caps.cqe_sz;
-
 	ret = ib_copy_to_udata(udata, &resp, sizeof(resp));
 	if (ret)
 		goto error_fail_copy_to_udata;
@@ -456,8 +454,6 @@ static const struct ib_device_ops hns_roce_dev_mr_ops = {
 static const struct ib_device_ops hns_roce_dev_mw_ops = {
 	.alloc_mw = hns_roce_alloc_mw,
 	.dealloc_mw = hns_roce_dealloc_mw,
-
-	INIT_RDMA_OBJ_SIZE(ib_mw, hns_roce_mw, ibmw),
 };
 
 static const struct ib_device_ops hns_roce_dev_frmr_ops = {
@@ -549,8 +545,7 @@ static int hns_roce_register_device(struct hns_roce_dev *hr_dev)
 		if (ret)
 			return ret;
 	}
-	dma_set_max_seg_size(dev, UINT_MAX);
-	ret = ib_register_device(ib_dev, "hns_%d", dev);
+	ret = ib_register_device(ib_dev, "hns_%d");
 	if (ret) {
 		dev_err(dev, "ib_register_device failed!\n");
 		return ret;
@@ -592,7 +587,7 @@ static int hns_roce_init_hem(struct hns_roce_dev *hr_dev)
 	}
 
 	ret = hns_roce_init_hem_table(hr_dev, &hr_dev->qp_table.qp_table,
-				      HEM_TYPE_QPC, hr_dev->caps.qpc_sz,
+				      HEM_TYPE_QPC, hr_dev->caps.qpc_entry_sz,
 				      hr_dev->caps.num_qps, 1);
 	if (ret) {
 		dev_err(dev, "Failed to init QP context memory, aborting.\n");
@@ -643,11 +638,11 @@ static int hns_roce_init_hem(struct hns_roce_dev *hr_dev)
 		}
 	}
 
-	if (hr_dev->caps.sccc_sz) {
+	if (hr_dev->caps.sccc_entry_sz) {
 		ret = hns_roce_init_hem_table(hr_dev,
 					      &hr_dev->qp_table.sccc_table,
 					      HEM_TYPE_SCCC,
-					      hr_dev->caps.sccc_sz,
+					      hr_dev->caps.sccc_entry_sz,
 					      hr_dev->caps.num_qps, 1);
 		if (ret) {
 			dev_err(dev,
@@ -687,7 +682,7 @@ err_unmap_qpc_timer:
 		hns_roce_cleanup_hem_table(hr_dev, &hr_dev->qpc_timer_table);
 
 err_unmap_ctx:
-	if (hr_dev->caps.sccc_sz)
+	if (hr_dev->caps.sccc_entry_sz)
 		hns_roce_cleanup_hem_table(hr_dev,
 					   &hr_dev->qp_table.sccc_table);
 err_unmap_srq:

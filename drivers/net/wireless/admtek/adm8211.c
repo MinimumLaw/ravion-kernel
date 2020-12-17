@@ -324,8 +324,8 @@ static void adm8211_interrupt_tci(struct ieee80211_hw *dev)
 
 		/* TODO: check TDES0_STATUS_TUF and TDES0_STATUS_TRO */
 
-		dma_unmap_single(&priv->pdev->dev, info->mapping,
-				 info->skb->len, DMA_TO_DEVICE);
+		pci_unmap_single(priv->pdev, info->mapping,
+				 info->skb->len, PCI_DMA_TODEVICE);
 
 		ieee80211_tx_info_clear_status(txi);
 
@@ -382,34 +382,35 @@ static void adm8211_interrupt_rci(struct ieee80211_hw *dev)
 		} else if (pktlen < RX_COPY_BREAK) {
 			skb = dev_alloc_skb(pktlen);
 			if (skb) {
-				dma_sync_single_for_cpu(&priv->pdev->dev,
-							priv->rx_buffers[entry].mapping,
-							pktlen,
-							DMA_FROM_DEVICE);
+				pci_dma_sync_single_for_cpu(
+					priv->pdev,
+					priv->rx_buffers[entry].mapping,
+					pktlen, PCI_DMA_FROMDEVICE);
 				skb_put_data(skb,
 					     skb_tail_pointer(priv->rx_buffers[entry].skb),
 					     pktlen);
-				dma_sync_single_for_device(&priv->pdev->dev,
-							   priv->rx_buffers[entry].mapping,
-							   RX_PKT_SIZE,
-							   DMA_FROM_DEVICE);
+				pci_dma_sync_single_for_device(
+					priv->pdev,
+					priv->rx_buffers[entry].mapping,
+					RX_PKT_SIZE, PCI_DMA_FROMDEVICE);
 			}
 		} else {
 			newskb = dev_alloc_skb(RX_PKT_SIZE);
 			if (newskb) {
 				skb = priv->rx_buffers[entry].skb;
 				skb_put(skb, pktlen);
-				dma_unmap_single(&priv->pdev->dev,
-						 priv->rx_buffers[entry].mapping,
-						 RX_PKT_SIZE, DMA_FROM_DEVICE);
+				pci_unmap_single(
+					priv->pdev,
+					priv->rx_buffers[entry].mapping,
+					RX_PKT_SIZE, PCI_DMA_FROMDEVICE);
 				priv->rx_buffers[entry].skb = newskb;
 				priv->rx_buffers[entry].mapping =
-					dma_map_single(&priv->pdev->dev,
+					pci_map_single(priv->pdev,
 						       skb_tail_pointer(newskb),
 						       RX_PKT_SIZE,
-						       DMA_FROM_DEVICE);
-				if (dma_mapping_error(&priv->pdev->dev,
-						      priv->rx_buffers[entry].mapping)) {
+						       PCI_DMA_FROMDEVICE);
+				if (pci_dma_mapping_error(priv->pdev,
+					   priv->rx_buffers[entry].mapping)) {
 					priv->rx_buffers[entry].skb = NULL;
 					dev_kfree_skb(newskb);
 					skb = NULL;
@@ -1448,11 +1449,11 @@ static int adm8211_init_rings(struct ieee80211_hw *dev)
 		rx_info->skb = dev_alloc_skb(RX_PKT_SIZE);
 		if (rx_info->skb == NULL)
 			break;
-		rx_info->mapping = dma_map_single(&priv->pdev->dev,
+		rx_info->mapping = pci_map_single(priv->pdev,
 						  skb_tail_pointer(rx_info->skb),
 						  RX_PKT_SIZE,
-						  DMA_FROM_DEVICE);
-		if (dma_mapping_error(&priv->pdev->dev, rx_info->mapping)) {
+						  PCI_DMA_FROMDEVICE);
+		if (pci_dma_mapping_error(priv->pdev, rx_info->mapping)) {
 			dev_kfree_skb(rx_info->skb);
 			rx_info->skb = NULL;
 			break;
@@ -1489,9 +1490,10 @@ static void adm8211_free_rings(struct ieee80211_hw *dev)
 		if (!priv->rx_buffers[i].skb)
 			continue;
 
-		dma_unmap_single(&priv->pdev->dev,
-				 priv->rx_buffers[i].mapping, RX_PKT_SIZE,
-				 DMA_FROM_DEVICE);
+		pci_unmap_single(
+			priv->pdev,
+			priv->rx_buffers[i].mapping,
+			RX_PKT_SIZE, PCI_DMA_FROMDEVICE);
 
 		dev_kfree_skb(priv->rx_buffers[i].skb);
 	}
@@ -1500,9 +1502,10 @@ static void adm8211_free_rings(struct ieee80211_hw *dev)
 		if (!priv->tx_buffers[i].skb)
 			continue;
 
-		dma_unmap_single(&priv->pdev->dev,
+		pci_unmap_single(priv->pdev,
 				 priv->tx_buffers[i].mapping,
-				 priv->tx_buffers[i].skb->len, DMA_TO_DEVICE);
+				 priv->tx_buffers[i].skb->len,
+				 PCI_DMA_TODEVICE);
 
 		dev_kfree_skb(priv->tx_buffers[i].skb);
 	}
@@ -1629,9 +1632,9 @@ static int adm8211_tx_raw(struct ieee80211_hw *dev, struct sk_buff *skb,
 	unsigned int entry;
 	u32 flag;
 
-	mapping = dma_map_single(&priv->pdev->dev, skb->data, skb->len,
-				 DMA_TO_DEVICE);
-	if (dma_mapping_error(&priv->pdev->dev, mapping))
+	mapping = pci_map_single(priv->pdev, skb->data, skb->len,
+				 PCI_DMA_TODEVICE);
+	if (pci_dma_mapping_error(priv->pdev, mapping))
 		return -ENOMEM;
 
 	spin_lock_irqsave(&priv->lock, flags);
@@ -1742,8 +1745,8 @@ static int adm8211_alloc_rings(struct ieee80211_hw *dev)
 	/* Allocate TX/RX descriptors */
 	ring_size = sizeof(struct adm8211_desc) * priv->rx_ring_size +
 		    sizeof(struct adm8211_desc) * priv->tx_ring_size;
-	priv->rx_ring = dma_alloc_coherent(&priv->pdev->dev, ring_size,
-					   &priv->rx_ring_dma, GFP_KERNEL);
+	priv->rx_ring = pci_alloc_consistent(priv->pdev, ring_size,
+					     &priv->rx_ring_dma);
 
 	if (!priv->rx_ring) {
 		kfree(priv->rx_buffers);
@@ -1815,8 +1818,8 @@ static int adm8211_probe(struct pci_dev *pdev,
 		return err; /* someone else grabbed it? don't disable it */
 	}
 
-	if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(32)) ||
-	    dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32))) {
+	if (pci_set_dma_mask(pdev, DMA_BIT_MASK(32)) ||
+	    pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		printk(KERN_ERR "%s (adm8211): No suitable DMA available\n",
 		       pci_name(pdev));
 		goto err_free_reg;
@@ -1926,10 +1929,10 @@ static int adm8211_probe(struct pci_dev *pdev,
 	kfree(priv->eeprom);
 
  err_free_desc:
-	dma_free_coherent(&pdev->dev,
-			  sizeof(struct adm8211_desc) * priv->rx_ring_size +
-			  sizeof(struct adm8211_desc) * priv->tx_ring_size,
-			  priv->rx_ring, priv->rx_ring_dma);
+	pci_free_consistent(pdev,
+			    sizeof(struct adm8211_desc) * priv->rx_ring_size +
+			    sizeof(struct adm8211_desc) * priv->tx_ring_size,
+			    priv->rx_ring, priv->rx_ring_dma);
 	kfree(priv->rx_buffers);
 
  err_iounmap:
@@ -1959,10 +1962,10 @@ static void adm8211_remove(struct pci_dev *pdev)
 
 	priv = dev->priv;
 
-	dma_free_coherent(&pdev->dev,
-			  sizeof(struct adm8211_desc) * priv->rx_ring_size +
-			  sizeof(struct adm8211_desc) * priv->tx_ring_size,
-			  priv->rx_ring, priv->rx_ring_dma);
+	pci_free_consistent(pdev,
+			    sizeof(struct adm8211_desc) * priv->rx_ring_size +
+			    sizeof(struct adm8211_desc) * priv->tx_ring_size,
+			    priv->rx_ring, priv->rx_ring_dma);
 
 	kfree(priv->rx_buffers);
 	kfree(priv->eeprom);

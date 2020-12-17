@@ -67,6 +67,7 @@ struct nfs4_xattr_bucket {
 
 struct nfs4_xattr_cache {
 	struct kref ref;
+	spinlock_t hash_lock;	/* protects hashtable and lru */
 	struct nfs4_xattr_bucket buckets[NFS4_XATTR_HASH_SIZE];
 	struct list_head lru;
 	struct list_head dispose;
@@ -881,7 +882,7 @@ nfs4_xattr_cache_count(struct shrinker *shrink, struct shrink_control *sc)
 {
 	unsigned long count;
 
-	count = list_lru_shrink_count(&nfs4_xattr_cache_lru, sc);
+	count = list_lru_count(&nfs4_xattr_cache_lru);
 	return vfs_pressure_ratio(count);
 }
 
@@ -975,7 +976,7 @@ nfs4_xattr_entry_count(struct shrinker *shrink, struct shrink_control *sc)
 	lru = (shrink == &nfs4_xattr_large_entry_shrinker) ?
 	    &nfs4_xattr_large_entry_lru : &nfs4_xattr_entry_lru;
 
-	count = list_lru_shrink_count(lru, sc);
+	count = list_lru_count(lru);
 	return vfs_pressure_ratio(count);
 }
 

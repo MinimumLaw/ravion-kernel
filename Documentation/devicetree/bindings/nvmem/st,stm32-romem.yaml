@@ -42,8 +42,6 @@ required:
   - compatible
   - reg
 
-unevaluatedProperties: false
-
 examples:
   - |
     efuse@1fff7800 {

@@ -48,7 +48,7 @@
 	flash@0 {
 		status = "okay";
 		m25p,fast-read;
-		label = "spi0.0";
+		label = "fmc0";
 #include "facebook-bmc-flash-layout.dtsi"
 	};
 };
@@ -71,8 +71,7 @@
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_txd4_default
-		     &pinctrl_rxd4_default
-		     &pinctrl_ndts4_default>;
+		     &pinctrl_rxd4_default>;
 };
 
 &uart5 {

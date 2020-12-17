@@ -101,8 +101,6 @@ required:
   - reg
   - interrupts
 
-unevaluatedProperties: false
-
 examples:
   - |
     serial@80230000 {

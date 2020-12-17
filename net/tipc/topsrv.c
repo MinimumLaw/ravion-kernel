@@ -48,6 +48,7 @@
 #define MAX_SEND_MSG_COUNT	25
 #define MAX_RECV_MSG_COUNT	25
 #define CF_CONNECTED		1
+#define CF_SERVER		2
 
 #define TIPC_SERVER_NAME_LEN	32
 

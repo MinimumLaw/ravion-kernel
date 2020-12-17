@@ -148,9 +148,6 @@ static int sdma_v5_2_init_microcode(struct amdgpu_device *adev)
 	struct amdgpu_firmware_info *info = NULL;
 	const struct common_firmware_header *header = NULL;
 
-	if (amdgpu_sriov_vf(adev))
-		return 0;
-
 	DRM_DEBUG("\n");
 
 	switch (adev->asic_type) {
@@ -186,7 +183,7 @@ static int sdma_v5_2_init_microcode(struct amdgpu_device *adev)
 			if (err)
 				goto out;
 
-			err = sdma_v5_2_init_inst_ctx(&adev->sdma.instance[i]);
+			err = sdma_v5_2_init_inst_ctx(&adev->sdma.instance[0]);
 			if (err)
 				goto out;
 		}
@@ -562,7 +559,7 @@ static void sdma_v5_2_enable(struct amdgpu_device *adev, bool enable)
 	u32 f32_cntl;
 	int i;
 
-	if (!enable) {
+	if (enable == false) {
 		sdma_v5_2_gfx_stop(adev);
 		sdma_v5_2_rlc_stop(adev);
 	}

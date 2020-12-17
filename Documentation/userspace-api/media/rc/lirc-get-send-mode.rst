@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: RC
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _lirc_get_send_mode:
 .. _lirc_set_send_mode:
@@ -16,13 +22,11 @@ LIRC_GET_SEND_MODE/LIRC_SET_SEND_MODE - Get/set current transmit mode.
 Synopsis
 ========
 
-.. c:macro:: LIRC_GET_SEND_MODE
+.. c:function:: int ioctl( int fd, LIRC_GET_SEND_MODE, __u32 *mode )
+    :name: LIRC_GET_SEND_MODE
 
-``int ioctl(int fd, LIRC_GET_SEND_MODE, __u32 *mode)``
-
-.. c:macro:: LIRC_SET_SEND_MODE
-
-``int ioctl(int fd, LIRC_SET_SEND_MODE, __u32 *mode)``
+.. c:function:: int ioctl( int fd, LIRC_SET_SEND_MODE, __u32 *mode )
+    :name: LIRC_SET_SEND_MODE
 
 Arguments
 =========
@@ -32,6 +36,7 @@ Arguments
 
 ``mode``
     The mode used for transmitting.
+
 
 Description
 ===========
@@ -46,11 +51,13 @@ modes the driver supports.
 Return Value
 ============
 
+
 .. tabularcolumns:: |p{2.5cm}|p{15.0cm}|
 
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -  .. row 1
 

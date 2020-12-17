@@ -279,7 +279,8 @@ static const struct hwmon_ops tmp421_ops = {
 	.read = tmp421_read,
 };
 
-static int tmp421_probe(struct i2c_client *client)
+static int tmp421_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -295,7 +296,7 @@ static int tmp421_probe(struct i2c_client *client)
 		data->channels = (unsigned long)
 			of_device_get_match_data(&client->dev);
 	else
-		data->channels = i2c_match_id(tmp421_id, client)->driver_data;
+		data->channels = id->driver_data;
 	data->client = client;
 
 	err = tmp421_init_client(client);
@@ -326,7 +327,7 @@ static struct i2c_driver tmp421_driver = {
 		.name	= "tmp421",
 		.of_match_table = of_match_ptr(tmp421_of_match),
 	},
-	.probe_new = tmp421_probe,
+	.probe = tmp421_probe,
 	.id_table = tmp421_id,
 	.detect = tmp421_detect,
 	.address_list = normal_i2c,

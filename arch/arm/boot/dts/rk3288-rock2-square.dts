@@ -156,7 +156,7 @@
 };
 
 &gmac {
-	status = "okay";
+	status = "ok";
 };
 
 &hdmi {

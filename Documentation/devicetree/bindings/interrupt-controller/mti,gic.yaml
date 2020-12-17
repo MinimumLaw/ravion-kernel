@@ -95,7 +95,7 @@ properties:
 
     additionalProperties: false
 
-additionalProperties: false
+unevaluatedProperties: false
 
 required:
   - compatible

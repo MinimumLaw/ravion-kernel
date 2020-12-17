@@ -61,8 +61,6 @@ anyOf:
   - required:
       - power-domains
 
-additionalProperties: true
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gcc-msm8996.h>

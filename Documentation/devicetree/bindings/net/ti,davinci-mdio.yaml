@@ -58,8 +58,6 @@ required:
   - "#address-cells"
   - "#size-cells"
 
-unevaluatedProperties: false
-
 examples:
   - |
     davinci_mdio: mdio@4a101000 {

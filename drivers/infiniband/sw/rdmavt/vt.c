@@ -524,7 +524,6 @@ static noinline int check_support(struct rvt_dev_info *rdi, int verb)
 int rvt_register_device(struct rvt_dev_info *rdi)
 {
 	int ret = 0, i;
-	u64 dma_mask;
 
 	if (!rdi)
 		return -EINVAL;
@@ -580,11 +579,7 @@ int rvt_register_device(struct rvt_dev_info *rdi)
 	spin_lock_init(&rdi->n_cqs_lock);
 
 	/* DMA Operations */
-	rdi->ibdev.dev.dma_parms = rdi->ibdev.dev.parent->dma_parms;
-	dma_mask = IS_ENABLED(CONFIG_64BIT) ? DMA_BIT_MASK(64) : DMA_BIT_MASK(32);
-	ret = dma_coerce_mask_and_coherent(&rdi->ibdev.dev, dma_mask);
-	if (ret)
-		goto bail_wss;
+	rdi->ibdev.dev.dma_ops = rdi->ibdev.dev.dma_ops ? : &dma_virt_ops;
 
 	/* Protection Domain */
 	spin_lock_init(&rdi->n_pds_lock);
@@ -632,7 +627,7 @@ int rvt_register_device(struct rvt_dev_info *rdi)
 		rdi->ibdev.num_comp_vectors = 1;
 
 	/* We are now good to announce we exist */
-	ret = ib_register_device(&rdi->ibdev, dev_name(&rdi->ibdev.dev), NULL);
+	ret = ib_register_device(&rdi->ibdev, dev_name(&rdi->ibdev.dev));
 	if (ret) {
 		rvt_pr_err(rdi, "Failed to register driver with ib core.\n");
 		goto bail_wss;

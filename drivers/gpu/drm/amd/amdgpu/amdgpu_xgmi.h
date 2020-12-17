@@ -27,13 +27,13 @@
 
 
 struct amdgpu_hive_info {
-	struct kobject kobj;
-	uint64_t hive_id;
-	struct list_head device_list;
-	struct list_head node;
-	atomic_t number_devices;
-	struct mutex hive_lock;
-	atomic_t in_reset;
+	uint64_t		hive_id;
+	struct list_head	device_list;
+	int number_devices;
+	struct mutex hive_lock, reset_lock;
+	struct kobject *kobj;
+	struct device_attribute dev_attr;
+	struct amdgpu_device *adev;
 	int hi_req_count;
 	struct amdgpu_device *hi_req_gpu;
 	struct task_barrier tb;
@@ -50,8 +50,7 @@ struct amdgpu_pcs_ras_field {
 	uint32_t pcs_err_shift;
 };
 
-struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev);
-void amdgpu_put_xgmi_hive(struct amdgpu_hive_info *hive);
+struct amdgpu_hive_info *amdgpu_get_xgmi_hive(struct amdgpu_device *adev, int lock);
 int amdgpu_xgmi_update_topology(struct amdgpu_hive_info *hive, struct amdgpu_device *adev);
 int amdgpu_xgmi_add_device(struct amdgpu_device *adev);
 int amdgpu_xgmi_remove_device(struct amdgpu_device *adev);

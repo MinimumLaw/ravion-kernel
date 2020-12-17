@@ -12,10 +12,6 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <linux/err.h>
-#include <linux/cpu_pm.h>
-#include <linux/device.h>
-#include <linux/pm_runtime.h>
-#include <linux/pm.h>
 
 struct gpio_desc;
 
@@ -207,8 +203,6 @@ struct ti_bandgap {
 	int				irq;
 	struct gpio_desc		*tshut_gpiod;
 	u32				clk_rate;
-	struct notifier_block		nb;
-	unsigned int is_suspended:1;
 };
 
 /**

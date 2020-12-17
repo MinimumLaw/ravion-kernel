@@ -45,7 +45,6 @@
 #define SDIO_FUNC2_BLOCKSIZE		512
 #define SDIO_4373_FUNC2_BLOCKSIZE	256
 #define SDIO_435X_FUNC2_BLOCKSIZE	256
-#define SDIO_4329_FUNC2_BLOCKSIZE	128
 /* Maximum milliseconds to wait for F2 to come up */
 #define SDIO_WAIT_F2RDY	3000
 
@@ -74,7 +73,7 @@ static irqreturn_t brcmf_sdiod_oob_irqhandler(int irq, void *dev_id)
 		sdiodev->irq_en = false;
 	}
 
-	brcmf_sdio_isr(sdiodev->bus, true);
+	brcmf_sdio_isr(sdiodev->bus);
 
 	return IRQ_HANDLED;
 }
@@ -86,7 +85,7 @@ static void brcmf_sdiod_ib_irqhandler(struct sdio_func *func)
 
 	brcmf_dbg(INTR, "IB intr triggered\n");
 
-	brcmf_sdio_isr(sdiodev->bus, false);
+	brcmf_sdio_isr(sdiodev->bus);
 }
 
 /* dummy handler for SDIO function 2 interrupt */
@@ -917,12 +916,11 @@ int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
 		f2_blksz = SDIO_4373_FUNC2_BLOCKSIZE;
 		break;
 	case SDIO_DEVICE_ID_BROADCOM_4359:
+		/* fallthrough */
 	case SDIO_DEVICE_ID_BROADCOM_4354:
+		/* fallthrough */
 	case SDIO_DEVICE_ID_BROADCOM_4356:
 		f2_blksz = SDIO_435X_FUNC2_BLOCKSIZE;
-		break;
-	case SDIO_DEVICE_ID_BROADCOM_4329:
-		f2_blksz = SDIO_4329_FUNC2_BLOCKSIZE;
 		break;
 	default:
 		break;

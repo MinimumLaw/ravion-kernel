@@ -77,8 +77,6 @@ required:
   - reset-names
   - resets
 
-unevaluatedProperties: false
-
 examples:
   - |
     sd: mmc@5a400000 {

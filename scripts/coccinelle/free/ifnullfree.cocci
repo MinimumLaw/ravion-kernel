@@ -21,13 +21,7 @@ expression E;
 (
   kfree(E);
 |
-  kvfree(E);
-|
   kfree_sensitive(E);
-|
-  kvfree_sensitive(E, ...);
-|
-  vfree(E);
 |
   debugfs_remove(E);
 |
@@ -48,10 +42,9 @@ position p;
 @@
 
 * if (E != NULL)
-*	\(kfree@p\|kvfree@p\|kfree_sensitive@p\|kvfree_sensitive@p\|vfree@p\|
-*         debugfs_remove@p\|debugfs_remove_recursive@p\|
+*	\(kfree@p\|kfree_sensitive@p\|debugfs_remove@p\|debugfs_remove_recursive@p\|
 *         usb_free_urb@p\|kmem_cache_destroy@p\|mempool_destroy@p\|
-*         dma_pool_destroy@p\)(E, ...);
+*         dma_pool_destroy@p\)(E);
 
 @script:python depends on org@
 p << r.p;

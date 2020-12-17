@@ -9,13 +9,17 @@
 #include <errno.h>
 #include "objtool.h"
 
+#define __weak __attribute__((weak))
+
 #define UNSUPPORTED(name)						\
 ({									\
 	fprintf(stderr, "error: objtool: " name " not implemented\n");	\
 	return ENOSYS;							\
 })
 
-int __weak check(struct objtool_file *file)
+const char __weak *objname;
+
+int __weak check(const char *_objname, bool orc)
 {
 	UNSUPPORTED("check subcommand");
 }

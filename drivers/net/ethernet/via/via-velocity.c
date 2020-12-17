@@ -372,7 +372,7 @@ static const struct pci_device_id velocity_pci_id_table[] = {
 
 MODULE_DEVICE_TABLE(pci, velocity_pci_id_table);
 
-/*
+/**
  *	Describe the OF device identifiers that we support in this
  *	device driver. Used for devicetree nodes.
  */
@@ -384,7 +384,7 @@ MODULE_DEVICE_TABLE(of, velocity_of_ids);
 
 /**
  *	get_chip_name	- 	identifier to name
- *	@chip_id: chip identifier
+ *	@id: chip identifier
  *
  *	Given a chip identifier return a suitable description. Returns
  *	a pointer a static string valid while the driver is loaded.
@@ -748,7 +748,7 @@ static u32 mii_check_media_mode(struct mac_regs __iomem *regs)
 /**
  *	velocity_mii_write	-	write MII data
  *	@regs: velocity registers
- *	@mii_addr: MII register index
+ *	@index: MII register index
  *	@data: 16bit data for the MII register
  *
  *	Perform a single write to an MII 16bit register. Returns zero
@@ -869,7 +869,6 @@ static u32 check_connection_type(struct mac_regs __iomem *regs)
 
 /**
  *	velocity_set_media_mode		-	set media mode
- *	@vptr: velocity adapter
  *	@mii_status: old MII link state
  *
  *	Check the media link state and configure the flow control
@@ -878,12 +877,25 @@ static u32 check_connection_type(struct mac_regs __iomem *regs)
  */
 static int velocity_set_media_mode(struct velocity_info *vptr, u32 mii_status)
 {
+	u32 curr_status;
 	struct mac_regs __iomem *regs = vptr->mac_regs;
 
 	vptr->mii_status = mii_check_media_mode(vptr->mac_regs);
+	curr_status = vptr->mii_status & (~VELOCITY_LINK_FAIL);
 
 	/* Set mii link status */
 	set_mii_flow_control(vptr);
+
+	/*
+	   Check if new status is consistent with current status
+	   if (((mii_status & curr_status) & VELOCITY_AUTONEG_ENABLE) ||
+	       (mii_status==curr_status)) {
+	   vptr->mii_status=mii_check_media_mode(vptr->mac_regs);
+	   vptr->mii_status=check_connection_type(vptr->mac_regs);
+	   netdev_info(vptr->netdev, "Velocity link no change\n");
+	   return 0;
+	   }
+	 */
 
 	if (PHYID_GET_PHY_ID(vptr->phy_id) == PHYID_CICADA_CS8201)
 		MII_REG_BITS_ON(AUXCR_MDPPS, MII_NCONFIG, vptr->mac_regs);
@@ -1257,7 +1269,6 @@ static void mii_init(struct velocity_info *vptr, u32 mii_status)
 
 /**
  * setup_queue_timers	-	Setup interrupt timers
- * @vptr: velocity adapter
  *
  * Setup interrupt frequency during suppression (timeout if the frame
  * count isn't filled).
@@ -1282,7 +1293,8 @@ static void setup_queue_timers(struct velocity_info *vptr)
 
 /**
  * setup_adaptive_interrupts  -  Setup interrupt suppression
- * @vptr: velocity adapter
+ *
+ * @vptr velocity adapter
  *
  * The velocity is able to suppress interrupt during high interrupt load.
  * This function turns on that feature.
@@ -1723,7 +1735,6 @@ err_free_dma_rings_0:
  *	velocity_free_tx_buf	-	free transmit buffer
  *	@vptr: velocity
  *	@tdinfo: buffer
- *	@td: transmit descriptor to free
  *
  *	Release an transmit buffer. If the buffer was preallocated then
  *	recycle it, if not then unmap the buffer.
@@ -1898,7 +1909,7 @@ static void velocity_error(struct velocity_info *vptr, int status)
 
 /**
  *	tx_srv		-	transmit interrupt service
- *	@vptr: Velocity
+ *	@vptr; Velocity
  *
  *	Scan the queues looking for transmitted packets that
  *	we can complete and clean up. Update any statistics as
@@ -1992,7 +2003,8 @@ static inline void velocity_rx_csum(struct rx_desc *rd, struct sk_buff *skb)
  *	velocity_rx_copy	-	in place Rx copy for small packets
  *	@rx_skb: network layer packet buffer candidate
  *	@pkt_size: received data size
- *	@vptr: velocity adapter
+ *	@rd: receive packet descriptor
+ *	@dev: network device
  *
  *	Replace the current skb that is scheduled for Rx processing by a
  *	shorter, immediately allocated skb, if the received packet is small
@@ -2098,7 +2110,6 @@ static int velocity_receive_frame(struct velocity_info *vptr, int idx)
 /**
  *	velocity_rx_srv		-	service RX interrupt
  *	@vptr: velocity
- *	@budget_left: remaining budget
  *
  *	Walk the receive ring of the velocity adapter and remove
  *	any received packets from the receive queue. Hand the ring
@@ -2647,6 +2658,7 @@ static const struct net_device_ops velocity_netdev_ops = {
 
 /**
  *	velocity_init_info	-	init private data
+ *	@pdev: PCI device
  *	@vptr: Velocity info
  *	@info: Board type
  *
@@ -2665,6 +2677,7 @@ static void velocity_init_info(struct velocity_info *vptr,
 /**
  *	velocity_get_pci_info	-	retrieve PCI info for device
  *	@vptr: velocity device
+ *	@pdev: PCI device it matches
  *
  *	Retrieve the PCI configuration space data that interests us from
  *	the kernel PCI layer
@@ -2701,6 +2714,7 @@ static int velocity_get_pci_info(struct velocity_info *vptr)
 /**
  *	velocity_get_platform_info - retrieve platform info for device
  *	@vptr: velocity device
+ *	@pdev: platform device it matches
  *
  *	Retrieve the Platform configuration data that interests us
  */
@@ -2750,9 +2764,8 @@ static u32 velocity_get_link(struct net_device *dev)
 
 /**
  *	velocity_probe - set up discovered velocity device
- *	@dev: PCI device
- *	@info: table of match
- *	@irq: interrupt info
+ *	@pdev: PCI device
+ *	@ent: PCI device table entry that matched
  *	@bustype: bus that device is connected to
  *
  *	Configure a discovered adapter from scratch. Return a negative
@@ -2969,7 +2982,6 @@ static int velocity_platform_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 /**
  *	wol_calc_crc		-	WOL CRC
- *	@size: size of the wake mask
  *	@pattern: data pattern
  *	@mask_pattern: mask
  *

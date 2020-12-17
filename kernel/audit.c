@@ -123,9 +123,9 @@ static u32	audit_backlog_limit = 64;
 static u32	audit_backlog_wait_time = AUDIT_BACKLOG_WAIT_TIME;
 
 /* The identity of the user shutting down the audit system. */
-static kuid_t		audit_sig_uid = INVALID_UID;
-static pid_t		audit_sig_pid = -1;
-static u32		audit_sig_sid;
+kuid_t		audit_sig_uid = INVALID_UID;
+pid_t		audit_sig_pid = -1;
+u32		audit_sig_sid = 0;
 
 /* Records can be lost in several ways:
    0) [suppressed in audit_alloc]
@@ -934,7 +934,8 @@ static void audit_free_reply(struct audit_reply *reply)
 	if (!reply)
 		return;
 
-	kfree_skb(reply->skb);
+	if (reply->skb)
+		kfree_skb(reply->skb);
 	if (reply->net)
 		put_net(reply->net);
 	kfree(reply);

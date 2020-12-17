@@ -4,7 +4,7 @@
  * Copyright (C) 2018-2020 Linaro Ltd.
  */
 
-#include <linux/refcount.h>
+#include <linux/atomic.h>
 #include <linux/mutex.h>
 #include <linux/clk.h>
 #include <linux/device.h>
@@ -51,7 +51,7 @@
  * @config_path:	Configuration space interconnect
  */
 struct ipa_clock {
-	refcount_t count;
+	atomic_t count;
 	struct mutex mutex; /* protects clock enable/disable */
 	struct clk *core;
 	struct icc_path *memory_path;
@@ -195,13 +195,14 @@ static void ipa_clock_disable(struct ipa *ipa)
  */
 bool ipa_clock_get_additional(struct ipa *ipa)
 {
-	return refcount_inc_not_zero(&ipa->clock->count);
+	return !!atomic_inc_not_zero(&ipa->clock->count);
 }
 
 /* Get an IPA clock reference.  If the reference count is non-zero, it is
  * incremented and return is immediate.  Otherwise it is checked again
- * under protection of the mutex, and if appropriate the IPA clock
- * is enabled.
+ * under protection of the mutex, and if appropriate the clock (and
+ * interconnects) are enabled suspended endpoints (if any) are resumed
+ * before returning.
  *
  * Incrementing the reference count is intentionally deferred until
  * after the clock is running and endpoints are resumed.
@@ -228,22 +229,27 @@ void ipa_clock_get(struct ipa *ipa)
 		goto out_mutex_unlock;
 	}
 
-	refcount_set(&clock->count, 1);
+	ipa_endpoint_resume(ipa);
+
+	atomic_inc(&clock->count);
 
 out_mutex_unlock:
 	mutex_unlock(&clock->mutex);
 }
 
-/* Attempt to remove an IPA clock reference.  If this represents the
- * last reference, disable the IPA clock under protection of the mutex.
+/* Attempt to remove an IPA clock reference.  If this represents the last
+ * reference, suspend endpoints and disable the clock (and interconnects)
+ * under protection of a mutex.
  */
 void ipa_clock_put(struct ipa *ipa)
 {
 	struct ipa_clock *clock = ipa->clock;
 
 	/* If this is not the last reference there's nothing more to do */
-	if (!refcount_dec_and_mutex_lock(&clock->count, &clock->mutex))
+	if (!atomic_dec_and_mutex_lock(&clock->count, &clock->mutex))
 		return;
+
+	ipa_endpoint_suspend(ipa);
 
 	ipa_clock_disable(ipa);
 
@@ -288,7 +294,7 @@ struct ipa_clock *ipa_clock_init(struct device *dev)
 		goto err_kfree;
 
 	mutex_init(&clock->mutex);
-	refcount_set(&clock->count, 0);
+	atomic_set(&clock->count, 0);
 
 	return clock;
 
@@ -305,7 +311,7 @@ void ipa_clock_exit(struct ipa_clock *clock)
 {
 	struct clk *clk = clock->core;
 
-	WARN_ON(refcount_read(&clock->count) != 0);
+	WARN_ON(atomic_read(&clock->count) != 0);
 	mutex_destroy(&clock->mutex);
 	ipa_interconnect_exit(clock);
 	kfree(clock);

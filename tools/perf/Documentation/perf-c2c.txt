@@ -174,36 +174,34 @@ For each cacheline in the 1) list we display following data:
   Cacheline
   - cacheline address (hex number)
 
-  Rmt/Lcl Hitm
-  - cacheline percentage of all Remote/Local HITM accesses
-
-  LLC Load Hitm - Total, LclHitm, RmtHitm
-  - count of Total/Local/Remote load HITMs
-
   Total records
   - sum of all cachelines accesses
 
-  Total loads
-  - sum of all load accesses
+  Rmt/Lcl Hitm
+  - cacheline percentage of all Remote/Local HITM accesses
 
-  Total stores
-  - sum of all store accesses
+  LLC Load Hitm - Total, Lcl, Rmt
+  - count of Total/Local/Remote load HITMs
 
-  Store Reference - L1Hit, L1Miss
+  Store Reference - Total, L1Hit, L1Miss
+    Total - all store accesses
     L1Hit - store accesses that hit L1
-    L1Miss - store accesses that missed L1
+    L1Hit - store accesses that missed L1
+
+  Load Dram
+  - count of local and remote DRAM accesses
+
+  LLC Ld Miss
+  - count of all accesses that missed LLC
+
+  Total Loads
+  - sum of all load accesses
 
   Core Load Hit - FB, L1, L2
   - count of load hits in FB (Fill Buffer), L1 and L2 cache
 
-  LLC Load Hit - LlcHit, LclHitm
-  - count of LLC load accesses, includes LLC hits and LLC HITMs
-
-  RMT Load Hit - RmtHit, RmtHitm
-  - count of remote load accesses, includes remote hits and remote HITMs
-
-  Load Dram - Lcl, Rmt
-  - count of local and remote DRAM accesses
+  LLC Load Hit - Llc, Rmt
+  - count of LLC and Remote load hits
 
 For each offset in the 2) list we display following data:
 

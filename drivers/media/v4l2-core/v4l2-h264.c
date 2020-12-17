@@ -18,12 +18,14 @@
  *
  * @b: the builder context to initialize
  * @dec_params: decode parameters control
+ * @slice_params: first slice parameters control
  * @sps: SPS control
  * @dpb: DPB to use when creating the reference list
  */
 void
 v4l2_h264_init_reflist_builder(struct v4l2_h264_reflist_builder *b,
 		const struct v4l2_ctrl_h264_decode_params *dec_params,
+		const struct v4l2_ctrl_h264_slice_params *slice_params,
 		const struct v4l2_ctrl_h264_sps *sps,
 		const struct v4l2_h264_dpb_entry dpb[V4L2_H264_NUM_DPB_ENTRIES])
 {
@@ -31,13 +33,13 @@ v4l2_h264_init_reflist_builder(struct v4l2_h264_reflist_builder *b,
 	unsigned int i;
 
 	max_frame_num = 1 << (sps->log2_max_frame_num_minus4 + 4);
-	cur_frame_num = dec_params->frame_num;
+	cur_frame_num = slice_params->frame_num;
 
 	memset(b, 0, sizeof(*b));
-	if (!(dec_params->flags & V4L2_H264_DECODE_PARAM_FLAG_FIELD_PIC))
+	if (!(slice_params->flags & V4L2_H264_SLICE_FLAG_FIELD_PIC))
 		b->cur_pic_order_count = min(dec_params->bottom_field_order_cnt,
 					     dec_params->top_field_order_cnt);
-	else if (dec_params->flags & V4L2_H264_DECODE_PARAM_FLAG_BOTTOM_FIELD)
+	else if (slice_params->flags & V4L2_H264_SLICE_FLAG_BOTTOM_FIELD)
 		b->cur_pic_order_count = dec_params->bottom_field_order_cnt;
 	else
 		b->cur_pic_order_count = dec_params->top_field_order_cnt;
@@ -64,10 +66,10 @@ v4l2_h264_init_reflist_builder(struct v4l2_h264_reflist_builder *b,
 		else
 			b->refs[i].frame_num = dpb[i].frame_num;
 
-		if (dpb[i].fields == V4L2_H264_FRAME_REF)
+		if (!(dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_FIELD))
 			pic_order_count = min(dpb[i].top_field_order_cnt,
 					      dpb[i].bottom_field_order_cnt);
-		else if (dpb[i].fields & V4L2_H264_BOTTOM_FIELD_REF)
+		else if (dpb[i].flags & V4L2_H264_DPB_ENTRY_FLAG_BOTTOM_FIELD)
 			pic_order_count = dpb[i].bottom_field_order_cnt;
 		else
 			pic_order_count = dpb[i].top_field_order_cnt;

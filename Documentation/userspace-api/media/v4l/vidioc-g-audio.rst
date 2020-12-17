@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_G_AUDIO:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_G_AUDIO - VIDIOC_S_AUDIO - Query or select the current audio input and its attributes
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_G_AUDIO
+.. c:function:: int ioctl( int fd, VIDIOC_G_AUDIO, struct v4l2_audio *argp )
+    :name: VIDIOC_G_AUDIO
 
-``int ioctl(int fd, VIDIOC_G_AUDIO, struct v4l2_audio *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_S_AUDIO, const struct v4l2_audio *argp )
+    :name: VIDIOC_S_AUDIO
 
-.. c:macro:: VIDIOC_S_AUDIO
-
-``int ioctl(int fd, VIDIOC_S_AUDIO, const struct v4l2_audio *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_audio`.
+
 
 Description
 ===========
@@ -48,6 +55,7 @@ struct :c:type:`v4l2_audio` structure and call the :ref:`VIDIOC_S_AUDIO <VIDIOC_
 ioctl. Drivers may switch to a different audio mode if the request
 cannot be satisfied. However, this is a write-only ioctl, it does not
 return the actual new audio mode.
+
 
 .. tabularcolumns:: |p{4.4cm}|p{4.4cm}|p{8.7cm}|
 
@@ -79,6 +87,7 @@ return the actual new audio mode.
 	the array to zero.
 
 
+
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
 .. _audio-capability:
@@ -99,6 +108,7 @@ return the actual new audio mode.
       - Automatic Volume Level mode is supported.
 
 
+
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
 .. _audio-mode:
@@ -111,6 +121,7 @@ return the actual new audio mode.
     * - ``V4L2_AUDMODE_AVL``
       - 0x00001
       - AVL mode is on.
+
 
 Return Value
 ============

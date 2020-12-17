@@ -531,7 +531,6 @@ static struct fanotify_event *fanotify_alloc_event(struct fsnotify_group *group,
 	struct inode *dirid = fanotify_dfid_inode(mask, data, data_type, dir);
 	const struct path *path = fsnotify_data_path(data, data_type);
 	unsigned int fid_mode = FAN_GROUP_FLAG(group, FANOTIFY_FID_BITS);
-	struct mem_cgroup *old_memcg;
 	struct inode *child = NULL;
 	bool name_event = false;
 
@@ -581,7 +580,7 @@ static struct fanotify_event *fanotify_alloc_event(struct fsnotify_group *group,
 		gfp |= __GFP_RETRY_MAYFAIL;
 
 	/* Whoever is interested in the event, pays for the allocation. */
-	old_memcg = set_active_memcg(group->memcg);
+	memalloc_use_memcg(group->memcg);
 
 	if (fanotify_is_perm_event(mask)) {
 		event = fanotify_alloc_perm_event(path, gfp);
@@ -609,7 +608,7 @@ static struct fanotify_event *fanotify_alloc_event(struct fsnotify_group *group,
 		event->pid = get_pid(task_tgid(current));
 
 out:
-	set_active_memcg(old_memcg);
+	memalloc_unuse_memcg();
 	return event;
 }
 

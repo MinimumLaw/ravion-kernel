@@ -73,8 +73,6 @@ required:
   - clocks
   - clock-names
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/berlin2.h>

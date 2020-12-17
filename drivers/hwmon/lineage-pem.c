@@ -417,7 +417,8 @@ static const struct attribute_group pem_fan_group = {
 	.attrs = pem_fan_attributes,
 };
 
-static int pem_probe(struct i2c_client *client)
+static int pem_probe(struct i2c_client *client,
+		     const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = client->adapter;
 	struct device *dev = &client->dev;
@@ -511,7 +512,7 @@ static struct i2c_driver pem_driver = {
 	.driver = {
 		   .name = "lineage_pem",
 		   },
-	.probe_new = pem_probe,
+	.probe = pem_probe,
 	.id_table = pem_id,
 };
 

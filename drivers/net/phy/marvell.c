@@ -1598,15 +1598,21 @@ static int m88e1121_did_interrupt(struct phy_device *phydev)
 static void m88e1318_get_wol(struct phy_device *phydev,
 			     struct ethtool_wolinfo *wol)
 {
-	int ret;
+	int oldpage, ret = 0;
 
 	wol->supported = WAKE_MAGIC;
 	wol->wolopts = 0;
 
-	ret = phy_read_paged(phydev, MII_MARVELL_WOL_PAGE,
-			     MII_88E1318S_PHY_WOL_CTRL);
-	if (ret >= 0 && ret & MII_88E1318S_PHY_WOL_CTRL_MAGIC_PACKET_MATCH_ENABLE)
+	oldpage = phy_select_page(phydev, MII_MARVELL_WOL_PAGE);
+	if (oldpage < 0)
+		goto error;
+
+	ret = __phy_read(phydev, MII_88E1318S_PHY_WOL_CTRL);
+	if (ret & MII_88E1318S_PHY_WOL_CTRL_MAGIC_PACKET_MATCH_ENABLE)
 		wol->wolopts |= WAKE_MAGIC;
+
+error:
+	phy_restore_page(phydev, oldpage, ret);
 }
 
 static int m88e1318_set_wol(struct phy_device *phydev,

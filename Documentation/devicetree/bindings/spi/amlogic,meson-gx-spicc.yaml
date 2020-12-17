@@ -77,8 +77,6 @@ required:
   - clocks
   - clock-names
 
-unevaluatedProperties: false
-
 examples:
   - |
     spi@c1108d80 {

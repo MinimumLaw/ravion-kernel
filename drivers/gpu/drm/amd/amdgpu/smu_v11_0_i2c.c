@@ -508,9 +508,14 @@ static bool smu_v11_0_i2c_bus_lock(struct i2c_adapter *control)
 	struct amdgpu_device *adev = to_amdgpu_device(control);
 
 	/* Send  PPSMC_MSG_RequestI2CBus */
-	if (!amdgpu_dpm_smu_i2c_bus_access(adev, true))
+	if (!adev->powerplay.pp_funcs->smu_i2c_bus_access)
+		goto Fail;
+
+
+	if (!adev->powerplay.pp_funcs->smu_i2c_bus_access(adev->powerplay.pp_handle, true))
 		return true;
 
+Fail:
 	return false;
 }
 
@@ -518,10 +523,16 @@ static bool smu_v11_0_i2c_bus_unlock(struct i2c_adapter *control)
 {
 	struct amdgpu_device *adev = to_amdgpu_device(control);
 
+	/* Send  PPSMC_MSG_RequestI2CBus */
+	if (!adev->powerplay.pp_funcs->smu_i2c_bus_access)
+		goto Fail;
+
 	/* Send  PPSMC_MSG_ReleaseI2CBus */
-	if (!amdgpu_dpm_smu_i2c_bus_access(adev, false))
+	if (!adev->powerplay.pp_funcs->smu_i2c_bus_access(adev->powerplay.pp_handle,
+							     false))
 		return true;
 
+Fail:
 	return false;
 }
 

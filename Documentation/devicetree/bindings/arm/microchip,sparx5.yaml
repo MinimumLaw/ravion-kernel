@@ -62,6 +62,4 @@ required:
   - compatible
   - axi@600000000
 
-additionalProperties: true
-
 ...

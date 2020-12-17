@@ -126,12 +126,26 @@ DESCRIPTION
 
 OPTIONS
 =======
-	.. include:: common_options.rst
+	-h, --help
+		  Print short generic help message (similar to **bpftool help**).
+
+	-V, --version
+		  Print version number (similar to **bpftool version**).
+
+	-j, --json
+		  Generate JSON output. For commands that cannot produce JSON,
+		  this option has no effect.
+
+	-p, --pretty
+		  Generate human-readable JSON output. Implies **-j**.
+
+	-d, --debug
+		  Print all logs available from libbpf, including debug-level
+		  information.
 
 EXAMPLES
 ========
 **$ cat example.c**
-
 ::
 
   #include <stdbool.h>
@@ -173,7 +187,6 @@ This is example BPF application with two BPF programs and a mix of BPF maps
 and global variables.
 
 **$ bpftool gen skeleton example.o**
-
 ::
 
   /* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
@@ -228,7 +241,6 @@ and global variables.
   #endif /* __EXAMPLE_SKEL_H__ */
 
 **$ cat example_user.c**
-
 ::
 
   #include "example.skel.h"
@@ -271,7 +283,6 @@ and global variables.
   }
 
 **# ./example_user**
-
 ::
 
   my_map name: my_map
@@ -279,3 +290,19 @@ and global variables.
   my_static_var: 7
 
 This is a stripped-out version of skeleton generated for above example code.
+
+SEE ALSO
+========
+	**bpf**\ (2),
+	**bpf-helpers**\ (7),
+	**bpftool**\ (8),
+	**bpftool-btf**\ (8),
+	**bpftool-cgroup**\ (8),
+	**bpftool-feature**\ (8),
+	**bpftool-iter**\ (8),
+	**bpftool-link**\ (8),
+	**bpftool-map**\ (8),
+	**bpftool-net**\ (8),
+	**bpftool-perf**\ (8),
+	**bpftool-prog**\ (8),
+	**bpftool-struct_ops**\ (8)

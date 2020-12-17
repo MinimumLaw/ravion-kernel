@@ -29,8 +29,6 @@ required:
   - '#address-cells'
   - '#size-cells'
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/ath79-clk.h>

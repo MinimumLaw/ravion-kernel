@@ -41,7 +41,7 @@ struct fsl_esai_soc_data {
  * @extalclk: esai clock source to derive HCK, SCK and FS
  * @fsysclk: system clock source to derive HCK, SCK and FS
  * @spbaclk: SPBA clock (optional, depending on SoC design)
- * @work: work to handle the reset operation
+ * @task: tasklet to handle the reset operation
  * @soc: soc specific data
  * @lock: spin lock between hw_reset() and trigger()
  * @fifo_depth: depth of tx/rx FIFO
@@ -67,7 +67,7 @@ struct fsl_esai {
 	struct clk *extalclk;
 	struct clk *fsysclk;
 	struct clk *spbaclk;
-	struct work_struct work;
+	struct tasklet_struct task;
 	const struct fsl_esai_soc_data *soc;
 	spinlock_t lock; /* Protect hw_reset and trigger */
 	u32 fifo_depth;
@@ -117,7 +117,7 @@ static irqreturn_t esai_isr(int irq, void *devid)
 				   ESAI_xCR_xEIE_MASK, 0);
 		regmap_update_bits(esai_priv->regmap, REG_ESAI_RCR,
 				   ESAI_xCR_xEIE_MASK, 0);
-		schedule_work(&esai_priv->work);
+		tasklet_schedule(&esai_priv->task);
 	}
 
 	if (esr & ESAI_ESR_TINIT_MASK)
@@ -708,9 +708,9 @@ static void fsl_esai_trigger_stop(struct fsl_esai *esai_priv, bool tx)
 			   ESAI_xFCR_xFR, 0);
 }
 
-static void fsl_esai_hw_reset(struct work_struct *work)
+static void fsl_esai_hw_reset(struct tasklet_struct *t)
 {
-	struct fsl_esai *esai_priv = container_of(work, struct fsl_esai, work);
+	struct fsl_esai *esai_priv = from_tasklet(esai_priv, t, task);
 	bool tx = true, rx = false, enabled[2];
 	unsigned long lock_flags;
 	u32 tfcr, rfcr;
@@ -1070,7 +1070,7 @@ static int fsl_esai_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	INIT_WORK(&esai_priv->work, fsl_esai_hw_reset);
+	tasklet_setup(&esai_priv->task, fsl_esai_hw_reset);
 
 	pm_runtime_enable(&pdev->dev);
 
@@ -1088,7 +1088,7 @@ static int fsl_esai_remove(struct platform_device *pdev)
 	struct fsl_esai *esai_priv = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
-	cancel_work_sync(&esai_priv->work);
+	tasklet_kill(&esai_priv->task);
 
 	return 0;
 }

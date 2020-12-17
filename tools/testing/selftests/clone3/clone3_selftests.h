@@ -19,11 +19,13 @@
 #define CLONE_INTO_CGROUP 0x200000000ULL /* Clone into a specific cgroup given the right permissions. */
 #endif
 
-#ifndef __NR_clone3
-#define __NR_clone3 -1
+#ifndef CLONE_ARGS_SIZE_VER0
+#define CLONE_ARGS_SIZE_VER0 64
 #endif
 
-struct __clone_args {
+#ifndef __NR_clone3
+#define __NR_clone3 -1
+struct clone_args {
 	__aligned_u64 flags;
 	__aligned_u64 pidfd;
 	__aligned_u64 child_tid;
@@ -32,21 +34,15 @@ struct __clone_args {
 	__aligned_u64 stack;
 	__aligned_u64 stack_size;
 	__aligned_u64 tls;
-#ifndef CLONE_ARGS_SIZE_VER0
-#define CLONE_ARGS_SIZE_VER0 64	/* sizeof first published struct */
-#endif
+#define CLONE_ARGS_SIZE_VER1 80
 	__aligned_u64 set_tid;
 	__aligned_u64 set_tid_size;
-#ifndef CLONE_ARGS_SIZE_VER1
-#define CLONE_ARGS_SIZE_VER1 80	/* sizeof second published struct */
-#endif
+#define CLONE_ARGS_SIZE_VER2 88
 	__aligned_u64 cgroup;
-#ifndef CLONE_ARGS_SIZE_VER2
-#define CLONE_ARGS_SIZE_VER2 88	/* sizeof third published struct */
-#endif
 };
+#endif /* __NR_clone3 */
 
-static pid_t sys_clone3(struct __clone_args *args, size_t size)
+static pid_t sys_clone3(struct clone_args *args, size_t size)
 {
 	fflush(stdout);
 	fflush(stderr);
@@ -56,7 +52,7 @@ static pid_t sys_clone3(struct __clone_args *args, size_t size)
 static inline void test_clone3_supported(void)
 {
 	pid_t pid;
-	struct __clone_args args = {};
+	struct clone_args args = {};
 
 	if (__NR_clone3 < 0)
 		ksft_exit_skip("clone3() syscall is not supported\n");

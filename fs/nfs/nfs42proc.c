@@ -1241,13 +1241,12 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
 		.rpc_resp	= &res,
 	};
 	u32 xdrlen;
-	int ret, np, i;
+	int ret, np;
 
 
-	ret = -ENOMEM;
 	res.scratch = alloc_page(GFP_KERNEL);
 	if (!res.scratch)
-		goto out;
+		return -ENOMEM;
 
 	xdrlen = nfs42_listxattr_xdrsize(buflen);
 	if (xdrlen > server->lxasize)
@@ -1255,12 +1254,9 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
 	np = xdrlen / PAGE_SIZE + 1;
 
 	pages = kcalloc(np, sizeof(struct page *), GFP_KERNEL);
-	if (!pages)
-		goto out_free_scratch;
-	for (i = 0; i < np; i++) {
-		pages[i] = alloc_page(GFP_KERNEL);
-		if (!pages[i])
-			goto out_free_pages;
+	if (pages == NULL) {
+		__free_page(res.scratch);
+		return -ENOMEM;
 	}
 
 	arg.xattr_pages = pages;
@@ -1275,15 +1271,14 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
 		*eofp = res.eof;
 	}
 
-out_free_pages:
 	while (--np >= 0) {
 		if (pages[np])
 			__free_page(pages[np]);
 	}
-	kfree(pages);
-out_free_scratch:
+
 	__free_page(res.scratch);
-out:
+	kfree(pages);
+
 	return ret;
 
 }

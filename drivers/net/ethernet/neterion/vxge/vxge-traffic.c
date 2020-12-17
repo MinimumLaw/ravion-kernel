@@ -30,6 +30,8 @@
  */
 enum vxge_hw_status vxge_hw_vpath_intr_enable(struct __vxge_hw_vpath_handle *vp)
 {
+	u64 val64;
+
 	struct __vxge_hw_virtualpath *vpath;
 	struct vxge_hw_vpath_reg __iomem *vp_reg;
 	enum vxge_hw_status status = VXGE_HW_OK;
@@ -82,7 +84,7 @@ enum vxge_hw_status vxge_hw_vpath_intr_enable(struct __vxge_hw_vpath_handle *vp)
 	__vxge_hw_pio_mem_write32_upper((u32)VXGE_HW_INTR_MASK_ALL,
 			&vp_reg->xgmac_vp_int_status);
 
-	readq(&vp_reg->vpath_general_int_status);
+	val64 = readq(&vp_reg->vpath_general_int_status);
 
 	/* Mask unwanted interrupts */
 
@@ -155,6 +157,8 @@ exit:
 enum vxge_hw_status vxge_hw_vpath_intr_disable(
 			struct __vxge_hw_vpath_handle *vp)
 {
+	u64 val64;
+
 	struct __vxge_hw_virtualpath *vpath;
 	enum vxge_hw_status status = VXGE_HW_OK;
 	struct vxge_hw_vpath_reg __iomem *vp_reg;
@@ -174,6 +178,8 @@ enum vxge_hw_status vxge_hw_vpath_intr_disable(
 	__vxge_hw_pio_mem_write32_upper(
 		(u32)VXGE_HW_INTR_MASK_ALL,
 		&vp_reg->vpath_general_int_mask);
+
+	val64 = VXGE_HW_TIM_CLR_INT_EN_VP(1 << (16 - vpath->vp_id));
 
 	writeq(VXGE_HW_INTR_MASK_ALL, &vp_reg->kdfcctl_errors_mask);
 
@@ -278,7 +284,7 @@ void vxge_hw_vpath_dynamic_rti_rtimer_set(struct __vxge_hw_ring *ring)
 
 /**
  * vxge_hw_channel_msix_mask - Mask MSIX Vector.
- * @channel: Channel for rx or tx handle
+ * @channeh: Channel for rx or tx handle
  * @msix_id:  MSIX ID
  *
  * The function masks the msix interrupt for the given msix_id
@@ -295,7 +301,7 @@ void vxge_hw_channel_msix_mask(struct __vxge_hw_channel *channel, int msix_id)
 
 /**
  * vxge_hw_channel_msix_unmask - Unmask the MSIX Vector.
- * @channel: Channel for rx or tx handle
+ * @channeh: Channel for rx or tx handle
  * @msix_id:  MSI ID
  *
  * The function unmasks the msix interrupt for the given msix_id
@@ -350,6 +356,8 @@ u32 vxge_hw_device_set_intr_type(struct __vxge_hw_device *hldev, u32 intr_mode)
 /**
  * vxge_hw_device_intr_enable - Enable interrupts.
  * @hldev: HW device handle.
+ * @op: One of the enum vxge_hw_device_intr enumerated values specifying
+ *      the type(s) of interrupts to enable.
  *
  * Enable Titan interrupts. The function is to be executed the last in
  * Titan initialization sequence.
@@ -403,6 +411,8 @@ void vxge_hw_device_intr_enable(struct __vxge_hw_device *hldev)
 /**
  * vxge_hw_device_intr_disable - Disable Titan interrupts.
  * @hldev: HW device handle.
+ * @op: One of the enum vxge_hw_device_intr enumerated values specifying
+ *      the type(s) of interrupts to disable.
  *
  * Disable Titan interrupts.
  *
@@ -477,7 +487,9 @@ void vxge_hw_device_unmask_all(struct __vxge_hw_device *hldev)
  */
 void vxge_hw_device_flush_io(struct __vxge_hw_device *hldev)
 {
-	readl(&hldev->common_reg->titan_general_int_status);
+	u32 val32;
+
+	val32 = readl(&hldev->common_reg->titan_general_int_status);
 }
 
 /**
@@ -1402,7 +1414,7 @@ u32 vxge_hw_fifo_free_txdl_count_get(struct __vxge_hw_fifo *fifoh)
 
 /**
  * vxge_hw_fifo_txdl_reserve - Reserve fifo descriptor.
- * @fifo: Handle to the fifo object used for non offload send
+ * @fifoh: Handle to the fifo object used for non offload send
  * @txdlh: Reserved descriptor. On success HW fills this "out" parameter
  *        with a valid handle.
  * @txdl_priv: Buffer to return the pointer to per txdl space
@@ -1513,6 +1525,8 @@ void vxge_hw_fifo_txdl_buffer_set(struct __vxge_hw_fifo *fifo,
  * vxge_hw_fifo_txdl_post - Post descriptor on the fifo channel.
  * @fifo: Handle to the fifo object used for non offload send
  * @txdlh: Descriptor obtained via vxge_hw_fifo_txdl_reserve()
+ * @frags: Number of contiguous buffers that are part of a single
+ *         transmit operation.
  *
  * Post descriptor on the 'fifo' type channel for transmission.
  * Prior to posting the descriptor should be filled in accordance with
@@ -1685,7 +1699,8 @@ void vxge_hw_fifo_txdl_free(struct __vxge_hw_fifo *fifo, void *txdlh)
 }
 
 /**
- * vxge_hw_vpath_mac_addr_add - Add the mac address entry for this vpath to MAC address table.
+ * vxge_hw_vpath_mac_addr_add - Add the mac address entry for this vpath
+ *               to MAC address table.
  * @vp: Vpath handle.
  * @macaddr: MAC address to be added for this vpath into the list
  * @macaddr_mask: MAC address mask for macaddr
@@ -1701,8 +1716,8 @@ void vxge_hw_fifo_txdl_free(struct __vxge_hw_fifo *fifo, void *txdlh)
 enum vxge_hw_status
 vxge_hw_vpath_mac_addr_add(
 	struct __vxge_hw_vpath_handle *vp,
-	u8 *macaddr,
-	u8 *macaddr_mask,
+	u8 (macaddr)[ETH_ALEN],
+	u8 (macaddr_mask)[ETH_ALEN],
 	enum vxge_hw_vpath_mac_addr_add_mode duplicate_mode)
 {
 	u32 i;
@@ -1750,13 +1765,13 @@ exit:
 }
 
 /**
- * vxge_hw_vpath_mac_addr_get - Get the first mac address entry
+ * vxge_hw_vpath_mac_addr_get - Get the first mac address entry for this vpath
+ *               from MAC address table.
  * @vp: Vpath handle.
  * @macaddr: First MAC address entry for this vpath in the list
  * @macaddr_mask: MAC address mask for macaddr
  *
- * Get the first mac address entry for this vpath from MAC address table.
- * Return: the first mac address and mac address mask in the list for this
+ * Returns the first mac address and mac address mask in the list for this
  * vpath.
  * see also: vxge_hw_vpath_mac_addr_get_next
  *
@@ -1764,8 +1779,8 @@ exit:
 enum vxge_hw_status
 vxge_hw_vpath_mac_addr_get(
 	struct __vxge_hw_vpath_handle *vp,
-	u8 *macaddr,
-	u8 *macaddr_mask)
+	u8 (macaddr)[ETH_ALEN],
+	u8 (macaddr_mask)[ETH_ALEN])
 {
 	u32 i;
 	u64 data1 = 0ULL;
@@ -1801,13 +1816,14 @@ exit:
 }
 
 /**
- * vxge_hw_vpath_mac_addr_get_next - Get the next mac address entry
+ * vxge_hw_vpath_mac_addr_get_next - Get the next mac address entry for this
+ * vpath
+ *               from MAC address table.
  * @vp: Vpath handle.
  * @macaddr: Next MAC address entry for this vpath in the list
  * @macaddr_mask: MAC address mask for macaddr
  *
- * Get the next mac address entry for this vpath from MAC address table.
- * Return: the next mac address and mac address mask in the list for this
+ * Returns the next mac address and mac address mask in the list for this
  * vpath.
  * see also: vxge_hw_vpath_mac_addr_get
  *
@@ -1815,8 +1831,8 @@ exit:
 enum vxge_hw_status
 vxge_hw_vpath_mac_addr_get_next(
 	struct __vxge_hw_vpath_handle *vp,
-	u8 *macaddr,
-	u8 *macaddr_mask)
+	u8 (macaddr)[ETH_ALEN],
+	u8 (macaddr_mask)[ETH_ALEN])
 {
 	u32 i;
 	u64 data1 = 0ULL;
@@ -1853,7 +1869,8 @@ exit:
 }
 
 /**
- * vxge_hw_vpath_mac_addr_delete - Delete the mac address entry for this vpath to MAC address table.
+ * vxge_hw_vpath_mac_addr_delete - Delete the mac address entry for this vpath
+ *               to MAC address table.
  * @vp: Vpath handle.
  * @macaddr: MAC address to be added for this vpath into the list
  * @macaddr_mask: MAC address mask for macaddr
@@ -1867,8 +1884,8 @@ exit:
 enum vxge_hw_status
 vxge_hw_vpath_mac_addr_delete(
 	struct __vxge_hw_vpath_handle *vp,
-	u8 *macaddr,
-	u8 *macaddr_mask)
+	u8 (macaddr)[ETH_ALEN],
+	u8 (macaddr_mask)[ETH_ALEN])
 {
 	u32 i;
 	u64 data1 = 0ULL;
@@ -1899,7 +1916,8 @@ exit:
 }
 
 /**
- * vxge_hw_vpath_vid_add - Add the vlan id entry for this vpath to vlan id table.
+ * vxge_hw_vpath_vid_add - Add the vlan id entry for this vpath
+ *               to vlan id table.
  * @vp: Vpath handle.
  * @vid: vlan id to be added for this vpath into the list
  *
@@ -2357,6 +2375,7 @@ enum vxge_hw_status vxge_hw_vpath_poll_rx(struct __vxge_hw_ring *ring)
 	u8 t_code;
 	enum vxge_hw_status status = VXGE_HW_OK;
 	void *first_rxdh;
+	u64 val64 = 0;
 	int new_count = 0;
 
 	ring->cmpl_cnt = 0;
@@ -2384,7 +2403,8 @@ enum vxge_hw_status vxge_hw_vpath_poll_rx(struct __vxge_hw_ring *ring)
 			}
 			writeq(VXGE_HW_PRC_RXD_DOORBELL_NEW_QW_CNT(new_count),
 				&ring->vp_reg->prc_rxd_doorbell);
-			readl(&ring->common_reg->titan_general_int_status);
+			val64 =
+			  readl(&ring->common_reg->titan_general_int_status);
 			ring->doorbell_cnt = 0;
 		}
 	}
@@ -2393,11 +2413,9 @@ enum vxge_hw_status vxge_hw_vpath_poll_rx(struct __vxge_hw_ring *ring)
 }
 
 /**
- * vxge_hw_vpath_poll_tx - Poll Tx for completed descriptors and process the same.
+ * vxge_hw_vpath_poll_tx - Poll Tx for completed descriptors and process
+ * the same.
  * @fifo: Handle to the fifo object used for non offload send
- * @skb_ptr: pointer to skb
- * @nr_skb: number of skbs
- * @more: more is coming
  *
  * The function polls the Tx for the completed descriptors and calls
  * the driver via supplied completion callback.

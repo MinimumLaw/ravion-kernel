@@ -48,8 +48,6 @@ required:
   - vdd-supply
   - linux,keycodes
 
-unevaluatedProperties: false
-
 examples:
   - |
     // Example with interrupts

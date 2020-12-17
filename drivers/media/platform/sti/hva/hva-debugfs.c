@@ -337,11 +337,25 @@ DEFINE_SHOW_ATTRIBUTE(regs);
 void hva_debugfs_create(struct hva_dev *hva)
 {
 	hva->dbg.debugfs_entry = debugfs_create_dir(HVA_NAME, NULL);
+	if (!hva->dbg.debugfs_entry)
+		goto err;
 
-	hva_dbg_create_entry(device);
-	hva_dbg_create_entry(encoders);
-	hva_dbg_create_entry(last);
-	hva_dbg_create_entry(regs);
+	if (!hva_dbg_create_entry(device))
+		goto err;
+
+	if (!hva_dbg_create_entry(encoders))
+		goto err;
+
+	if (!hva_dbg_create_entry(last))
+		goto err;
+
+	if (!hva_dbg_create_entry(regs))
+		goto err;
+
+	return;
+
+err:
+	hva_debugfs_remove(hva);
 }
 
 void hva_debugfs_remove(struct hva_dev *hva)

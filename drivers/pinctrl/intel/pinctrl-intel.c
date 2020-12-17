@@ -442,8 +442,8 @@ static void intel_gpio_set_gpio_mode(void __iomem *padcfg0)
 	value |= PADCFG0_PMODE_GPIO;
 
 	/* Disable input and output buffers */
-	value |= PADCFG0_GPIORXDIS;
-	value |= PADCFG0_GPIOTXDIS;
+	value &= ~PADCFG0_GPIORXDIS;
+	value &= ~PADCFG0_GPIOTXDIS;
 
 	/* Disable SCI/SMI/NMI generation */
 	value &= ~(PADCFG0_GPIROUTIOXAPIC | PADCFG0_GPIROUTSCI);
@@ -1434,6 +1434,9 @@ static int intel_pinctrl_probe(struct platform_device *pdev,
 	struct intel_pinctrl *pctrl;
 	int i, ret, irq;
 
+	if (!soc_data)
+		return -EINVAL;
+
 	pctrl = devm_kzalloc(&pdev->dev, sizeof(*pctrl), GFP_KERNEL);
 	if (!pctrl)
 		return -ENOMEM;
@@ -1522,26 +1525,11 @@ int intel_pinctrl_probe_by_hid(struct platform_device *pdev)
 	const struct intel_pinctrl_soc_data *data;
 
 	data = device_get_match_data(&pdev->dev);
-	if (!data)
-		return -ENODATA;
-
 	return intel_pinctrl_probe(pdev, data);
 }
 EXPORT_SYMBOL_GPL(intel_pinctrl_probe_by_hid);
 
 int intel_pinctrl_probe_by_uid(struct platform_device *pdev)
-{
-	const struct intel_pinctrl_soc_data *data;
-
-	data = intel_pinctrl_get_soc_data(pdev);
-	if (IS_ERR(data))
-		return PTR_ERR(data);
-
-	return intel_pinctrl_probe(pdev, data);
-}
-EXPORT_SYMBOL_GPL(intel_pinctrl_probe_by_uid);
-
-const struct intel_pinctrl_soc_data *intel_pinctrl_get_soc_data(struct platform_device *pdev)
 {
 	const struct intel_pinctrl_soc_data *data = NULL;
 	const struct intel_pinctrl_soc_data **table;
@@ -1564,15 +1552,15 @@ const struct intel_pinctrl_soc_data *intel_pinctrl_get_soc_data(struct platform_
 
 		id = platform_get_device_id(pdev);
 		if (!id)
-			return ERR_PTR(-ENODEV);
+			return -ENODEV;
 
 		table = (const struct intel_pinctrl_soc_data **)id->driver_data;
 		data = table[pdev->id];
 	}
 
-	return data ?: ERR_PTR(-ENODATA);
+	return intel_pinctrl_probe(pdev, data);
 }
-EXPORT_SYMBOL_GPL(intel_pinctrl_get_soc_data);
+EXPORT_SYMBOL_GPL(intel_pinctrl_probe_by_uid);
 
 #ifdef CONFIG_PM_SLEEP
 static bool intel_pinctrl_should_save(struct intel_pinctrl *pctrl, unsigned int pin)

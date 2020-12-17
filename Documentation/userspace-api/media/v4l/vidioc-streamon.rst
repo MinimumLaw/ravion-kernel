@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_STREAMON:
 
@@ -12,22 +18,22 @@ Name
 
 VIDIOC_STREAMON - VIDIOC_STREAMOFF - Start or stop streaming I/O
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_STREAMON
+.. c:function:: int ioctl( int fd, VIDIOC_STREAMON, const int *argp )
+    :name: VIDIOC_STREAMON
 
-``int ioctl(int fd, VIDIOC_STREAMON, const int *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_STREAMOFF, const int *argp )
+    :name: VIDIOC_STREAMOFF
 
-.. c:macro:: VIDIOC_STREAMOFF
-
-``int ioctl(int fd, VIDIOC_STREAMOFF, const int *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to an integer.
@@ -84,6 +90,7 @@ state as mentioned above.
    or after the ``VIDIOC_STREAMON`` or ``VIDIOC_STREAMOFF`` calls, there is
    no notion of starting or stopping "now". Buffer timestamps can be used
    to synchronize with other events.
+
 
 Return Value
 ============

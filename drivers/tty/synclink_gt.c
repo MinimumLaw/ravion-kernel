@@ -1395,14 +1395,14 @@ static int set_break(struct tty_struct *tty, int break_state)
 #if SYNCLINK_GENERIC_HDLC
 
 /**
- * hdlcdev_attach - called by generic HDLC layer when protocol selected (PPP, frame relay, etc.)
- * @dev:      pointer to network device structure
- * @encoding: serial encoding setting
- * @parity:   FCS setting
+ * called by generic HDLC layer when protocol selected (PPP, frame relay, etc.)
+ * set encoding and frame check sequence (FCS) options
  *
- * Set encoding and frame check sequence (FCS) options.
+ * dev       pointer to network device structure
+ * encoding  serial encoding setting
+ * parity    FCS setting
  *
- * Return: 0 if success, otherwise error code
+ * returns 0 if success, otherwise error code
  */
 static int hdlcdev_attach(struct net_device *dev, unsigned short encoding,
 			  unsigned short parity)
@@ -1446,9 +1446,10 @@ static int hdlcdev_attach(struct net_device *dev, unsigned short encoding,
 }
 
 /**
- * hdlcdev_xmit - called by generic HDLC layer to send a frame
- * @skb: socket buffer containing HDLC frame
- * @dev: pointer to network device structure
+ * called by generic HDLC layer to send frame
+ *
+ * skb  socket buffer containing HDLC frame
+ * dev  pointer to network device structure
  */
 static netdev_tx_t hdlcdev_xmit(struct sk_buff *skb,
 				      struct net_device *dev)
@@ -1482,12 +1483,12 @@ static netdev_tx_t hdlcdev_xmit(struct sk_buff *skb,
 }
 
 /**
- * hdlcdev_open - called by network layer when interface enabled
- * @dev: pointer to network device structure
+ * called by network layer when interface enabled
+ * claim resources and initialize hardware
  *
- * Claim resources and initialize hardware.
+ * dev  pointer to network device structure
  *
- * Return: 0 if success, otherwise error code
+ * returns 0 if success, otherwise error code
  */
 static int hdlcdev_open(struct net_device *dev)
 {
@@ -1543,12 +1544,12 @@ static int hdlcdev_open(struct net_device *dev)
 }
 
 /**
- * hdlcdev_close - called by network layer when interface is disabled
- * @dev:  pointer to network device structure
+ * called by network layer when interface is disabled
+ * shutdown hardware and release resources
  *
- * Shutdown hardware and release resources.
+ * dev  pointer to network device structure
  *
- * Return: 0 if success, otherwise error code
+ * returns 0 if success, otherwise error code
  */
 static int hdlcdev_close(struct net_device *dev)
 {
@@ -1573,12 +1574,13 @@ static int hdlcdev_close(struct net_device *dev)
 }
 
 /**
- * hdlcdev_ioctl - called by network layer to process IOCTL call to network device
- * @dev: pointer to network device structure
- * @ifr: pointer to network interface request structure
- * @cmd: IOCTL command code
+ * called by network layer to process IOCTL call to network device
  *
- * Return: 0 if success, otherwise error code
+ * dev  pointer to network device structure
+ * ifr  pointer to network interface request structure
+ * cmd  IOCTL command code
+ *
+ * returns 0 if success, otherwise error code
  */
 static int hdlcdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
@@ -1676,8 +1678,9 @@ static int hdlcdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 }
 
 /**
- * hdlcdev_tx_timeout - called by network layer when transmit timeout is detected
- * @dev: pointer to network device structure
+ * called by network layer when transmit timeout is detected
+ *
+ * dev  pointer to network device structure
  */
 static void hdlcdev_tx_timeout(struct net_device *dev, unsigned int txqueue)
 {
@@ -1697,10 +1700,10 @@ static void hdlcdev_tx_timeout(struct net_device *dev, unsigned int txqueue)
 }
 
 /**
- * hdlcdev_tx_done - called by device driver when transmit completes
- * @info: pointer to device instance information
+ * called by device driver when transmit completes
+ * reenable network layer transmit if stopped
  *
- * Reenable network layer transmit if stopped.
+ * info  pointer to device instance information
  */
 static void hdlcdev_tx_done(struct slgt_info *info)
 {
@@ -1709,12 +1712,12 @@ static void hdlcdev_tx_done(struct slgt_info *info)
 }
 
 /**
- * hdlcdev_rx - called by device driver when frame received
- * @info: pointer to device instance information
- * @buf:  pointer to buffer contianing frame data
- * @size: count of data bytes in buf
+ * called by device driver when frame received
+ * pass frame to network layer
  *
- * Pass frame to network layer.
+ * info  pointer to device instance information
+ * buf   pointer to buffer contianing frame data
+ * size  count of data bytes in buf
  */
 static void hdlcdev_rx(struct slgt_info *info, char *buf, int size)
 {
@@ -1748,12 +1751,12 @@ static const struct net_device_ops hdlcdev_ops = {
 };
 
 /**
- * hdlcdev_init - called by device driver when adding device instance
- * @info: pointer to device instance information
+ * called by device driver when adding device instance
+ * do generic HDLC initialization
  *
- * Do generic HDLC initialization.
+ * info  pointer to device instance information
  *
- * Return: 0 if success, otherwise error code
+ * returns 0 if success, otherwise error code
  */
 static int hdlcdev_init(struct slgt_info *info)
 {
@@ -1797,10 +1800,10 @@ static int hdlcdev_init(struct slgt_info *info)
 }
 
 /**
- * hdlcdev_exit - called by device driver when removing device instance
- * @info: pointer to device instance information
+ * called by device driver when removing device instance
+ * do generic HDLC cleanup
  *
- * Do generic HDLC cleanup.
+ * info  pointer to device instance information
  */
 static void hdlcdev_exit(struct slgt_info *info)
 {
@@ -3338,8 +3341,8 @@ static int alloc_desc(struct slgt_info *info)
 	unsigned int pbufs;
 
 	/* allocate memory to hold descriptor lists */
-	info->bufs = dma_alloc_coherent(&info->pdev->dev, DESC_LIST_SIZE,
-					&info->bufs_dma_addr, GFP_KERNEL);
+	info->bufs = pci_zalloc_consistent(info->pdev, DESC_LIST_SIZE,
+					   &info->bufs_dma_addr);
 	if (info->bufs == NULL)
 		return -ENOMEM;
 
@@ -3381,8 +3384,7 @@ static int alloc_desc(struct slgt_info *info)
 static void free_desc(struct slgt_info *info)
 {
 	if (info->bufs != NULL) {
-		dma_free_coherent(&info->pdev->dev, DESC_LIST_SIZE,
-				  info->bufs, info->bufs_dma_addr);
+		pci_free_consistent(info->pdev, DESC_LIST_SIZE, info->bufs, info->bufs_dma_addr);
 		info->bufs  = NULL;
 		info->rbufs = NULL;
 		info->tbufs = NULL;
@@ -3393,9 +3395,7 @@ static int alloc_bufs(struct slgt_info *info, struct slgt_desc *bufs, int count)
 {
 	int i;
 	for (i=0; i < count; i++) {
-		bufs[i].buf = dma_alloc_coherent(&info->pdev->dev, DMABUFSIZE,
-						 &bufs[i].buf_dma_addr, GFP_KERNEL);
-		if (!bufs[i].buf)
+		if ((bufs[i].buf = pci_alloc_consistent(info->pdev, DMABUFSIZE, &bufs[i].buf_dma_addr)) == NULL)
 			return -ENOMEM;
 		bufs[i].pbuf  = cpu_to_le32((unsigned int)bufs[i].buf_dma_addr);
 	}
@@ -3408,8 +3408,7 @@ static void free_bufs(struct slgt_info *info, struct slgt_desc *bufs, int count)
 	for (i=0; i < count; i++) {
 		if (bufs[i].buf == NULL)
 			continue;
-		dma_free_coherent(&info->pdev->dev, DMABUFSIZE, bufs[i].buf,
-				  bufs[i].buf_dma_addr);
+		pci_free_consistent(info->pdev, DMABUFSIZE, bufs[i].buf, bufs[i].buf_dma_addr);
 		bufs[i].buf = NULL;
 	}
 }

@@ -275,7 +275,7 @@ static struct attribute *domain_attrs[] = {
 static umode_t domain_attr_is_visible(struct kobject *kobj,
 				      struct attribute *attr, int n)
 {
-	struct device *dev = kobj_to_dev(kobj);
+	struct device *dev = container_of(kobj, struct device, kobj);
 	struct tb *tb = container_of(dev, struct tb, dev);
 
 	if (attr == &dev_attr_boot_acl.attr) {
@@ -455,8 +455,6 @@ int tb_domain_add(struct tb *tb)
 	/* This starts event processing */
 	mutex_unlock(&tb->lock);
 
-	device_init_wakeup(&tb->dev, true);
-
 	pm_runtime_no_callbacks(&tb->dev);
 	pm_runtime_set_active(&tb->dev);
 	pm_runtime_enable(&tb->dev);
@@ -544,33 +542,6 @@ int tb_domain_resume_noirq(struct tb *tb)
 int tb_domain_suspend(struct tb *tb)
 {
 	return tb->cm_ops->suspend ? tb->cm_ops->suspend(tb) : 0;
-}
-
-int tb_domain_freeze_noirq(struct tb *tb)
-{
-	int ret = 0;
-
-	mutex_lock(&tb->lock);
-	if (tb->cm_ops->freeze_noirq)
-		ret = tb->cm_ops->freeze_noirq(tb);
-	if (!ret)
-		tb_ctl_stop(tb->ctl);
-	mutex_unlock(&tb->lock);
-
-	return ret;
-}
-
-int tb_domain_thaw_noirq(struct tb *tb)
-{
-	int ret = 0;
-
-	mutex_lock(&tb->lock);
-	tb_ctl_start(tb->ctl);
-	if (tb->cm_ops->thaw_noirq)
-		ret = tb->cm_ops->thaw_noirq(tb);
-	mutex_unlock(&tb->lock);
-
-	return ret;
 }
 
 void tb_domain_complete(struct tb *tb)
@@ -827,23 +798,12 @@ int tb_domain_init(void)
 {
 	int ret;
 
-	tb_test_init();
-
-	tb_debugfs_init();
 	ret = tb_xdomain_init();
 	if (ret)
-		goto err_debugfs;
+		return ret;
 	ret = bus_register(&tb_bus_type);
 	if (ret)
-		goto err_xdomain;
-
-	return 0;
-
-err_xdomain:
-	tb_xdomain_exit();
-err_debugfs:
-	tb_debugfs_exit();
-	tb_test_exit();
+		tb_xdomain_exit();
 
 	return ret;
 }
@@ -854,6 +814,4 @@ void tb_domain_exit(void)
 	ida_destroy(&tb_domain_ida);
 	tb_nvm_exit();
 	tb_xdomain_exit();
-	tb_debugfs_exit();
-	tb_test_exit();
 }

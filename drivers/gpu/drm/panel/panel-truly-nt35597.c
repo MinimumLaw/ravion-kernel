@@ -17,6 +17,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 static const char * const regulator_names[] = {
 	"vdda",
@@ -230,7 +231,9 @@ static int truly_dcs_write(struct drm_panel *panel, u32 command)
 	for (i = 0; i < ARRAY_SIZE(ctx->dsi); i++) {
 		ret = mipi_dsi_dcs_write(ctx->dsi[i], command, NULL, 0);
 		if (ret < 0) {
-			dev_err(ctx->dev, "cmd 0x%x failed for dsi = %d\n", command, i);
+			DRM_DEV_ERROR(ctx->dev,
+				"cmd 0x%x failed for dsi = %d\n",
+				command, i);
 		}
 	}
 
@@ -247,7 +250,8 @@ static int truly_dcs_write_buf(struct drm_panel *panel,
 	for (i = 0; i < ARRAY_SIZE(ctx->dsi); i++) {
 		ret = mipi_dsi_dcs_write_buffer(ctx->dsi[i], buf, size);
 		if (ret < 0) {
-			dev_err(ctx->dev, "failed to tx cmd [%d], err: %d\n", i, ret);
+			DRM_DEV_ERROR(ctx->dev,
+				"failed to tx cmd [%d], err: %d\n", i, ret);
 			return ret;
 		}
 	}
@@ -296,14 +300,16 @@ static int truly_nt35597_power_off(struct truly_nt35597 *ctx)
 		ret = regulator_set_load(ctx->supplies[i].consumer,
 				regulator_disable_loads[i]);
 		if (ret) {
-			dev_err(ctx->dev, "regulator_set_load failed %d\n", ret);
+			DRM_DEV_ERROR(ctx->dev,
+				"regulator_set_load failed %d\n", ret);
 			return ret;
 		}
 	}
 
 	ret = regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
 	if (ret) {
-		dev_err(ctx->dev, "regulator_bulk_disable failed %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			"regulator_bulk_disable failed %d\n", ret);
 	}
 	return ret;
 }
@@ -319,7 +325,8 @@ static int truly_nt35597_disable(struct drm_panel *panel)
 	if (ctx->backlight) {
 		ret = backlight_disable(ctx->backlight);
 		if (ret < 0)
-			dev_err(ctx->dev, "backlight disable failed %d\n", ret);
+			DRM_DEV_ERROR(ctx->dev, "backlight disable failed %d\n",
+				ret);
 	}
 
 	ctx->enabled = false;
@@ -339,7 +346,9 @@ static int truly_nt35597_unprepare(struct drm_panel *panel)
 
 	ret = truly_dcs_write(panel, MIPI_DCS_SET_DISPLAY_OFF);
 	if (ret < 0) {
-		dev_err(ctx->dev, "set_display_off cmd failed ret = %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			"set_display_off cmd failed ret = %d\n",
+			ret);
 	}
 
 	/* 120ms delay required here as per DCS spec */
@@ -347,12 +356,13 @@ static int truly_nt35597_unprepare(struct drm_panel *panel)
 
 	ret = truly_dcs_write(panel, MIPI_DCS_ENTER_SLEEP_MODE);
 	if (ret < 0) {
-		dev_err(ctx->dev, "enter_sleep cmd failed ret = %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			"enter_sleep cmd failed ret = %d\n", ret);
 	}
 
 	ret = truly_nt35597_power_off(ctx);
 	if (ret < 0)
-		dev_err(ctx->dev, "power_off failed ret = %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev, "power_off failed ret = %d\n", ret);
 
 	ctx->prepared = false;
 	return ret;
@@ -386,14 +396,18 @@ static int truly_nt35597_prepare(struct drm_panel *panel)
 				panel_on_cmds[i].size,
 					panel_on_cmds[i].commands);
 		if (ret < 0) {
-			dev_err(ctx->dev, "cmd set tx failed i = %d ret = %d\n", i, ret);
+			DRM_DEV_ERROR(ctx->dev,
+				"cmd set tx failed i = %d ret = %d\n",
+					i, ret);
 			goto power_off;
 		}
 	}
 
 	ret = truly_dcs_write(panel, MIPI_DCS_EXIT_SLEEP_MODE);
 	if (ret < 0) {
-		dev_err(ctx->dev, "exit_sleep_mode cmd failed ret = %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			"exit_sleep_mode cmd failed ret = %d\n",
+			ret);
 		goto power_off;
 	}
 
@@ -402,7 +416,8 @@ static int truly_nt35597_prepare(struct drm_panel *panel)
 
 	ret = truly_dcs_write(panel, MIPI_DCS_SET_DISPLAY_ON);
 	if (ret < 0) {
-		dev_err(ctx->dev, "set_display_on cmd failed ret = %d\n", ret);
+		DRM_DEV_ERROR(ctx->dev,
+			"set_display_on cmd failed ret = %d\n", ret);
 		goto power_off;
 	}
 
@@ -415,7 +430,7 @@ static int truly_nt35597_prepare(struct drm_panel *panel)
 
 power_off:
 	if (truly_nt35597_power_off(ctx))
-		dev_err(ctx->dev, "power_off failed\n");
+		DRM_DEV_ERROR(ctx->dev, "power_off failed\n");
 	return ret;
 }
 
@@ -430,7 +445,8 @@ static int truly_nt35597_enable(struct drm_panel *panel)
 	if (ctx->backlight) {
 		ret = backlight_enable(ctx->backlight);
 		if (ret < 0)
-			dev_err(ctx->dev, "backlight enable failed %d\n", ret);
+			DRM_DEV_ERROR(ctx->dev, "backlight enable failed %d\n",
+						  ret);
 	}
 
 	ctx->enabled = true;
@@ -448,7 +464,8 @@ static int truly_nt35597_get_modes(struct drm_panel *panel,
 	config = ctx->config;
 	mode = drm_mode_create(connector->dev);
 	if (!mode) {
-		dev_err(ctx->dev, "failed to create a new display mode\n");
+		DRM_DEV_ERROR(ctx->dev,
+			"failed to create a new display mode\n");
 		return 0;
 	}
 
@@ -484,13 +501,15 @@ static int truly_nt35597_panel_add(struct truly_nt35597 *ctx)
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(ctx->reset_gpio)) {
-		dev_err(dev, "cannot get reset gpio %ld\n", PTR_ERR(ctx->reset_gpio));
+		DRM_DEV_ERROR(dev, "cannot get reset gpio %ld\n",
+			PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
 
 	ctx->mode_gpio = devm_gpiod_get(dev, "mode", GPIOD_OUT_LOW);
 	if (IS_ERR(ctx->mode_gpio)) {
-		dev_err(dev, "cannot get mode gpio %ld\n", PTR_ERR(ctx->mode_gpio));
+		DRM_DEV_ERROR(dev, "cannot get mode gpio %ld\n",
+			PTR_ERR(ctx->mode_gpio));
 		return PTR_ERR(ctx->mode_gpio);
 	}
 
@@ -565,21 +584,22 @@ static int truly_nt35597_probe(struct mipi_dsi_device *dsi)
 
 	dsi1 = of_graph_get_remote_node(dsi->dev.of_node, 1, -1);
 	if (!dsi1) {
-		dev_err(dev, "failed to get remote node for dsi1_device\n");
+		DRM_DEV_ERROR(dev,
+			"failed to get remote node for dsi1_device\n");
 		return -ENODEV;
 	}
 
 	dsi1_host = of_find_mipi_dsi_host_by_node(dsi1);
 	of_node_put(dsi1);
 	if (!dsi1_host) {
-		dev_err(dev, "failed to find dsi host\n");
+		DRM_DEV_ERROR(dev, "failed to find dsi host\n");
 		return -EPROBE_DEFER;
 	}
 
 	/* register the second DSI device */
 	dsi1_device = mipi_dsi_device_register_full(dsi1_host, &info);
 	if (IS_ERR(dsi1_device)) {
-		dev_err(dev, "failed to create dsi device\n");
+		DRM_DEV_ERROR(dev, "failed to create dsi device\n");
 		return PTR_ERR(dsi1_device);
 	}
 
@@ -591,7 +611,7 @@ static int truly_nt35597_probe(struct mipi_dsi_device *dsi)
 
 	ret = truly_nt35597_panel_add(ctx);
 	if (ret) {
-		dev_err(dev, "failed to add panel\n");
+		DRM_DEV_ERROR(dev, "failed to add panel\n");
 		goto err_panel_add;
 	}
 
@@ -603,7 +623,8 @@ static int truly_nt35597_probe(struct mipi_dsi_device *dsi)
 			MIPI_DSI_CLOCK_NON_CONTINUOUS;
 		ret = mipi_dsi_attach(dsi_dev);
 		if (ret < 0) {
-			dev_err(dev, "dsi attach failed i = %d\n", i);
+			DRM_DEV_ERROR(dev,
+				"dsi attach failed i = %d\n", i);
 			goto err_dsi_attach;
 		}
 	}

@@ -24,7 +24,6 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/videodev2.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-ctrls.h>
@@ -389,7 +388,7 @@ static int mcam_alloc_dma_bufs(struct mcam_camera *cam, int loadtime)
 		dma_free_coherent(cam->dev, cam->dma_buf_size,
 				cam->dma_bufs[0], cam->dma_handles[0]);
 		cam->nbufs = 0;
-		fallthrough;
+		/* fall-through */
 	case 0:
 		cam_err(cam, "Insufficient DMA buffers, cannot operate\n");
 		return -ENOMEM;
@@ -439,9 +438,9 @@ static void mcam_ctlr_dma_vmalloc(struct mcam_camera *cam)
 /*
  * Copy data out to user space in the vmalloc case
  */
-static void mcam_frame_tasklet(struct tasklet_struct *t)
+static void mcam_frame_tasklet(unsigned long data)
 {
-	struct mcam_camera *cam = from_tasklet(cam, t, s_tasklet);
+	struct mcam_camera *cam = (struct mcam_camera *) data;
 	int i;
 	unsigned long flags;
 	struct mcam_vb_buffer *buf;
@@ -896,6 +895,30 @@ static void mcam_ctlr_power_down(struct mcam_camera *cam)
 
 /* ---------------------------------------------------------------------- */
 /*
+ * Controller clocks.
+ */
+static void mcam_clk_enable(struct mcam_camera *mcam)
+{
+	unsigned int i;
+
+	for (i = 0; i < NR_MCAM_CLK; i++) {
+		if (!IS_ERR(mcam->clk[i]))
+			clk_prepare_enable(mcam->clk[i]);
+	}
+}
+
+static void mcam_clk_disable(struct mcam_camera *mcam)
+{
+	int i;
+
+	for (i = NR_MCAM_CLK - 1; i >= 0; i--) {
+		if (!IS_ERR(mcam->clk[i]))
+			clk_disable_unprepare(mcam->clk[i]);
+	}
+}
+
+/* ---------------------------------------------------------------------- */
+/*
  * Master sensor clock.
  */
 static int mclk_prepare(struct clk_hw *hw)
@@ -1300,7 +1323,8 @@ static int mcam_setup_vb2(struct mcam_camera *cam)
 		break;
 	case B_vmalloc:
 #ifdef MCAM_MODE_VMALLOC
-		tasklet_setup(&cam->s_tasklet, mcam_frame_tasklet);
+		tasklet_init(&cam->s_tasklet, mcam_frame_tasklet,
+				(unsigned long) cam);
 		vq->ops = &mcam_vb2_ops;
 		vq->mem_ops = &vb2_vmalloc_memops;
 		cam->dma_setup = mcam_ctlr_dma_vmalloc;
@@ -1609,7 +1633,7 @@ static int mcam_v4l_open(struct file *filp)
 		ret = sensor_call(cam, core, s_power, 1);
 		if (ret)
 			goto out;
-		pm_runtime_get_sync(cam->dev);
+		mcam_clk_enable(cam);
 		__mcam_cam_reset(cam);
 		mcam_set_config_needed(cam, 1);
 	}
@@ -1632,7 +1656,7 @@ static int mcam_v4l_release(struct file *filp)
 	if (last_open) {
 		mcam_disable_mipi(cam);
 		sensor_call(cam, core, s_power, 0);
-		pm_runtime_put(cam->dev);
+		mcam_clk_disable(cam);
 		if (cam->buffer_mode == B_vmalloc && alloc_bufs_at_read)
 			mcam_free_dma_bufs(cam);
 	}
@@ -1953,6 +1977,7 @@ void mccic_suspend(struct mcam_camera *cam)
 
 		mcam_ctlr_stop_dma(cam);
 		sensor_call(cam, core, s_power, 0);
+		mcam_clk_disable(cam);
 		cam->state = cstate;
 	}
 	mutex_unlock(&cam->s_mutex);
@@ -1965,6 +1990,7 @@ int mccic_resume(struct mcam_camera *cam)
 
 	mutex_lock(&cam->s_mutex);
 	if (!list_empty(&cam->vdev.fh_list)) {
+		mcam_clk_enable(cam);
 		ret = sensor_call(cam, core, s_power, 1);
 		if (ret) {
 			mutex_unlock(&cam->s_mutex);

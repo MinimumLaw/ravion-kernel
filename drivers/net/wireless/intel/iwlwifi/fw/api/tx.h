@@ -5,8 +5,9 @@
  *
  * GPL LICENSE SUMMARY
  *
+ * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
- * Copyright(c) 2012 - 2014, 2018 - 2020 Intel Corporation
+ * Copyright(c) 2018 - 2019 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,8 +27,9 @@
  *
  * BSD LICENSE
  *
+ * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
- * Copyright(c) 2012 - 2014, 2018 - 2020 Intel Corporation
+ * Copyright(c) 2018 - 2019 Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,7 +61,6 @@
 
 #ifndef __iwl_fw_api_tx_h__
 #define __iwl_fw_api_tx_h__
-#include <linux/ieee80211.h>
 
 /**
  * enum iwl_tx_flags - bitmasks for tx_flags in TX command

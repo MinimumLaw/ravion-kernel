@@ -110,7 +110,7 @@ static void add_read_queue(int flag, unsigned long val)
 	} else {
 		val += TIME_CONST / 2;
 	}
-	ev.duration = val;
+	ev.duration = US_TO_NS(val);
 
 	ir_raw_event_store_with_filter(rcdev, &ev);
 }

@@ -817,9 +817,6 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 	int ret;
 	int value;
 
-	if (!gs || gs->v1p8_on == on)
-		return 0;
-
 	if (gs->v1p8_gpio >= 0) {
 		pr_info("atomisp_gmin_platform: 1.8v power on GPIO %d\n",
 			gs->v1p8_gpio);
@@ -830,6 +827,8 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
 			pr_err("V1P8 GPIO initialization failed\n");
 	}
 
+	if (!gs || gs->v1p8_on == on)
+		return 0;
 	gs->v1p8_on = on;
 
 	if (gs->v1p8_gpio >= 0)
@@ -872,9 +871,6 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 	int ret;
 	int value;
 
-	if (WARN_ON(!gs))
-		return -ENODEV;
-
 	if (gs->v2p8_gpio >= 0) {
 		pr_info("atomisp_gmin_platform: 2.8v power on GPIO %d\n",
 			gs->v2p8_gpio);
@@ -885,7 +881,7 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
 			pr_err("V2P8 GPIO initialization failed\n");
 	}
 
-	if (gs->v2p8_on == on)
+	if (!gs || gs->v2p8_on == on)
 		return 0;
 	gs->v2p8_on = on;
 

@@ -211,7 +211,7 @@ static void __add_badblock_range(struct badblocks *bb, u64 ns_offset, u64 len)
 }
 
 static void badblocks_populate(struct badrange *badrange,
-		struct badblocks *bb, const struct range *range)
+		struct badblocks *bb, const struct resource *res)
 {
 	struct badrange_entry *bre;
 
@@ -222,34 +222,34 @@ static void badblocks_populate(struct badrange *badrange,
 		u64 bre_end = bre->start + bre->length - 1;
 
 		/* Discard intervals with no intersection */
-		if (bre_end < range->start)
+		if (bre_end < res->start)
 			continue;
-		if (bre->start > range->end)
+		if (bre->start >  res->end)
 			continue;
 		/* Deal with any overlap after start of the namespace */
-		if (bre->start >= range->start) {
+		if (bre->start >= res->start) {
 			u64 start = bre->start;
 			u64 len;
 
-			if (bre_end <= range->end)
+			if (bre_end <= res->end)
 				len = bre->length;
 			else
-				len = range->start + range_len(range)
+				len = res->start + resource_size(res)
 					- bre->start;
-			__add_badblock_range(bb, start - range->start, len);
+			__add_badblock_range(bb, start - res->start, len);
 			continue;
 		}
 		/*
 		 * Deal with overlap for badrange starting before
 		 * the namespace.
 		 */
-		if (bre->start < range->start) {
+		if (bre->start < res->start) {
 			u64 len;
 
-			if (bre_end < range->end)
-				len = bre->start + bre->length - range->start;
+			if (bre_end < res->end)
+				len = bre->start + bre->length - res->start;
 			else
-				len = range_len(range);
+				len = resource_size(res);
 			__add_badblock_range(bb, 0, len);
 		}
 	}
@@ -267,7 +267,7 @@ static void badblocks_populate(struct badrange *badrange,
  * and add badblocks entries for all matching sub-ranges
  */
 void nvdimm_badblocks_populate(struct nd_region *nd_region,
-		struct badblocks *bb, const struct range *range)
+		struct badblocks *bb, const struct resource *res)
 {
 	struct nvdimm_bus *nvdimm_bus;
 
@@ -279,7 +279,7 @@ void nvdimm_badblocks_populate(struct nd_region *nd_region,
 	nvdimm_bus = walk_to_nvdimm_bus(&nd_region->dev);
 
 	nvdimm_bus_lock(&nvdimm_bus->dev);
-	badblocks_populate(&nvdimm_bus->badrange, bb, range);
+	badblocks_populate(&nvdimm_bus->badrange, bb, res);
 	nvdimm_bus_unlock(&nvdimm_bus->dev);
 }
 EXPORT_SYMBOL_GPL(nvdimm_badblocks_populate);

@@ -10,7 +10,6 @@
 #include "eeprom.h"
 #include "mcu.h"
 #include "initvals.h"
-#include "initvals_init.h"
 #include "../mt76x02_phy.h"
 
 static void

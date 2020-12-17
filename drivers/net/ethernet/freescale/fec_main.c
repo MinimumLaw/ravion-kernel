@@ -1980,7 +1980,8 @@ failed_clk_ref:
 		mutex_unlock(&fep->ptp_clk_mutex);
 	}
 failed_clk_ptp:
-	clk_disable_unprepare(fep->clk_enet_out);
+	if (fep->clk_enet_out)
+		clk_disable_unprepare(fep->clk_enet_out);
 
 	return ret;
 }

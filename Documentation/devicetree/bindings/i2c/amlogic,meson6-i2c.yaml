@@ -36,8 +36,6 @@ required:
   - interrupts
   - clocks
 
-unevaluatedProperties: false
-
 examples:
   - |
     i2c@c8100500 {

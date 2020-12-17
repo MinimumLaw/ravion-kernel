@@ -23,6 +23,7 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/dma-mapping.h>
+#include <linux/platform_data/macb.h>
 #include <linux/platform_device.h>
 #include <linux/phylink.h>
 #include <linux/of.h>
@@ -457,9 +458,9 @@ static void macb_init_buffers(struct macb *bp)
 
 /**
  * macb_set_tx_clk() - Set a clock to a new frequency
- * @clk:	Pointer to the clock to change
- * @speed:	New frequency in Hz
- * @dev:	Pointer to the struct net_device
+ * @clk		Pointer to the clock to change
+ * @rate	New frequency in Hz
+ * @dev		Pointer to the struct net_device
  */
 static void macb_set_tx_clk(struct clk *clk, int speed, struct net_device *dev)
 {
@@ -1464,9 +1465,9 @@ static int macb_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-static void macb_hresp_error_task(struct tasklet_struct *t)
+static void macb_hresp_error_task(unsigned long data)
 {
-	struct macb *bp = from_tasklet(bp, t, hresp_err_tasklet);
+	struct macb *bp = (struct macb *)data;
 	struct net_device *dev = bp->dev;
 	struct macb_queue *queue;
 	unsigned int q;
@@ -3909,7 +3910,6 @@ static int at91ether_start(struct macb *lp)
 			     MACB_BIT(ISR_TUND)	|
 			     MACB_BIT(ISR_RLE)	|
 			     MACB_BIT(TCOMP)	|
-			     MACB_BIT(RM9200_TBRE)	|
 			     MACB_BIT(ISR_ROVR)	|
 			     MACB_BIT(HRESP));
 
@@ -3926,7 +3926,6 @@ static void at91ether_stop(struct macb *lp)
 			     MACB_BIT(ISR_TUND)	|
 			     MACB_BIT(ISR_RLE)	|
 			     MACB_BIT(TCOMP)	|
-			     MACB_BIT(RM9200_TBRE)	|
 			     MACB_BIT(ISR_ROVR) |
 			     MACB_BIT(HRESP));
 
@@ -3996,34 +3995,24 @@ static netdev_tx_t at91ether_start_xmit(struct sk_buff *skb,
 					struct net_device *dev)
 {
 	struct macb *lp = netdev_priv(dev);
-	unsigned long flags;
 
-	if (lp->rm9200_tx_len < 2) {
-		int desc = lp->rm9200_tx_tail;
+	if (macb_readl(lp, TSR) & MACB_BIT(RM9200_BNQ)) {
+		netif_stop_queue(dev);
 
 		/* Store packet information (to free when Tx completed) */
-		lp->rm9200_txq[desc].skb = skb;
-		lp->rm9200_txq[desc].size = skb->len;
-		lp->rm9200_txq[desc].mapping = dma_map_single(&lp->pdev->dev, skb->data,
-							      skb->len, DMA_TO_DEVICE);
-		if (dma_mapping_error(&lp->pdev->dev, lp->rm9200_txq[desc].mapping)) {
+		lp->skb = skb;
+		lp->skb_length = skb->len;
+		lp->skb_physaddr = dma_map_single(&lp->pdev->dev, skb->data,
+						  skb->len, DMA_TO_DEVICE);
+		if (dma_mapping_error(&lp->pdev->dev, lp->skb_physaddr)) {
 			dev_kfree_skb_any(skb);
 			dev->stats.tx_dropped++;
 			netdev_err(dev, "%s: DMA mapping error\n", __func__);
 			return NETDEV_TX_OK;
 		}
 
-		spin_lock_irqsave(&lp->lock, flags);
-
-		lp->rm9200_tx_tail = (desc + 1) & 1;
-		lp->rm9200_tx_len++;
-		if (lp->rm9200_tx_len > 1)
-			netif_stop_queue(dev);
-
-		spin_unlock_irqrestore(&lp->lock, flags);
-
 		/* Set address of the data in the Transmit Address register */
-		macb_writel(lp, TAR, lp->rm9200_txq[desc].mapping);
+		macb_writel(lp, TAR, lp->skb_physaddr);
 		/* Set length of the packet in the Transmit Control register */
 		macb_writel(lp, TCR, skb->len);
 
@@ -4086,9 +4075,6 @@ static irqreturn_t at91ether_interrupt(int irq, void *dev_id)
 	struct net_device *dev = dev_id;
 	struct macb *lp = netdev_priv(dev);
 	u32 intstatus, ctl;
-	unsigned int desc;
-	unsigned int qlen;
-	u32 tsr;
 
 	/* MAC Interrupt Status register indicates what interrupts are pending.
 	 * It is automatically cleared once read.
@@ -4100,39 +4086,20 @@ static irqreturn_t at91ether_interrupt(int irq, void *dev_id)
 		at91ether_rx(dev);
 
 	/* Transmit complete */
-	if (intstatus & (MACB_BIT(TCOMP) | MACB_BIT(RM9200_TBRE))) {
+	if (intstatus & MACB_BIT(TCOMP)) {
 		/* The TCOM bit is set even if the transmission failed */
 		if (intstatus & (MACB_BIT(ISR_TUND) | MACB_BIT(ISR_RLE)))
 			dev->stats.tx_errors++;
 
-		spin_lock(&lp->lock);
-
-		tsr = macb_readl(lp, TSR);
-
-		/* we have three possibilities here:
-		 *   - all pending packets transmitted (TGO, implies BNQ)
-		 *   - only first packet transmitted (!TGO && BNQ)
-		 *   - two frames pending (!TGO && !BNQ)
-		 * Note that TGO ("transmit go") is called "IDLE" on RM9200.
-		 */
-		qlen = (tsr & MACB_BIT(TGO)) ? 0 :
-			(tsr & MACB_BIT(RM9200_BNQ)) ? 1 : 2;
-
-		while (lp->rm9200_tx_len > qlen) {
-			desc = (lp->rm9200_tx_tail - lp->rm9200_tx_len) & 1;
-			dev_consume_skb_irq(lp->rm9200_txq[desc].skb);
-			lp->rm9200_txq[desc].skb = NULL;
-			dma_unmap_single(&lp->pdev->dev, lp->rm9200_txq[desc].mapping,
-					 lp->rm9200_txq[desc].size, DMA_TO_DEVICE);
+		if (lp->skb) {
+			dev_consume_skb_irq(lp->skb);
+			lp->skb = NULL;
+			dma_unmap_single(&lp->pdev->dev, lp->skb_physaddr,
+					 lp->skb_length, DMA_TO_DEVICE);
 			dev->stats.tx_packets++;
-			dev->stats.tx_bytes += lp->rm9200_txq[desc].size;
-			lp->rm9200_tx_len--;
+			dev->stats.tx_bytes += lp->skb_length;
 		}
-
-		if (lp->rm9200_tx_len < 2 && netif_queue_stopped(dev))
-			netif_wake_queue(dev);
-
-		spin_unlock(&lp->lock);
+		netif_wake_queue(dev);
 	}
 
 	/* Work-around for EMAC Errata section 41.3.1 */
@@ -4593,7 +4560,8 @@ static int macb_probe(struct platform_device *pdev)
 		goto err_out_unregister_mdio;
 	}
 
-	tasklet_setup(&bp->hresp_err_tasklet, macb_hresp_error_task);
+	tasklet_init(&bp->hresp_err_tasklet, macb_hresp_error_task,
+		     (unsigned long)bp);
 
 	netdev_info(dev, "Cadence %s rev 0x%08x at 0x%08lx irq %d (%pM)\n",
 		    macb_is_gem(bp) ? "GEM" : "MACB", macb_readl(bp, MID),

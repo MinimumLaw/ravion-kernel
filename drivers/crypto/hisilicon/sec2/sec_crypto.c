@@ -66,6 +66,8 @@
 #define SEC_SQE_AEAD_FLAG	3
 #define SEC_SQE_DONE		0x1
 
+static atomic_t sec_active_devs;
+
 /* Get an en/de-cipher queue cyclically to balance load over queues of TFM */
 static inline int sec_alloc_queue_id(struct sec_ctx *ctx, struct sec_req *req)
 {
@@ -1639,24 +1641,33 @@ static struct aead_alg sec_aeads[] = {
 
 int sec_register_to_crypto(void)
 {
-	int ret;
+	int ret = 0;
 
 	/* To avoid repeat register */
-	ret = crypto_register_skciphers(sec_skciphers,
-					ARRAY_SIZE(sec_skciphers));
-	if (ret)
-		return ret;
+	if (atomic_add_return(1, &sec_active_devs) == 1) {
+		ret = crypto_register_skciphers(sec_skciphers,
+						ARRAY_SIZE(sec_skciphers));
+		if (ret)
+			return ret;
 
-	ret = crypto_register_aeads(sec_aeads, ARRAY_SIZE(sec_aeads));
-	if (ret)
-		crypto_unregister_skciphers(sec_skciphers,
-					    ARRAY_SIZE(sec_skciphers));
+		ret = crypto_register_aeads(sec_aeads, ARRAY_SIZE(sec_aeads));
+		if (ret)
+			goto reg_aead_fail;
+	}
+
+	return ret;
+
+reg_aead_fail:
+	crypto_unregister_skciphers(sec_skciphers, ARRAY_SIZE(sec_skciphers));
+
 	return ret;
 }
 
 void sec_unregister_from_crypto(void)
 {
-	crypto_unregister_skciphers(sec_skciphers,
-				    ARRAY_SIZE(sec_skciphers));
-	crypto_unregister_aeads(sec_aeads, ARRAY_SIZE(sec_aeads));
+	if (atomic_sub_return(1, &sec_active_devs) == 0) {
+		crypto_unregister_skciphers(sec_skciphers,
+					    ARRAY_SIZE(sec_skciphers));
+		crypto_unregister_aeads(sec_aeads, ARRAY_SIZE(sec_aeads));
+	}
 }

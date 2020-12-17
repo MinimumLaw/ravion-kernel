@@ -4,7 +4,6 @@
  * Copyright 2012 Linaro Ltd.
  */
 
-#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/io.h>

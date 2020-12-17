@@ -1580,9 +1580,12 @@ static int stm32_mdma_probe(struct platform_device *pdev)
 		return PTR_ERR(dmadev->base);
 
 	dmadev->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(dmadev->clk))
-		return dev_err_probe(&pdev->dev, PTR_ERR(dmadev->clk),
-				     "Missing clock controller\n");
+	if (IS_ERR(dmadev->clk)) {
+		ret = PTR_ERR(dmadev->clk);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "Missing clock controller\n");
+		return ret;
+	}
 
 	ret = clk_prepare_enable(dmadev->clk);
 	if (ret < 0) {

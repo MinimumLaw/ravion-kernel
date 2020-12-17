@@ -12,43 +12,32 @@
 #include <xen/xen.h>
 
 static DEFINE_MUTEX(list_lock);
-static struct page *page_list;
+static LIST_HEAD(page_list);
 static unsigned int list_count;
 
 static int fill_list(unsigned int nr_pages)
 {
 	struct dev_pagemap *pgmap;
-	struct resource *res;
 	void *vaddr;
 	unsigned int i, alloc_pages = round_up(nr_pages, PAGES_PER_SECTION);
-	int ret = -ENOMEM;
-
-	res = kzalloc(sizeof(*res), GFP_KERNEL);
-	if (!res)
-		return -ENOMEM;
+	int ret;
 
 	pgmap = kzalloc(sizeof(*pgmap), GFP_KERNEL);
 	if (!pgmap)
-		goto err_pgmap;
+		return -ENOMEM;
 
 	pgmap->type = MEMORY_DEVICE_GENERIC;
-	res->name = "Xen scratch";
-	res->flags = IORESOURCE_MEM | IORESOURCE_BUSY;
+	pgmap->res.name = "Xen scratch";
+	pgmap->res.flags = IORESOURCE_MEM | IORESOURCE_BUSY;
 
-	ret = allocate_resource(&iomem_resource, res,
+	ret = allocate_resource(&iomem_resource, &pgmap->res,
 				alloc_pages * PAGE_SIZE, 0, -1,
 				PAGES_PER_SECTION * PAGE_SIZE, NULL, NULL);
 	if (ret < 0) {
 		pr_err("Cannot allocate new IOMEM resource\n");
-		goto err_resource;
+		kfree(pgmap);
+		return ret;
 	}
-
-	pgmap->range = (struct range) {
-		.start = res->start,
-		.end = res->end,
-	};
-	pgmap->nr_range = 1;
-	pgmap->owner = res;
 
 #ifdef CONFIG_XEN_HAVE_PVMMU
         /*
@@ -61,13 +50,14 @@ static int fill_list(unsigned int nr_pages)
          * conflict with any devices.
          */
 	if (!xen_feature(XENFEAT_auto_translated_physmap)) {
-		xen_pfn_t pfn = PFN_DOWN(res->start);
+		xen_pfn_t pfn = PFN_DOWN(pgmap->res.start);
 
 		for (i = 0; i < alloc_pages; i++) {
 			if (!set_phys_to_machine(pfn + i, INVALID_P2M_ENTRY)) {
 				pr_warn("set_phys_to_machine() failed, no memory added\n");
-				ret = -ENOMEM;
-				goto err_memremap;
+				release_resource(&pgmap->res);
+				kfree(pgmap);
+				return -ENOMEM;
 			}
                 }
 	}
@@ -76,28 +66,20 @@ static int fill_list(unsigned int nr_pages)
 	vaddr = memremap_pages(pgmap, NUMA_NO_NODE);
 	if (IS_ERR(vaddr)) {
 		pr_err("Cannot remap memory range\n");
-		ret = PTR_ERR(vaddr);
-		goto err_memremap;
+		release_resource(&pgmap->res);
+		kfree(pgmap);
+		return PTR_ERR(vaddr);
 	}
 
 	for (i = 0; i < alloc_pages; i++) {
 		struct page *pg = virt_to_page(vaddr + PAGE_SIZE * i);
 
 		BUG_ON(!virt_addr_valid(vaddr + PAGE_SIZE * i));
-		pg->zone_device_data = page_list;
-		page_list = pg;
+		list_add(&pg->lru, &page_list);
 		list_count++;
 	}
 
 	return 0;
-
-err_memremap:
-	release_resource(res);
-err_resource:
-	kfree(pgmap);
-err_pgmap:
-	kfree(res);
-	return ret;
 }
 
 /**
@@ -119,10 +101,12 @@ int xen_alloc_unpopulated_pages(unsigned int nr_pages, struct page **pages)
 	}
 
 	for (i = 0; i < nr_pages; i++) {
-		struct page *pg = page_list;
+		struct page *pg = list_first_entry_or_null(&page_list,
+							   struct page,
+							   lru);
 
 		BUG_ON(!pg);
-		page_list = pg->zone_device_data;
+		list_del(&pg->lru);
 		list_count--;
 		pages[i] = pg;
 
@@ -133,8 +117,7 @@ int xen_alloc_unpopulated_pages(unsigned int nr_pages, struct page **pages)
 				unsigned int j;
 
 				for (j = 0; j <= i; j++) {
-					pages[j]->zone_device_data = page_list;
-					page_list = pages[j];
+					list_add(&pages[j]->lru, &page_list);
 					list_count++;
 				}
 				goto out;
@@ -160,8 +143,7 @@ void xen_free_unpopulated_pages(unsigned int nr_pages, struct page **pages)
 
 	mutex_lock(&list_lock);
 	for (i = 0; i < nr_pages; i++) {
-		pages[i]->zone_device_data = page_list;
-		page_list = pages[i];
+		list_add(&pages[i]->lru, &page_list);
 		list_count++;
 	}
 	mutex_unlock(&list_lock);
@@ -190,8 +172,7 @@ static int __init init(void)
 			struct page *pg =
 				pfn_to_page(xen_extra_mem[i].start_pfn + j);
 
-			pg->zone_device_data = page_list;
-			page_list = pg;
+			list_add(&pg->lru, &page_list);
 			list_count++;
 		}
 	}

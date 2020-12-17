@@ -221,6 +221,7 @@ int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
 	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
 	struct sof_abi_hdr *data = cdata->data;
 	size_t size;
+	int ret = 0;
 
 	if (be->max > sizeof(ucontrol->value.bytes.data)) {
 		dev_err_ratelimited(scomp->dev,
@@ -229,20 +230,20 @@ int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	/* be->max has been verified to be >= sizeof(struct sof_abi_hdr) */
-	if (data->size > be->max - sizeof(*data)) {
-		dev_err_ratelimited(scomp->dev,
-				    "error: %u bytes of control data is invalid, max is %zu\n",
-				    data->size, be->max - sizeof(*data));
-		return -EINVAL;
-	}
-
 	size = data->size + sizeof(*data);
+	if (size > be->max) {
+		dev_err_ratelimited(scomp->dev,
+				    "error: DSP sent %zu bytes max is %d\n",
+				    size, be->max);
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* copy back to kcontrol */
 	memcpy(ucontrol->value.bytes.data, data, size);
 
-	return 0;
+out:
+	return ret;
 }
 
 int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
@@ -254,7 +255,7 @@ int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *scomp = scontrol->scomp;
 	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
 	struct sof_abi_hdr *data = cdata->data;
-	size_t size;
+	size_t size = data->size + sizeof(*data);
 
 	if (be->max > sizeof(ucontrol->value.bytes.data)) {
 		dev_err_ratelimited(scomp->dev,
@@ -263,15 +264,12 @@ int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	/* be->max has been verified to be >= sizeof(struct sof_abi_hdr) */
-	if (data->size > be->max - sizeof(*data)) {
+	if (size > be->max) {
 		dev_err_ratelimited(scomp->dev,
-				    "error: data size too big %u bytes max is %zu\n",
-				    data->size, be->max - sizeof(*data));
+				    "error: size too big %zu bytes max is %d\n",
+				    size, be->max);
 		return -EINVAL;
 	}
-
-	size = data->size + sizeof(*data);
 
 	/* copy from kcontrol */
 	memcpy(data, ucontrol->value.bytes.data, size);
@@ -350,8 +348,7 @@ int snd_sof_bytes_ext_put(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	/* be->max has been verified to be >= sizeof(struct sof_abi_hdr) */
-	if (cdata->data->size > be->max - sizeof(const struct sof_abi_hdr)) {
+	if (cdata->data->size + sizeof(const struct sof_abi_hdr) > be->max) {
 		dev_err_ratelimited(scomp->dev, "error: Mismatch in ABI data size (truncated?).\n");
 		return -EINVAL;
 	}
@@ -367,78 +364,6 @@ int snd_sof_bytes_ext_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-int snd_sof_bytes_ext_volatile_get(struct snd_kcontrol *kcontrol, unsigned int __user *binary_data,
-				   unsigned int size)
-{
-	struct soc_bytes_ext *be = (struct soc_bytes_ext *)kcontrol->private_value;
-	struct snd_sof_control *scontrol = be->dobj.private;
-	struct snd_soc_component *scomp = scontrol->scomp;
-	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
-	struct snd_ctl_tlv header;
-	struct snd_ctl_tlv __user *tlvd = (struct snd_ctl_tlv __user *)binary_data;
-	size_t data_size;
-	int ret;
-	int err;
-
-	/*
-	 * Decrement the limit by ext bytes header size to
-	 * ensure the user space buffer is not exceeded.
-	 */
-	if (size < sizeof(struct snd_ctl_tlv))
-		return -ENOSPC;
-	size -= sizeof(struct snd_ctl_tlv);
-
-	ret = pm_runtime_get_sync(scomp->dev);
-	if (ret < 0 && ret != -EACCES) {
-		dev_err_ratelimited(scomp->dev, "error: bytes_ext get failed to resume %d\n", ret);
-		pm_runtime_put_noidle(scomp->dev);
-		return ret;
-	}
-
-	/* set the ABI header values */
-	cdata->data->magic = SOF_ABI_MAGIC;
-	cdata->data->abi = SOF_ABI_VERSION;
-	/* get all the component data from DSP */
-	ret = snd_sof_ipc_set_get_comp_data(scontrol, SOF_IPC_COMP_GET_DATA, SOF_CTRL_TYPE_DATA_GET,
-					    scontrol->cmd, false);
-	if (ret < 0)
-		goto out;
-
-	/* check data size doesn't exceed max coming from topology */
-	if (cdata->data->size > be->max - sizeof(const struct sof_abi_hdr)) {
-		dev_err_ratelimited(scomp->dev, "error: user data size %d exceeds max size %zu.\n",
-				    cdata->data->size,
-				    be->max - sizeof(const struct sof_abi_hdr));
-		ret = -EINVAL;
-		goto out;
-	}
-
-	data_size = cdata->data->size + sizeof(const struct sof_abi_hdr);
-
-	/* make sure we don't exceed size provided by user space for data */
-	if (data_size > size) {
-		ret = -ENOSPC;
-		goto out;
-	}
-
-	header.numid = scontrol->cmd;
-	header.length = data_size;
-	if (copy_to_user(tlvd, &header, sizeof(const struct snd_ctl_tlv))) {
-		ret = -EFAULT;
-		goto out;
-	}
-
-	if (copy_to_user(tlvd->tlv, cdata->data, data_size))
-		ret = -EFAULT;
-out:
-	pm_runtime_mark_last_busy(scomp->dev);
-	err = pm_runtime_put_autosuspend(scomp->dev);
-	if (err < 0)
-		dev_err_ratelimited(scomp->dev, "error: bytes_ext get failed to idle %d\n", err);
-
-	return ret;
-}
-
 int snd_sof_bytes_ext_get(struct snd_kcontrol *kcontrol,
 			  unsigned int __user *binary_data,
 			  unsigned int size)
@@ -451,41 +376,40 @@ int snd_sof_bytes_ext_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_tlv header;
 	struct snd_ctl_tlv __user *tlvd =
 		(struct snd_ctl_tlv __user *)binary_data;
-	size_t data_size;
+	int data_size;
+	int ret = 0;
 
 	/*
 	 * Decrement the limit by ext bytes header size to
 	 * ensure the user space buffer is not exceeded.
 	 */
-	if (size < sizeof(struct snd_ctl_tlv))
-		return -ENOSPC;
-	size -= sizeof(struct snd_ctl_tlv);
+	size -= sizeof(const struct snd_ctl_tlv);
 
 	/* set the ABI header values */
 	cdata->data->magic = SOF_ABI_MAGIC;
 	cdata->data->abi = SOF_ABI_VERSION;
 
-	/* check data size doesn't exceed max coming from topology */
-	if (cdata->data->size > be->max - sizeof(const struct sof_abi_hdr)) {
-		dev_err_ratelimited(scomp->dev, "error: user data size %d exceeds max size %zu.\n",
-				    cdata->data->size,
-				    be->max - sizeof(const struct sof_abi_hdr));
-		return -EINVAL;
-	}
-
+	/* Prevent read of other kernel data or possibly corrupt response */
 	data_size = cdata->data->size + sizeof(const struct sof_abi_hdr);
 
-	/* make sure we don't exceed size provided by user space for data */
-	if (data_size > size)
-		return -ENOSPC;
+	/* check data size doesn't exceed max coming from topology */
+	if (data_size > be->max) {
+		dev_err_ratelimited(scomp->dev, "error: user data size %d exceeds max size %d.\n",
+				    data_size, be->max);
+		ret = -EINVAL;
+		goto out;
+	}
 
 	header.numid = scontrol->cmd;
 	header.length = data_size;
-	if (copy_to_user(tlvd, &header, sizeof(const struct snd_ctl_tlv)))
-		return -EFAULT;
+	if (copy_to_user(tlvd, &header, sizeof(const struct snd_ctl_tlv))) {
+		ret = -EFAULT;
+		goto out;
+	}
 
 	if (copy_to_user(tlvd->tlv, cdata->data, data_size))
-		return -EFAULT;
+		ret = -EFAULT;
 
-	return 0;
+out:
+	return ret;
 }

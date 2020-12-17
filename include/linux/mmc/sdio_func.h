@@ -51,8 +51,6 @@ struct sdio_func {
 
 	u8			*tmpbuf;	/* DMA:able scratch buffer */
 
-	u8			major_rev;	/* major revision number */
-	u8			minor_rev;	/* minor revision number */
 	unsigned		num_info;	/* number of info strings */
 	const char		**info;		/* info strings */
 

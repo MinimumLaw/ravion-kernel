@@ -53,16 +53,6 @@ struct vdpa_device {
 };
 
 /**
- * vDPA IOVA range - the IOVA range support by the device
- * @first: start of the IOVA range
- * @last: end of the IOVA range
- */
-struct vdpa_iova_range {
-	u64 first;
-	u64 last;
-};
-
-/**
  * vDPA_config_ops - operations for configuring a vDPA device.
  * Note: vDPA device drivers are required to implement all of the
  * operations unless it is mentioned to be optional in the following
@@ -161,10 +151,6 @@ struct vdpa_iova_range {
  * @get_generation:		Get device config generation (optional)
  *				@vdev: vdpa device
  *				Returns u32: device generation
- * @get_iova_range:		Get supported iova range (optional)
- *				@vdev: vdpa device
- *				Returns the iova range supported by
- *				the device.
  * @set_map:			Set device memory mapping (optional)
  *				Needed for device that using device
  *				specific DMA translation (on-chip IOMMU)
@@ -230,7 +216,6 @@ struct vdpa_config_ops {
 	void (*set_config)(struct vdpa_device *vdev, unsigned int offset,
 			   const void *buf, unsigned int len);
 	u32 (*get_generation)(struct vdpa_device *vdev);
-	struct vdpa_iova_range (*get_iova_range)(struct vdpa_device *vdev);
 
 	/* DMA ops */
 	int (*set_map)(struct vdpa_device *vdev, struct vhost_iotlb *iotlb);

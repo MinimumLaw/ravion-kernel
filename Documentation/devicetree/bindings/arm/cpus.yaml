@@ -341,8 +341,6 @@ required:
 dependencies:
   rockchip,pmu: [enable-method]
 
-additionalProperties: true
-
 examples:
   - |
     cpus {

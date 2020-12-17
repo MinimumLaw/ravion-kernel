@@ -251,21 +251,43 @@ void eeh_pe_dev_traverse(struct eeh_pe *root,
 
 /**
  * __eeh_pe_get - Check the PE address
+ * @data: EEH PE
+ * @flag: EEH device
  *
  * For one particular PE, it can be identified by PE address
  * or tranditional BDF address. BDF address is composed of
  * Bus/Device/Function number. The extra data referred by flag
  * indicates which type of address should be used.
  */
+struct eeh_pe_get_flag {
+	int pe_no;
+	int config_addr;
+};
+
 static void *__eeh_pe_get(struct eeh_pe *pe, void *flag)
 {
-	int *target_pe = flag;
+	struct eeh_pe_get_flag *tmp = (struct eeh_pe_get_flag *) flag;
 
-	/* PHB PEs are special and should be ignored */
+	/* Unexpected PHB PE */
 	if (pe->type & EEH_PE_PHB)
 		return NULL;
 
-	if (*target_pe == pe->addr)
+	/*
+	 * We prefer PE address. For most cases, we should
+	 * have non-zero PE address
+	 */
+	if (eeh_has_flag(EEH_VALID_PE_ZERO)) {
+		if (tmp->pe_no == pe->addr)
+			return pe;
+	} else {
+		if (tmp->pe_no &&
+		    (tmp->pe_no == pe->addr))
+			return pe;
+	}
+
+	/* Try BDF address */
+	if (tmp->config_addr &&
+	   (tmp->config_addr == pe->config_addr))
 		return pe;
 
 	return NULL;
@@ -275,6 +297,7 @@ static void *__eeh_pe_get(struct eeh_pe *pe, void *flag)
  * eeh_pe_get - Search PE based on the given address
  * @phb: PCI controller
  * @pe_no: PE number
+ * @config_addr: Config address
  *
  * Search the corresponding PE based on the specified address which
  * is included in the eeh device. The function is used to check if
@@ -283,11 +306,16 @@ static void *__eeh_pe_get(struct eeh_pe *pe, void *flag)
  * which is composed of PCI bus/device/function number, or unified
  * PE address.
  */
-struct eeh_pe *eeh_pe_get(struct pci_controller *phb, int pe_no)
+struct eeh_pe *eeh_pe_get(struct pci_controller *phb,
+		int pe_no, int config_addr)
 {
 	struct eeh_pe *root = eeh_phb_pe_get(phb);
+	struct eeh_pe_get_flag tmp = { pe_no, config_addr };
+	struct eeh_pe *pe;
 
-	return eeh_pe_traverse(root, __eeh_pe_get, &pe_no);
+	pe = eeh_pe_traverse(root, __eeh_pe_get, &tmp);
+
+	return pe;
 }
 
 /**
@@ -308,13 +336,19 @@ int eeh_pe_tree_insert(struct eeh_dev *edev, struct eeh_pe *new_pe_parent)
 	struct pci_controller *hose = edev->controller;
 	struct eeh_pe *pe, *parent;
 
+	/* Check if the PE number is valid */
+	if (!eeh_has_flag(EEH_VALID_PE_ZERO) && !edev->pe_config_addr) {
+		eeh_edev_err(edev, "PE#0 is invalid for this PHB!\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * Search the PE has been existing or not according
 	 * to the PE address. If that has been existing, the
 	 * PE should be composed of PCI bus and its subordinate
 	 * components.
 	 */
-	pe = eeh_pe_get(hose, edev->pe_config_addr);
+	pe = eeh_pe_get(hose, edev->pe_config_addr, edev->bdfn);
 	if (pe) {
 		if (pe->type & EEH_PE_INVALID) {
 			list_add_tail(&edev->entry, &pe->edevs);
@@ -354,8 +388,8 @@ int eeh_pe_tree_insert(struct eeh_dev *edev, struct eeh_pe *new_pe_parent)
 		pr_err("%s: out of memory!\n", __func__);
 		return -ENOMEM;
 	}
-
-	pe->addr = edev->pe_config_addr;
+	pe->addr	= edev->pe_config_addr;
+	pe->config_addr	= edev->bdfn;
 
 	/*
 	 * Put the new EEH PE into hierarchy tree. If the parent

@@ -261,7 +261,8 @@ static void max1619_init_client(struct i2c_client *client)
 					  config & 0xBF); /* run */
 }
 
-static int max1619_probe(struct i2c_client *new_client)
+static int max1619_probe(struct i2c_client *new_client,
+			 const struct i2c_device_id *id)
 {
 	struct max1619_data *data;
 	struct device *hwmon_dev;
@@ -305,7 +306,7 @@ static struct i2c_driver max1619_driver = {
 		.name	= "max1619",
 		.of_match_table = of_match_ptr(max1619_of_match),
 	},
-	.probe_new	= max1619_probe,
+	.probe		= max1619_probe,
 	.id_table	= max1619_id,
 	.detect		= max1619_detect,
 	.address_list	= normal_i2c,

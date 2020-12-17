@@ -9,7 +9,6 @@
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/memblock.h>
 #include <linux/mm.h>
 
 #include <asm/ip32/crime.h>
@@ -37,7 +36,7 @@ void __init prom_meminit(void)
 
 		printk("CRIME MC: bank %u base 0x%016Lx size %LuMiB\n",
 			bank, base, size >> 20);
-		memblock_add(base, size);
+		add_memory_region(base, size, BOOT_MEM_RAM);
 	}
 }
 

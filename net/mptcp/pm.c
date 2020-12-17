@@ -13,34 +13,23 @@
 /* path manager command handlers */
 
 int mptcp_pm_announce_addr(struct mptcp_sock *msk,
-			   const struct mptcp_addr_info *addr,
-			   bool echo)
+			   const struct mptcp_addr_info *addr)
 {
 	pr_debug("msk=%p, local_id=%d", msk, addr->id);
 
 	msk->pm.local = *addr;
-	WRITE_ONCE(msk->pm.add_addr_echo, echo);
-	WRITE_ONCE(msk->pm.add_addr_signal, true);
+	WRITE_ONCE(msk->pm.addr_signal, true);
 	return 0;
 }
 
 int mptcp_pm_remove_addr(struct mptcp_sock *msk, u8 local_id)
 {
-	pr_debug("msk=%p, local_id=%d", msk, local_id);
-
-	msk->pm.rm_id = local_id;
-	WRITE_ONCE(msk->pm.rm_addr_signal, true);
-	return 0;
+	return -ENOTSUPP;
 }
 
-int mptcp_pm_remove_subflow(struct mptcp_sock *msk, u8 local_id)
+int mptcp_pm_remove_subflow(struct mptcp_sock *msk, u8 remote_id)
 {
-	pr_debug("msk=%p, local_id=%d", msk, local_id);
-
-	spin_lock_bh(&msk->pm.lock);
-	mptcp_pm_nl_rm_subflow_received(msk, local_id);
-	spin_unlock_bh(&msk->pm.lock);
-	return 0;
+	return -ENOTSUPP;
 }
 
 /* path manager event handlers */
@@ -57,7 +46,7 @@ void mptcp_pm_new_connection(struct mptcp_sock *msk, int server_side)
 bool mptcp_pm_allow_new_subflow(struct mptcp_sock *msk)
 {
 	struct mptcp_pm_data *pm = &msk->pm;
-	int ret = 0;
+	int ret;
 
 	pr_debug("msk=%p subflows=%d max=%d allow=%d", msk, pm->subflows,
 		 pm->subflows_max, READ_ONCE(pm->accept_subflow));
@@ -67,11 +56,9 @@ bool mptcp_pm_allow_new_subflow(struct mptcp_sock *msk)
 		return false;
 
 	spin_lock_bh(&pm->lock);
-	if (READ_ONCE(pm->accept_subflow)) {
-		ret = pm->subflows < pm->subflows_max;
-		if (ret && ++pm->subflows == pm->subflows_max)
-			WRITE_ONCE(pm->accept_subflow, false);
-	}
+	ret = pm->subflows < pm->subflows_max;
+	if (ret && ++pm->subflows == pm->subflows_max)
+		WRITE_ONCE(pm->accept_subflow, false);
 	spin_unlock_bh(&pm->lock);
 
 	return ret;
@@ -148,71 +135,38 @@ void mptcp_pm_add_addr_received(struct mptcp_sock *msk,
 	pr_debug("msk=%p remote_id=%d accept=%d", msk, addr->id,
 		 READ_ONCE(pm->accept_addr));
 
+	/* avoid acquiring the lock if there is no room for fouther addresses */
+	if (!READ_ONCE(pm->accept_addr))
+		return;
+
 	spin_lock_bh(&pm->lock);
 
-	if (!READ_ONCE(pm->accept_addr))
-		mptcp_pm_announce_addr(msk, addr, true);
-	else if (mptcp_pm_schedule_work(msk, MPTCP_PM_ADD_ADDR_RECEIVED))
+	/* be sure there is something to signal re-checking under PM lock */
+	if (READ_ONCE(pm->accept_addr) &&
+	    mptcp_pm_schedule_work(msk, MPTCP_PM_ADD_ADDR_RECEIVED))
 		pm->remote = *addr;
 
 	spin_unlock_bh(&pm->lock);
 }
 
-void mptcp_pm_rm_addr_received(struct mptcp_sock *msk, u8 rm_id)
-{
-	struct mptcp_pm_data *pm = &msk->pm;
-
-	pr_debug("msk=%p remote_id=%d", msk, rm_id);
-
-	spin_lock_bh(&pm->lock);
-	mptcp_pm_schedule_work(msk, MPTCP_PM_RM_ADDR_RECEIVED);
-	pm->rm_id = rm_id;
-	spin_unlock_bh(&pm->lock);
-}
-
 /* path manager helpers */
 
-bool mptcp_pm_add_addr_signal(struct mptcp_sock *msk, unsigned int remaining,
-			      struct mptcp_addr_info *saddr, bool *echo)
+bool mptcp_pm_addr_signal(struct mptcp_sock *msk, unsigned int remaining,
+			  struct mptcp_addr_info *saddr)
 {
 	int ret = false;
 
 	spin_lock_bh(&msk->pm.lock);
 
 	/* double check after the lock is acquired */
-	if (!mptcp_pm_should_add_signal(msk))
+	if (!mptcp_pm_should_signal(msk))
 		goto out_unlock;
 
-	*echo = READ_ONCE(msk->pm.add_addr_echo);
-
-	if (remaining < mptcp_add_addr_len(msk->pm.local.family, *echo))
+	if (remaining < mptcp_add_addr_len(msk->pm.local.family))
 		goto out_unlock;
 
 	*saddr = msk->pm.local;
-	WRITE_ONCE(msk->pm.add_addr_signal, false);
-	ret = true;
-
-out_unlock:
-	spin_unlock_bh(&msk->pm.lock);
-	return ret;
-}
-
-bool mptcp_pm_rm_addr_signal(struct mptcp_sock *msk, unsigned int remaining,
-			     u8 *rm_id)
-{
-	int ret = false;
-
-	spin_lock_bh(&msk->pm.lock);
-
-	/* double check after the lock is acquired */
-	if (!mptcp_pm_should_rm_signal(msk))
-		goto out_unlock;
-
-	if (remaining < TCPOLEN_MPTCP_RM_ADDR_BASE)
-		goto out_unlock;
-
-	*rm_id = msk->pm.rm_id;
-	WRITE_ONCE(msk->pm.rm_addr_signal, false);
+	WRITE_ONCE(msk->pm.addr_signal, false);
 	ret = true;
 
 out_unlock:
@@ -231,17 +185,13 @@ void mptcp_pm_data_init(struct mptcp_sock *msk)
 	msk->pm.add_addr_accepted = 0;
 	msk->pm.local_addr_used = 0;
 	msk->pm.subflows = 0;
-	msk->pm.rm_id = 0;
 	WRITE_ONCE(msk->pm.work_pending, false);
-	WRITE_ONCE(msk->pm.add_addr_signal, false);
-	WRITE_ONCE(msk->pm.rm_addr_signal, false);
+	WRITE_ONCE(msk->pm.addr_signal, false);
 	WRITE_ONCE(msk->pm.accept_addr, false);
 	WRITE_ONCE(msk->pm.accept_subflow, false);
-	WRITE_ONCE(msk->pm.add_addr_echo, false);
 	msk->pm.status = 0;
 
 	spin_lock_init(&msk->pm.lock);
-	INIT_LIST_HEAD(&msk->pm.anno_list);
 
 	mptcp_pm_nl_data_init(msk);
 }

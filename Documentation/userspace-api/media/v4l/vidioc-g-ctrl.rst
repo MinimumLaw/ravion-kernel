@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_G_CTRL:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_G_CTRL - VIDIOC_S_CTRL - Get or set the value of a control
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_G_CTRL
+.. c:function:: int ioctl( int fd, VIDIOC_G_CTRL, struct v4l2_control *argp )
+    :name: VIDIOC_G_CTRL
 
-``int ioctl(int fd, VIDIOC_G_CTRL, struct v4l2_control *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_S_CTRL, struct v4l2_control *argp )
+    :name: VIDIOC_S_CTRL
 
-.. c:macro:: VIDIOC_S_CTRL
-
-``int ioctl(int fd, VIDIOC_S_CTRL, struct v4l2_control *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_control`.
+
 
 Description
 ===========
@@ -55,6 +62,7 @@ These ioctls work only with user controls. For other control classes the
 :ref:`VIDIOC_S_EXT_CTRLS <VIDIOC_G_EXT_CTRLS>` or
 :ref:`VIDIOC_TRY_EXT_CTRLS <VIDIOC_G_EXT_CTRLS>` must be used.
 
+
 .. c:type:: v4l2_control
 
 .. tabularcolumns:: |p{4.4cm}|p{4.4cm}|p{8.7cm}|
@@ -70,6 +78,7 @@ These ioctls work only with user controls. For other control classes the
     * - __s32
       - ``value``
       - New value or current value.
+
 
 Return Value
 ============

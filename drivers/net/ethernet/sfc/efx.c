@@ -33,7 +33,7 @@
 #include "selftest.h"
 #include "sriov.h"
 
-#include "mcdi_port_common.h"
+#include "mcdi.h"
 #include "mcdi_pcol.h"
 #include "workarounds.h"
 
@@ -149,17 +149,23 @@ static int efx_init_port(struct efx_nic *efx)
 
 	mutex_lock(&efx->mac_lock);
 
+	rc = efx->phy_op->init(efx);
+	if (rc)
+		goto fail1;
+
 	efx->port_initialized = true;
 
 	/* Ensure the PHY advertises the correct flow control settings */
-	rc = efx_mcdi_port_reconfigure(efx);
+	rc = efx->phy_op->reconfigure(efx);
 	if (rc && rc != -EPERM)
-		goto fail;
+		goto fail2;
 
 	mutex_unlock(&efx->mac_lock);
 	return 0;
 
-fail:
+fail2:
+	efx->phy_op->fini(efx);
+fail1:
 	mutex_unlock(&efx->mac_lock);
 	return rc;
 }
@@ -171,6 +177,7 @@ static void efx_fini_port(struct efx_nic *efx)
 	if (!efx->port_initialized)
 		return;
 
+	efx->phy_op->fini(efx);
 	efx->port_initialized = false;
 
 	efx->link_state.up = false;
@@ -596,7 +603,6 @@ static const struct net_device_ops efx_netdev_ops = {
 	.ndo_set_mac_address	= efx_set_mac_address,
 	.ndo_set_rx_mode	= efx_set_rx_mode,
 	.ndo_set_features	= efx_set_features,
-	.ndo_features_check	= efx_features_check,
 	.ndo_vlan_rx_add_vid	= efx_vlan_rx_add_vid,
 	.ndo_vlan_rx_kill_vid	= efx_vlan_rx_kill_vid,
 #ifdef CONFIG_SFC_SRIOV
@@ -1223,7 +1229,7 @@ static int efx_pm_thaw(struct device *dev)
 			goto fail;
 
 		mutex_lock(&efx->mac_lock);
-		efx_mcdi_port_reconfigure(efx);
+		efx->phy_op->reconfigure(efx);
 		mutex_unlock(&efx->mac_lock);
 
 		efx_start_all(efx);
@@ -1330,7 +1336,7 @@ static int __init efx_init_module(void)
 {
 	int rc;
 
-	printk(KERN_INFO "Solarflare NET driver\n");
+	printk(KERN_INFO "Solarflare NET driver v" EFX_DRIVER_VERSION "\n");
 
 	rc = register_netdevice_notifier(&efx_netdev_notifier);
 	if (rc)
@@ -1392,3 +1398,4 @@ MODULE_AUTHOR("Solarflare Communications and "
 MODULE_DESCRIPTION("Solarflare network driver");
 MODULE_LICENSE("GPL");
 MODULE_DEVICE_TABLE(pci, efx_pci_table);
+MODULE_VERSION(EFX_DRIVER_VERSION);

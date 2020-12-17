@@ -11,7 +11,6 @@
 #include <linux/jump_label.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/sizes.h>
 
 #include <asm/cpufeature.h>
 #include <asm/fpu/api.h>

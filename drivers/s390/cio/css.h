@@ -115,9 +115,7 @@ extern int for_each_subchannel(int(*fn)(struct subchannel_id, void *), void *);
 void css_update_ssd_info(struct subchannel *sch);
 
 struct channel_subsystem {
-	u8 cssid;
-	u8 iid;
-	bool id_valid; /* cssid,iid */
+	int cssid;
 	struct channel_path *chps[__MAX_CHPID + 1];
 	struct device device;
 	struct pgid global_pgid;

@@ -24,6 +24,9 @@
 #include <asm/platform_sst_audio.h>
 #include "../sst-mfld-platform.h"
 #include "sst.h"
+#include "../../common/sst-dsp.h"
+
+
 
 #define NUM_CODEC 2
 #define MIN_FRAGMENT 2

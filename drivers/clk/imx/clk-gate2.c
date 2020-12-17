@@ -7,7 +7,6 @@
  */
 
 #include <linux/clk-provider.h>
-#include <linux/export.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/io.h>
@@ -16,7 +15,7 @@
 #include "clk.h"
 
 /**
- * DOC: basic gateable clock which can gate and ungate its output
+ * DOC: basic gatable clock which can gate and ungate it's ouput
  *
  * Traits of this clock:
  * prepare - clk_(un)prepare only ensures parent is (un)prepared
@@ -178,4 +177,3 @@ struct clk_hw *clk_hw_register_gate2(struct device *dev, const char *name,
 
 	return hw;
 }
-EXPORT_SYMBOL_GPL(clk_hw_register_gate2);

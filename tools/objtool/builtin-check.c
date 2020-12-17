@@ -41,8 +41,6 @@ const struct option check_options[] = {
 int cmd_check(int argc, const char **argv)
 {
 	const char *objname, *s;
-	struct objtool_file *file;
-	int ret;
 
 	argc = parse_options(argc, argv, check_options, check_usage, 0);
 
@@ -55,16 +53,5 @@ int cmd_check(int argc, const char **argv)
 	if (s && !s[9])
 		vmlinux = true;
 
-	file = objtool_open_read(objname);
-	if (!file)
-		return 1;
-
-	ret = check(file);
-	if (ret)
-		return ret;
-
-	if (file->elf->changed)
-		return elf_write(file->elf);
-
-	return 0;
+	return check(objname, false);
 }

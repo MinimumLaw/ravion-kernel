@@ -16,6 +16,7 @@
  * gzip declarations
  */
 #define STATIC static
+#define STATIC_RW_DATA static __section(.data)
 
 #undef memset
 #undef memcpy

@@ -757,9 +757,8 @@ static const struct hwmon_chip_info max6650_chip_info = {
 	.info = max6650_info,
 };
 
-static const struct i2c_device_id max6650_id[];
-
-static int max6650_probe(struct i2c_client *client)
+static int max6650_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct thermal_cooling_device *cooling_dev;
 	struct device *dev = &client->dev;
@@ -776,8 +775,7 @@ static int max6650_probe(struct i2c_client *client)
 	data->client = client;
 	i2c_set_clientdata(client, data);
 	mutex_init(&data->update_lock);
-	data->nr_fans = of_id ? (int)(uintptr_t)of_id->data :
-				i2c_match_id(max6650_id, client)->driver_data;
+	data->nr_fans = of_id ? (int)(uintptr_t)of_id->data : id->driver_data;
 
 	/*
 	 * Initialize the max6650 chip
@@ -819,7 +817,7 @@ static struct i2c_driver max6650_driver = {
 		.name	= "max6650",
 		.of_match_table = of_match_ptr(max6650_dt_match),
 	},
-	.probe_new	= max6650_probe,
+	.probe		= max6650_probe,
 	.id_table	= max6650_id,
 };
 

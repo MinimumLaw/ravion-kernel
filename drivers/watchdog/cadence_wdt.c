@@ -334,9 +334,12 @@ static int cdns_wdt_probe(struct platform_device *pdev)
 	watchdog_set_drvdata(cdns_wdt_device, wdt);
 
 	wdt->clk = devm_clk_get(dev, NULL);
-	if (IS_ERR(wdt->clk))
-		return dev_err_probe(dev, PTR_ERR(wdt->clk),
-				     "input clock not found\n");
+	if (IS_ERR(wdt->clk)) {
+		ret = PTR_ERR(wdt->clk);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "input clock not found\n");
+		return ret;
+	}
 
 	ret = clk_prepare_enable(wdt->clk);
 	if (ret) {

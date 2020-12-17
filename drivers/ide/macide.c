@@ -18,11 +18,10 @@
 #include <linux/delay.h>
 #include <linux/ide.h>
 #include <linux/module.h>
-#include <linux/platform_device.h>
 
 #include <asm/macintosh.h>
-
-#define DRV_NAME "mac_ide"
+#include <asm/macints.h>
+#include <asm/mac_baboon.h>
 
 #define IDE_BASE 0x50F1A000	/* Base address of IDE controller */
 
@@ -101,61 +100,42 @@ static const char *mac_ide_name[] =
  * Probe for a Macintosh IDE interface
  */
 
-static int mac_ide_probe(struct platform_device *pdev)
+static int __init macide_init(void)
 {
-	struct resource *mem, *irq;
+	unsigned long base;
+	int irq;
 	struct ide_hw hw, *hws[] = { &hw };
 	struct ide_port_info d = macide_port_info;
-	struct ide_host *host;
-	int rc;
 
 	if (!MACH_IS_MAC)
 		return -ENODEV;
 
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!mem)
+	switch (macintosh_config->ide_type) {
+	case MAC_IDE_QUADRA:
+		base = IDE_BASE;
+		irq = IRQ_NUBUS_F;
+		break;
+	case MAC_IDE_PB:
+		base = IDE_BASE;
+		irq = IRQ_NUBUS_C;
+		break;
+	case MAC_IDE_BABOON:
+		base = BABOON_BASE;
+		d.port_ops = NULL;
+		irq = IRQ_BABOON_1;
+		break;
+	default:
 		return -ENODEV;
-
-	irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!irq)
-		return -ENODEV;
-
-	if (!devm_request_mem_region(&pdev->dev, mem->start,
-				     resource_size(mem), DRV_NAME)) {
-		dev_err(&pdev->dev, "resources busy\n");
-		return -EBUSY;
 	}
 
 	printk(KERN_INFO "ide: Macintosh %s IDE controller\n",
 			 mac_ide_name[macintosh_config->ide_type - 1]);
 
-	macide_setup_ports(&hw, mem->start, irq->start);
+	macide_setup_ports(&hw, base, irq);
 
-	rc = ide_host_add(&d, hws, 1, &host);
-	if (rc)
-		return rc;
-
-	platform_set_drvdata(pdev, host);
-	return 0;
+	return ide_host_add(&d, hws, 1, NULL);
 }
 
-static int mac_ide_remove(struct platform_device *pdev)
-{
-	struct ide_host *host = platform_get_drvdata(pdev);
+module_init(macide_init);
 
-	ide_host_remove(host);
-	return 0;
-}
-
-static struct platform_driver mac_ide_driver = {
-	.driver = {
-		.name = DRV_NAME,
-	},
-	.probe  = mac_ide_probe,
-	.remove = mac_ide_remove,
-};
-
-module_platform_driver(mac_ide_driver);
-
-MODULE_ALIAS("platform:" DRV_NAME);
 MODULE_LICENSE("GPL");

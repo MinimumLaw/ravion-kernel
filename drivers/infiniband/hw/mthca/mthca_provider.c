@@ -373,10 +373,9 @@ static int mthca_alloc_pd(struct ib_pd *ibpd, struct ib_udata *udata)
 	return 0;
 }
 
-static int mthca_dealloc_pd(struct ib_pd *pd, struct ib_udata *udata)
+static void mthca_dealloc_pd(struct ib_pd *pd, struct ib_udata *udata)
 {
 	mthca_pd_free(to_mdev(pd->device), to_mpd(pd));
-	return 0;
 }
 
 static int mthca_ah_create(struct ib_ah *ibah,
@@ -390,10 +389,9 @@ static int mthca_ah_create(struct ib_ah *ibah,
 			       init_attr->ah_attr, ah);
 }
 
-static int mthca_ah_destroy(struct ib_ah *ah, u32 flags)
+static void mthca_ah_destroy(struct ib_ah *ah, u32 flags)
 {
 	mthca_destroy_ah(to_mdev(ah->device), to_mah(ah));
-	return 0;
 }
 
 static int mthca_create_srq(struct ib_srq *ibsrq,
@@ -442,7 +440,7 @@ static int mthca_create_srq(struct ib_srq *ibsrq,
 	return 0;
 }
 
-static int mthca_destroy_srq(struct ib_srq *srq, struct ib_udata *udata)
+static void mthca_destroy_srq(struct ib_srq *srq, struct ib_udata *udata)
 {
 	if (udata) {
 		struct mthca_ucontext *context =
@@ -456,7 +454,6 @@ static int mthca_destroy_srq(struct ib_srq *srq, struct ib_udata *udata)
 	}
 
 	mthca_free_srq(to_mdev(srq->device), to_msrq(srq));
-	return 0;
 }
 
 static struct ib_qp *mthca_create_qp(struct ib_pd *pd,
@@ -535,14 +532,13 @@ static struct ib_qp *mthca_create_qp(struct ib_pd *pd,
 	case IB_QPT_SMI:
 	case IB_QPT_GSI:
 	{
-		qp = kzalloc(sizeof(*qp), GFP_KERNEL);
+		/* Don't allow userspace to create special QPs */
+		if (udata)
+			return ERR_PTR(-EINVAL);
+
+		qp = kzalloc(sizeof(struct mthca_sqp), GFP_KERNEL);
 		if (!qp)
 			return ERR_PTR(-ENOMEM);
-		qp->sqp = kzalloc(sizeof(struct mthca_sqp), GFP_KERNEL);
-		if (!qp->sqp) {
-			kfree(qp);
-			return ERR_PTR(-ENOMEM);
-		}
 
 		qp->ibqp.qp_num = init_attr->qp_type == IB_QPT_SMI ? 0 : 1;
 
@@ -551,7 +547,7 @@ static struct ib_qp *mthca_create_qp(struct ib_pd *pd,
 				      to_mcq(init_attr->recv_cq),
 				      init_attr->sq_sig_type, &init_attr->cap,
 				      qp->ibqp.qp_num, init_attr->port_num,
-				      qp, udata);
+				      to_msqp(qp), udata);
 		break;
 	}
 	default:
@@ -560,7 +556,6 @@ static struct ib_qp *mthca_create_qp(struct ib_pd *pd,
 	}
 
 	if (err) {
-		kfree(qp->sqp);
 		kfree(qp);
 		return ERR_PTR(err);
 	}
@@ -593,8 +588,7 @@ static int mthca_destroy_qp(struct ib_qp *qp, struct ib_udata *udata)
 				    to_mqp(qp)->rq.db_index);
 	}
 	mthca_free_qp(to_mdev(qp->device), to_mqp(qp));
-	kfree(to_mqp(qp)->sqp);
-	kfree(to_mqp(qp));
+	kfree(qp);
 	return 0;
 }
 
@@ -853,7 +847,7 @@ static struct ib_mr *mthca_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 				       u64 virt, int acc, struct ib_udata *udata)
 {
 	struct mthca_dev *dev = to_mdev(pd->device);
-	struct ib_block_iter biter;
+	struct sg_dma_page_iter sg_iter;
 	struct mthca_ucontext *context = rdma_udata_to_drv_context(
 		udata, struct mthca_ucontext, ibucontext);
 	struct mthca_mr *mr;
@@ -884,7 +878,7 @@ static struct ib_mr *mthca_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 		goto err;
 	}
 
-	n = ib_umem_num_dma_blocks(mr->umem, PAGE_SIZE);
+	n = ib_umem_num_pages(mr->umem);
 
 	mr->mtt = mthca_alloc_mtt(dev, n);
 	if (IS_ERR(mr->mtt)) {
@@ -902,8 +896,8 @@ static struct ib_mr *mthca_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 
 	write_mtt_size = min(mthca_write_mtt_size(dev), (int) (PAGE_SIZE / sizeof *pages));
 
-	rdma_umem_for_each_dma_block(mr->umem, &biter, PAGE_SIZE) {
-		pages[i++] = rdma_block_iter_dma_address(&biter);
+	for_each_sg_dma_page(mr->umem->sg_head.sgl, &sg_iter, mr->umem->nmap, 0) {
+		pages[i++] = sg_page_iter_dma_address(&sg_iter);
 
 		/*
 		 * Be friendly to write_mtt and pass it chunks
@@ -1206,7 +1200,7 @@ int mthca_register_device(struct mthca_dev *dev)
 	mutex_init(&dev->cap_mask_mutex);
 
 	rdma_set_device_sysfs_group(&dev->ib_dev, &mthca_attr_group);
-	ret = ib_register_device(&dev->ib_dev, "mthca%d", &dev->pdev->dev);
+	ret = ib_register_device(&dev->ib_dev, "mthca%d");
 	if (ret)
 		return ret;
 

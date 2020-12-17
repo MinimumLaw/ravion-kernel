@@ -336,8 +336,8 @@ static int ar71xx_pci_probe(struct platform_device *pdev)
 	if (!apc)
 		return -ENOMEM;
 
-	apc->cfg_base = devm_platform_ioremap_resource_byname(pdev,
-							      "cfg_base");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfg_base");
+	apc->cfg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(apc->cfg_base))
 		return PTR_ERR(apc->cfg_base);
 

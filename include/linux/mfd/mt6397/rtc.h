@@ -72,6 +72,7 @@ struct mtk_rtc_data {
 };
 
 struct mt6397_rtc {
+	struct device           *dev;
 	struct rtc_device       *rtc_dev;
 
 	/* Protect register access from multiple tasks */

@@ -389,21 +389,24 @@ out_box:
 	return ret;
 }
 
-int mlx5_ib_destroy_srq(struct ib_srq *srq, struct ib_udata *udata)
+void mlx5_ib_destroy_srq(struct ib_srq *srq, struct ib_udata *udata)
 {
 	struct mlx5_ib_dev *dev = to_mdev(srq->device);
 	struct mlx5_ib_srq *msrq = to_msrq(srq);
-	int ret;
 
-	ret = mlx5_cmd_destroy_srq(dev, &msrq->msrq);
-	if (ret)
-		return ret;
+	mlx5_cmd_destroy_srq(dev, &msrq->msrq);
 
-	if (udata)
-		destroy_srq_user(srq->pd, msrq, udata);
-	else
+	if (srq->uobject) {
+		mlx5_ib_db_unmap_user(
+			rdma_udata_to_drv_context(
+				udata,
+				struct mlx5_ib_ucontext,
+				ibucontext),
+			&msrq->db);
+		ib_umem_release(msrq->umem);
+	} else {
 		destroy_srq_kernel(dev, msrq);
-	return 0;
+	}
 }
 
 void mlx5_ib_free_srq_wqe(struct mlx5_ib_srq *srq, int wqe_index)

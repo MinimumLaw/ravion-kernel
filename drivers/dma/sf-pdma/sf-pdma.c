@@ -281,9 +281,10 @@ static void sf_pdma_free_desc(struct virt_dma_desc *vdesc)
 	desc->in_use = false;
 }
 
-static void sf_pdma_donebh_tasklet(struct tasklet_struct *t)
+static void sf_pdma_donebh_tasklet(unsigned long arg)
 {
-	struct sf_pdma_chan *chan = from_tasklet(chan, t, done_tasklet);
+	struct sf_pdma_chan *chan = (struct sf_pdma_chan *)arg;
+	struct sf_pdma_desc *desc = chan->desc;
 	unsigned long flags;
 
 	spin_lock_irqsave(&chan->lock, flags);
@@ -294,15 +295,12 @@ static void sf_pdma_donebh_tasklet(struct tasklet_struct *t)
 	}
 	spin_unlock_irqrestore(&chan->lock, flags);
 
-	spin_lock_irqsave(&chan->vchan.lock, flags);
-	list_del(&chan->desc->vdesc.node);
-	vchan_cookie_complete(&chan->desc->vdesc);
-	spin_unlock_irqrestore(&chan->vchan.lock, flags);
+	dmaengine_desc_get_callback_invoke(desc->async_tx, NULL);
 }
 
-static void sf_pdma_errbh_tasklet(struct tasklet_struct *t)
+static void sf_pdma_errbh_tasklet(unsigned long arg)
 {
-	struct sf_pdma_chan *chan = from_tasklet(chan, t, err_tasklet);
+	struct sf_pdma_chan *chan = (struct sf_pdma_chan *)arg;
 	struct sf_pdma_desc *desc = chan->desc;
 	unsigned long flags;
 
@@ -334,7 +332,8 @@ static irqreturn_t sf_pdma_done_isr(int irq, void *dev_id)
 	residue = readq(regs->residue);
 
 	if (!residue) {
-		tasklet_hi_schedule(&chan->done_tasklet);
+		list_del(&chan->desc->vdesc.node);
+		vchan_cookie_complete(&chan->desc->vdesc);
 	} else {
 		/* submit next trascatioin if possible */
 		struct sf_pdma_desc *desc = chan->desc;
@@ -347,6 +346,8 @@ static irqreturn_t sf_pdma_done_isr(int irq, void *dev_id)
 	}
 
 	spin_unlock_irqrestore(&chan->vchan.lock, flags);
+
+	tasklet_hi_schedule(&chan->done_tasklet);
 
 	return IRQ_HANDLED;
 }
@@ -475,8 +476,10 @@ static void sf_pdma_setup_chans(struct sf_pdma *pdma)
 
 		writel(PDMA_CLEAR_CTRL, chan->regs.ctrl);
 
-		tasklet_setup(&chan->done_tasklet, sf_pdma_donebh_tasklet);
-		tasklet_setup(&chan->err_tasklet, sf_pdma_errbh_tasklet);
+		tasklet_init(&chan->done_tasklet,
+			     sf_pdma_donebh_tasklet, (unsigned long)chan);
+		tasklet_init(&chan->err_tasklet,
+			     sf_pdma_errbh_tasklet, (unsigned long)chan);
 	}
 }
 

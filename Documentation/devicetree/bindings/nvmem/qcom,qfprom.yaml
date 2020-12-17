@@ -49,8 +49,6 @@ required:
   - compatible
   - reg
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gcc-sc7180.h>

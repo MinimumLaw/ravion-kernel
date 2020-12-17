@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.audio
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _AUDIO_SET_MUTE:
 
@@ -17,9 +23,9 @@ AUDIO_SET_MUTE
 Synopsis
 --------
 
-.. c:macro:: AUDIO_SET_MUTE
+.. c:function:: int  ioctl(int fd, AUDIO_SET_MUTE, boolean state)
+    :name: AUDIO_SET_MUTE
 
-``int ioctl(int fd, AUDIO_SET_MUTE, boolean state)``
 
 Arguments
 ---------
@@ -27,6 +33,7 @@ Arguments
 .. flat-table::
     :header-rows:  0
     :stub-columns: 0
+
 
     -
 
@@ -44,6 +51,7 @@ Arguments
 
           FALSE: Audio Un-mute
 
+
 Description
 -----------
 
@@ -53,6 +61,7 @@ V4L2 :ref:`VIDIOC_DECODER_CMD` with the
 
 This ioctl call asks the audio device to mute the stream that is
 currently being played.
+
 
 Return Value
 ------------

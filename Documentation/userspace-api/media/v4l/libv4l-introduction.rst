@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _libv4l-introduction:
 
@@ -17,6 +23,7 @@ An example of using libv4l is provided by
 :ref:`v4l2grab <v4l2grab-example>`.
 
 libv4l consists of 3 different libraries:
+
 
 libv4lconvert
 =============
@@ -65,6 +72,7 @@ libv4lconvert/processing. These controls are stored application wide
 libv4lconvert/processing offers the actual video processing
 functionality.
 
+
 libv4l1
 =======
 
@@ -76,6 +84,7 @@ just pass calls through.
 
 Since those functions are emulations of the old V4L1 API, it shouldn't
 be used for new applications.
+
 
 libv4l2
 =======
@@ -103,6 +112,7 @@ available in the driver. :ref:`VIDIOC_ENUM_FMT <VIDIOC_ENUM_FMT>`
 keeps enumerating the hardware supported formats, plus the emulated
 formats offered by libv4l at the end.
 
+
 .. _libv4l-ops:
 
 Libv4l device control functions
@@ -112,17 +122,17 @@ The common file operation methods are provided by libv4l.
 
 Those functions operate just like the gcc function ``dup()`` and
 V4L2 functions
-:c:func:`open()`, :c:func:`close()`,
-:c:func:`ioctl()`, :c:func:`read()`,
-:c:func:`mmap()` and :c:func:`munmap()`:
+:c:func:`open() <v4l2-open>`, :c:func:`close() <v4l2-close>`,
+:c:func:`ioctl() <v4l2-ioctl>`, :c:func:`read() <v4l2-read>`,
+:c:func:`mmap() <v4l2-mmap>` and :c:func:`munmap() <v4l2-munmap>`:
 
 .. c:function:: int v4l2_open(const char *file, int oflag, ...)
 
-   operates like the :c:func:`open()` function.
+   operates like the :c:func:`open() <v4l2-open>` function.
 
 .. c:function:: int v4l2_close(int fd)
 
-   operates like the :c:func:`close()` function.
+   operates like the :c:func:`close() <v4l2-close>` function.
 
 .. c:function:: int v4l2_dup(int fd)
 
@@ -130,19 +140,19 @@ V4L2 functions
 
 .. c:function:: int v4l2_ioctl (int fd, unsigned long int request, ...)
 
-   operates like the :c:func:`ioctl()` function.
+   operates like the :c:func:`ioctl() <v4l2-ioctl>` function.
 
 .. c:function:: int v4l2_read (int fd, void* buffer, size_t n)
 
-   operates like the :c:func:`read()` function.
+   operates like the :c:func:`read() <v4l2-read>` function.
 
 .. c:function:: void v4l2_mmap(void *start, size_t length, int prot, int flags, int fd, int64_t offset);
 
-   operates like the :c:func:`munmap()` function.
+   operates like the :c:func:`munmap() <v4l2-munmap>` function.
 
 .. c:function:: int v4l2_munmap(void *_start, size_t length);
 
-   operates like the :c:func:`munmap()` function.
+   operates like the :c:func:`munmap() <v4l2-munmap>` function.
 
 Those functions provide additional control:
 
@@ -165,13 +175,14 @@ Those functions provide additional control:
    of the given v4l control id. when the cid does not exist, could not be
    accessed for some reason, or some error occurred 0 is returned.
 
+
 v4l1compat.so wrapper library
 =============================
 
 This library intercepts calls to
-:c:func:`open()`, :c:func:`close()`,
-:c:func:`ioctl()`, :c:func:`mmap()` and
-:c:func:`munmap()`
+:c:func:`open() <v4l2-open>`, :c:func:`close() <v4l2-close>`,
+:c:func:`ioctl() <v4l2-ioctl>`, :c:func:`mmap() <v4l2-mmap>` and
+:c:func:`munmap() <v4l2-munmap>`
 operations and redirects them to the libv4l counterparts, by using
 ``LD_PRELOAD=/usr/lib/v4l1compat.so``. It also emulates V4L1 calls via V4L2
 API.

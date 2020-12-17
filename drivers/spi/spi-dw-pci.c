@@ -48,6 +48,9 @@ static int spi_mid_init(struct dw_spi *dws)
 
 	iounmap(clk_reg);
 
+	/* Register hook to configure CTRLR0 */
+	dws->update_cr0 = dw_spi_update_cr0;
+
 	dw_spi_dma_setup_mfld(dws);
 
 	return 0;
@@ -55,6 +58,9 @@ static int spi_mid_init(struct dw_spi *dws)
 
 static int spi_generic_init(struct dw_spi *dws)
 {
+	/* Register hook to configure CTRLR0 */
+	dws->update_cr0 = dw_spi_update_cr0;
+
 	dw_spi_dma_setup_generic(dws);
 
 	return 0;

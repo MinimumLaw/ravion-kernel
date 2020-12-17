@@ -13,9 +13,10 @@ RPCGSS is specified in a few IETF documents:
  - RFC2203 v1: https://tools.ietf.org/rfc/rfc2203.txt
  - RFC5403 v2: https://tools.ietf.org/rfc/rfc5403.txt
 
-There is a third version that we don't currently implement:
+and there is a 3rd version  being proposed:
 
- - RFC7861 v3: https://tools.ietf.org/rfc/rfc7861.txt
+ - https://tools.ietf.org/id/draft-williams-rpcsecgssv3.txt
+   (At draft n. 02 at the time of writing)
 
 Background
 ==========

@@ -50,9 +50,6 @@ int ttm_tt_create(struct ttm_buffer_object *bo, bool zero_alloc)
 
 	dma_resv_assert_held(bo->base.resv);
 
-	if (bo->ttm)
-		return 0;
-
 	if (bdev->need_dma32)
 		page_flags |= TTM_PAGE_FLAG_DMA32;
 
@@ -70,6 +67,7 @@ int ttm_tt_create(struct ttm_buffer_object *bo, bool zero_alloc)
 		page_flags |= TTM_PAGE_FLAG_SG;
 		break;
 	default:
+		bo->ttm = NULL;
 		pr_err("Illegal buffer object type\n");
 		return -EINVAL;
 	}
@@ -156,7 +154,7 @@ static int ttm_tt_set_caching(struct ttm_tt *ttm,
 	if (ttm->caching_state == c_state)
 		return 0;
 
-	if (!ttm_tt_is_populated(ttm)) {
+	if (ttm->state == tt_unpopulated) {
 		/* Change caching but don't populate */
 		ttm->caching_state = c_state;
 		return 0;
@@ -207,31 +205,33 @@ int ttm_tt_set_placement_caching(struct ttm_tt *ttm, uint32_t placement)
 }
 EXPORT_SYMBOL(ttm_tt_set_placement_caching);
 
-void ttm_tt_destroy_common(struct ttm_bo_device *bdev, struct ttm_tt *ttm)
+void ttm_tt_destroy(struct ttm_tt *ttm)
 {
-	ttm_tt_unpopulate(bdev, ttm);
+	if (ttm == NULL)
+		return;
+
+	ttm_tt_unbind(ttm);
+
+	if (ttm->state == tt_unbound)
+		ttm_tt_unpopulate(ttm);
 
 	if (!(ttm->page_flags & TTM_PAGE_FLAG_PERSISTENT_SWAP) &&
 	    ttm->swap_storage)
 		fput(ttm->swap_storage);
 
 	ttm->swap_storage = NULL;
-}
-EXPORT_SYMBOL(ttm_tt_destroy_common);
-
-void ttm_tt_destroy(struct ttm_bo_device *bdev, struct ttm_tt *ttm)
-{
-	bdev->driver->ttm_tt_destroy(bdev, ttm);
+	ttm->func->destroy(ttm);
 }
 
 static void ttm_tt_init_fields(struct ttm_tt *ttm,
 			       struct ttm_buffer_object *bo,
 			       uint32_t page_flags)
 {
+	ttm->bdev = bo->bdev;
 	ttm->num_pages = bo->num_pages;
 	ttm->caching_state = tt_cached;
 	ttm->page_flags = page_flags;
-	ttm_tt_set_unpopulated(ttm);
+	ttm->state = tt_unpopulated;
 	ttm->swap_storage = NULL;
 	ttm->sg = bo->sg;
 }
@@ -306,6 +306,39 @@ void ttm_dma_tt_fini(struct ttm_dma_tt *ttm_dma)
 }
 EXPORT_SYMBOL(ttm_dma_tt_fini);
 
+void ttm_tt_unbind(struct ttm_tt *ttm)
+{
+	if (ttm->state == tt_bound) {
+		ttm->func->unbind(ttm);
+		ttm->state = tt_unbound;
+	}
+}
+
+int ttm_tt_bind(struct ttm_tt *ttm, struct ttm_mem_reg *bo_mem,
+		struct ttm_operation_ctx *ctx)
+{
+	int ret = 0;
+
+	if (!ttm)
+		return -EINVAL;
+
+	if (ttm->state == tt_bound)
+		return 0;
+
+	ret = ttm_tt_populate(ttm, ctx);
+	if (ret)
+		return ret;
+
+	ret = ttm->func->bind(ttm, bo_mem);
+	if (unlikely(ret != 0))
+		return ret;
+
+	ttm->state = tt_bound;
+
+	return 0;
+}
+EXPORT_SYMBOL(ttm_tt_bind);
+
 int ttm_tt_swapin(struct ttm_tt *ttm)
 {
 	struct address_space *swap_space;
@@ -348,8 +381,7 @@ out_err:
 	return ret;
 }
 
-int ttm_tt_swapout(struct ttm_bo_device *bdev,
-		   struct ttm_tt *ttm, struct file *persistent_swap_storage)
+int ttm_tt_swapout(struct ttm_tt *ttm, struct file *persistent_swap_storage)
 {
 	struct address_space *swap_space;
 	struct file *swap_storage;
@@ -358,6 +390,7 @@ int ttm_tt_swapout(struct ttm_bo_device *bdev,
 	int i;
 	int ret = -ENOMEM;
 
+	BUG_ON(ttm->state != tt_unbound && ttm->state != tt_unpopulated);
 	BUG_ON(ttm->caching_state != tt_cached);
 
 	if (!persistent_swap_storage) {
@@ -394,7 +427,7 @@ int ttm_tt_swapout(struct ttm_bo_device *bdev,
 		put_page(to_page);
 	}
 
-	ttm_tt_unpopulate(bdev, ttm);
+	ttm_tt_unpopulate(ttm);
 	ttm->swap_storage = swap_storage;
 	ttm->page_flags |= TTM_PAGE_FLAG_SWAPPED;
 	if (persistent_swap_storage)
@@ -408,7 +441,7 @@ out_err:
 	return ret;
 }
 
-static void ttm_tt_add_mapping(struct ttm_bo_device *bdev, struct ttm_tt *ttm)
+static void ttm_tt_add_mapping(struct ttm_tt *ttm)
 {
 	pgoff_t i;
 
@@ -416,29 +449,24 @@ static void ttm_tt_add_mapping(struct ttm_bo_device *bdev, struct ttm_tt *ttm)
 		return;
 
 	for (i = 0; i < ttm->num_pages; ++i)
-		ttm->pages[i]->mapping = bdev->dev_mapping;
+		ttm->pages[i]->mapping = ttm->bdev->dev_mapping;
 }
 
-int ttm_tt_populate(struct ttm_bo_device *bdev,
-		    struct ttm_tt *ttm, struct ttm_operation_ctx *ctx)
+int ttm_tt_populate(struct ttm_tt *ttm, struct ttm_operation_ctx *ctx)
 {
 	int ret;
 
-	if (!ttm)
-		return -EINVAL;
-
-	if (ttm_tt_is_populated(ttm))
+	if (ttm->state != tt_unpopulated)
 		return 0;
 
-	if (bdev->driver->ttm_tt_populate)
-		ret = bdev->driver->ttm_tt_populate(bdev, ttm, ctx);
+	if (ttm->bdev->driver->ttm_tt_populate)
+		ret = ttm->bdev->driver->ttm_tt_populate(ttm, ctx);
 	else
 		ret = ttm_pool_populate(ttm, ctx);
 	if (!ret)
-		ttm_tt_add_mapping(bdev, ttm);
+		ttm_tt_add_mapping(ttm);
 	return ret;
 }
-EXPORT_SYMBOL(ttm_tt_populate);
 
 static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 {
@@ -454,15 +482,14 @@ static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
 	}
 }
 
-void ttm_tt_unpopulate(struct ttm_bo_device *bdev,
-		       struct ttm_tt *ttm)
+void ttm_tt_unpopulate(struct ttm_tt *ttm)
 {
-	if (!ttm_tt_is_populated(ttm))
+	if (ttm->state == tt_unpopulated)
 		return;
 
 	ttm_tt_clear_mapping(ttm);
-	if (bdev->driver->ttm_tt_unpopulate)
-		bdev->driver->ttm_tt_unpopulate(bdev, ttm);
+	if (ttm->bdev->driver->ttm_tt_unpopulate)
+		ttm->bdev->driver->ttm_tt_unpopulate(ttm);
 	else
 		ttm_pool_unpopulate(ttm);
 }

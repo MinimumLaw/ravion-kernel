@@ -120,5 +120,3 @@ properties:
 required:
   - pinctrl-0
   - pinctrl-names
-
-additionalProperties: true

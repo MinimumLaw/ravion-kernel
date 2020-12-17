@@ -245,10 +245,6 @@ enum {
 	MLX5_ETH_WQE_SWP_OUTER_L4_UDP   = 1 << 5,
 };
 
-enum {
-	MLX5_ETH_WQE_FT_META_IPSEC = BIT(0),
-};
-
 struct mlx5_wqe_eth_seg {
 	u8              swp_outer_l4_offset;
 	u8              swp_outer_l3_offset;
@@ -257,7 +253,7 @@ struct mlx5_wqe_eth_seg {
 	u8              cs_flags;
 	u8              swp_flags;
 	__be16          mss;
-	__be32          flow_table_metadata;
+	__be32          rsvd2;
 	union {
 		struct {
 			__be16 sz;

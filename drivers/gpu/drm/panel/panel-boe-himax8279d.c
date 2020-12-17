@@ -19,6 +19,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 #include <video/mipi_display.h>
 
@@ -92,7 +93,8 @@ static int boe_panel_disable(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_set_display_off(pinfo->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to set display off: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to set display off: %d\n",
+			      err);
 		return err;
 	}
 
@@ -111,11 +113,13 @@ static int boe_panel_unprepare(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_set_display_off(pinfo->link);
 	if (err < 0)
-		dev_err(panel->dev, "failed to set display off: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to set display off: %d\n",
+			      err);
 
 	err = mipi_dsi_dcs_enter_sleep_mode(pinfo->link);
 	if (err < 0)
-		dev_err(panel->dev, "failed to enter sleep mode: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to enter sleep mode: %d\n",
+			      err);
 
 	/* sleep_mode_delay: 1ms - 2ms */
 	usleep_range(1000, 2000);
@@ -159,13 +163,15 @@ static int boe_panel_prepare(struct drm_panel *panel)
 	/* send init code */
 	err = send_mipi_cmds(panel, pinfo->desc->on_cmds);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to send DCS Init Code: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to send DCS Init Code: %d\n",
+			      err);
 		goto poweroff;
 	}
 
 	err = mipi_dsi_dcs_exit_sleep_mode(pinfo->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to exit sleep mode: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to exit sleep mode: %d\n",
+			      err);
 		goto poweroff;
 	}
 
@@ -174,7 +180,8 @@ static int boe_panel_prepare(struct drm_panel *panel)
 
 	err = mipi_dsi_dcs_set_display_on(pinfo->link);
 	if (err < 0) {
-		dev_err(panel->dev, "failed to set display on: %d\n", err);
+		DRM_DEV_ERROR(panel->dev, "failed to set display on: %d\n",
+			      err);
 		goto poweroff;
 	}
 
@@ -202,7 +209,8 @@ static int boe_panel_enable(struct drm_panel *panel)
 
 	ret = mipi_dsi_dcs_set_display_on(pinfo->link);
 	if (ret < 0) {
-		dev_err(panel->dev, "failed to set display on: %d\n", ret);
+		DRM_DEV_ERROR(panel->dev, "failed to set display on: %d\n",
+			      ret);
 		return ret;
 	}
 
@@ -220,8 +228,8 @@ static int boe_panel_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, m);
 	if (!mode) {
-		dev_err(pinfo->base.dev, "failed to add mode %ux%u@%u\n",
-			m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
+		DRM_DEV_ERROR(pinfo->base.dev, "failed to add mode %ux%u@%u\n",
+			      m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
 		return -ENOMEM;
 	}
 
@@ -857,7 +865,8 @@ static int panel_add(struct panel_info *pinfo)
 	if (IS_ERR(pinfo->pp18_gpio)) {
 		ret = PTR_ERR(pinfo->pp18_gpio);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to get pp18 gpio: %d\n", ret);
+			DRM_DEV_ERROR(dev, "failed to get pp18 gpio: %d\n",
+				      ret);
 		return ret;
 	}
 
@@ -865,7 +874,8 @@ static int panel_add(struct panel_info *pinfo)
 	if (IS_ERR(pinfo->pp33_gpio)) {
 		ret = PTR_ERR(pinfo->pp33_gpio);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to get pp33 gpio: %d\n", ret);
+			DRM_DEV_ERROR(dev, "failed to get pp33 gpio: %d\n",
+				      ret);
 		return ret;
 	}
 
@@ -873,7 +883,8 @@ static int panel_add(struct panel_info *pinfo)
 	if (IS_ERR(pinfo->enable_gpio)) {
 		ret = PTR_ERR(pinfo->enable_gpio);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to get enable gpio: %d\n", ret);
+			DRM_DEV_ERROR(dev, "failed to get enable gpio: %d\n",
+				      ret);
 		return ret;
 	}
 
@@ -884,9 +895,7 @@ static int panel_add(struct panel_info *pinfo)
 	if (ret)
 		return ret;
 
-	drm_panel_add(&pinfo->base);
-
-	return 0;
+	return drm_panel_add(&pinfo->base);
 }
 
 static int panel_probe(struct mipi_dsi_device *dsi)
@@ -926,15 +935,18 @@ static int panel_remove(struct mipi_dsi_device *dsi)
 
 	err = boe_panel_disable(&pinfo->base);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to disable panel: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to disable panel: %d\n",
+			      err);
 
 	err = boe_panel_unprepare(&pinfo->base);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to unprepare panel: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to unprepare panel: %d\n",
+			      err);
 
 	err = mipi_dsi_detach(dsi);
 	if (err < 0)
-		dev_err(&dsi->dev, "failed to detach from DSI host: %d\n", err);
+		DRM_DEV_ERROR(&dsi->dev, "failed to detach from DSI host: %d\n",
+			      err);
 
 	drm_panel_remove(&pinfo->base);
 

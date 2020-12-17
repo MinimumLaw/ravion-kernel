@@ -498,17 +498,16 @@ static int cache_clean(void)
  */
 static void do_cache_clean(struct work_struct *work)
 {
-	int delay;
-
-	if (list_empty(&cache_list))
-		return;
-
+	int delay = 5;
 	if (cache_clean() == -1)
 		delay = round_jiffies_relative(30*HZ);
-	else
-		delay = 5;
 
-	queue_delayed_work(system_power_efficient_wq, &cache_cleaner, delay);
+	if (list_empty(&cache_list))
+		delay = 0;
+
+	if (delay)
+		queue_delayed_work(system_power_efficient_wq,
+				   &cache_cleaner, delay);
 }
 
 
@@ -909,7 +908,7 @@ static ssize_t cache_do_downcall(char *kaddr, const char __user *buf,
 static ssize_t cache_slow_downcall(const char __user *buf,
 				   size_t count, struct cache_detail *cd)
 {
-	static char write_buf[32768]; /* protected by queue_io_mutex */
+	static char write_buf[8192]; /* protected by queue_io_mutex */
 	ssize_t ret = -EINVAL;
 
 	if (count >= sizeof(write_buf))
@@ -1437,10 +1436,10 @@ static int c_show(struct seq_file *m, void *p)
 	cache_get(cp);
 	if (cache_check(cd, cp, NULL))
 		/* cache_check does a cache_put on failure */
-		seq_puts(m, "# ");
+		seq_printf(m, "# ");
 	else {
 		if (cache_is_expired(cd, cp))
-			seq_puts(m, "# ");
+			seq_printf(m, "# ");
 		cache_put(cp, cd);
 	}
 

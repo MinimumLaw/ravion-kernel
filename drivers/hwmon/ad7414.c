@@ -169,7 +169,8 @@ static struct attribute *ad7414_attrs[] = {
 
 ATTRIBUTE_GROUPS(ad7414);
 
-static int ad7414_probe(struct i2c_client *client)
+static int ad7414_probe(struct i2c_client *client,
+			const struct i2c_device_id *dev_id)
 {
 	struct device *dev = &client->dev;
 	struct ad7414_data *data;
@@ -221,7 +222,7 @@ static struct i2c_driver ad7414_driver = {
 		.name	= "ad7414",
 		.of_match_table = of_match_ptr(ad7414_of_match),
 	},
-	.probe_new = ad7414_probe,
+	.probe	= ad7414_probe,
 	.id_table = ad7414_id,
 };
 

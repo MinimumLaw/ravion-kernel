@@ -18,18 +18,19 @@
  * Like csum_partial, this must be called with even lengths,
  * except for the last fragment.
  */
-extern __wsum csum_partial_copy_generic(const void *src, void *dst, int len);
+extern __wsum csum_partial_copy_generic(const void *src, void *dst,
+					      int len, __wsum sum,
+					      int *src_err, int *dst_err);
 
 #define _HAVE_ARCH_COPY_AND_CSUM_FROM_USER
 extern __wsum csum_and_copy_from_user(const void __user *src, void *dst,
-				      int len);
+				      int len, __wsum sum, int *err_ptr);
 #define HAVE_CSUM_COPY_USER
 extern __wsum csum_and_copy_to_user(const void *src, void __user *dst,
-				    int len);
+				    int len, __wsum sum, int *err_ptr);
 
-#define _HAVE_ARCH_CSUM_AND_COPY
-#define csum_partial_copy_nocheck(src, dst, len)   \
-        csum_partial_copy_generic((src), (dst), (len))
+#define csum_partial_copy_nocheck(src, dst, len, sum)   \
+        csum_partial_copy_generic((src), (dst), (len), (sum), NULL, NULL)
 
 
 /*

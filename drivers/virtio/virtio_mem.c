@@ -36,10 +36,18 @@ enum virtio_mem_mb_state {
 	VIRTIO_MEM_MB_STATE_OFFLINE,
 	/* Partially plugged, fully added to Linux, offline. */
 	VIRTIO_MEM_MB_STATE_OFFLINE_PARTIAL,
-	/* Fully plugged, fully added to Linux, online. */
+	/* Fully plugged, fully added to Linux, online (!ZONE_MOVABLE). */
 	VIRTIO_MEM_MB_STATE_ONLINE,
-	/* Partially plugged, fully added to Linux, online. */
+	/* Partially plugged, fully added to Linux, online (!ZONE_MOVABLE). */
 	VIRTIO_MEM_MB_STATE_ONLINE_PARTIAL,
+	/*
+	 * Fully plugged, fully added to Linux, online (ZONE_MOVABLE).
+	 * We are not allowed to allocate (unplug) parts of this block that
+	 * are not movable (similar to gigantic pages). We will never allow
+	 * to online OFFLINE_PARTIAL to ZONE_MOVABLE (as they would contain
+	 * unmovable parts).
+	 */
+	VIRTIO_MEM_MB_STATE_ONLINE_MOVABLE,
 	VIRTIO_MEM_MB_STATE_COUNT
 };
 
@@ -424,8 +432,7 @@ static int virtio_mem_mb_add(struct virtio_mem *vm, unsigned long mb_id)
 
 	dev_dbg(&vm->vdev->dev, "adding memory block: %lu\n", mb_id);
 	return add_memory_driver_managed(nid, addr, memory_block_size_bytes(),
-					 vm->resource_name,
-					 MEMHP_MERGE_RESOURCE);
+					 vm->resource_name);
 }
 
 /*
@@ -519,10 +526,21 @@ static bool virtio_mem_owned_mb(struct virtio_mem *vm, unsigned long mb_id)
 }
 
 static int virtio_mem_notify_going_online(struct virtio_mem *vm,
-					  unsigned long mb_id)
+					  unsigned long mb_id,
+					  enum zone_type zone)
 {
 	switch (virtio_mem_mb_get_state(vm, mb_id)) {
 	case VIRTIO_MEM_MB_STATE_OFFLINE_PARTIAL:
+		/*
+		 * We won't allow to online a partially plugged memory block
+		 * to the MOVABLE zone - it would contain unmovable parts.
+		 */
+		if (zone == ZONE_MOVABLE) {
+			dev_warn_ratelimited(&vm->vdev->dev,
+					     "memory block has holes, MOVABLE not supported\n");
+			return NOTIFY_BAD;
+		}
+		return NOTIFY_OK;
 	case VIRTIO_MEM_MB_STATE_OFFLINE:
 		return NOTIFY_OK;
 	default:
@@ -542,6 +560,7 @@ static void virtio_mem_notify_offline(struct virtio_mem *vm,
 					VIRTIO_MEM_MB_STATE_OFFLINE_PARTIAL);
 		break;
 	case VIRTIO_MEM_MB_STATE_ONLINE:
+	case VIRTIO_MEM_MB_STATE_ONLINE_MOVABLE:
 		virtio_mem_mb_set_state(vm, mb_id,
 					VIRTIO_MEM_MB_STATE_OFFLINE);
 		break;
@@ -560,17 +579,24 @@ static void virtio_mem_notify_offline(struct virtio_mem *vm,
 	virtio_mem_retry(vm);
 }
 
-static void virtio_mem_notify_online(struct virtio_mem *vm, unsigned long mb_id)
+static void virtio_mem_notify_online(struct virtio_mem *vm, unsigned long mb_id,
+				     enum zone_type zone)
 {
 	unsigned long nb_offline;
 
 	switch (virtio_mem_mb_get_state(vm, mb_id)) {
 	case VIRTIO_MEM_MB_STATE_OFFLINE_PARTIAL:
+		BUG_ON(zone == ZONE_MOVABLE);
 		virtio_mem_mb_set_state(vm, mb_id,
 					VIRTIO_MEM_MB_STATE_ONLINE_PARTIAL);
 		break;
 	case VIRTIO_MEM_MB_STATE_OFFLINE:
-		virtio_mem_mb_set_state(vm, mb_id, VIRTIO_MEM_MB_STATE_ONLINE);
+		if (zone == ZONE_MOVABLE)
+			virtio_mem_mb_set_state(vm, mb_id,
+					    VIRTIO_MEM_MB_STATE_ONLINE_MOVABLE);
+		else
+			virtio_mem_mb_set_state(vm, mb_id,
+						VIRTIO_MEM_MB_STATE_ONLINE);
 		break;
 	default:
 		BUG();
@@ -649,6 +675,7 @@ static int virtio_mem_memory_notifier_cb(struct notifier_block *nb,
 	const unsigned long start = PFN_PHYS(mhp->start_pfn);
 	const unsigned long size = PFN_PHYS(mhp->nr_pages);
 	const unsigned long mb_id = virtio_mem_phys_to_mb_id(start);
+	enum zone_type zone;
 	int rc = NOTIFY_OK;
 
 	if (!virtio_mem_overlaps_range(vm, start, size))
@@ -690,7 +717,8 @@ static int virtio_mem_memory_notifier_cb(struct notifier_block *nb,
 			break;
 		}
 		vm->hotplug_active = true;
-		rc = virtio_mem_notify_going_online(vm, mb_id);
+		zone = page_zonenum(pfn_to_page(mhp->start_pfn));
+		rc = virtio_mem_notify_going_online(vm, mb_id, zone);
 		break;
 	case MEM_OFFLINE:
 		virtio_mem_notify_offline(vm, mb_id);
@@ -698,7 +726,8 @@ static int virtio_mem_memory_notifier_cb(struct notifier_block *nb,
 		mutex_unlock(&vm->hotplug_mutex);
 		break;
 	case MEM_ONLINE:
-		virtio_mem_notify_online(vm, mb_id);
+		zone = page_zonenum(pfn_to_page(mhp->start_pfn));
+		virtio_mem_notify_online(vm, mb_id, zone);
 		vm->hotplug_active = false;
 		mutex_unlock(&vm->hotplug_mutex);
 		break;
@@ -1877,7 +1906,8 @@ static void virtio_mem_remove(struct virtio_device *vdev)
 	if (vm->nb_mb_state[VIRTIO_MEM_MB_STATE_OFFLINE] ||
 	    vm->nb_mb_state[VIRTIO_MEM_MB_STATE_OFFLINE_PARTIAL] ||
 	    vm->nb_mb_state[VIRTIO_MEM_MB_STATE_ONLINE] ||
-	    vm->nb_mb_state[VIRTIO_MEM_MB_STATE_ONLINE_PARTIAL]) {
+	    vm->nb_mb_state[VIRTIO_MEM_MB_STATE_ONLINE_PARTIAL] ||
+	    vm->nb_mb_state[VIRTIO_MEM_MB_STATE_ONLINE_MOVABLE]) {
 		dev_warn(&vdev->dev, "device still has system memory added\n");
 	} else {
 		virtio_mem_delete_resource(vm);
@@ -1927,7 +1957,7 @@ static unsigned int virtio_mem_features[] = {
 #endif
 };
 
-static const struct virtio_device_id virtio_mem_id_table[] = {
+static struct virtio_device_id virtio_mem_id_table[] = {
 	{ VIRTIO_ID_MEM, VIRTIO_DEV_ANY_ID },
 	{ 0 },
 };

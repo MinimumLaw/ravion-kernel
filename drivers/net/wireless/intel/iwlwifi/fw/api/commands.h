@@ -104,12 +104,11 @@ enum iwl_mvm_command_groups {
  */
 enum iwl_legacy_cmds {
 	/**
-	 * @UCODE_ALIVE_NTFY:
+	 * @MVM_ALIVE:
 	 * Alive data from the firmware, as described in
-	 * &struct iwl_alive_ntf_v3 or &struct iwl_alive_ntf_v4 or
-	 * &struct iwl_alive_ntf_v5.
+	 * &struct mvm_alive_resp_v3 or &struct mvm_alive_resp.
 	 */
-	UCODE_ALIVE_NTFY = 0x1,
+	MVM_ALIVE = 0x1,
 
 	/**
 	 * @REPLY_ERROR: Cause an error in the firmware, for testing purposes.
@@ -411,8 +410,7 @@ enum iwl_legacy_cmds {
 	 * one of &struct iwl_statistics_cmd,
 	 * &struct iwl_notif_statistics_v11,
 	 * &struct iwl_notif_statistics_v10,
-	 * &struct iwl_notif_statistics,
-	 * &struct iwl_statistics_operational_ntfy
+	 * &struct iwl_notif_statistics
 	 */
 	STATISTICS_CMD = 0x9c,
 
@@ -420,8 +418,7 @@ enum iwl_legacy_cmds {
 	 * @STATISTICS_NOTIFICATION:
 	 * one of &struct iwl_notif_statistics_v10,
 	 * &struct iwl_notif_statistics_v11,
-	 * &struct iwl_notif_statistic,
-	 * &struct iwl_statistics_operational_ntfy
+	 * &struct iwl_notif_statistics
 	 */
 	STATISTICS_NOTIFICATION = 0x9d,
 
@@ -434,7 +431,8 @@ enum iwl_legacy_cmds {
 
 	/**
 	 * @REDUCE_TX_POWER_CMD:
-	 * &struct iwl_dev_tx_power_cmd
+	 * &struct iwl_dev_tx_power_cmd_v3 or &struct iwl_dev_tx_power_cmd_v4
+	 * or &struct iwl_dev_tx_power_cmd
 	 */
 	REDUCE_TX_POWER_CMD = 0x9f,
 

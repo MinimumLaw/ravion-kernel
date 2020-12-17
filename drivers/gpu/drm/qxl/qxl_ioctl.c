@@ -322,7 +322,7 @@ static int qxl_update_area_ioctl(struct drm_device *dev, void *data,
 
 	qobj = gem_to_qxl_bo(gobj);
 
-	ret = qxl_bo_reserve(qobj);
+	ret = qxl_bo_reserve(qobj, false);
 	if (ret)
 		goto out;
 

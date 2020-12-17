@@ -1816,7 +1816,8 @@ static void adm1026_init_client(struct i2c_client *client)
 	}
 }
 
-static int adm1026_probe(struct i2c_client *client)
+static int adm1026_probe(struct i2c_client *client,
+			 const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -1859,7 +1860,7 @@ static struct i2c_driver adm1026_driver = {
 	.driver = {
 		.name	= "adm1026",
 	},
-	.probe_new	= adm1026_probe,
+	.probe		= adm1026_probe,
 	.id_table	= adm1026_id,
 	.detect		= adm1026_detect,
 	.address_list	= normal_i2c,

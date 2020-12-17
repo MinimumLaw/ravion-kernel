@@ -39,8 +39,6 @@ void vsmp_init(void);
 static inline void vsmp_init(void) { }
 #endif
 
-struct pt_regs;
-
 void setup_bios_corruption_check(void);
 void early_platform_quirks(void);
 
@@ -50,9 +48,7 @@ extern void reserve_standard_io_resources(void);
 extern void i386_reserve_resources(void);
 extern unsigned long __startup_64(unsigned long physaddr, struct boot_params *bp);
 extern unsigned long __startup_secondary_64(void);
-extern void startup_64_setup_env(unsigned long physbase);
-extern void early_setup_idt(void);
-extern void __init do_early_exception(struct pt_regs *regs, int trapnr);
+extern int early_make_pgtable(unsigned long address);
 
 #ifdef CONFIG_X86_INTEL_MID
 extern void x86_intel_mid_early_setup(void);
@@ -119,7 +115,7 @@ void *extend_brk(size_t size, size_t align);
  * executable.)
  */
 #define RESERVE_BRK(name,sz)						\
-	static void __section(".discard.text") __used notrace		\
+	static void __section(.discard.text) __used notrace		\
 	__brk_reservation_fn_##name##__(void) {				\
 		asm volatile (						\
 			".pushsection .brk_reservation,\"aw\",@nobits;" \

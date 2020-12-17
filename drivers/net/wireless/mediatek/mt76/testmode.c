@@ -29,12 +29,11 @@ void mt76_testmode_tx_pending(struct mt76_dev *dev)
 		return;
 
 	qid = skb_get_queue_mapping(skb);
-	q = dev->q_tx[qid];
+	q = dev->q_tx[qid].q;
 
 	spin_lock_bh(&q->lock);
 
-	while (td->tx_pending > 0 && td->tx_queued - td->tx_done < 1000 &&
-	       q->queued < q->ndesc / 2) {
+	while (td->tx_pending > 0 && q->queued < q->ndesc / 2) {
 		int ret;
 
 		ret = dev->queue_ops->tx_queue_skb(dev, qid, skb_get(skb), wcid, NULL);
@@ -161,7 +160,7 @@ mt76_testmode_tx_start(struct mt76_dev *dev)
 	td->tx_queued = 0;
 	td->tx_done = 0;
 	td->tx_pending = td->tx_count;
-	mt76_worker_schedule(&dev->tx_worker);
+	tasklet_schedule(&dev->tx_tasklet);
 }
 
 static void
@@ -169,11 +168,11 @@ mt76_testmode_tx_stop(struct mt76_dev *dev)
 {
 	struct mt76_testmode_data *td = &dev->test;
 
-	mt76_worker_disable(&dev->tx_worker);
+	tasklet_disable(&dev->tx_tasklet);
 
 	td->tx_pending = 0;
 
-	mt76_worker_enable(&dev->tx_worker);
+	tasklet_enable(&dev->tx_tasklet);
 
 	wait_event_timeout(dev->tx_wait, td->tx_done == td->tx_queued, 10 * HZ);
 

@@ -20,7 +20,7 @@ properties:
     pattern: "^spi(@.*|-[0-9a-f])*$"
 
   "#address-cells":
-    enum: [0, 1]
+    const: 1
 
   "#size-cells":
     const: 0
@@ -52,19 +52,11 @@ properties:
     description:
       The SPI controller acts as a slave, instead of a master.
 
-allOf:
-  - if:
-      not:
-        required:
-          - spi-slave
-    then:
-      properties:
-        "#address-cells":
-          const: 1
-    else:
-      properties:
-        "#address-cells":
-          const: 0
+oneOf:
+  - required:
+      - "#address-cells"
+  - required:
+      - spi-slave
 
 patternProperties:
   "^slave$":
@@ -147,8 +139,6 @@ patternProperties:
     required:
       - compatible
       - reg
-
-additionalProperties: true
 
 examples:
   - |

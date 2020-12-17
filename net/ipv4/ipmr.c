@@ -1038,13 +1038,10 @@ static int ipmr_cache_report(struct mr_table *mrt,
 		memcpy(msg, skb_network_header(pkt), sizeof(struct iphdr));
 		msg->im_msgtype = assert;
 		msg->im_mbz = 0;
-		if (assert == IGMPMSG_WRVIFWHOLE) {
+		if (assert == IGMPMSG_WRVIFWHOLE)
 			msg->im_vif = vifi;
-			msg->im_vif_hi = vifi >> 8;
-		} else {
+		else
 			msg->im_vif = mrt->mroute_reg_vif_num;
-			msg->im_vif_hi = mrt->mroute_reg_vif_num >> 8;
-		}
 		ip_hdr(skb)->ihl = sizeof(struct iphdr) >> 2;
 		ip_hdr(skb)->tot_len = htons(ntohs(ip_hdr(pkt)->tot_len) +
 					     sizeof(struct iphdr));
@@ -1057,7 +1054,6 @@ static int ipmr_cache_report(struct mr_table *mrt,
 		ip_hdr(skb)->protocol = 0;
 		msg = (struct igmpmsg *)skb_network_header(skb);
 		msg->im_vif = vifi;
-		msg->im_vif_hi = vifi >> 8;
 		skb_dst_set(skb, dst_clone(skb_dst(pkt)));
 		/* Add our header */
 		igmp = skb_put(skb, sizeof(struct igmphdr));
@@ -2400,7 +2396,6 @@ static size_t igmpmsg_netlink_msgsize(size_t payloadlen)
 		+ nla_total_size(4)	/* IPMRA_CREPORT_VIF_ID */
 		+ nla_total_size(4)	/* IPMRA_CREPORT_SRC_ADDR */
 		+ nla_total_size(4)	/* IPMRA_CREPORT_DST_ADDR */
-		+ nla_total_size(4)	/* IPMRA_CREPORT_TABLE */
 					/* IPMRA_CREPORT_PKT */
 		+ nla_total_size(payloadlen)
 		;
@@ -2432,12 +2427,11 @@ static void igmpmsg_netlink_event(struct mr_table *mrt, struct sk_buff *pkt)
 	rtgenm = nlmsg_data(nlh);
 	rtgenm->rtgen_family = RTNL_FAMILY_IPMR;
 	if (nla_put_u8(skb, IPMRA_CREPORT_MSGTYPE, msg->im_msgtype) ||
-	    nla_put_u32(skb, IPMRA_CREPORT_VIF_ID, msg->im_vif | (msg->im_vif_hi << 8)) ||
+	    nla_put_u32(skb, IPMRA_CREPORT_VIF_ID, msg->im_vif) ||
 	    nla_put_in_addr(skb, IPMRA_CREPORT_SRC_ADDR,
 			    msg->im_src.s_addr) ||
 	    nla_put_in_addr(skb, IPMRA_CREPORT_DST_ADDR,
-			    msg->im_dst.s_addr) ||
-	    nla_put_u32(skb, IPMRA_CREPORT_TABLE, mrt->id))
+			    msg->im_dst.s_addr))
 		goto nla_put_failure;
 
 	nla = nla_reserve(skb, IPMRA_CREPORT_PKT, payloadlen);

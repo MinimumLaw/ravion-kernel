@@ -33,8 +33,6 @@ required:
   - "#address-cells"
   - "#size-cells"
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gcc-ipq806x.h>

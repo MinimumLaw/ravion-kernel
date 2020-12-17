@@ -30,6 +30,8 @@ static inline void __tlb_flush_idte(unsigned long asce)
 		: : "a" (opt), "a" (asce) : "cc");
 }
 
+void smp_ptlb_all(void);
+
 /*
  * Flush all TLB entries on all CPUs.
  */

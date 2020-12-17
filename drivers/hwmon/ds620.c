@@ -211,7 +211,8 @@ static struct attribute *ds620_attrs[] = {
 
 ATTRIBUTE_GROUPS(ds620);
 
-static int ds620_probe(struct i2c_client *client)
+static int ds620_probe(struct i2c_client *client,
+		       const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
@@ -245,7 +246,7 @@ static struct i2c_driver ds620_driver = {
 	.driver = {
 		   .name = "ds620",
 	},
-	.probe_new = ds620_probe,
+	.probe = ds620_probe,
 	.id_table = ds620_id,
 };
 

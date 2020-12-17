@@ -14,11 +14,7 @@ maintainers:
 
 properties:
   compatible:
-    oneOf:
-      - const: actions,owl-mmc
-      - items:
-          - const: actions,s700-mmc
-          - const: actions,owl-mmc
+    const: actions,owl-mmc
 
   reg:
     maxItems: 1
@@ -46,8 +42,6 @@ required:
   - resets
   - dmas
   - dma-names
-
-unevaluatedProperties: false
 
 examples:
   - |

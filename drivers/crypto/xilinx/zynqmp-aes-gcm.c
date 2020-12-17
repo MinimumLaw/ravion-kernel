@@ -10,7 +10,6 @@
 #include <crypto/internal/aead.h>
 #include <crypto/scatterwalk.h>
 
-#include <linux/dma-mapping.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>

@@ -269,7 +269,7 @@ struct w1_family {
 	struct list_head	family_entry;
 	u8			fid;
 
-	const struct w1_family_ops *fops;
+	struct w1_family_ops	*fops;
 
 	const struct of_device_id *of_match_table;
 

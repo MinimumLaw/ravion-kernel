@@ -71,7 +71,8 @@ struct intc_irqpin_priv {
 };
 
 struct intc_irqpin_config {
-	int irlm_bit;		/* -1 if non-existent */
+	unsigned int irlm_bit;
+	unsigned needs_irlm:1;
 };
 
 static unsigned long intc_irqpin_read32(void __iomem *iomem)
@@ -348,10 +349,11 @@ static const struct irq_domain_ops intc_irqpin_irq_domain_ops = {
 
 static const struct intc_irqpin_config intc_irqpin_irlm_r8a777x = {
 	.irlm_bit = 23, /* ICR0.IRLM0 */
+	.needs_irlm = 1,
 };
 
 static const struct intc_irqpin_config intc_irqpin_rmobile = {
-	.irlm_bit = -1,
+	.needs_irlm = 0,
 };
 
 static const struct of_device_id intc_irqpin_dt_ids[] = {
@@ -468,7 +470,7 @@ static int intc_irqpin_probe(struct platform_device *pdev)
 	}
 
 	/* configure "individual IRQ mode" where needed */
-	if (config && config->irlm_bit >= 0) {
+	if (config && config->needs_irlm) {
 		if (io[INTC_IRQPIN_REG_IRLM])
 			intc_irqpin_read_modify_write(p, INTC_IRQPIN_REG_IRLM,
 						      config->irlm_bit, 1, 1);

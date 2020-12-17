@@ -272,16 +272,15 @@ struct ib_pd *__ib_alloc_pd(struct ib_device *device, unsigned int flags,
 	atomic_set(&pd->usecnt, 0);
 	pd->flags = flags;
 
-	rdma_restrack_new(&pd->res, RDMA_RESTRACK_PD);
-	rdma_restrack_set_name(&pd->res, caller);
+	pd->res.type = RDMA_RESTRACK_PD;
+	rdma_restrack_set_task(&pd->res, caller);
 
 	ret = device->ops.alloc_pd(pd, NULL);
 	if (ret) {
-		rdma_restrack_put(&pd->res);
 		kfree(pd);
 		return ERR_PTR(ret);
 	}
-	rdma_restrack_add(&pd->res);
+	rdma_restrack_kadd(&pd->res);
 
 	if (device->attrs.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)
 		pd->local_dma_lkey = device->local_dma_lkey;
@@ -330,7 +329,7 @@ EXPORT_SYMBOL(__ib_alloc_pd);
  * exist.  The caller is responsible to synchronously destroy them and
  * guarantee no new allocations will happen.
  */
-int ib_dealloc_pd_user(struct ib_pd *pd, struct ib_udata *udata)
+void ib_dealloc_pd_user(struct ib_pd *pd, struct ib_udata *udata)
 {
 	int ret;
 
@@ -344,13 +343,9 @@ int ib_dealloc_pd_user(struct ib_pd *pd, struct ib_udata *udata)
 	   requires the caller to guarantee we can't race here. */
 	WARN_ON(atomic_read(&pd->usecnt));
 
-	ret = pd->device->ops.dealloc_pd(pd, udata);
-	if (ret)
-		return ret;
-
 	rdma_restrack_del(&pd->res);
+	pd->device->ops.dealloc_pd(pd, udata);
 	kfree(pd);
-	return ret;
 }
 EXPORT_SYMBOL(ib_dealloc_pd_user);
 
@@ -733,7 +728,7 @@ int ib_get_gids_from_rdma_hdr(const union rdma_network_hdr *hdr,
 				       (struct in6_addr *)dgid);
 		return 0;
 	} else if (net_type == RDMA_NETWORK_IPV6 ||
-		   net_type == RDMA_NETWORK_IB || RDMA_NETWORK_ROCE_V1) {
+		   net_type == RDMA_NETWORK_IB) {
 		*dgid = hdr->ibgrh.dgid;
 		*sgid = hdr->ibgrh.sgid;
 		return 0;
@@ -969,22 +964,18 @@ int rdma_destroy_ah_user(struct ib_ah *ah, u32 flags, struct ib_udata *udata)
 {
 	const struct ib_gid_attr *sgid_attr = ah->sgid_attr;
 	struct ib_pd *pd;
-	int ret;
 
 	might_sleep_if(flags & RDMA_DESTROY_AH_SLEEPABLE);
 
 	pd = ah->pd;
 
-	ret = ah->device->ops.destroy_ah(ah, flags);
-	if (ret)
-		return ret;
-
+	ah->device->ops.destroy_ah(ah, flags);
 	atomic_dec(&pd->usecnt);
 	if (sgid_attr)
 		rdma_put_gid_attr(sgid_attr);
 
 	kfree(ah);
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(rdma_destroy_ah_user);
 
@@ -1069,14 +1060,10 @@ EXPORT_SYMBOL(ib_query_srq);
 
 int ib_destroy_srq_user(struct ib_srq *srq, struct ib_udata *udata)
 {
-	int ret;
-
 	if (atomic_read(&srq->usecnt))
 		return -EBUSY;
 
-	ret = srq->device->ops.destroy_srq(srq, udata);
-	if (ret)
-		return ret;
+	srq->device->ops.destroy_srq(srq, udata);
 
 	atomic_dec(&srq->pd->usecnt);
 	if (srq->srq_type == IB_SRQT_XRC)
@@ -1085,7 +1072,7 @@ int ib_destroy_srq_user(struct ib_srq *srq, struct ib_udata *udata)
 		atomic_dec(&srq->ext.cq->usecnt);
 	kfree(srq);
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(ib_destroy_srq_user);
 
@@ -1794,7 +1781,7 @@ int ib_modify_qp_with_udata(struct ib_qp *ib_qp, struct ib_qp_attr *attr,
 }
 EXPORT_SYMBOL(ib_modify_qp_with_udata);
 
-int ib_get_eth_speed(struct ib_device *dev, u8 port_num, u16 *speed, u8 *width)
+int ib_get_eth_speed(struct ib_device *dev, u8 port_num, u8 *speed, u8 *width)
 {
 	int rc;
 	u32 netdev_speed;
@@ -1997,18 +1984,16 @@ struct ib_cq *__ib_create_cq(struct ib_device *device,
 	cq->event_handler = event_handler;
 	cq->cq_context = cq_context;
 	atomic_set(&cq->usecnt, 0);
-
-	rdma_restrack_new(&cq->res, RDMA_RESTRACK_CQ);
-	rdma_restrack_set_name(&cq->res, caller);
+	cq->res.type = RDMA_RESTRACK_CQ;
+	rdma_restrack_set_task(&cq->res, caller);
 
 	ret = device->ops.create_cq(cq, cq_attr, NULL);
 	if (ret) {
-		rdma_restrack_put(&cq->res);
 		kfree(cq);
 		return ERR_PTR(ret);
 	}
 
-	rdma_restrack_add(&cq->res);
+	rdma_restrack_kadd(&cq->res);
 	return cq;
 }
 EXPORT_SYMBOL(__ib_create_cq);
@@ -2079,10 +2064,8 @@ struct ib_mr *ib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	mr->pd = pd;
 	mr->dm = NULL;
 	atomic_inc(&pd->usecnt);
-
-	rdma_restrack_new(&mr->res, RDMA_RESTRACK_MR);
-	rdma_restrack_parent_name(&mr->res, &pd->res);
-	rdma_restrack_add(&mr->res);
+	mr->res.type = RDMA_RESTRACK_MR;
+	rdma_restrack_kadd(&mr->res);
 
 	return mr;
 }
@@ -2161,12 +2144,11 @@ struct ib_mr *ib_alloc_mr(struct ib_pd *pd, enum ib_mr_type mr_type,
 	mr->uobject = NULL;
 	atomic_inc(&pd->usecnt);
 	mr->need_inval = false;
+	mr->res.type = RDMA_RESTRACK_MR;
+	rdma_restrack_kadd(&mr->res);
 	mr->type = mr_type;
 	mr->sig_attrs = NULL;
 
-	rdma_restrack_new(&mr->res, RDMA_RESTRACK_MR);
-	rdma_restrack_parent_name(&mr->res, &pd->res);
-	rdma_restrack_add(&mr->res);
 out:
 	trace_mr_alloc(pd, mr_type, max_num_sg, mr);
 	return mr;
@@ -2222,12 +2204,11 @@ struct ib_mr *ib_alloc_mr_integrity(struct ib_pd *pd,
 	mr->uobject = NULL;
 	atomic_inc(&pd->usecnt);
 	mr->need_inval = false;
+	mr->res.type = RDMA_RESTRACK_MR;
+	rdma_restrack_kadd(&mr->res);
 	mr->type = IB_MR_TYPE_INTEGRITY;
 	mr->sig_attrs = sig_attrs;
 
-	rdma_restrack_new(&mr->res, RDMA_RESTRACK_MR);
-	rdma_restrack_parent_name(&mr->res, &pd->res);
-	rdma_restrack_add(&mr->res);
 out:
 	trace_mr_integ_alloc(pd, max_num_data_sg, max_num_meta_sg, mr);
 	return mr;
@@ -2449,6 +2430,29 @@ int ib_modify_wq(struct ib_wq *wq, struct ib_wq_attr *wq_attr,
 	return err;
 }
 EXPORT_SYMBOL(ib_modify_wq);
+
+/*
+ * ib_destroy_rwq_ind_table - Destroys the specified Indirection Table.
+ * @wq_ind_table: The Indirection Table to destroy.
+*/
+int ib_destroy_rwq_ind_table(struct ib_rwq_ind_table *rwq_ind_table)
+{
+	int err, i;
+	u32 table_size = (1 << rwq_ind_table->log_ind_tbl_size);
+	struct ib_wq **ind_tbl = rwq_ind_table->ind_tbl;
+
+	if (atomic_read(&rwq_ind_table->usecnt))
+		return -EBUSY;
+
+	err = rwq_ind_table->device->ops.destroy_rwq_ind_table(rwq_ind_table);
+	if (!err) {
+		for (i = 0; i < table_size; i++)
+			atomic_dec(&ind_tbl[i]->usecnt);
+	}
+
+	return err;
+}
+EXPORT_SYMBOL(ib_destroy_rwq_ind_table);
 
 int ib_check_mr_status(struct ib_mr *mr, u32 check_mask,
 		       struct ib_mr_status *mr_status)

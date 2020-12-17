@@ -73,7 +73,6 @@ struct i40iw_pd_ops;
 struct i40iw_priv_qp_ops;
 struct i40iw_priv_cq_ops;
 struct i40iw_hmc_ops;
-struct pci_dev;
 
 enum i40iw_page_size {
 	I40IW_PAGE_SIZE_4K,
@@ -262,7 +261,7 @@ struct i40iw_vsi_pestat {
 
 struct i40iw_hw {
 	u8 __iomem *hw_addr;
-	struct pci_dev *pcidev;
+	void *dev_context;
 	struct i40iw_hmc_info hmc;
 };
 

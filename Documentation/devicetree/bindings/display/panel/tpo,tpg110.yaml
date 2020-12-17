@@ -72,8 +72,6 @@ required:
   - spi-max-frequency
   - port
 
-unevaluatedProperties: false
-
 examples:
   - |+
     spi {

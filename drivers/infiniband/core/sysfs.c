@@ -59,7 +59,7 @@ struct ib_port {
 	struct gid_attr_group *gid_attr_group;
 	struct attribute_group gid_group;
 	struct attribute_group *pkey_group;
-	const struct attribute_group *pma_table;
+	struct attribute_group *pma_table;
 	struct attribute_group *hw_stats_ag;
 	struct rdma_hw_stats   *hw_stats;
 	u8                     port_num;
@@ -387,8 +387,7 @@ static ssize_t _show_port_gid_attr(
 
 	gid_attr = rdma_get_gid_attr(p->ibdev, p->port_num, tab_attr->index);
 	if (IS_ERR(gid_attr))
-		/* -EINVAL is returned for user space compatibility reasons. */
-		return -EINVAL;
+		return PTR_ERR(gid_attr);
 
 	ret = print(gid_attr, buf);
 	rdma_put_gid_attr(gid_attr);
@@ -654,17 +653,17 @@ static struct attribute *pma_attrs_noietf[] = {
 	NULL
 };
 
-static const struct attribute_group pma_group = {
+static struct attribute_group pma_group = {
 	.name  = "counters",
 	.attrs  = pma_attrs
 };
 
-static const struct attribute_group pma_group_ext = {
+static struct attribute_group pma_group_ext = {
 	.name  = "counters",
 	.attrs  = pma_attrs_ext
 };
 
-static const struct attribute_group pma_group_noietf = {
+static struct attribute_group pma_group_noietf = {
 	.name  = "counters",
 	.attrs  = pma_attrs_noietf
 };
@@ -779,8 +778,8 @@ err:
  * Figure out which counter table to use depending on
  * the device capabilities.
  */
-static const struct attribute_group *get_counter_table(struct ib_device *dev,
-						       int port_num)
+static struct attribute_group *get_counter_table(struct ib_device *dev,
+						 int port_num)
 {
 	struct ib_class_port_info cpi;
 

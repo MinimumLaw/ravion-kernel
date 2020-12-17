@@ -47,8 +47,6 @@ required:
   - compatible
   - reg
 
-additionalProperties: false
-
 examples:
   - |
     pericfg@10003000 {

@@ -22,12 +22,10 @@ static int vdec_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_H264_PROFILE:
 	case V4L2_CID_MPEG_VIDEO_MPEG4_PROFILE:
 	case V4L2_CID_MPEG_VIDEO_VP8_PROFILE:
-	case V4L2_CID_MPEG_VIDEO_VP9_PROFILE:
 		ctr->profile = ctrl->val;
 		break;
 	case V4L2_CID_MPEG_VIDEO_H264_LEVEL:
 	case V4L2_CID_MPEG_VIDEO_MPEG4_LEVEL:
-	case V4L2_CID_MPEG_VIDEO_VP9_LEVEL:
 		ctr->level = ctrl->val;
 		break;
 	default:
@@ -42,26 +40,25 @@ static int vdec_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	struct venus_inst *inst = ctrl_to_inst(ctrl);
 	struct vdec_controls *ctr = &inst->controls.dec;
 	struct hfi_buffer_requirements bufreq;
+	union hfi_get_property hprop;
 	enum hfi_version ver = inst->core->res->hfi_version;
-	u32 profile, level;
+	u32 ptype = HFI_PROPERTY_PARAM_PROFILE_LEVEL_CURRENT;
 	int ret;
 
 	switch (ctrl->id) {
 	case V4L2_CID_MPEG_VIDEO_H264_PROFILE:
 	case V4L2_CID_MPEG_VIDEO_MPEG4_PROFILE:
 	case V4L2_CID_MPEG_VIDEO_VP8_PROFILE:
-	case V4L2_CID_MPEG_VIDEO_VP9_PROFILE:
-		ret = venus_helper_get_profile_level(inst, &profile, &level);
+		ret = hfi_session_get_property(inst, ptype, &hprop);
 		if (!ret)
-			ctr->profile = profile;
+			ctr->profile = hprop.profile_level.profile;
 		ctrl->val = ctr->profile;
 		break;
 	case V4L2_CID_MPEG_VIDEO_H264_LEVEL:
 	case V4L2_CID_MPEG_VIDEO_MPEG4_LEVEL:
-	case V4L2_CID_MPEG_VIDEO_VP9_LEVEL:
-		ret = venus_helper_get_profile_level(inst, &profile, &level);
+		ret = hfi_session_get_property(inst, ptype, &hprop);
 		if (!ret)
-			ctr->level = level;
+			ctr->level = hprop.profile_level.level;
 		ctrl->val = ctr->level;
 		break;
 	case V4L2_CID_MPEG_VIDEO_DECODER_MPEG4_DEBLOCK_FILTER:
@@ -89,7 +86,7 @@ int vdec_ctrl_init(struct venus_inst *inst)
 	struct v4l2_ctrl *ctrl;
 	int ret;
 
-	ret = v4l2_ctrl_handler_init(&inst->ctrl_handler, 9);
+	ret = v4l2_ctrl_handler_init(&inst->ctrl_handler, 7);
 	if (ret)
 		return ret;
 
@@ -133,20 +130,6 @@ int vdec_ctrl_init(struct venus_inst *inst)
 				      V4L2_CID_MPEG_VIDEO_VP8_PROFILE,
 				      V4L2_MPEG_VIDEO_VP8_PROFILE_3,
 				      0, V4L2_MPEG_VIDEO_VP8_PROFILE_0);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
-
-	ctrl = v4l2_ctrl_new_std_menu(&inst->ctrl_handler, &vdec_ctrl_ops,
-				      V4L2_CID_MPEG_VIDEO_VP9_PROFILE,
-				      V4L2_MPEG_VIDEO_VP9_PROFILE_3,
-				      0, V4L2_MPEG_VIDEO_VP9_PROFILE_0);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
-
-	ctrl = v4l2_ctrl_new_std_menu(&inst->ctrl_handler, &vdec_ctrl_ops,
-				      V4L2_CID_MPEG_VIDEO_VP9_LEVEL,
-				      V4L2_MPEG_VIDEO_VP9_LEVEL_6_2,
-				      0, V4L2_MPEG_VIDEO_VP9_LEVEL_1_0);
 	if (ctrl)
 		ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
 

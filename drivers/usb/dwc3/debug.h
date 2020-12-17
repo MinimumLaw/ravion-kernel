@@ -371,9 +371,7 @@ static inline const char *dwc3_gadget_event_type_string(u8 event)
 static inline const char *dwc3_decode_event(char *str, size_t size, u32 event,
 		u32 ep0state)
 {
-	union dwc3_event evt;
-
-	memcpy(&evt, &event, sizeof(event));
+	const union dwc3_event evt = (union dwc3_event) event;
 
 	if (evt.type.is_devspec)
 		return dwc3_gadget_event_string(str, size, &evt.devt);
@@ -413,8 +411,8 @@ static inline const char *dwc3_gadget_generic_cmd_status_string(int status)
 
 
 #ifdef CONFIG_DEBUG_FS
-extern void dwc3_debugfs_init(struct dwc3 *d);
-extern void dwc3_debugfs_exit(struct dwc3 *d);
+extern void dwc3_debugfs_init(struct dwc3 *);
+extern void dwc3_debugfs_exit(struct dwc3 *);
 #else
 static inline void dwc3_debugfs_init(struct dwc3 *d)
 {  }

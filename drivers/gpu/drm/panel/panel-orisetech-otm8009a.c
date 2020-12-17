@@ -17,6 +17,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
+#include <drm/drm_print.h>
 
 #define OTM8009A_BACKLIGHT_DEFAULT	240
 #define OTM8009A_BACKLIGHT_MAX		255
@@ -96,7 +97,7 @@ static void otm8009a_dcs_write_buf(struct otm8009a *ctx, const void *data,
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 
 	if (mipi_dsi_dcs_write_buffer(dsi, data, len) < 0)
-		dev_warn(ctx->dev, "mipi dsi dcs write buffer failed\n");
+		DRM_WARN("mipi dsi dcs write buffer failed\n");
 }
 
 static void otm8009a_dcs_write_buf_hs(struct otm8009a *ctx, const void *data,
@@ -312,7 +313,7 @@ static int otm8009a_prepare(struct drm_panel *panel)
 
 	ret = regulator_enable(ctx->supply);
 	if (ret < 0) {
-		dev_err(panel->dev, "failed to enable supply: %d\n", ret);
+		DRM_ERROR("failed to enable supply: %d\n", ret);
 		return ret;
 	}
 
@@ -354,9 +355,9 @@ static int otm8009a_get_modes(struct drm_panel *panel,
 
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
-		dev_err(panel->dev, "failed to add mode %ux%u@%u\n",
-			default_mode.hdisplay, default_mode.vdisplay,
-			drm_mode_vrefresh(&default_mode));
+		DRM_ERROR("failed to add mode %ux%ux@%u\n",
+			  default_mode.hdisplay, default_mode.vdisplay,
+			  drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
@@ -389,7 +390,7 @@ static int otm8009a_backlight_update_status(struct backlight_device *bd)
 	u8 data[2];
 
 	if (!ctx->prepared) {
-		dev_dbg(&bd->dev, "lcd not ready yet for setting its backlight!\n");
+		DRM_DEBUG("lcd not ready yet for setting its backlight!\n");
 		return -ENXIO;
 	}
 

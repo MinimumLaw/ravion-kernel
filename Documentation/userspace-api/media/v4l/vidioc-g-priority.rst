@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_G_PRIORITY:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_G_PRIORITY - VIDIOC_S_PRIORITY - Query or request the access priority associated with a file descriptor
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_G_PRIORITY
+.. c:function:: int ioctl( int fd, VIDIOC_G_PRIORITY, enum v4l2_priority *argp )
+    :name: VIDIOC_G_PRIORITY
 
-``int ioctl(int fd, VIDIOC_G_PRIORITY, enum v4l2_priority *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_S_PRIORITY, const enum v4l2_priority *argp )
+    :name: VIDIOC_S_PRIORITY
 
-.. c:macro:: VIDIOC_S_PRIORITY
-
-``int ioctl(int fd, VIDIOC_S_PRIORITY, const enum v4l2_priority *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to an enum :c:type:`v4l2_priority` type.
+
 
 Description
 ===========
@@ -42,6 +49,7 @@ variable where the driver stores the current priority.
 To request an access priority applications store the desired priority in
 an enum v4l2_priority variable and call :ref:`VIDIOC_S_PRIORITY <VIDIOC_G_PRIORITY>` ioctl
 with a pointer to this variable.
+
 
 .. c:type:: v4l2_priority
 
@@ -76,6 +84,7 @@ with a pointer to this variable.
       - Highest priority. Only one file descriptor can have this priority,
 	it blocks any other fd from changing device properties. Usually
 	applications which must not be interrupted, like video recording.
+
 
 Return Value
 ============

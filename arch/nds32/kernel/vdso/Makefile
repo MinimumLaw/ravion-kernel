@@ -20,7 +20,7 @@ GCOV_PROFILE := n
 
 
 obj-y += vdso.o
-targets += vdso.lds
+extra-y += vdso.lds
 CPPFLAGS_vdso.lds += -P -C -U$(ARCH)
 
 # Force dependency

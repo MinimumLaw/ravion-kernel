@@ -28,8 +28,6 @@ required:
   - powerdown-gpios
   - reset-gpios
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/gpio/gpio.h>

@@ -46,6 +46,7 @@ struct kmem_cache {
 #include <linux/kmemleak.h>
 #include <linux/random.h>
 #include <linux/sched/mm.h>
+#include <linux/kmemleak.h>
 
 /*
  * State of the slab allocator.
@@ -287,6 +288,9 @@ static inline bool memcg_slab_pre_alloc_hook(struct kmem_cache *s,
 		return true;
 
 	if (!(flags & __GFP_ACCOUNT) && !(s->flags & SLAB_ACCOUNT))
+		return true;
+
+	if (memcg_kmem_bypass())
 		return true;
 
 	objcg = get_obj_cgroup_from_current();

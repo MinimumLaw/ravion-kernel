@@ -35,11 +35,11 @@
 #define SIGURG		29
 #define SIGXFSZ		30
 #define SIGUNUSED	31
-#define SIGSYS		31
+#define SIGSYS		31 /* Linux doesn't use this */
 
 /* These should not be considered constants from userland.  */
 #define SIGRTMIN	32
-#define SIGRTMAX	_NSIG
+#define SIGRTMAX	_NSIG /* it's 44 under HP/UX */
 
 /*
  * SA_FLAGS values:
@@ -61,6 +61,7 @@
 #define SA_NODEFER	0x00000020
 #define SA_RESTART	0x00000040
 #define SA_NOCLDWAIT	0x00000080
+#define _SA_SIGGFAULT	0x00000100 /* HPUX */
 
 #define SA_NOMASK	SA_NODEFER
 #define SA_ONESHOT	SA_RESETHAND

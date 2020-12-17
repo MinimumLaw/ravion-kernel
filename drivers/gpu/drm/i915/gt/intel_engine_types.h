@@ -22,7 +22,6 @@
 #include "i915_pmu.h"
 #include "i915_priolist_types.h"
 #include "i915_selftest.h"
-#include "intel_breadcrumbs_types.h"
 #include "intel_sseu.h"
 #include "intel_timeline_types.h"
 #include "intel_uncore.h"
@@ -278,7 +277,7 @@ struct intel_engine_execlists {
 	 *
 	 * Note these register may be either mmio or HWSP shadow.
 	 */
-	u64 *csb_status;
+	u32 *csb_status;
 
 	/**
 	 * @csb_size: context status buffer FIFO size
@@ -374,8 +373,34 @@ struct intel_engine_cs {
 	 */
 	struct ewma__engine_latency latency;
 
-	/* Keep track of all the seqno used, a trail of breadcrumbs */
-	struct intel_breadcrumbs *breadcrumbs;
+	/* Rather than have every client wait upon all user interrupts,
+	 * with the herd waking after every interrupt and each doing the
+	 * heavyweight seqno dance, we delegate the task (of being the
+	 * bottom-half of the user interrupt) to the first client. After
+	 * every interrupt, we wake up one client, who does the heavyweight
+	 * coherent seqno read and either goes back to sleep (if incomplete),
+	 * or wakes up all the completed clients in parallel, before then
+	 * transferring the bottom-half status to the next client in the queue.
+	 *
+	 * Compared to walking the entire list of waiters in a single dedicated
+	 * bottom-half, we reduce the latency of the first waiter by avoiding
+	 * a context switch, but incur additional coherent seqno reads when
+	 * following the chain of request breadcrumbs. Since it is most likely
+	 * that we have a single client waiting on each seqno, then reducing
+	 * the overhead of waking that client is much preferred.
+	 */
+	struct intel_breadcrumbs {
+		spinlock_t irq_lock;
+		struct list_head signalers;
+
+		struct list_head signaled_requests;
+
+		struct irq_work irq_work; /* for use from inside irq_lock */
+
+		unsigned int irq_enabled;
+
+		bool irq_armed;
+	} breadcrumbs;
 
 	struct intel_engine_pmu {
 		/**

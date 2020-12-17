@@ -14,12 +14,12 @@
 int fuse_setxattr(struct inode *inode, const char *name, const void *value,
 		  size_t size, int flags)
 {
-	struct fuse_mount *fm = get_fuse_mount(inode);
+	struct fuse_conn *fc = get_fuse_conn(inode);
 	FUSE_ARGS(args);
 	struct fuse_setxattr_in inarg;
 	int err;
 
-	if (fm->fc->no_setxattr)
+	if (fc->no_setxattr)
 		return -EOPNOTSUPP;
 
 	memset(&inarg, 0, sizeof(inarg));
@@ -34,9 +34,9 @@ int fuse_setxattr(struct inode *inode, const char *name, const void *value,
 	args.in_args[1].value = name;
 	args.in_args[2].size = size;
 	args.in_args[2].value = value;
-	err = fuse_simple_request(fm, &args);
+	err = fuse_simple_request(fc, &args);
 	if (err == -ENOSYS) {
-		fm->fc->no_setxattr = 1;
+		fc->no_setxattr = 1;
 		err = -EOPNOTSUPP;
 	}
 	if (!err) {
@@ -49,13 +49,13 @@ int fuse_setxattr(struct inode *inode, const char *name, const void *value,
 ssize_t fuse_getxattr(struct inode *inode, const char *name, void *value,
 		      size_t size)
 {
-	struct fuse_mount *fm = get_fuse_mount(inode);
+	struct fuse_conn *fc = get_fuse_conn(inode);
 	FUSE_ARGS(args);
 	struct fuse_getxattr_in inarg;
 	struct fuse_getxattr_out outarg;
 	ssize_t ret;
 
-	if (fm->fc->no_getxattr)
+	if (fc->no_getxattr)
 		return -EOPNOTSUPP;
 
 	memset(&inarg, 0, sizeof(inarg));
@@ -77,11 +77,11 @@ ssize_t fuse_getxattr(struct inode *inode, const char *name, void *value,
 		args.out_args[0].size = sizeof(outarg);
 		args.out_args[0].value = &outarg;
 	}
-	ret = fuse_simple_request(fm, &args);
+	ret = fuse_simple_request(fc, &args);
 	if (!ret && !size)
 		ret = min_t(ssize_t, outarg.size, XATTR_SIZE_MAX);
 	if (ret == -ENOSYS) {
-		fm->fc->no_getxattr = 1;
+		fc->no_getxattr = 1;
 		ret = -EOPNOTSUPP;
 	}
 	return ret;
@@ -107,16 +107,16 @@ static int fuse_verify_xattr_list(char *list, size_t size)
 ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 {
 	struct inode *inode = d_inode(entry);
-	struct fuse_mount *fm = get_fuse_mount(inode);
+	struct fuse_conn *fc = get_fuse_conn(inode);
 	FUSE_ARGS(args);
 	struct fuse_getxattr_in inarg;
 	struct fuse_getxattr_out outarg;
 	ssize_t ret;
 
-	if (!fuse_allow_current_process(fm->fc))
+	if (!fuse_allow_current_process(fc))
 		return -EACCES;
 
-	if (fm->fc->no_listxattr)
+	if (fc->no_listxattr)
 		return -EOPNOTSUPP;
 
 	memset(&inarg, 0, sizeof(inarg));
@@ -136,13 +136,13 @@ ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 		args.out_args[0].size = sizeof(outarg);
 		args.out_args[0].value = &outarg;
 	}
-	ret = fuse_simple_request(fm, &args);
+	ret = fuse_simple_request(fc, &args);
 	if (!ret && !size)
 		ret = min_t(ssize_t, outarg.size, XATTR_LIST_MAX);
 	if (ret > 0 && size)
 		ret = fuse_verify_xattr_list(list, ret);
 	if (ret == -ENOSYS) {
-		fm->fc->no_listxattr = 1;
+		fc->no_listxattr = 1;
 		ret = -EOPNOTSUPP;
 	}
 	return ret;
@@ -150,11 +150,11 @@ ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 
 int fuse_removexattr(struct inode *inode, const char *name)
 {
-	struct fuse_mount *fm = get_fuse_mount(inode);
+	struct fuse_conn *fc = get_fuse_conn(inode);
 	FUSE_ARGS(args);
 	int err;
 
-	if (fm->fc->no_removexattr)
+	if (fc->no_removexattr)
 		return -EOPNOTSUPP;
 
 	args.opcode = FUSE_REMOVEXATTR;
@@ -162,9 +162,9 @@ int fuse_removexattr(struct inode *inode, const char *name)
 	args.in_numargs = 1;
 	args.in_args[0].size = strlen(name) + 1;
 	args.in_args[0].value = name;
-	err = fuse_simple_request(fm, &args);
+	err = fuse_simple_request(fc, &args);
 	if (err == -ENOSYS) {
-		fm->fc->no_removexattr = 1;
+		fc->no_removexattr = 1;
 		err = -EOPNOTSUPP;
 	}
 	if (!err) {

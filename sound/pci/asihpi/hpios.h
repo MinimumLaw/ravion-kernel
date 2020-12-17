@@ -67,7 +67,7 @@ struct hpi_ioctl_linux {
 };
 
 /* Conflict?: H is already used by a number of drivers hid, bluetooth hci,
-   and some sound drivers sb16, hdsp, emu10k. AFAIK 0xFC is unused command
+   and some sound drivers sb16, hdsp, emu10k. AFAIK 0xFC is ununsed command
 */
 #define HPI_IOCTL_LINUX _IOWR('H', 0xFC, struct hpi_ioctl_linux)
 

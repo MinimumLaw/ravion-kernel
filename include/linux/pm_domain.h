@@ -64,15 +64,8 @@
 #define GENPD_FLAG_RPM_ALWAYS_ON (1U << 5)
 
 enum gpd_status {
-	GENPD_STATE_ON = 0,	/* PM domain is on */
-	GENPD_STATE_OFF,	/* PM domain is off */
-};
-
-enum genpd_notication {
-	GENPD_NOTIFY_PRE_OFF = 0,
-	GENPD_NOTIFY_OFF,
-	GENPD_NOTIFY_PRE_ON,
-	GENPD_NOTIFY_ON,
+	GPD_STATE_ACTIVE = 0,	/* PM domain is active */
+	GPD_STATE_POWER_OFF,	/* PM domain is off */
 };
 
 struct dev_power_governor {
@@ -89,8 +82,6 @@ struct genpd_power_state {
 	s64 power_off_latency_ns;
 	s64 power_on_latency_ns;
 	s64 residency_ns;
-	u64 usage;
-	u64 rejected;
 	struct fwnode_handle *fwnode;
 	ktime_t idle_time;
 	void *data;
@@ -121,7 +112,6 @@ struct generic_pm_domain {
 	cpumask_var_t cpus;		/* A cpumask of the attached CPUs */
 	int (*power_off)(struct generic_pm_domain *domain);
 	int (*power_on)(struct generic_pm_domain *domain);
-	struct raw_notifier_head power_notifiers; /* Power on/off notifiers */
 	struct opp_table *opp_table;	/* OPP table of the genpd */
 	unsigned int (*opp_to_performance_state)(struct generic_pm_domain *genpd,
 						 struct dev_pm_opp *opp);
@@ -188,7 +178,6 @@ struct generic_pm_domain_data {
 	struct pm_domain_data base;
 	struct gpd_timing_data td;
 	struct notifier_block nb;
-	struct notifier_block *power_nb;
 	int cpu;
 	unsigned int performance_state;
 	void *data;
@@ -215,8 +204,6 @@ int pm_genpd_init(struct generic_pm_domain *genpd,
 		  struct dev_power_governor *gov, bool is_off);
 int pm_genpd_remove(struct generic_pm_domain *genpd);
 int dev_pm_genpd_set_performance_state(struct device *dev, unsigned int state);
-int dev_pm_genpd_add_notifier(struct device *dev, struct notifier_block *nb);
-int dev_pm_genpd_remove_notifier(struct device *dev);
 
 extern struct dev_power_governor simple_qos_governor;
 extern struct dev_power_governor pm_domain_always_on_gov;
@@ -260,17 +247,6 @@ static inline int pm_genpd_remove(struct generic_pm_domain *genpd)
 
 static inline int dev_pm_genpd_set_performance_state(struct device *dev,
 						     unsigned int state)
-{
-	return -ENOTSUPP;
-}
-
-static inline int dev_pm_genpd_add_notifier(struct device *dev,
-					    struct notifier_block *nb)
-{
-	return -ENOTSUPP;
-}
-
-static inline int dev_pm_genpd_remove_notifier(struct device *dev)
 {
 	return -ENOTSUPP;
 }

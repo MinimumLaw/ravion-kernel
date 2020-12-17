@@ -1114,7 +1114,8 @@ static int omap_hsmmc_switch_opcond(struct omap_hsmmc_host *host, int vdd)
 	int ret;
 
 	/* Disable the clocks */
-	clk_disable_unprepare(host->dbclk);
+	if (host->dbclk)
+		clk_disable_unprepare(host->dbclk);
 
 	/* Turn the power off */
 	ret = omap_hsmmc_set_power(host, 0);
@@ -1122,7 +1123,8 @@ static int omap_hsmmc_switch_opcond(struct omap_hsmmc_host *host, int vdd)
 	/* Turn the power ON with given VDD 1.8 or 3.0v */
 	if (!ret)
 		ret = omap_hsmmc_set_power(host, 1);
-	clk_prepare_enable(host->dbclk);
+	if (host->dbclk)
+		clk_prepare_enable(host->dbclk);
 
 	if (ret != 0)
 		goto err;
@@ -2012,7 +2014,8 @@ err_irq:
 	pm_runtime_dont_use_autosuspend(host->dev);
 	pm_runtime_put_sync(host->dev);
 	pm_runtime_disable(host->dev);
-	clk_disable_unprepare(host->dbclk);
+	if (host->dbclk)
+		clk_disable_unprepare(host->dbclk);
 err1:
 	mmc_free_host(mmc);
 err:
@@ -2034,7 +2037,8 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 	pm_runtime_put_sync(host->dev);
 	pm_runtime_disable(host->dev);
 	device_init_wakeup(&pdev->dev, false);
-	clk_disable_unprepare(host->dbclk);
+	if (host->dbclk)
+		clk_disable_unprepare(host->dbclk);
 
 	mmc_free_host(host->mmc);
 
@@ -2059,7 +2063,8 @@ static int omap_hsmmc_suspend(struct device *dev)
 				OMAP_HSMMC_READ(host->base, HCTL) & ~SDBP);
 	}
 
-	clk_disable_unprepare(host->dbclk);
+	if (host->dbclk)
+		clk_disable_unprepare(host->dbclk);
 
 	pm_runtime_put_sync(host->dev);
 	return 0;
@@ -2075,7 +2080,8 @@ static int omap_hsmmc_resume(struct device *dev)
 
 	pm_runtime_get_sync(host->dev);
 
-	clk_prepare_enable(host->dbclk);
+	if (host->dbclk)
+		clk_prepare_enable(host->dbclk);
 
 	if (!(host->mmc->pm_flags & MMC_PM_KEEP_POWER))
 		omap_hsmmc_conf_bus_power(host);
@@ -2165,7 +2171,6 @@ static struct platform_driver omap_hsmmc_driver = {
 	.remove		= omap_hsmmc_remove,
 	.driver		= {
 		.name = DRIVER_NAME,
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.pm = &omap_hsmmc_dev_pm_ops,
 		.of_match_table = of_match_ptr(omap_mmc_of_match),
 	},

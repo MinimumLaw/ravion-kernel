@@ -47,10 +47,7 @@ static int pulse_active(struct i915_active *active)
 
 static void pulse_free(struct kref *kref)
 {
-	struct pulse *p = container_of(kref, typeof(*p), kref);
-
-	i915_active_fini(&p->active);
-	kfree(p);
+	kfree(container_of(kref, struct pulse, kref));
 }
 
 static void pulse_put(struct pulse *p)

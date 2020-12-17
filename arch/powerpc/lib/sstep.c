@@ -108,11 +108,11 @@ static nokprobe_inline long address_ok(struct pt_regs *regs,
 {
 	if (!user_mode(regs))
 		return 1;
-	if (__access_ok(ea, nb))
+	if (__access_ok(ea, nb, USER_DS))
 		return 1;
-	if (__access_ok(ea, 1))
+	if (__access_ok(ea, 1, USER_DS))
 		/* Access overlaps the end of the user region */
-		regs->dar = TASK_SIZE_MAX - 1;
+		regs->dar = USER_DS.seg;
 	else
 		regs->dar = ea;
 	return 0;
@@ -219,13 +219,10 @@ static nokprobe_inline unsigned long mlsd_8lsd_ea(unsigned int instr,
 		ea += regs->gpr[ra];
 	else if (!prefix_r && !ra)
 		; /* Leave ea as is */
-	else if (prefix_r)
+	else if (prefix_r && !ra)
 		ea += regs->nip;
-
-	/*
-	 * (prefix_r && ra) is an invalid form. Should already be
-	 * checked for by caller!
-	 */
+	else if (prefix_r && ra)
+		; /* Invalid form. Should already be checked for by caller! */
 
 	return ea;
 }

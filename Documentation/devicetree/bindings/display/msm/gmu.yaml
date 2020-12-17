@@ -89,8 +89,6 @@ required:
   - iommus
   - operating-points-v2
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/qcom,gpucc-sdm845.h>

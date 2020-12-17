@@ -41,8 +41,6 @@ required:
   - interrupt-controller
   - '#interrupt-cells'
 
-unevaluatedProperties: false
-
 examples:
   - |
     #include <dt-bindings/interrupt-controller/irq.h>

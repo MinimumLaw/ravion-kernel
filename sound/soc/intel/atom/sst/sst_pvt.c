@@ -26,6 +26,7 @@
 #include <asm/platform_sst_audio.h>
 #include "../sst-mfld-platform.h"
 #include "sst.h"
+#include "../../common/sst-dsp.h"
 
 int sst_shim_write(void __iomem *addr, int offset, int value)
 {
@@ -187,7 +188,7 @@ int sst_create_block_and_ipc_msg(struct ipc_post **arg, bool large,
 		struct intel_sst_drv *sst_drv_ctx, struct sst_block **block,
 		u32 msg_id, u32 drv_id)
 {
-	int retval;
+	int retval = 0;
 
 	retval = sst_create_ipc_msg(arg, large);
 	if (retval)
@@ -197,7 +198,7 @@ int sst_create_block_and_ipc_msg(struct ipc_post **arg, bool large,
 		kfree(*arg);
 		return -ENOMEM;
 	}
-	return 0;
+	return retval;
 }
 
 /*

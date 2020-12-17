@@ -36,11 +36,15 @@
 #include <asm/byteorder.h>
 #include <asm/irq.h>
 #include <asm/unaligned.h>
+#include <mach/irqs.h>
 
+#include <mach/hardware.h>
+
+#include <plat/regs-udc.h>
 #include <linux/platform_data/usb-s3c2410_udc.h>
 
+
 #include "s3c2410_udc.h"
-#include "s3c2410_udc_regs.h"
 
 #define DRIVER_DESC	"S3C2410 USB Device Controller Gadget"
 #define DRIVER_AUTHOR	"Herbert Pötzl <herbert@13thfloor.at>, " \
@@ -53,7 +57,6 @@ static struct s3c2410_udc	*the_controller;
 static struct clk		*udc_clock;
 static struct clk		*usb_bus_clock;
 static void __iomem		*base_addr;
-static int			irq_usbd;
 static u64			rsrc_start;
 static u64			rsrc_len;
 static struct dentry		*s3c2410_udc_debugfs_root;
@@ -832,6 +835,8 @@ static void s3c2410_udc_handle_ep(struct s3c2410_ep *ep)
 	}
 }
 
+#include <mach/regs-irq.h>
+
 /*
  *	s3c2410_udc_irq - interrupt handler
  */
@@ -972,7 +977,7 @@ static irqreturn_t s3c2410_udc_irq(int dummy, void *_dev)
 		}
 	}
 
-	dprintk(DEBUG_VERBOSE, "irq: %d s3c2410_udc_done.\n", irq_usbd);
+	dprintk(DEBUG_VERBOSE, "irq: %d s3c2410_udc_done.\n", IRQ_USBD);
 
 	/* Restore old index */
 	udc_write(idx, S3C2410_UDC_INDEX_REG);
@@ -1265,6 +1270,7 @@ static int s3c2410_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 static int s3c2410_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 {
 	struct s3c2410_ep	*ep = to_s3c2410_ep(_ep);
+	struct s3c2410_udc	*udc;
 	int			retval = -EINVAL;
 	unsigned long		flags;
 	struct s3c2410_request	*req = NULL;
@@ -1276,6 +1282,8 @@ static int s3c2410_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 
 	if (!_ep || !_req)
 		return retval;
+
+	udc = to_s3c2410_udc(ep->gadget);
 
 	local_irq_save(flags);
 
@@ -1772,7 +1780,13 @@ static int s3c2410_udc_probe(struct platform_device *pdev)
 	spin_lock_init(&udc->lock);
 	udc_info = dev_get_platdata(&pdev->dev);
 
-	base_addr = devm_platform_ioremap_resource(pdev, 0);
+	rsrc_start = S3C2410_PA_USBDEV;
+	rsrc_len   = S3C24XX_SZ_USBDEV;
+
+	if (!request_mem_region(rsrc_start, rsrc_len, gadget_name))
+		return -EBUSY;
+
+	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		retval = -ENOMEM;
 		goto err_mem;
@@ -1784,19 +1798,17 @@ static int s3c2410_udc_probe(struct platform_device *pdev)
 	s3c2410_udc_disable(udc);
 	s3c2410_udc_reinit(udc);
 
-	irq_usbd = platform_get_irq(pdev, 0);
-
 	/* irq setup after old hardware state is cleaned up */
-	retval = request_irq(irq_usbd, s3c2410_udc_irq,
+	retval = request_irq(IRQ_USBD, s3c2410_udc_irq,
 			     0, gadget_name, udc);
 
 	if (retval != 0) {
-		dev_err(dev, "cannot get irq %i, err %d\n", irq_usbd, retval);
+		dev_err(dev, "cannot get irq %i, err %d\n", IRQ_USBD, retval);
 		retval = -EBUSY;
 		goto err_map;
 	}
 
-	dev_dbg(dev, "got irq %i\n", irq_usbd);
+	dev_dbg(dev, "got irq %i\n", IRQ_USBD);
 
 	if (udc_info && udc_info->vbus_pin > 0) {
 		retval = gpio_request(udc_info->vbus_pin, "udc vbus");
@@ -1863,7 +1875,7 @@ err_gpio_claim:
 	if (udc_info && udc_info->vbus_pin > 0)
 		gpio_free(udc_info->vbus_pin);
 err_int:
-	free_irq(irq_usbd, udc);
+	free_irq(IRQ_USBD, udc);
 err_map:
 	iounmap(base_addr);
 err_mem:
@@ -1897,7 +1909,7 @@ static int s3c2410_udc_remove(struct platform_device *pdev)
 		free_irq(irq, udc);
 	}
 
-	free_irq(irq_usbd, udc);
+	free_irq(IRQ_USBD, udc);
 
 	iounmap(base_addr);
 	release_mem_region(rsrc_start, rsrc_len);

@@ -6,7 +6,6 @@
  *   Tang Yuantian <Yuantian.Tang@freescale.com>
  */
 
-#include <linux/acpi.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pm.h>
@@ -80,12 +79,6 @@ static const struct of_device_id ahci_qoriq_of_match[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, ahci_qoriq_of_match);
-
-static const struct acpi_device_id ahci_qoriq_acpi_match[] = {
-	{"NXP0004", .driver_data = (kernel_ulong_t)AHCI_LX2160A},
-	{ }
-};
-MODULE_DEVICE_TABLE(acpi, ahci_qoriq_acpi_match);
 
 static int ahci_qoriq_hardreset(struct ata_link *link, unsigned int *class,
 			  unsigned long deadline)
@@ -262,7 +255,6 @@ static int ahci_qoriq_phy_init(struct ahci_host_priv *hpriv)
 static int ahci_qoriq_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
-	const struct acpi_device_id *acpi_id;
 	struct device *dev = &pdev->dev;
 	struct ahci_host_priv *hpriv;
 	struct ahci_qoriq_priv *qoriq_priv;
@@ -275,18 +267,14 @@ static int ahci_qoriq_probe(struct platform_device *pdev)
 		return PTR_ERR(hpriv);
 
 	of_id = of_match_node(ahci_qoriq_of_match, np);
-	acpi_id = acpi_match_device(ahci_qoriq_acpi_match, &pdev->dev);
-	if (!(of_id || acpi_id))
+	if (!of_id)
 		return -ENODEV;
 
 	qoriq_priv = devm_kzalloc(dev, sizeof(*qoriq_priv), GFP_KERNEL);
 	if (!qoriq_priv)
 		return -ENOMEM;
 
-	if (of_id)
-		qoriq_priv->type = (enum ahci_qoriq_type)of_id->data;
-	else
-		qoriq_priv->type = (enum ahci_qoriq_type)acpi_id->driver_data;
+	qoriq_priv->type = (enum ahci_qoriq_type)of_id->data;
 
 	if (unlikely(!ecc_initialized)) {
 		res = platform_get_resource_byname(pdev,
@@ -300,8 +288,7 @@ static int ahci_qoriq_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (device_get_dma_attr(&pdev->dev) == DEV_DMA_COHERENT)
-		qoriq_priv->is_dmacoherent = true;
+	qoriq_priv->is_dmacoherent = of_dma_is_coherent(np);
 
 	rc = ahci_platform_enable_resources(hpriv);
 	if (rc)
@@ -367,7 +354,6 @@ static struct platform_driver ahci_qoriq_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.of_match_table = ahci_qoriq_of_match,
-		.acpi_match_table = ahci_qoriq_acpi_match,
 		.pm = &ahci_qoriq_pm_ops,
 	},
 };

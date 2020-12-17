@@ -519,14 +519,8 @@ static void init_cpu_char_feature_flags(struct h_cpu_char_result *result)
 	if (result->character & H_CPU_CHAR_BCCTR_FLUSH_ASSIST)
 		security_ftr_set(SEC_FTR_BCCTR_FLUSH_ASSIST);
 
-	if (result->character & H_CPU_CHAR_BCCTR_LINK_FLUSH_ASSIST)
-		security_ftr_set(SEC_FTR_BCCTR_LINK_FLUSH_ASSIST);
-
 	if (result->behaviour & H_CPU_BEHAV_FLUSH_COUNT_CACHE)
 		security_ftr_set(SEC_FTR_FLUSH_COUNT_CACHE);
-
-	if (result->behaviour & H_CPU_BEHAV_FLUSH_LINK_STACK)
-		security_ftr_set(SEC_FTR_FLUSH_LINK_STACK);
 
 	/*
 	 * The features below are enabled by default, so we instead look to see
@@ -542,7 +536,7 @@ static void init_cpu_char_feature_flags(struct h_cpu_char_result *result)
 		security_ftr_clear(SEC_FTR_BNDS_CHK_SPEC_BAR);
 }
 
-void pseries_setup_security_mitigations(void)
+void pseries_setup_rfi_flush(void)
 {
 	struct h_cpu_char_result result;
 	enum l1d_flush_type types;
@@ -587,8 +581,6 @@ void pseries_setup_security_mitigations(void)
 	enable = security_ftr_enabled(SEC_FTR_FAVOUR_SECURITY) &&
 		 security_ftr_enabled(SEC_FTR_L1D_FLUSH_UACCESS);
 	setup_uaccess_flush(enable);
-
-	setup_stf_barrier();
 }
 
 #ifdef CONFIG_PCI_IOV
@@ -778,7 +770,8 @@ static void __init pSeries_setup_arch(void)
 
 	fwnmi_init();
 
-	pseries_setup_security_mitigations();
+	pseries_setup_rfi_flush();
+	setup_stf_barrier();
 	pseries_lpar_read_hblkrm_characteristics();
 
 	/* By default, only probe PCI (can be overridden by rtas_pci) */

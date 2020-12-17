@@ -404,7 +404,7 @@ xfs_ioc_attr_list(
 	     context.cursor.offset))
 		return -EINVAL;
 
-	buffer = kvzalloc(bufsize, GFP_KERNEL);
+	buffer = kmem_zalloc_large(bufsize, 0);
 	if (!buffer)
 		return -ENOMEM;
 
@@ -1190,8 +1190,7 @@ xfs_flags2diflags2(
 	unsigned int		xflags)
 {
 	uint64_t		di_flags2 =
-		(ip->i_d.di_flags2 & (XFS_DIFLAG2_REFLINK |
-				      XFS_DIFLAG2_BIGTIME));
+		(ip->i_d.di_flags2 & XFS_DIFLAG2_REFLINK);
 
 	if (xflags & FS_XFLAG_DAX)
 		di_flags2 |= XFS_DIFLAG2_DAX;
@@ -1691,7 +1690,7 @@ xfs_ioc_getbmap(
 	if (bmx.bmv_count > ULONG_MAX / recsize)
 		return -ENOMEM;
 
-	buf = kvzalloc(bmx.bmv_count * sizeof(*buf), GFP_KERNEL);
+	buf = kmem_zalloc_large(bmx.bmv_count * sizeof(*buf), 0);
 	if (!buf)
 		return -ENOMEM;
 

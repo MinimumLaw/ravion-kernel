@@ -31,5 +31,3 @@ properties:
           - enum:
               - 70mai,midrived08 # 70mai midrive d08
           - const: mstar,mercury5
-
-additionalProperties: true

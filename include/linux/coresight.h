@@ -208,7 +208,6 @@ struct coresight_device {
 	/* sysfs links between components */
 	int nr_links;
 	bool has_conns_grp;
-	bool ect_enabled; /* true only if associated ect device is enabled */
 };
 
 /*
@@ -325,7 +324,7 @@ struct coresight_ops {
 	const struct coresight_ops_ect *ect_ops;
 };
 
-#if IS_ENABLED(CONFIG_CORESIGHT)
+#ifdef CONFIG_CORESIGHT
 extern struct coresight_device *
 coresight_register(struct coresight_desc *desc);
 extern void coresight_unregister(struct coresight_device *csdev);

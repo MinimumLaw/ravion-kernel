@@ -61,7 +61,7 @@ static const struct igbvf_info *igbvf_info_tbl[] = {
 
 /**
  * igbvf_desc_unused - calculate if we have unused descriptors
- * @ring: address of receive ring structure
+ * @rx_ring: address of receive ring structure
  **/
 static int igbvf_desc_unused(struct igbvf_ring *ring)
 {
@@ -74,8 +74,6 @@ static int igbvf_desc_unused(struct igbvf_ring *ring)
 /**
  * igbvf_receive_skb - helper function to handle Rx indications
  * @adapter: board private structure
- * @netdev: pointer to netdev struct
- * @skb: skb to indicate to stack
  * @status: descriptor status field as written by hardware
  * @vlan: descriptor vlan field as written by hardware (no le/be conversion)
  * @skb: pointer to sk_buff to be indicated to stack
@@ -235,8 +233,6 @@ no_buffers:
 /**
  * igbvf_clean_rx_irq - Send received data up the network stack; legacy
  * @adapter: board private structure
- * @work_done: output parameter used to indicate completed work
- * @work_to_do: input parameter setting limit of work
  *
  * the return value indicates whether actual cleaning was done, there
  * is no guarantee that everything was cleaned
@@ -410,7 +406,6 @@ static void igbvf_put_txbuf(struct igbvf_adapter *adapter,
 /**
  * igbvf_setup_tx_resources - allocate Tx resources (Descriptors)
  * @adapter: board private structure
- * @tx_ring: ring being initialized
  *
  * Return 0 on success, negative on failure
  **/
@@ -449,7 +444,6 @@ err:
 /**
  * igbvf_setup_rx_resources - allocate Rx resources (Descriptors)
  * @adapter: board private structure
- * @rx_ring: ring being initialized
  *
  * Returns 0 on success, negative on failure
  **/
@@ -546,7 +540,7 @@ void igbvf_free_tx_resources(struct igbvf_ring *tx_ring)
 
 /**
  * igbvf_clean_rx_ring - Free Rx Buffers per Queue
- * @rx_ring: ring structure pointer to free buffers from
+ * @adapter: board private structure
  **/
 static void igbvf_clean_rx_ring(struct igbvf_ring *rx_ring)
 {
@@ -766,7 +760,7 @@ static void igbvf_set_itr(struct igbvf_adapter *adapter)
 
 /**
  * igbvf_clean_tx_irq - Reclaim resources after transmit completes
- * @tx_ring: ring structure to clean descriptors from
+ * @adapter: board private structure
  *
  * returns true if ring is completely cleaned
  **/
@@ -1897,7 +1891,7 @@ static bool igbvf_has_link(struct igbvf_adapter *adapter)
 
 /**
  * igbvf_watchdog - Timer Call-back
- * @t: timer list pointer containing private struct
+ * @data: pointer to adapter cast into an unsigned long
  **/
 static void igbvf_watchdog(struct timer_list *t)
 {
@@ -2378,9 +2372,8 @@ static netdev_tx_t igbvf_xmit_frame(struct sk_buff *skb,
 /**
  * igbvf_tx_timeout - Respond to a Tx Hang
  * @netdev: network interface device structure
- * @txqueue: queue timing out (unused)
  **/
-static void igbvf_tx_timeout(struct net_device *netdev, unsigned int __always_unused txqueue)
+static void igbvf_tx_timeout(struct net_device *netdev, unsigned int txqueue)
 {
 	struct igbvf_adapter *adapter = netdev_priv(netdev);
 

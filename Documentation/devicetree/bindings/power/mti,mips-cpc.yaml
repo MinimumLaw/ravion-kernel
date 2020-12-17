@@ -26,8 +26,6 @@ required:
   - compatible
   - reg
 
-additionalProperties: false
-
 examples:
   - |
     cpc@1bde0000 {

@@ -170,12 +170,12 @@ static inline dma_addr_t ar2315_dev_offset(struct device *dev)
 	return 0;
 }
 
-dma_addr_t phys_to_dma(struct device *dev, phys_addr_t paddr)
+dma_addr_t __phys_to_dma(struct device *dev, phys_addr_t paddr)
 {
 	return paddr + ar2315_dev_offset(dev);
 }
 
-phys_addr_t dma_to_phys(struct device *dev, dma_addr_t dma_addr)
+phys_addr_t __dma_to_phys(struct device *dev, dma_addr_t dma_addr)
 {
 	return dma_addr - ar2315_dev_offset(dev);
 }
@@ -423,8 +423,9 @@ static int ar2315_pci_probe(struct platform_device *pdev)
 		return -EINVAL;
 	apc->irq = irq;
 
-	apc->mmr_mem = devm_platform_ioremap_resource_byname(pdev,
-							     "ar2315-pci-ctrl");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+					   "ar2315-pci-ctrl");
+	apc->mmr_mem = devm_ioremap_resource(dev, res);
 	if (IS_ERR(apc->mmr_mem))
 		return PTR_ERR(apc->mmr_mem);
 

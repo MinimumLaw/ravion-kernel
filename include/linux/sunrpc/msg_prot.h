@@ -143,7 +143,7 @@ typedef __be32	rpc_fraghdr;
 /*
  * Well-known netids. See:
  *
- *   https://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
+ *   http://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
  */
 #define RPCBIND_NETID_UDP	"udp"
 #define RPCBIND_NETID_TCP	"tcp"

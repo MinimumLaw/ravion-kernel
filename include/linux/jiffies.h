@@ -3,9 +3,8 @@
 #define _LINUX_JIFFIES_H
 
 #include <linux/cache.h>
-#include <linux/limits.h>
 #include <linux/math64.h>
-#include <linux/minmax.h>
+#include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/time.h>
 #include <linux/timex.h>

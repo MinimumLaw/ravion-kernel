@@ -24,9 +24,47 @@
 
 #define DM_MSG_PREFIX "table"
 
+#define MAX_DEPTH 16
 #define NODE_SIZE L1_CACHE_BYTES
 #define KEYS_PER_NODE (NODE_SIZE / sizeof(sector_t))
 #define CHILDREN_PER_NODE (KEYS_PER_NODE + 1)
+
+struct dm_table {
+	struct mapped_device *md;
+	enum dm_queue_mode type;
+
+	/* btree table */
+	unsigned int depth;
+	unsigned int counts[MAX_DEPTH];	/* in nodes */
+	sector_t *index[MAX_DEPTH];
+
+	unsigned int num_targets;
+	unsigned int num_allocated;
+	sector_t *highs;
+	struct dm_target *targets;
+
+	struct target_type *immutable_target_type;
+
+	bool integrity_supported:1;
+	bool singleton:1;
+	unsigned integrity_added:1;
+
+	/*
+	 * Indicates the rw permissions for the new logical
+	 * device.  This should be a combination of FMODE_READ
+	 * and FMODE_WRITE.
+	 */
+	fmode_t mode;
+
+	/* a list of devices used by this table */
+	struct list_head devices;
+
+	/* events get handed up using this callback */
+	void (*event_fn)(void *);
+	void *event_context;
+
+	struct dm_md_mempools *mempools;
+};
 
 /*
  * Similar to ceiling(log_size(n))
@@ -803,7 +841,8 @@ EXPORT_SYMBOL(dm_consume_args);
 static bool __table_type_bio_based(enum dm_queue_mode table_type)
 {
 	return (table_type == DM_TYPE_BIO_BASED ||
-		table_type == DM_TYPE_DAX_BIO_BASED);
+		table_type == DM_TYPE_DAX_BIO_BASED ||
+		table_type == DM_TYPE_NVME_BIO_BASED);
 }
 
 static bool __table_type_request_based(enum dm_queue_mode table_type)
@@ -859,6 +898,8 @@ bool dm_table_supports_dax(struct dm_table *t,
 	return true;
 }
 
+static bool dm_table_does_not_support_partial_completion(struct dm_table *t);
+
 static int device_is_rq_stackable(struct dm_target *ti, struct dm_dev *dev,
 				  sector_t start, sector_t len, void *data)
 {
@@ -866,7 +907,7 @@ static int device_is_rq_stackable(struct dm_target *ti, struct dm_dev *dev,
 	struct request_queue *q = bdev_get_queue(bdev);
 
 	/* request-based cannot stack on partitions! */
-	if (bdev_is_partition(bdev))
+	if (bdev != bdev->bd_contains)
 		return false;
 
 	return queue_is_mq(q);
@@ -888,6 +929,7 @@ static int dm_table_determine_type(struct dm_table *t)
 			goto verify_bio_based;
 		}
 		BUG_ON(t->type == DM_TYPE_DAX_BIO_BASED);
+		BUG_ON(t->type == DM_TYPE_NVME_BIO_BASED);
 		goto verify_rq_based;
 	}
 
@@ -926,6 +968,15 @@ verify_bio_based:
 		if (dm_table_supports_dax(t, device_supports_dax, &page_size) ||
 		    (list_empty(devices) && live_md_type == DM_TYPE_DAX_BIO_BASED)) {
 			t->type = DM_TYPE_DAX_BIO_BASED;
+		} else {
+			/* Check if upgrading to NVMe bio-based is valid or required */
+			tgt = dm_table_get_immutable_target(t);
+			if (tgt && !tgt->max_io_len && dm_table_does_not_support_partial_completion(t)) {
+				t->type = DM_TYPE_NVME_BIO_BASED;
+				goto verify_rq_based; /* must be stacked directly on NVMe (blk-mq) */
+			} else if (list_empty(devices) && live_md_type == DM_TYPE_NVME_BIO_BASED) {
+				t->type = DM_TYPE_NVME_BIO_BASED;
+			}
 		}
 		return 0;
 	}
@@ -942,7 +993,8 @@ verify_rq_based:
 	 * (e.g. request completion process for partial completion.)
 	 */
 	if (t->num_targets > 1) {
-		DMERR("request-based DM doesn't support multiple targets");
+		DMERR("%s DM doesn't support multiple targets",
+		      t->type == DM_TYPE_NVME_BIO_BASED ? "nvme bio-based" : "request-based");
 		return -EINVAL;
 	}
 
@@ -1246,6 +1298,12 @@ void dm_table_event_callback(struct dm_table *t,
 
 void dm_table_event(struct dm_table *t)
 {
+	/*
+	 * You can no longer call dm_table_event() from interrupt
+	 * context, use a bottom half instead.
+	 */
+	BUG_ON(in_interrupt());
+
 	mutex_lock(&_event_lock);
 	if (t->event_fn)
 		t->event_fn(t->event_context);
@@ -1626,6 +1684,20 @@ static bool dm_table_all_devices_attribute(struct dm_table *t,
 	return true;
 }
 
+static int device_no_partial_completion(struct dm_target *ti, struct dm_dev *dev,
+					sector_t start, sector_t len, void *data)
+{
+	char b[BDEVNAME_SIZE];
+
+	/* For now, NVMe devices are the only devices of this class */
+	return (strncmp(bdevname(dev->bdev, b), "nvme", 4) == 0);
+}
+
+static bool dm_table_does_not_support_partial_completion(struct dm_table *t)
+{
+	return dm_table_all_devices_attribute(t, device_no_partial_completion);
+}
+
 static int device_not_write_same_capable(struct dm_target *ti, struct dm_dev *dev,
 					 sector_t start, sector_t len, void *data)
 {
@@ -1674,33 +1746,6 @@ static bool dm_table_supports_write_zeroes(struct dm_table *t)
 
 		if (!ti->type->iterate_devices ||
 		    ti->type->iterate_devices(ti, device_not_write_zeroes_capable, NULL))
-			return false;
-	}
-
-	return true;
-}
-
-static int device_not_nowait_capable(struct dm_target *ti, struct dm_dev *dev,
-				     sector_t start, sector_t len, void *data)
-{
-	struct request_queue *q = bdev_get_queue(dev->bdev);
-
-	return q && !blk_queue_nowait(q);
-}
-
-static bool dm_table_supports_nowait(struct dm_table *t)
-{
-	struct dm_target *ti;
-	unsigned i = 0;
-
-	while (i < dm_table_get_num_targets(t)) {
-		ti = dm_table_get_target(t, i++);
-
-		if (!dm_target_supports_nowait(ti->type))
-			return false;
-
-		if (!ti->type->iterate_devices ||
-		    ti->type->iterate_devices(ti, device_not_nowait_capable, NULL))
 			return false;
 	}
 
@@ -1774,7 +1819,7 @@ static int device_requires_stable_pages(struct dm_target *ti,
 {
 	struct request_queue *q = bdev_get_queue(dev->bdev);
 
-	return q && blk_queue_stable_writes(q);
+	return q && bdi_cap_stable_pages_required(q->backing_dev_info);
 }
 
 /*
@@ -1808,11 +1853,6 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 	 * Copy table's limits to the DM device's request_queue
 	 */
 	q->limits = *limits;
-
-	if (dm_table_supports_nowait(t))
-		blk_queue_flag_set(QUEUE_FLAG_NOWAIT, q);
-	else
-		blk_queue_flag_clear(QUEUE_FLAG_NOWAIT, q);
 
 	if (!dm_table_supports_discards(t)) {
 		blk_queue_flag_clear(QUEUE_FLAG_DISCARD, q);
@@ -1864,9 +1904,9 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 	 * because they do their own checksumming.
 	 */
 	if (dm_table_requires_stable_pages(t))
-		blk_queue_flag_set(QUEUE_FLAG_STABLE_WRITES, q);
+		q->backing_dev_info->capabilities |= BDI_CAP_STABLE_WRITES;
 	else
-		blk_queue_flag_clear(QUEUE_FLAG_STABLE_WRITES, q);
+		q->backing_dev_info->capabilities &= ~BDI_CAP_STABLE_WRITES;
 
 	/*
 	 * Determine whether or not this queue's I/O timings contribute
@@ -1889,7 +1929,8 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 	}
 #endif
 
-	blk_queue_update_readahead(q);
+	/* Allow reads to exceed readahead limits */
+	q->backing_dev_info->io_pages = limits->max_sectors >> (PAGE_SHIFT - 9);
 }
 
 unsigned int dm_table_get_num_targets(struct dm_table *t)
@@ -2008,11 +2049,16 @@ EXPORT_SYMBOL_GPL(dm_table_device_name);
 
 void dm_table_run_md_queue_async(struct dm_table *t)
 {
+	struct mapped_device *md;
+	struct request_queue *queue;
+
 	if (!dm_table_request_based(t))
 		return;
 
-	if (t->md->queue)
-		blk_mq_run_hw_queues(t->md->queue, true);
+	md = dm_table_get_md(t);
+	queue = dm_get_md_queue(md);
+	if (queue)
+		blk_mq_run_hw_queues(queue, true);
 }
 EXPORT_SYMBOL(dm_table_run_md_queue_async);
 

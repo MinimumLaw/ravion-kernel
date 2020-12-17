@@ -338,19 +338,16 @@ void test_fp_vec(int fp, int vec, pthread_attr_t *attr)
 
 int tm_unavailable_test(void)
 {
-	int cpu, rc, exception; /* FP = 0, VEC = 1, VSX = 2 */
+	int rc, exception; /* FP = 0, VEC = 1, VSX = 2 */
 	pthread_t t1;
 	pthread_attr_t attr;
 	cpu_set_t cpuset;
 
 	SKIP_IF(!have_htm());
 
-	cpu = pick_online_cpu();
-	FAIL_IF(cpu < 0);
-
-	// Set only one CPU in the mask. Both threads will be bound to that CPU.
+	/* Set only CPU 0 in the mask. Both threads will be bound to CPU 0. */
 	CPU_ZERO(&cpuset);
-	CPU_SET(cpu, &cpuset);
+	CPU_SET(0, &cpuset);
 
 	/* Init pthread attribute. */
 	rc = pthread_attr_init(&attr);

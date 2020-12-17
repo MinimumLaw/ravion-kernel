@@ -168,7 +168,7 @@ static void init_once(void *foo)
 {
 	struct udf_inode_info *ei = (struct udf_inode_info *)foo;
 
-	ei->i_data = NULL;
+	ei->i_ext.i_data = NULL;
 	inode_init_once(&ei->vfs_inode);
 }
 
@@ -854,7 +854,7 @@ static int udf_load_pvoldesc(struct super_block *sb, sector_t block)
 	uint8_t *outstr;
 	struct buffer_head *bh;
 	uint16_t ident;
-	int ret;
+	int ret = -ENOMEM;
 	struct timestamp *ts;
 
 	outstr = kmalloc(128, GFP_NOFS);
@@ -1006,10 +1006,18 @@ int udf_compute_nr_groups(struct super_block *sb, u32 partition)
 static struct udf_bitmap *udf_sb_alloc_bitmap(struct super_block *sb, u32 index)
 {
 	struct udf_bitmap *bitmap;
-	int nr_groups = udf_compute_nr_groups(sb, index);
+	int nr_groups;
+	int size;
 
-	bitmap = kvzalloc(struct_size(bitmap, s_block_bitmap, nr_groups),
-			  GFP_KERNEL);
+	nr_groups = udf_compute_nr_groups(sb, index);
+	size = sizeof(struct udf_bitmap) +
+		(sizeof(struct buffer_head *) * nr_groups);
+
+	if (size <= PAGE_SIZE)
+		bitmap = kzalloc(size, GFP_KERNEL);
+	else
+		bitmap = vzalloc(size); /* TODO: get rid of vzalloc */
+
 	if (!bitmap)
 		return NULL;
 
@@ -1202,7 +1210,7 @@ static int udf_load_vat(struct super_block *sb, int p_index, int type1_index)
 			vat20 = (struct virtualAllocationTable20 *)bh->b_data;
 		} else {
 			vat20 = (struct virtualAllocationTable20 *)
-							vati->i_data;
+							vati->i_ext.i_data;
 		}
 
 		map->s_type_specific.s_virtual.s_start_offset =
@@ -2414,7 +2422,8 @@ static int udf_statfs(struct dentry *dentry, struct kstatfs *buf)
 			+ buf->f_bfree;
 	buf->f_ffree = buf->f_bfree;
 	buf->f_namelen = UDF_NAME_LEN;
-	buf->f_fsid = u64_to_fsid(id);
+	buf->f_fsid.val[0] = (u32)id;
+	buf->f_fsid.val[1] = (u32)(id >> 32);
 
 	return 0;
 }

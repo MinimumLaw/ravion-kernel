@@ -940,6 +940,7 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 	struct device *dev = hba->dev;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct exynos_ufs *ufs;
+	struct resource *res;
 	int ret;
 
 	ufs = devm_kzalloc(dev, sizeof(*ufs), GFP_KERNEL);
@@ -947,21 +948,24 @@ static int exynos_ufs_init(struct ufs_hba *hba)
 		return -ENOMEM;
 
 	/* exynos-specific hci */
-	ufs->reg_hci = devm_platform_ioremap_resource_byname(pdev, "vs_hci");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vs_hci");
+	ufs->reg_hci = devm_ioremap_resource(dev, res);
 	if (IS_ERR(ufs->reg_hci)) {
 		dev_err(dev, "cannot ioremap for hci vendor register\n");
 		return PTR_ERR(ufs->reg_hci);
 	}
 
 	/* unipro */
-	ufs->reg_unipro = devm_platform_ioremap_resource_byname(pdev, "unipro");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "unipro");
+	ufs->reg_unipro = devm_ioremap_resource(dev, res);
 	if (IS_ERR(ufs->reg_unipro)) {
 		dev_err(dev, "cannot ioremap for unipro register\n");
 		return PTR_ERR(ufs->reg_unipro);
 	}
 
 	/* ufs protector */
-	ufs->reg_ufsp = devm_platform_ioremap_resource_byname(pdev, "ufsp");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ufsp");
+	ufs->reg_ufsp = devm_ioremap_resource(dev, res);
 	if (IS_ERR(ufs->reg_ufsp)) {
 		dev_err(dev, "cannot ioremap for ufs protector register\n");
 		return PTR_ERR(ufs->reg_ufsp);
@@ -1248,8 +1252,7 @@ struct exynos_ufs_drv_data exynos_ufs_drvs = {
 				  UFSHCI_QUIRK_BROKEN_REQ_LIST_CLR |
 				  UFSHCI_QUIRK_BROKEN_HCE |
 				  UFSHCI_QUIRK_SKIP_RESET_INTR_AGGR |
-				  UFSHCD_QUIRK_BROKEN_OCS_FATAL_ERROR |
-				  UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL,
+				  UFSHCD_QUIRK_BROKEN_OCS_FATAL_ERROR,
 	.opts			= EXYNOS_UFS_OPT_HAS_APB_CLK_CTRL |
 				  EXYNOS_UFS_OPT_BROKEN_AUTO_CLK_CTRL |
 				  EXYNOS_UFS_OPT_BROKEN_RX_SEL_IDX |

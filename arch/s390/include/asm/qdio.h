@@ -26,9 +26,9 @@
 
 /**
  * struct qdesfmt0 - queue descriptor, format 0
- * @sliba: absolute address of storage list information block
- * @sla: absolute address of storage list
- * @slsba: absolute address of storage list state block
+ * @sliba: storage list information block address
+ * @sla: storage list address
+ * @slsba: storage list state block address
  * @akey: access key for SLIB
  * @bkey: access key for SL
  * @ckey: access key for SBALs
@@ -56,7 +56,7 @@ struct qdesfmt0 {
  * @oqdcnt: output queue descriptor count
  * @iqdsz: input queue descriptor size
  * @oqdsz: output queue descriptor size
- * @qiba: absolute address of queue information block
+ * @qiba: queue information block address
  * @qkey: queue information block key
  * @qdf0: queue descriptions
  */
@@ -327,6 +327,7 @@ typedef void qdio_handler_t(struct ccw_device *, unsigned int, int,
  * struct qdio_initialize - qdio initialization data
  * @q_format: queue format
  * @qdr_ac: feature flags to set
+ * @adapter_name: name for the adapter
  * @qib_param_field_format: format for qib_parm_field
  * @qib_param_field: pointer to 128 bytes or NULL, if no param field
  * @qib_rflags: rflags to set
@@ -346,6 +347,7 @@ typedef void qdio_handler_t(struct ccw_device *, unsigned int, int,
 struct qdio_initialize {
 	unsigned char q_format;
 	unsigned char qdr_ac;
+	unsigned char adapter_name[8];
 	unsigned int qib_param_field_format;
 	unsigned char *qib_param_field;
 	unsigned char qib_rflags;

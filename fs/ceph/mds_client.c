@@ -3303,7 +3303,7 @@ bad:
 }
 
 static int __decode_session_metadata(void **p, void *end,
-				     bool *blocklisted)
+				     bool *blacklisted)
 {
 	/* map<string,string> */
 	u32 n;
@@ -3317,12 +3317,8 @@ static int __decode_session_metadata(void **p, void *end,
 		*p += len;
 		ceph_decode_32_safe(p, end, len, bad);
 		ceph_decode_need(p, end, len, bad);
-		/*
-		 * Match "blocklisted (blacklisted)" from newer MDSes,
-		 * or "blacklisted" from older MDSes.
-		 */
 		if (err_str && strnstr(*p, "blacklisted", len))
-			*blocklisted = true;
+			*blacklisted = true;
 		*p += len;
 	}
 	return 0;
@@ -3345,7 +3341,7 @@ static void handle_session(struct ceph_mds_session *session,
 	u32 op;
 	u64 seq, features = 0;
 	int wake = 0;
-	bool blocklisted = false;
+	bool blacklisted = false;
 
 	/* decode */
 	ceph_decode_need(&p, end, sizeof(*h), bad);
@@ -3358,7 +3354,7 @@ static void handle_session(struct ceph_mds_session *session,
 	if (msg_version >= 3) {
 		u32 len;
 		/* version >= 2, metadata */
-		if (__decode_session_metadata(&p, end, &blocklisted) < 0)
+		if (__decode_session_metadata(&p, end, &blacklisted) < 0)
 			goto bad;
 		/* version >= 3, feature bits */
 		ceph_decode_32_safe(&p, end, len, bad);
@@ -3449,8 +3445,8 @@ static void handle_session(struct ceph_mds_session *session,
 		session->s_state = CEPH_MDS_SESSION_REJECTED;
 		cleanup_session_requests(mdsc, session);
 		remove_session_caps(session);
-		if (blocklisted)
-			mdsc->fsc->blocklisted = true;
+		if (blacklisted)
+			mdsc->fsc->blacklisted = true;
 		wake = 2; /* for good measure */
 		break;
 
@@ -4371,14 +4367,14 @@ static void maybe_recover_session(struct ceph_mds_client *mdsc)
 	if (READ_ONCE(fsc->mount_state) != CEPH_MOUNT_MOUNTED)
 		return;
 
-	if (!READ_ONCE(fsc->blocklisted))
+	if (!READ_ONCE(fsc->blacklisted))
 		return;
 
 	if (fsc->last_auto_reconnect &&
 	    time_before(jiffies, fsc->last_auto_reconnect + HZ * 60 * 30))
 		return;
 
-	pr_info("auto reconnect after blocklisted\n");
+	pr_info("auto reconnect after blacklisted\n");
 	fsc->last_auto_reconnect = jiffies;
 	ceph_force_reconnect(fsc->sb);
 }

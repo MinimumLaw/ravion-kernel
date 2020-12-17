@@ -166,34 +166,50 @@ xfs_trans_get_buf_map(
 }
 
 /*
- * Get and lock the superblock buffer for the given transaction.
+ * Get and lock the superblock buffer of this file system for the
+ * given transaction.
+ *
+ * We don't need to use incore_match() here, because the superblock
+ * buffer is a private buffer which we keep a pointer to in the
+ * mount structure.
  */
-struct xfs_buf *
+xfs_buf_t *
 xfs_trans_getsb(
-	struct xfs_trans	*tp)
+	xfs_trans_t		*tp,
+	struct xfs_mount	*mp)
 {
-	struct xfs_buf		*bp = tp->t_mountp->m_sb_bp;
+	xfs_buf_t		*bp;
+	struct xfs_buf_log_item	*bip;
 
 	/*
-	 * Just increment the lock recursion count if the buffer is already
-	 * attached to this transaction.
+	 * Default to just trying to lock the superblock buffer
+	 * if tp is NULL.
 	 */
-	if (bp->b_transp == tp) {
-		struct xfs_buf_log_item	*bip = bp->b_log_item;
+	if (tp == NULL)
+		return xfs_getsb(mp);
 
+	/*
+	 * If the superblock buffer already has this transaction
+	 * pointer in its b_fsprivate2 field, then we know we already
+	 * have it locked.  In this case we just increment the lock
+	 * recursion count and return the buffer to the caller.
+	 */
+	bp = mp->m_sb_bp;
+	if (bp->b_transp == tp) {
+		bip = bp->b_log_item;
 		ASSERT(bip != NULL);
 		ASSERT(atomic_read(&bip->bli_refcount) > 0);
 		bip->bli_recur++;
-
 		trace_xfs_trans_getsb_recur(bip);
-	} else {
-		xfs_buf_lock(bp);
-		xfs_buf_hold(bp);
-		_xfs_trans_bjoin(tp, bp, 1);
-
-		trace_xfs_trans_getsb(bp->b_log_item);
+		return bp;
 	}
 
+	bp = xfs_getsb(mp);
+	if (bp == NULL)
+		return NULL;
+
+	_xfs_trans_bjoin(tp, bp, 1);
+	trace_xfs_trans_getsb(bp->b_log_item);
 	return bp;
 }
 

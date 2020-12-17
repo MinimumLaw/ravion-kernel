@@ -12,8 +12,6 @@
 #include <linux/types.h>
 #include <asm/barrier.h>
 
-#include "powernv.h"
-
 /* OPAL in-memory console. Defined in OPAL source at core/console.c */
 struct memcons {
 	__be64 magic;

@@ -55,17 +55,17 @@ an ftrace_ops with ftrace:
 
 Both .flags and .private are optional. Only .func is required.
 
-To enable tracing call::
+To enable tracing call:
 
-    register_ftrace_function(&ops);
+.. c:function::  register_ftrace_function(&ops);
 
-To disable tracing call::
+To disable tracing call:
 
-    unregister_ftrace_function(&ops);
+.. c:function::  unregister_ftrace_function(&ops);
 
-The above is defined by including the header::
+The above is defined by including the header:
 
-    #include <linux/ftrace.h>
+.. c:function:: #include <linux/ftrace.h>
 
 The registered callback will start being called some time after the
 register_ftrace_function() is called and before it returns. The exact time

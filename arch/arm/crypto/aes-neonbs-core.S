@@ -77,6 +77,11 @@
 	vldr		\out\()h, \sym + 8
 	.endm
 
+	.macro		__adr, reg, lbl
+	adr		\reg, \lbl
+THUMB(	orr		\reg, \reg, #1		)
+	.endm
+
 	.macro		in_bs_ch, b0, b1, b2, b3, b4, b5, b6, b7
 	veor		\b2, \b2, \b1
 	veor		\b5, \b5, \b6
@@ -624,11 +629,11 @@ ENDPROC(aesbs_decrypt8)
 	push		{r4-r6, lr}
 	ldr		r5, [sp, #16]		// number of blocks
 
-99:	adr		ip, 0f
+99:	__adr		ip, 0f
 	and		lr, r5, #7
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #2
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q0}, [r1]!
 	vld1.8		{q1}, [r1]!
@@ -643,11 +648,11 @@ ENDPROC(aesbs_decrypt8)
 	mov		rounds, r3
 	bl		\do8
 
-	adr		ip, 1f
+	__adr		ip, 1f
 	and		lr, r5, #7
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #2
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vst1.8		{\o0}, [r0]!
 	vst1.8		{\o1}, [r0]!
@@ -684,12 +689,12 @@ ENTRY(aesbs_cbc_decrypt)
 	push		{r4-r6, lr}
 	ldm		ip, {r5-r6}		// load args 4-5
 
-99:	adr		ip, 0f
+99:	__adr		ip, 0f
 	and		lr, r5, #7
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #2
 	mov		lr, r1
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q0}, [lr]!
 	vld1.8		{q1}, [lr]!
@@ -713,11 +718,11 @@ ENTRY(aesbs_cbc_decrypt)
 	vmov		q14, q8
 	vmov		q15, q8
 
-	adr		ip, 1f
+	__adr		ip, 1f
 	and		lr, r5, #7
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #2
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q9}, [r1]!
 	vld1.8		{q10}, [r1]!
@@ -728,9 +733,9 @@ ENTRY(aesbs_cbc_decrypt)
 	vld1.8		{q15}, [r1]!
 	W(nop)
 
-1:	adr		ip, 2f
+1:	__adr		ip, 2f
 	sub		ip, ip, lr, lsl #3
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	veor		q0, q0, q8
 	vst1.8		{q0}, [r0]!
@@ -799,13 +804,13 @@ ENTRY(aesbs_ctr_encrypt)
 	vmov		q6, q0
 	vmov		q7, q0
 
-	adr		ip, 0f
+	__adr		ip, 0f
 	sub		lr, r5, #1
 	and		lr, lr, #7
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #5
 	sub		ip, ip, lr, lsl #2
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	next_ctr	q1
 	next_ctr	q2
@@ -819,13 +824,13 @@ ENTRY(aesbs_ctr_encrypt)
 	mov		rounds, r3
 	bl		aesbs_encrypt8
 
-	adr		ip, 1f
+	__adr		ip, 1f
 	and		lr, r5, #7
 	cmp		r5, #8
 	movgt		r4, #0
 	ldrle		r4, [sp, #40]		// load final in the last round
 	sub		ip, ip, lr, lsl #2
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q8}, [r1]!
 	vld1.8		{q9}, [r1]!
@@ -838,10 +843,10 @@ ENTRY(aesbs_ctr_encrypt)
 1:	bne		2f
 	vld1.8		{q15}, [r1]!
 
-2:	adr		ip, 3f
+2:	__adr		ip, 3f
 	cmp		r5, #8
 	sub		ip, ip, lr, lsl #3
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	veor		q0, q0, q8
 	vst1.8		{q0}, [r0]!
@@ -895,12 +900,12 @@ __xts_prepare8:
 	vshr.u64	d30, d31, #7
 	vmov		q12, q14
 
-	adr		ip, 0f
+	__adr		ip, 0f
 	and		r4, r6, #7
 	cmp		r6, #8
 	sub		ip, ip, r4, lsl #5
 	mov		r4, sp
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q0}, [r1]!
 	next_tweak	q12, q14, q15, q13
@@ -956,7 +961,8 @@ ENDPROC(__xts_prepare8)
 	push		{r4-r8, lr}
 	mov		r5, sp			// preserve sp
 	ldrd		r6, r7, [sp, #24]	// get blocks and iv args
-	rsb		r8, ip, #1
+	ldr		r8, [sp, #32]		// reorder final tweak?
+	rsb		r8, r8, #1
 	sub		ip, sp, #128		// make room for 8x tweak
 	bic		ip, ip, #0xf		// align sp to 16 bytes
 	mov		sp, ip
@@ -967,12 +973,12 @@ ENDPROC(__xts_prepare8)
 	mov		rounds, r3
 	bl		\do8
 
-	adr		ip, 0f
+	__adr		ip, 0f
 	and		lr, r6, #7
 	cmp		r6, #8
 	sub		ip, ip, lr, lsl #2
 	mov		r4, sp
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	vld1.8		{q8}, [r4, :128]!
 	vld1.8		{q9}, [r4, :128]!
@@ -983,9 +989,9 @@ ENDPROC(__xts_prepare8)
 	vld1.8		{q14}, [r4, :128]!
 	vld1.8		{q15}, [r4, :128]
 
-0:	adr		ip, 1f
+0:	__adr		ip, 1f
 	sub		ip, ip, lr, lsl #3
-	movlt		pc, ip			// computed goto if blocks < 8
+	bxlt		ip			// computed goto if blocks < 8
 
 	veor		\o0, \o0, q8
 	vst1.8		{\o0}, [r0]!
@@ -1012,11 +1018,9 @@ ENDPROC(__xts_prepare8)
 	.endm
 
 ENTRY(aesbs_xts_encrypt)
-	mov		ip, #0			// never reorder final tweak
 	__xts_crypt	aesbs_encrypt8, q0, q1, q4, q6, q3, q7, q2, q5
 ENDPROC(aesbs_xts_encrypt)
 
 ENTRY(aesbs_xts_decrypt)
-	ldr		ip, [sp, #8]		// reorder final tweak?
 	__xts_crypt	aesbs_decrypt8, q0, q1, q6, q4, q2, q7, q3, q5
 ENDPROC(aesbs_xts_decrypt)

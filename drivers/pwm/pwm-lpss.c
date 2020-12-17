@@ -85,7 +85,7 @@ static void pwm_lpss_prepare(struct pwm_lpss_chip *lpwm, struct pwm_device *pwm,
 	unsigned long long on_time_div;
 	unsigned long c = lpwm->info->clk_rate, base_unit_range;
 	unsigned long long base_unit, freq = NSEC_PER_SEC;
-	u32 ctrl;
+	u32 orig_ctrl, ctrl;
 
 	do_div(freq, period_ns);
 
@@ -104,14 +104,16 @@ static void pwm_lpss_prepare(struct pwm_lpss_chip *lpwm, struct pwm_device *pwm,
 	do_div(on_time_div, period_ns);
 	on_time_div = 255ULL - on_time_div;
 
-	ctrl = pwm_lpss_read(pwm);
+	orig_ctrl = ctrl = pwm_lpss_read(pwm);
 	ctrl &= ~PWM_ON_TIME_DIV_MASK;
 	ctrl &= ~((base_unit_range - 1) << PWM_BASE_UNIT_SHIFT);
 	ctrl |= (u32) base_unit << PWM_BASE_UNIT_SHIFT;
 	ctrl |= on_time_div;
 
-	pwm_lpss_write(pwm, ctrl);
-	pwm_lpss_write(pwm, ctrl | PWM_SW_UPDATE);
+	if (orig_ctrl != ctrl) {
+		pwm_lpss_write(pwm, ctrl);
+		pwm_lpss_write(pwm, ctrl | PWM_SW_UPDATE);
+	}
 }
 
 static inline void pwm_lpss_cond_enable(struct pwm_device *pwm, bool cond)
@@ -120,47 +122,41 @@ static inline void pwm_lpss_cond_enable(struct pwm_device *pwm, bool cond)
 		pwm_lpss_write(pwm, pwm_lpss_read(pwm) | PWM_ENABLE);
 }
 
-static int pwm_lpss_prepare_enable(struct pwm_lpss_chip *lpwm,
-				   struct pwm_device *pwm,
-				   const struct pwm_state *state)
-{
-	int ret;
-
-	ret = pwm_lpss_is_updating(pwm);
-	if (ret)
-		return ret;
-
-	pwm_lpss_prepare(lpwm, pwm, state->duty_cycle, state->period);
-	pwm_lpss_cond_enable(pwm, lpwm->info->bypass == false);
-	ret = pwm_lpss_wait_for_update(pwm);
-	if (ret)
-		return ret;
-
-	pwm_lpss_cond_enable(pwm, lpwm->info->bypass == true);
-	return 0;
-}
-
 static int pwm_lpss_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 			  const struct pwm_state *state)
 {
 	struct pwm_lpss_chip *lpwm = to_lpwm(chip);
-	int ret = 0;
+	int ret;
 
 	if (state->enabled) {
 		if (!pwm_is_enabled(pwm)) {
 			pm_runtime_get_sync(chip->dev);
-			ret = pwm_lpss_prepare_enable(lpwm, pwm, state);
-			if (ret)
+			ret = pwm_lpss_is_updating(pwm);
+			if (ret) {
 				pm_runtime_put(chip->dev);
+				return ret;
+			}
+			pwm_lpss_prepare(lpwm, pwm, state->duty_cycle, state->period);
+			pwm_lpss_cond_enable(pwm, lpwm->info->bypass == false);
+			ret = pwm_lpss_wait_for_update(pwm);
+			if (ret) {
+				pm_runtime_put(chip->dev);
+				return ret;
+			}
+			pwm_lpss_cond_enable(pwm, lpwm->info->bypass == true);
 		} else {
-			ret = pwm_lpss_prepare_enable(lpwm, pwm, state);
+			ret = pwm_lpss_is_updating(pwm);
+			if (ret)
+				return ret;
+			pwm_lpss_prepare(lpwm, pwm, state->duty_cycle, state->period);
+			return pwm_lpss_wait_for_update(pwm);
 		}
 	} else if (pwm_is_enabled(pwm)) {
 		pwm_lpss_write(pwm, pwm_lpss_read(pwm) & ~PWM_ENABLE);
 		pm_runtime_put(chip->dev);
 	}
 
-	return ret;
+	return 0;
 }
 
 static void pwm_lpss_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
@@ -259,6 +255,30 @@ int pwm_lpss_remove(struct pwm_lpss_chip *lpwm)
 	return pwmchip_remove(&lpwm->chip);
 }
 EXPORT_SYMBOL_GPL(pwm_lpss_remove);
+
+int pwm_lpss_suspend(struct device *dev)
+{
+	struct pwm_lpss_chip *lpwm = dev_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < lpwm->info->npwm; i++)
+		lpwm->saved_ctrl[i] = readl(lpwm->regs + i * PWM_SIZE + PWM);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pwm_lpss_suspend);
+
+int pwm_lpss_resume(struct device *dev)
+{
+	struct pwm_lpss_chip *lpwm = dev_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < lpwm->info->npwm; i++)
+		writel(lpwm->saved_ctrl[i], lpwm->regs + i * PWM_SIZE + PWM);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pwm_lpss_resume);
 
 MODULE_DESCRIPTION("PWM driver for Intel LPSS");
 MODULE_AUTHOR("Mika Westerberg <mika.westerberg@linux.intel.com>");

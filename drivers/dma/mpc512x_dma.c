@@ -414,9 +414,9 @@ static void mpc_dma_process_completed(struct mpc_dma *mdma)
 }
 
 /* DMA Tasklet */
-static void mpc_dma_tasklet(struct tasklet_struct *t)
+static void mpc_dma_tasklet(unsigned long data)
 {
-	struct mpc_dma *mdma = from_tasklet(mdma, t, tasklet);
+	struct mpc_dma *mdma = (void *)data;
 	unsigned long flags;
 	uint es;
 
@@ -1009,7 +1009,7 @@ static int mpc_dma_probe(struct platform_device *op)
 		list_add_tail(&mchan->chan.device_node, &dma->channels);
 	}
 
-	tasklet_setup(&mdma->tasklet, mpc_dma_tasklet);
+	tasklet_init(&mdma->tasklet, mpc_dma_tasklet, (unsigned long)mdma);
 
 	/*
 	 * Configure DMA Engine:

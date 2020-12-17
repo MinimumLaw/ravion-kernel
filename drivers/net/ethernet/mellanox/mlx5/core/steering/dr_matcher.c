@@ -203,6 +203,7 @@ static int dr_matcher_set_ste_builders(struct mlx5dr_matcher *matcher,
 	struct mlx5dr_domain_rx_tx *nic_dmn = nic_matcher->nic_tbl->nic_dmn;
 	struct mlx5dr_domain *dmn = matcher->tbl->dmn;
 	struct mlx5dr_match_param mask = {};
+	struct mlx5dr_match_misc3 *misc3;
 	struct mlx5dr_ste_build *sb;
 	bool inner, rx;
 	int idx = 0;
@@ -251,14 +252,18 @@ static int dr_matcher_set_ste_builders(struct mlx5dr_matcher *matcher,
 		if (dr_mask_is_gvmi_or_qpn_set(&mask.misc) &&
 		    (dmn->type == MLX5DR_DOMAIN_TYPE_FDB ||
 		     dmn->type == MLX5DR_DOMAIN_TYPE_NIC_RX)) {
-			mlx5dr_ste_build_src_gvmi_qpn(&sb[idx++], &mask,
-						      dmn, inner, rx);
+			ret = mlx5dr_ste_build_src_gvmi_qpn(&sb[idx++], &mask,
+							    dmn, inner, rx);
+			if (ret)
+				return ret;
 		}
 
 		if (dr_mask_is_smac_set(&mask.outer) &&
 		    dr_mask_is_dmac_set(&mask.outer)) {
-			mlx5dr_ste_build_eth_l2_src_des(&sb[idx++], &mask,
-							inner, rx);
+			ret = mlx5dr_ste_build_eth_l2_src_des(&sb[idx++], &mask,
+							      inner, rx);
+			if (ret)
+				return ret;
 		}
 
 		if (dr_mask_is_smac_set(&mask.outer))
@@ -308,7 +313,8 @@ static int dr_matcher_set_ste_builders(struct mlx5dr_matcher *matcher,
 			mlx5dr_ste_build_flex_parser_0(&sb[idx++], &mask,
 						       inner, rx);
 
-		if ((DR_MASK_IS_FLEX_PARSER_ICMPV4_SET(&mask.misc3) &&
+		misc3 = &mask.misc3;
+		if ((DR_MASK_IS_FLEX_PARSER_ICMPV4_SET(misc3) &&
 		     mlx5dr_matcher_supp_flex_parser_icmp_v4(&dmn->info.caps)) ||
 		    (dr_mask_is_flex_parser_icmpv6_set(&mask.misc3) &&
 		     mlx5dr_matcher_supp_flex_parser_icmp_v6(&dmn->info.caps))) {
@@ -334,8 +340,10 @@ static int dr_matcher_set_ste_builders(struct mlx5dr_matcher *matcher,
 
 		if (dr_mask_is_smac_set(&mask.inner) &&
 		    dr_mask_is_dmac_set(&mask.inner)) {
-			mlx5dr_ste_build_eth_l2_src_des(&sb[idx++],
-							&mask, inner, rx);
+			ret = mlx5dr_ste_build_eth_l2_src_des(&sb[idx++],
+							      &mask, inner, rx);
+			if (ret)
+				return ret;
 		}
 
 		if (dr_mask_is_smac_set(&mask.inner))

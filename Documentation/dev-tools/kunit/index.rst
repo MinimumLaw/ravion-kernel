@@ -11,7 +11,6 @@ KUnit - Unit Testing for the Linux Kernel
 	usage
 	kunit-tool
 	api/index
-	style
 	faq
 
 What is KUnit?

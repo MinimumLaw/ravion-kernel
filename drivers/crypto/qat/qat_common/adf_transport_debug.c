@@ -77,14 +77,31 @@ static void adf_ring_stop(struct seq_file *sfile, void *v)
 	mutex_unlock(&ring_read_lock);
 }
 
-static const struct seq_operations adf_ring_debug_sops = {
+static const struct seq_operations adf_ring_sops = {
 	.start = adf_ring_start,
 	.next = adf_ring_next,
 	.stop = adf_ring_stop,
 	.show = adf_ring_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(adf_ring_debug);
+static int adf_ring_open(struct inode *inode, struct file *file)
+{
+	int ret = seq_open(file, &adf_ring_sops);
+
+	if (!ret) {
+		struct seq_file *seq_f = file->private_data;
+
+		seq_f->private = inode->i_private;
+	}
+	return ret;
+}
+
+static const struct file_operations adf_ring_debug_fops = {
+	.open = adf_ring_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release
+};
 
 int adf_ring_debugfs_add(struct adf_etr_ring_data *ring, const char *name)
 {
@@ -171,14 +188,31 @@ static void adf_bank_stop(struct seq_file *sfile, void *v)
 	mutex_unlock(&bank_read_lock);
 }
 
-static const struct seq_operations adf_bank_debug_sops = {
+static const struct seq_operations adf_bank_sops = {
 	.start = adf_bank_start,
 	.next = adf_bank_next,
 	.stop = adf_bank_stop,
 	.show = adf_bank_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(adf_bank_debug);
+static int adf_bank_open(struct inode *inode, struct file *file)
+{
+	int ret = seq_open(file, &adf_bank_sops);
+
+	if (!ret) {
+		struct seq_file *seq_f = file->private_data;
+
+		seq_f->private = inode->i_private;
+	}
+	return ret;
+}
+
+static const struct file_operations adf_bank_debug_fops = {
+	.open = adf_bank_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release
+};
 
 int adf_bank_debugfs_add(struct adf_etr_bank_data *bank)
 {

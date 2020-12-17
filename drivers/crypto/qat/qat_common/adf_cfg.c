@@ -52,7 +52,24 @@ static const struct seq_operations qat_dev_cfg_sops = {
 	.show = qat_dev_cfg_show
 };
 
-DEFINE_SEQ_ATTRIBUTE(qat_dev_cfg);
+static int qat_dev_cfg_open(struct inode *inode, struct file *file)
+{
+	int ret = seq_open(file, &qat_dev_cfg_sops);
+
+	if (!ret) {
+		struct seq_file *seq_f = file->private_data;
+
+		seq_f->private = inode->i_private;
+	}
+	return ret;
+}
+
+static const struct file_operations qat_dev_cfg_fops = {
+	.open = qat_dev_cfg_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release
+};
 
 /**
  * adf_cfg_dev_add() - Create an acceleration device configuration table.

@@ -65,8 +65,6 @@ int chsc_error_from_response(int response)
 	case 0x0100:
 	case 0x0102:
 		return -ENOMEM;
-	case 0x0108:		/* "HW limit exceeded" for the op 0x003d */
-		return -EUSERS;
 	default:
 		return -EIO;
 	}
@@ -1116,7 +1114,7 @@ int chsc_enable_facility(int operation_code)
 	return ret;
 }
 
-int __init chsc_get_cssid_iid(int idx, u8 *cssid, u8 *iid)
+int __init chsc_get_cssid(int idx)
 {
 	struct {
 		struct chsc_header request;
@@ -1127,8 +1125,7 @@ int __init chsc_get_cssid_iid(int idx, u8 *cssid, u8 *iid)
 		u32 reserved2[3];
 		struct {
 			u8 cssid;
-			u8 iid;
-			u32 : 16;
+			u32 : 24;
 		} list[0];
 	} *sdcal_area;
 	int ret;
@@ -1154,10 +1151,8 @@ int __init chsc_get_cssid_iid(int idx, u8 *cssid, u8 *iid)
 	}
 
 	if ((addr_t) &sdcal_area->list[idx] <
-	    (addr_t) &sdcal_area->response + sdcal_area->response.length) {
-		*cssid = sdcal_area->list[idx].cssid;
-		*iid = sdcal_area->list[idx].iid;
-	}
+	    (addr_t) &sdcal_area->response + sdcal_area->response.length)
+		ret = sdcal_area->list[idx].cssid;
 	else
 		ret = -ENODEV;
 exit:
@@ -1265,27 +1260,6 @@ int chsc_sstpi(void *page, void *result, size_t size)
 	return (rr->response.code == 0x0001) ? 0 : -EIO;
 }
 
-int chsc_stzi(void *page, void *result, size_t size)
-{
-	struct {
-		struct chsc_header request;
-		unsigned int rsvd0[3];
-		struct chsc_header response;
-		char data[];
-	} *rr;
-	int rc;
-
-	memset(page, 0, PAGE_SIZE);
-	rr = page;
-	rr->request.length = 0x0010;
-	rr->request.code = 0x003e;
-	rc = chsc(rr);
-	if (rc)
-		return -EIO;
-	memcpy(result, &rr->data, size);
-	return (rr->response.code == 0x0001) ? 0 : -EIO;
-}
-
 int chsc_siosl(struct subchannel_id schid)
 {
 	struct {
@@ -1366,7 +1340,6 @@ EXPORT_SYMBOL_GPL(chsc_scm_info);
  * chsc_pnso() - Perform Network-Subchannel Operation
  * @schid:		id of the subchannel on which PNSO is performed
  * @pnso_area:		request and response block for the operation
- * @oc:			Operation Code
  * @resume_token:	resume token for multiblock response
  * @cnc:		Boolean change-notification control
  *
@@ -1374,8 +1347,10 @@ EXPORT_SYMBOL_GPL(chsc_scm_info);
  *
  * Returns 0 on success.
  */
-int chsc_pnso(struct subchannel_id schid, struct chsc_pnso_area *pnso_area,
-	      u8 oc, struct chsc_pnso_resume_token resume_token, int cnc)
+int chsc_pnso(struct subchannel_id schid,
+	      struct chsc_pnso_area *pnso_area,
+	      struct chsc_pnso_resume_token resume_token,
+	      int cnc)
 {
 	memset(pnso_area, 0, sizeof(*pnso_area));
 	pnso_area->request.length = 0x0030;
@@ -1384,7 +1359,7 @@ int chsc_pnso(struct subchannel_id schid, struct chsc_pnso_area *pnso_area,
 	pnso_area->ssid  = schid.ssid;
 	pnso_area->sch	 = schid.sch_no;
 	pnso_area->cssid = schid.cssid;
-	pnso_area->oc	 = oc;
+	pnso_area->oc	 = 0; /* Store-network-bridging-information list */
 	pnso_area->resume_token = resume_token;
 	pnso_area->n	   = (cnc != 0);
 	if (chsc(pnso_area))

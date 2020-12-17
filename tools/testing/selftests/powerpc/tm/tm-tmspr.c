@@ -33,13 +33,19 @@
 #include "utils.h"
 #include "tm.h"
 
-int	num_loops	= 1000000;
+int	num_loops	= 10000;
 int	passed = 1;
 
 void tfiar_tfhar(void *in)
 {
+	int i, cpu;
 	unsigned long tfhar, tfhar_rd, tfiar, tfiar_rd;
-	int i;
+	cpu_set_t cpuset;
+
+	CPU_ZERO(&cpuset);
+	cpu = (unsigned long)in >> 1;
+	CPU_SET(cpu, &cpuset);
+	sched_setaffinity(0, sizeof(cpuset), &cpuset);
 
 	/* TFIAR: Last bit has to be high so userspace can read register */
 	tfiar = ((unsigned long)in) + 1;

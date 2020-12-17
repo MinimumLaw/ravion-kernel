@@ -46,7 +46,6 @@
 
 #include <dt-bindings/firmware/imx/rsrc.h>
 #include <linux/firmware/imx/sci.h>
-#include <linux/firmware/imx/svc/rm.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -256,9 +255,6 @@ imx_scu_add_pm_domain(struct device *dev, int idx,
 {
 	struct imx_sc_pm_domain *sc_pd;
 	int ret;
-
-	if (!imx_sc_rm_is_resource_owned(pm_ipc_handle, pd_ranges->rsrc + idx))
-		return NULL;
 
 	sc_pd = devm_kzalloc(dev, sizeof(*sc_pd), GFP_KERNEL);
 	if (!sc_pd)

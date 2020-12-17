@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_DV_TIMINGS_CAP:
 
@@ -12,25 +18,26 @@ Name
 
 VIDIOC_DV_TIMINGS_CAP - VIDIOC_SUBDEV_DV_TIMINGS_CAP - The capabilities of the Digital Video receiver/transmitter
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_DV_TIMINGS_CAP
+.. c:function:: int ioctl( int fd, VIDIOC_DV_TIMINGS_CAP, struct v4l2_dv_timings_cap *argp )
+    :name: VIDIOC_DV_TIMINGS_CAP
 
-``int ioctl(int fd, VIDIOC_DV_TIMINGS_CAP, struct v4l2_dv_timings_cap *argp)``
+.. c:function:: int ioctl( int fd, VIDIOC_SUBDEV_DV_TIMINGS_CAP, struct v4l2_dv_timings_cap *argp )
+    :name: VIDIOC_SUBDEV_DV_TIMINGS_CAP
 
-.. c:macro:: VIDIOC_SUBDEV_DV_TIMINGS_CAP
-
-``int ioctl(int fd, VIDIOC_SUBDEV_DV_TIMINGS_CAP, struct v4l2_dv_timings_cap *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_dv_timings_cap`.
+
 
 Description
 ===========
@@ -54,6 +61,7 @@ the desired pad number in the struct
 :c:type:`v4l2_dv_timings_cap` ``pad`` field and
 zero the ``reserved`` array. Attempts to query capabilities on a pad
 that doesn't support them will return an ``EINVAL`` error code.
+
 
 .. tabularcolumns:: |p{1.2cm}|p{3.0cm}|p{13.3cm}|
 
@@ -94,6 +102,7 @@ that doesn't support them will return an ``EINVAL`` error code.
       - ``reserved``\ [16]
       - Reserved for future extensions.
 	Drivers must set the array to zero.
+
 
 
 .. tabularcolumns:: |p{1.0cm}|p{4.0cm}|p{3.5cm}|p{9.2cm}|
@@ -150,6 +159,7 @@ that doesn't support them will return an ``EINVAL`` error code.
     * - ``V4L2_DV_BT_CAP_CUSTOM``
       - Can support non-standard timings, i.e. timings not belonging to
 	the standards set in the ``standards`` field.
+
 
 Return Value
 ============

@@ -93,9 +93,8 @@ config PPDEV
 
 config VIRTIO_CONSOLE
 	tristate "Virtio console"
-	depends on TTY
+	depends on VIRTIO && TTY
 	select HVC_DRIVER
-	select VIRTIO
 	help
 	  Virtio console for use with hypervisors.
 

@@ -115,6 +115,7 @@ struct rtrs_sess {
 
 /* rtrs information unit */
 struct rtrs_iu {
+	struct list_head        list;
 	struct ib_cqe           cqe;
 	dma_addr_t              dma_addr;
 	void                    *buf;

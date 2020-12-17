@@ -205,6 +205,7 @@ static int mt7615_add_interface(struct ieee80211_hw *hw,
 	if (vif->txq) {
 		mtxq = (struct mt76_txq *)vif->txq->drv_priv;
 		mtxq->wcid = &mvif->sta.wcid;
+		mt76_txq_init(&dev->mt76, vif->txq);
 	}
 
 	ret = mt7615_mcu_add_dev_info(dev, vif, true);
@@ -255,6 +256,8 @@ static void mt7615_remove_interface(struct ieee80211_hw *hw,
 	mt7615_mcu_add_dev_info(dev, vif, false);
 
 	rcu_assign_pointer(dev->mt76.wcid[idx], NULL);
+	if (vif->txq)
+		mt76_txq_remove(&dev->mt76, vif->txq);
 
 	dev->mphy.vif_mask &= ~BIT(mvif->idx);
 	dev->omac_mask &= ~BIT(mvif->omac_idx);
@@ -703,8 +706,7 @@ mt7615_wake_tx_queue(struct ieee80211_hw *hw, struct ieee80211_txq *txq)
 		return;
 	}
 
-	dev->pm.last_activity = jiffies;
-	mt76_worker_schedule(&dev->mt76.tx_worker);
+	tasklet_schedule(&dev->mt76.tx_tasklet);
 }
 
 static void mt7615_tx(struct ieee80211_hw *hw,
@@ -733,7 +735,6 @@ static void mt7615_tx(struct ieee80211_hw *hw,
 	}
 
 	if (!test_bit(MT76_STATE_PM, &mphy->state)) {
-		dev->pm.last_activity = jiffies;
 		mt76_tx(mphy, control->sta, wcid, skb);
 		return;
 	}
@@ -815,6 +816,7 @@ mt7615_ampdu_action(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	case IEEE80211_AMPDU_TX_START:
 		ssn = mt7615_mac_get_sta_tid_sn(dev, msta->wcid.idx, tid);
 		params->ssn = ssn;
+		mtxq->agg_ssn = IEEE80211_SN_TO_SEQ(ssn);
 		ret = IEEE80211_AMPDU_TX_START_IMMEDIATE;
 		break;
 	case IEEE80211_AMPDU_TX_STOP_CONT:

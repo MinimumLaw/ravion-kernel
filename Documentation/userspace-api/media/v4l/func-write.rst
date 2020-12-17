@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _func-write:
 
@@ -12,6 +18,7 @@ Name
 
 v4l2-write - Write to a V4L2 device
 
+
 Synopsis
 ========
 
@@ -19,13 +26,15 @@ Synopsis
 
     #include <unistd.h>
 
+
 .. c:function:: ssize_t write( int fd, void *buf, size_t count )
+    :name: v4l2-write
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``buf``
      Buffer with data to be written
@@ -36,16 +45,17 @@ Arguments
 Description
 ===========
 
-:c:func:`write()` writes up to ``count`` bytes to the device
+:ref:`write() <func-write>` writes up to ``count`` bytes to the device
 referenced by the file descriptor ``fd`` from the buffer starting at
 ``buf``. When the hardware outputs are not active yet, this function
-enables them. When ``count`` is zero, :c:func:`write()` returns 0
+enables them. When ``count`` is zero, :ref:`write() <func-write>` returns 0
 without any other effect.
 
 When the application does not provide more data in time, the previous
 video frame, raw VBI image, sliced VPS or WSS data is displayed again.
 Sliced Teletext or Closed Caption data is not repeated, the driver
 inserts a blank line instead.
+
 
 Return Value
 ============
@@ -77,5 +87,5 @@ EIO
     I/O error. This indicates some hardware problem.
 
 EINVAL
-    The :c:func:`write()` function is not supported by this driver,
+    The :ref:`write() <func-write>` function is not supported by this driver,
     not on this device, or generally not on this type of device.

@@ -12,7 +12,6 @@
 
 #ifndef __RT1015_H__
 #define __RT1015_H__
-#include <sound/rt1015.h>
 
 #define RT1015_DEVICE_ID_VAL			0x1011
 #define RT1015_DEVICE_ID_VAL2			0x1015
@@ -374,14 +373,8 @@ enum {
 	RT1015_Bypass_Boost,
 };
 
-enum {
-	RT1015_HW_28 = 0,
-	RT1015_HW_29,
-};
-
 struct rt1015_priv {
 	struct snd_soc_component *component;
-	struct rt1015_platform_data pdata;
 	struct regmap *regmap;
 	int sysclk;
 	int sysclk_src;
@@ -396,9 +389,6 @@ struct rt1015_priv {
 	int bypass_boost;
 	int amp_ver;
 	int dac_is_used;
-	int cali_done;
-	int hw_config;
-	struct delayed_work flush_work;
 };
 
 #endif /* __RT1015_H__ */

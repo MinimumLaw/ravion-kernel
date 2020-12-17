@@ -996,7 +996,7 @@ static irqreturn_t mmc_davinci_irq(int irq, void *dev_id)
 
 	if (qstatus & MMCST0_RSPDNE) {
 		/* End of command phase */
-		end_command = host->cmd ? 1 : 0;
+		end_command = (int) host->cmd;
 	}
 
 	if (end_command)
@@ -1240,8 +1240,9 @@ static int davinci_mmcsd_probe(struct platform_device *pdev)
 		pdev->id_entry = match->data;
 		ret = mmc_of_parse(mmc);
 		if (ret) {
-			dev_err_probe(&pdev->dev, ret,
-				      "could not parse of data\n");
+			if (ret != -EPROBE_DEFER)
+				dev_err(&pdev->dev,
+					"could not parse of data: %d\n", ret);
 			goto parse_fail;
 		}
 	} else {
@@ -1395,7 +1396,6 @@ static const struct dev_pm_ops davinci_mmcsd_pm = {
 static struct platform_driver davinci_mmcsd_driver = {
 	.driver		= {
 		.name	= "davinci_mmc",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.pm	= davinci_mmcsd_pm_ops,
 		.of_match_table = davinci_mmc_dt_ids,
 	},

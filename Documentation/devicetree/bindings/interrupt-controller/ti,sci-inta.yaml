@@ -32,11 +32,6 @@ description: |
                        | | vint  | bit  |  | 0 |.....|63| vintx  |
                        | +--------------+  +------------+        |
                        |                                         |
-                       |      Unmap                              |
-                       | +--------------+                        |
-  Unmapped events ---->| |   umapidx    |-------------------------> Globalevents
-                       | +--------------+                        |
-                       |                                         |
                        +-----------------------------------------+
 
   Configuration of these Intmap registers that maps global events to vint is
@@ -75,11 +70,6 @@ properties:
         - description: |
             "limit" specifies the limit for translation
 
-  ti,unmapped-event-sources:
-    $ref: /schemas/types.yaml#definitions/phandle-array
-    description:
-      Array of phandles to DMA controllers where the unmapped events originate.
-
 required:
   - compatible
   - reg
@@ -88,8 +78,6 @@ required:
   - ti,sci
   - ti,sci-dev-id
   - ti,interrupt-ranges
-
-unevaluatedProperties: false
 
 examples:
   - |

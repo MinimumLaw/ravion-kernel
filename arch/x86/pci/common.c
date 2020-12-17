@@ -19,7 +19,6 @@
 #include <asm/smp.h>
 #include <asm/pci_x86.h>
 #include <asm/setup.h>
-#include <asm/irqdomain.h>
 
 unsigned int pci_probe = PCI_PROBE_BIOS | PCI_PROBE_CONF1 | PCI_PROBE_CONF2 |
 				PCI_PROBE_MMCONF;
@@ -634,9 +633,8 @@ static void set_dev_domain_options(struct pci_dev *pdev)
 
 int pcibios_add_device(struct pci_dev *dev)
 {
-	struct pci_setup_rom *rom;
-	struct irq_domain *msidom;
 	struct setup_data *data;
+	struct pci_setup_rom *rom;
 	u64 pa_data;
 
 	pa_data = boot_params.hdr.setup_data;
@@ -663,20 +661,6 @@ int pcibios_add_device(struct pci_dev *dev)
 		memunmap(data);
 	}
 	set_dev_domain_options(dev);
-
-	/*
-	 * Setup the initial MSI domain of the device. If the underlying
-	 * bus has a PCI/MSI irqdomain associated use the bus domain,
-	 * otherwise set the default domain. This ensures that special irq
-	 * domains e.g. VMD are preserved. The default ensures initial
-	 * operation if irq remapping is not active. If irq remapping is
-	 * active it will overwrite the domain pointer when the device is
-	 * associated to a remapping domain.
-	 */
-	msidom = dev_get_msi_domain(&dev->bus->dev);
-	if (!msidom)
-		msidom = x86_pci_msi_default_domain;
-	dev_set_msi_domain(&dev->dev, msidom);
 	return 0;
 }
 

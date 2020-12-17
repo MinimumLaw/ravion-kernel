@@ -106,11 +106,8 @@ extern int devfreq_event_get_event(struct devfreq_event_dev *edev,
 				struct devfreq_event_data *edata);
 extern int devfreq_event_reset_event(struct devfreq_event_dev *edev);
 extern struct devfreq_event_dev *devfreq_event_get_edev_by_phandle(
-				struct device *dev,
-				const char *phandle_name,
-				int index);
-extern int devfreq_event_get_edev_count(struct device *dev,
-				const char *phandle_name);
+				struct device *dev, int index);
+extern int devfreq_event_get_edev_count(struct device *dev);
 extern struct devfreq_event_dev *devfreq_event_add_edev(struct device *dev,
 				struct devfreq_event_desc *desc);
 extern int devfreq_event_remove_edev(struct devfreq_event_dev *edev);
@@ -155,15 +152,12 @@ static inline int devfreq_event_reset_event(struct devfreq_event_dev *edev)
 }
 
 static inline struct devfreq_event_dev *devfreq_event_get_edev_by_phandle(
-					struct device *dev,
-					const char *phandle_name,
-					int index)
+					struct device *dev, int index)
 {
 	return ERR_PTR(-EINVAL);
 }
 
-static inline int devfreq_event_get_edev_count(struct device *dev,
-					const char *phandle_name)
+static inline int devfreq_event_get_edev_count(struct device *dev)
 {
 	return -EINVAL;
 }

@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _VIDIOC_QUERYCAP:
 
@@ -12,21 +18,23 @@ Name
 
 VIDIOC_QUERYCAP - Query device capabilities
 
+
 Synopsis
 ========
 
-.. c:macro:: VIDIOC_QUERYCAP
+.. c:function:: int ioctl( int fd, VIDIOC_QUERYCAP, struct v4l2_capability *argp )
+    :name: VIDIOC_QUERYCAP
 
-``int ioctl(int fd, VIDIOC_QUERYCAP, struct v4l2_capability *argp)``
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``argp``
     Pointer to struct :c:type:`v4l2_capability`.
+
 
 Description
 ===========
@@ -37,6 +45,7 @@ information about driver and hardware capabilities. The ioctl takes a
 pointer to a struct :c:type:`v4l2_capability` which is
 filled by the driver. When the driver is not compatible with this
 specification the ioctl returns an ``EINVAL`` error code.
+
 
 .. tabularcolumns:: |p{1.5cm}|p{2.5cm}|p{13cm}|
 
@@ -128,6 +137,7 @@ specification the ioctl returns an ``EINVAL`` error code.
       - ``reserved``\ [3]
       - Reserved for future extensions. Drivers must set this array to
 	zero.
+
 
 
 .. tabularcolumns:: |p{6.1cm}|p{2.2cm}|p{8.7cm}|
@@ -240,8 +250,8 @@ specification the ioctl returns an ``EINVAL`` error code.
       - The device supports the :ref:`metadata` capture interface.
     * - ``V4L2_CAP_READWRITE``
       - 0x01000000
-      - The device supports the :c:func:`read()` and/or
-	:c:func:`write()` I/O methods.
+      - The device supports the :ref:`read() <rw>` and/or
+	:ref:`write() <rw>` I/O methods.
     * - ``V4L2_CAP_ASYNCIO``
       - 0x02000000
       - The device supports the :ref:`asynchronous <async>` I/O methods.
@@ -265,6 +275,7 @@ specification the ioctl returns an ``EINVAL`` error code.
       - The driver fills the ``device_caps`` field. This capability can
 	only appear in the ``capabilities`` field and never in the
 	``device_caps`` field.
+
 
 Return Value
 ============

@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: V4L
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _func-ioctl:
 
@@ -12,6 +18,7 @@ Name
 
 v4l2-ioctl - Program a V4L2 device
 
+
 Synopsis
 ========
 
@@ -19,13 +26,15 @@ Synopsis
 
     #include <sys/ioctl.h>
 
-``int ioctl(int fd, int request, void *argp)``
+
+.. c:function:: int ioctl( int fd, int request, void *argp )
+    :name: v4l2-ioctl
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :ref:`open() <func-open>`.
 
 ``request``
     V4L2 ioctl request code as defined in the ``videodev2.h`` header
@@ -33,6 +42,7 @@ Arguments
 
 ``argp``
     Pointer to a function parameter, usually a structure.
+
 
 Description
 ===========
@@ -46,6 +56,7 @@ defines specifying V4L2 ioctl requests are located in the
 include the version in the kernel sources on the system they compile on.
 All V4L2 ioctl requests, their respective function and parameters are
 specified in :ref:`user-func`.
+
 
 Return Value
 ============

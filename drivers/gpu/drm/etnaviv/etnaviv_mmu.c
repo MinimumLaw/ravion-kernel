@@ -73,13 +73,13 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context, u32 iova,
 			     struct sg_table *sgt, unsigned len, int prot)
 {	struct scatterlist *sg;
 	unsigned int da = iova;
-	unsigned int i;
+	unsigned int i, j;
 	int ret;
 
 	if (!context || !sgt)
 		return -EINVAL;
 
-	for_each_sgtable_dma_sg(sgt, sg, i) {
+	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
 		u32 pa = sg_dma_address(sg) - sg->offset;
 		size_t bytes = sg_dma_len(sg) + sg->offset;
 
@@ -95,7 +95,14 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context, u32 iova,
 	return 0;
 
 fail:
-	etnaviv_context_unmap(context, iova, da - iova);
+	da = iova;
+
+	for_each_sg(sgt->sgl, sg, i, j) {
+		size_t bytes = sg_dma_len(sg) + sg->offset;
+
+		etnaviv_context_unmap(context, da, bytes);
+		da += bytes;
+	}
 	return ret;
 }
 
@@ -106,7 +113,7 @@ static void etnaviv_iommu_unmap(struct etnaviv_iommu_context *context, u32 iova,
 	unsigned int da = iova;
 	int i;
 
-	for_each_sgtable_dma_sg(sgt, sg, i) {
+	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
 		size_t bytes = sg_dma_len(sg) + sg->offset;
 
 		etnaviv_context_unmap(context, da, bytes);

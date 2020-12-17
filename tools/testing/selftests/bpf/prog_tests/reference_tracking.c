@@ -27,7 +27,7 @@ void test_reference_tracking(void)
 		const char *title;
 
 		/* Ignore .text sections */
-		title = bpf_program__section_name(prog);
+		title = bpf_program__title(prog, false);
 		if (strstr(title, ".text") != NULL)
 			continue;
 

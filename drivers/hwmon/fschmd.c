@@ -214,7 +214,8 @@ static const int FSCHMD_NO_TEMP_SENSORS[7] = { 3, 3, 4, 3, 5, 5, 11 };
  * Functions declarations
  */
 
-static int fschmd_probe(struct i2c_client *client);
+static int fschmd_probe(struct i2c_client *client,
+			const struct i2c_device_id *id);
 static int fschmd_detect(struct i2c_client *client,
 			 struct i2c_board_info *info);
 static int fschmd_remove(struct i2c_client *client);
@@ -241,7 +242,7 @@ static struct i2c_driver fschmd_driver = {
 	.driver = {
 		.name	= "fschmd",
 	},
-	.probe_new	= fschmd_probe,
+	.probe		= fschmd_probe,
 	.remove		= fschmd_remove,
 	.id_table	= fschmd_id,
 	.detect		= fschmd_detect,
@@ -1080,14 +1081,15 @@ static int fschmd_detect(struct i2c_client *client,
 	return 0;
 }
 
-static int fschmd_probe(struct i2c_client *client)
+static int fschmd_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
 	struct fschmd_data *data;
 	const char * const names[7] = { "Poseidon", "Hermes", "Scylla",
 				"Heracles", "Heimdall", "Hades", "Syleus" };
 	const int watchdog_minors[] = { WATCHDOG_MINOR, 212, 213, 214, 215 };
 	int i, err;
-	enum chips kind = i2c_match_id(fschmd_id, client)->driver_data;
+	enum chips kind = id->driver_data;
 
 	data = kzalloc(sizeof(struct fschmd_data), GFP_KERNEL);
 	if (!data)

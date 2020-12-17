@@ -258,7 +258,9 @@ static int seiko_panel_probe(struct device *dev,
 	if (err)
 		return err;
 
-	drm_panel_add(&panel->base);
+	err = drm_panel_add(&panel->base);
+	if (err < 0)
+		return err;
 
 	dev_set_drvdata(dev, panel);
 

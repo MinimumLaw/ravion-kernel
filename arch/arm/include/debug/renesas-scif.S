@@ -33,10 +33,7 @@
 	ldr	\rv, =SCIF_VIRT
 	.endm
 
-	.macro	waituartcts,rd,rx
-	.endm
-
-	.macro	waituarttxrdy, rd, rx
+	.macro	waituart, rd, rx
 1001:	ldrh	\rd, [\rx, #FSR]
 	tst	\rd, #TDFE
 	beq	1001b

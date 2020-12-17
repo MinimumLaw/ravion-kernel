@@ -6,14 +6,18 @@
 #include "ice_devlink.h"
 #include "ice_fw_update.h"
 
-static void ice_info_get_dsn(struct ice_pf *pf, char *buf, size_t len)
+static int ice_info_get_dsn(struct ice_pf *pf, char *buf, size_t len)
 {
 	u8 dsn[8];
 
 	/* Copy the DSN into an array in Big Endian format */
 	put_unaligned_be64(pci_get_dsn(pf->pdev), dsn);
 
-	snprintf(buf, len, "%8phD", dsn);
+	snprintf(buf, len, "%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+		 dsn[0], dsn[1], dsn[2], dsn[3],
+		 dsn[4], dsn[5], dsn[6], dsn[7]);
+
+	return 0;
 }
 
 static int ice_info_pba(struct ice_pf *pf, char *buf, size_t len)
@@ -102,13 +106,6 @@ static int ice_info_ddp_pkg_version(struct ice_pf *pf, char *buf, size_t len)
 	return 0;
 }
 
-static int ice_info_ddp_pkg_bundle_id(struct ice_pf *pf, char *buf, size_t len)
-{
-	snprintf(buf, len, "0x%08x", pf->hw.active_track_id);
-
-	return 0;
-}
-
 static int ice_info_netlist_ver(struct ice_pf *pf, char *buf, size_t len)
 {
 	struct ice_netlist_ver_info *netlist = &pf->hw.netlist_ver;
@@ -153,7 +150,6 @@ static const struct ice_devlink_version {
 	running(DEVLINK_INFO_VERSION_GENERIC_FW_BUNDLE_ID, ice_info_eetrack),
 	running("fw.app.name", ice_info_ddp_pkg_name),
 	running(DEVLINK_INFO_VERSION_GENERIC_FW_APP, ice_info_ddp_pkg_version),
-	running("fw.app.bundle_id", ice_info_ddp_pkg_bundle_id),
 	running("fw.netlist", ice_info_netlist_ver),
 	running("fw.netlist.build", ice_info_netlist_build),
 };
@@ -184,7 +180,11 @@ static int ice_devlink_info_get(struct devlink *devlink,
 		return err;
 	}
 
-	ice_info_get_dsn(pf, buf, sizeof(buf));
+	err = ice_info_get_dsn(pf, buf, sizeof(buf));
+	if (err) {
+		NL_SET_ERR_MSG_MOD(extack, "Unable to obtain serial number");
+		return err;
+	}
 
 	err = devlink_info_serial_number_put(req, buf);
 	if (err) {
@@ -233,7 +233,8 @@ static int ice_devlink_info_get(struct devlink *devlink,
 /**
  * ice_devlink_flash_update - Update firmware stored in flash on the device
  * @devlink: pointer to devlink associated with device to update
- * @params: flash update parameters
+ * @path: the path of the firmware file to use via request_firmware
+ * @component: name of the component to update, or NULL
  * @extack: netlink extended ACK structure
  *
  * Perform a device flash update. The bulk of the update logic is contained
@@ -242,52 +243,38 @@ static int ice_devlink_info_get(struct devlink *devlink,
  * Returns: zero on success, or an error code on failure.
  */
 static int
-ice_devlink_flash_update(struct devlink *devlink,
-			 struct devlink_flash_update_params *params,
-			 struct netlink_ext_ack *extack)
+ice_devlink_flash_update(struct devlink *devlink, const char *path,
+			 const char *component, struct netlink_ext_ack *extack)
 {
 	struct ice_pf *pf = devlink_priv(devlink);
 	struct device *dev = &pf->pdev->dev;
 	struct ice_hw *hw = &pf->hw;
 	const struct firmware *fw;
-	u8 preservation;
 	int err;
 
-	if (!params->overwrite_mask) {
-		/* preserve all settings and identifiers */
-		preservation = ICE_AQC_NVM_PRESERVE_ALL;
-	} else if (params->overwrite_mask == DEVLINK_FLASH_OVERWRITE_SETTINGS) {
-		/* overwrite settings, but preserve the vital device identifiers */
-		preservation = ICE_AQC_NVM_PRESERVE_SELECTED;
-	} else if (params->overwrite_mask == (DEVLINK_FLASH_OVERWRITE_SETTINGS |
-					      DEVLINK_FLASH_OVERWRITE_IDENTIFIERS)) {
-		/* overwrite both settings and identifiers, preserve nothing */
-		preservation = ICE_AQC_NVM_NO_PRESERVATION;
-	} else {
-		NL_SET_ERR_MSG_MOD(extack, "Requested overwrite mask is not supported");
+	/* individual component update is not yet supported */
+	if (component)
 		return -EOPNOTSUPP;
-	}
 
 	if (!hw->dev_caps.common_cap.nvm_unified_update) {
 		NL_SET_ERR_MSG_MOD(extack, "Current firmware does not support unified update");
 		return -EOPNOTSUPP;
 	}
 
-	err = ice_check_for_pending_update(pf, NULL, extack);
+	err = ice_check_for_pending_update(pf, component, extack);
 	if (err)
 		return err;
 
-	err = request_firmware(&fw, params->file_name, dev);
+	err = request_firmware(&fw, path, dev);
 	if (err) {
 		NL_SET_ERR_MSG_MOD(extack, "Unable to read file from disk");
 		return err;
 	}
 
-	dev_dbg(dev, "Beginning flash update with file '%s'\n", params->file_name);
-
 	devlink_flash_update_begin_notify(devlink);
-	devlink_flash_update_status_notify(devlink, "Preparing to flash", NULL, 0, 0);
-	err = ice_flash_pldm_image(pf, fw, preservation, extack);
+	devlink_flash_update_status_notify(devlink, "Preparing to flash",
+					   component, 0, 0);
+	err = ice_flash_pldm_image(pf, fw, extack);
 	devlink_flash_update_end_notify(devlink);
 
 	release_firmware(fw);
@@ -296,7 +283,6 @@ ice_devlink_flash_update(struct devlink *devlink,
 }
 
 static const struct devlink_ops ice_devlink_ops = {
-	.supported_flash_update_params = DEVLINK_SUPPORT_FLASH_UPDATE_OVERWRITE_MASK,
 	.info_get = ice_devlink_info_get,
 	.flash_update = ice_devlink_flash_update,
 };
@@ -366,66 +352,55 @@ void ice_devlink_unregister(struct ice_pf *pf)
 }
 
 /**
- * ice_devlink_create_port - Create a devlink port for this VSI
- * @vsi: the VSI to create a port for
+ * ice_devlink_create_port - Create a devlink port for this PF
+ * @pf: the PF to create a port for
  *
- * Create and register a devlink_port for this VSI.
+ * Create and register a devlink_port for this PF. Note that although each
+ * physical function is connected to a separate devlink instance, the port
+ * will still be numbered according to the physical function ID.
  *
  * Return: zero on success or an error code on failure.
  */
-int ice_devlink_create_port(struct ice_vsi *vsi)
+int ice_devlink_create_port(struct ice_pf *pf)
 {
+	struct devlink *devlink = priv_to_devlink(pf);
+	struct ice_vsi *vsi = ice_get_main_vsi(pf);
+	struct device *dev = ice_pf_to_dev(pf);
 	struct devlink_port_attrs attrs = {};
-	struct ice_port_info *pi;
-	struct devlink *devlink;
-	struct device *dev;
-	struct ice_pf *pf;
 	int err;
 
-	/* Currently we only create devlink_port instances for PF VSIs */
-	if (vsi->type != ICE_VSI_PF)
-		return -EINVAL;
-
-	pf = vsi->back;
-	devlink = priv_to_devlink(pf);
-	dev = ice_pf_to_dev(pf);
-	pi = pf->hw.port_info;
+	if (!vsi) {
+		dev_err(dev, "%s: unable to find main VSI\n", __func__);
+		return -EIO;
+	}
 
 	attrs.flavour = DEVLINK_PORT_FLAVOUR_PHYSICAL;
-	attrs.phys.port_number = pi->lport;
-	devlink_port_attrs_set(&vsi->devlink_port, &attrs);
-	err = devlink_port_register(devlink, &vsi->devlink_port, vsi->idx);
+	attrs.phys.port_number = pf->hw.pf_id;
+	devlink_port_attrs_set(&pf->devlink_port, &attrs);
+	err = devlink_port_register(devlink, &pf->devlink_port, pf->hw.pf_id);
 	if (err) {
 		dev_err(dev, "devlink_port_register failed: %d\n", err);
 		return err;
 	}
 
-	vsi->devlink_port_registered = true;
-
 	return 0;
 }
 
 /**
- * ice_devlink_destroy_port - Destroy the devlink_port for this VSI
- * @vsi: the VSI to cleanup
+ * ice_devlink_destroy_port - Destroy the devlink_port for this PF
+ * @pf: the PF to cleanup
  *
- * Unregisters the devlink_port structure associated with this VSI.
+ * Unregisters the devlink_port structure associated with this PF.
  */
-void ice_devlink_destroy_port(struct ice_vsi *vsi)
+void ice_devlink_destroy_port(struct ice_pf *pf)
 {
-	if (!vsi->devlink_port_registered)
-		return;
-
-	devlink_port_type_clear(&vsi->devlink_port);
-	devlink_port_unregister(&vsi->devlink_port);
-
-	vsi->devlink_port_registered = false;
+	devlink_port_type_clear(&pf->devlink_port);
+	devlink_port_unregister(&pf->devlink_port);
 }
 
 /**
  * ice_devlink_nvm_snapshot - Capture a snapshot of the Shadow RAM contents
  * @devlink: the devlink instance
- * @ops: the devlink region being snapshotted
  * @extack: extended ACK response structure
  * @data: on exit points to snapshot data buffer
  *
@@ -438,7 +413,6 @@ void ice_devlink_destroy_port(struct ice_vsi *vsi)
  * error code on failure.
  */
 static int ice_devlink_nvm_snapshot(struct devlink *devlink,
-				    const struct devlink_region_ops *ops,
 				    struct netlink_ext_ack *extack, u8 **data)
 {
 	struct ice_pf *pf = devlink_priv(devlink);
@@ -482,7 +456,6 @@ static int ice_devlink_nvm_snapshot(struct devlink *devlink,
 /**
  * ice_devlink_devcaps_snapshot - Capture snapshot of device capabilities
  * @devlink: the devlink instance
- * @ops: the devlink region being snapshotted
  * @extack: extended ACK response structure
  * @data: on exit points to snapshot data buffer
  *
@@ -495,7 +468,6 @@ static int ice_devlink_nvm_snapshot(struct devlink *devlink,
  */
 static int
 ice_devlink_devcaps_snapshot(struct devlink *devlink,
-			     const struct devlink_region_ops *ops,
 			     struct netlink_ext_ack *extack, u8 **data)
 {
 	struct ice_pf *pf = devlink_priv(devlink);

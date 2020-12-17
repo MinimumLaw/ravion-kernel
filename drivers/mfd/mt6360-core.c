@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/version.h>
 
 #include <linux/mfd/mt6360.h>
 

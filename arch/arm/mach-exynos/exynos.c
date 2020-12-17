@@ -19,11 +19,10 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
-#include "common.h"
+#include <mach/map.h>
+#include <plat/cpu.h>
 
-#define S3C_ADDR_BASE	0xF6000000
-#define S3C_ADDR(x)	((void __iomem __force *)S3C_ADDR_BASE + (x))
-#define S5P_VA_CHIPID	S3C_ADDR(0x02000000)
+#include "common.h"
 
 static struct platform_device exynos_cpuidle = {
 	.name              = "exynos_cpuidle",
@@ -36,14 +35,6 @@ static struct platform_device exynos_cpuidle = {
 void __iomem *sysram_base_addr __ro_after_init;
 phys_addr_t sysram_base_phys __ro_after_init;
 void __iomem *sysram_ns_base_addr __ro_after_init;
-
-unsigned long exynos_cpu_id;
-static unsigned int exynos_cpu_rev;
-
-unsigned int exynos_rev(void)
-{
-	return exynos_cpu_rev;
-}
 
 void __init exynos_sysram_init(void)
 {
@@ -95,11 +86,7 @@ static void __init exynos_init_io(void)
 	of_scan_flat_dt(exynos_fdt_map_chipid, NULL);
 
 	/* detect cpu id and rev. */
-	exynos_cpu_id = readl_relaxed(S5P_VA_CHIPID);
-	exynos_cpu_rev = exynos_cpu_id & 0xFF;
-
-	pr_info("Samsung CPU ID: 0x%08lx\n", exynos_cpu_id);
-
+	s5p_init_cpu(S5P_VA_CHIPID);
 }
 
 /*
@@ -206,8 +193,8 @@ static void __init exynos_dt_fixup(void)
 }
 
 DT_MACHINE_START(EXYNOS_DT, "Samsung Exynos (Flattened Device Tree)")
-	.l2c_aux_val	= 0x38400000,
-	.l2c_aux_mask	= 0xc60fffff,
+	.l2c_aux_val	= 0x3c400000,
+	.l2c_aux_mask	= 0xc20fffff,
 	.smp		= smp_ops(exynos_smp_ops),
 	.map_io		= exynos_init_io,
 	.init_early	= exynos_firmware_init,

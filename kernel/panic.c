@@ -589,11 +589,6 @@ void __warn(const char *file, int line, void *caller, unsigned taint,
 	if (args)
 		vprintk(args->fmt, args->args);
 
-	print_modules();
-
-	if (regs)
-		show_regs(regs);
-
 	if (panic_on_warn) {
 		/*
 		 * This thread may hit another WARN() in the panic path.
@@ -605,7 +600,11 @@ void __warn(const char *file, int line, void *caller, unsigned taint,
 		panic("panic_on_warn set ...\n");
 	}
 
-	if (!regs)
+	print_modules();
+
+	if (regs)
+		show_regs(regs);
+	else
 		dump_stack();
 
 	print_irqtrace_events(current);

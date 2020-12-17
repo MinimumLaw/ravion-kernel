@@ -624,9 +624,14 @@ static int mtk_uart_apdma_runtime_suspend(struct device *dev)
 
 static int mtk_uart_apdma_runtime_resume(struct device *dev)
 {
+	int ret;
 	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 
-	return clk_prepare_enable(mtkd->clk);
+	ret = clk_prepare_enable(mtkd->clk);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 #endif /* CONFIG_PM */
 

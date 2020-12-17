@@ -9,6 +9,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/errno.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -2195,8 +2196,7 @@ static int net2272_present(struct net2272 *dev)
 static void
 net2272_gadget_release(struct device *_dev)
 {
-	struct net2272 *dev = container_of(_dev, struct net2272, gadget.dev);
-
+	struct net2272 *dev = dev_get_drvdata(_dev);
 	kfree(dev);
 }
 
@@ -2205,8 +2205,7 @@ net2272_gadget_release(struct device *_dev)
 static void
 net2272_remove(struct net2272 *dev)
 {
-	if (dev->added)
-		usb_del_gadget(&dev->gadget);
+	usb_del_gadget_udc(&dev->gadget);
 	free_irq(dev->irq, dev);
 	iounmap(dev->base_addr);
 	device_remove_file(dev->dev, &dev_attr_registers);
@@ -2236,7 +2235,6 @@ static struct net2272 *net2272_probe_init(struct device *dev, unsigned int irq)
 
 	/* the "gadget" abstracts/virtualizes the controller */
 	ret->gadget.name = driver_name;
-	usb_initialize_gadget(dev, &ret->gadget, net2272_gadget_release);
 
 	return ret;
 }
@@ -2275,10 +2273,10 @@ net2272_probe_fin(struct net2272 *dev, unsigned int irqflags)
 	if (ret)
 		goto err_irq;
 
-	ret = usb_add_gadget(&dev->gadget);
+	ret = usb_add_gadget_udc_release(dev->dev, &dev->gadget,
+			net2272_gadget_release);
 	if (ret)
 		goto err_add_udc;
-	dev->added = 1;
 
 	return 0;
 
@@ -2453,7 +2451,7 @@ net2272_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	if (pci_enable_device(pdev) < 0) {
 		ret = -ENODEV;
-		goto err_put;
+		goto err_free;
 	}
 
 	pci_set_master(pdev);
@@ -2476,8 +2474,8 @@ net2272_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
  err_pci:
 	pci_disable_device(pdev);
- err_put:
-	usb_put_gadget(&dev->gadget);
+ err_free:
+	kfree(dev);
 
 	return ret;
 }
@@ -2538,7 +2536,7 @@ net2272_pci_remove(struct pci_dev *pdev)
 
 	pci_disable_device(pdev);
 
-	usb_put_gadget(&dev->gadget);
+	kfree(dev);
 }
 
 /* Table of matching PCI IDs */
@@ -2651,7 +2649,7 @@ net2272_plat_probe(struct platform_device *pdev)
  err_req:
 	release_mem_region(base, len);
  err:
-	usb_put_gadget(&dev->gadget);
+	kfree(dev);
 
 	return ret;
 }
@@ -2666,7 +2664,7 @@ net2272_plat_remove(struct platform_device *pdev)
 	release_mem_region(pdev->resource[0].start,
 		resource_size(&pdev->resource[0]));
 
-	usb_put_gadget(&dev->gadget);
+	kfree(dev);
 
 	return 0;
 }

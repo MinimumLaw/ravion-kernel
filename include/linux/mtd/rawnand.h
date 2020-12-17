@@ -14,7 +14,6 @@
 #define __LINUX_MTD_RAWNAND_H
 
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
 #include <linux/mtd/flashchip.h>
 #include <linux/mtd/bbm.h>
 #include <linux/mtd/jedec.h>
@@ -82,6 +81,25 @@ struct nand_chip;
 #define NAND_DATA_IFACE_CHECK_ONLY	-1
 
 /*
+ * Constants for ECC_MODES
+ */
+enum nand_ecc_mode {
+	NAND_ECC_INVALID,
+	NAND_ECC_NONE,
+	NAND_ECC_SOFT,
+	NAND_ECC_HW,
+	NAND_ECC_HW_SYNDROME,
+	NAND_ECC_ON_DIE,
+};
+
+enum nand_ecc_algo {
+	NAND_ECC_UNKNOWN,
+	NAND_ECC_HAMMING,
+	NAND_ECC_BCH,
+	NAND_ECC_RS,
+};
+
+/*
  * Constants for Hardware ECC
  */
 /* Reset Hardware ECC for read */
@@ -98,6 +116,7 @@ struct nand_chip;
  * pages and you want to rely on the default implementation.
  */
 #define NAND_ECC_GENERIC_ERASED_CHECK	BIT(0)
+#define NAND_ECC_MAXIMIZE		BIT(1)
 
 /*
  * Option constants for bizarre disfunctionality and real
@@ -291,8 +310,7 @@ static const struct nand_ecc_caps __name = {			\
 
 /**
  * struct nand_ecc_ctrl - Control structure for ECC
- * @engine_type: ECC engine type
- * @placement:	OOB bytes placement
+ * @mode:	ECC mode
  * @algo:	ECC algorithm
  * @steps:	number of ECC steps per page
  * @size:	data bytes per ECC step
@@ -320,7 +338,7 @@ static const struct nand_ecc_caps __name = {			\
  *			controller and always return contiguous in-band and
  *			out-of-band data even if they're not stored
  *			contiguously on the NAND chip (e.g.
- *			NAND_ECC_PLACEMENT_INTERLEAVED interleaves in-band and
+ *			NAND_ECC_HW_SYNDROME interleaves in-band and
  *			out-of-band data).
  * @write_page_raw:	function to write a raw page without ECC. This function
  *			should hide the specific layout used by the ECC
@@ -328,7 +346,7 @@ static const struct nand_ecc_caps __name = {			\
  *			in-band and out-of-band data. ECC controller is
  *			responsible for doing the appropriate transformations
  *			to adapt to its specific layout (e.g.
- *			NAND_ECC_PLACEMENT_INTERLEAVED interleaves in-band and
+ *			NAND_ECC_HW_SYNDROME interleaves in-band and
  *			out-of-band data).
  * @read_page:	function to read a page according to the ECC generator
  *		requirements; returns maximum number of bitflips corrected in
@@ -344,8 +362,7 @@ static const struct nand_ecc_caps __name = {			\
  * @write_oob:	function to write chip OOB data
  */
 struct nand_ecc_ctrl {
-	enum nand_ecc_engine_type engine_type;
-	enum nand_ecc_placement placement;
+	enum nand_ecc_mode mode;
 	enum nand_ecc_algo algo;
 	int steps;
 	int size;
@@ -1143,6 +1160,9 @@ struct nand_chip {
 	struct nand_ecc_ctrl ecc;
 	void *priv;
 };
+
+extern const struct mtd_ooblayout_ops nand_ooblayout_sp_ops;
+extern const struct mtd_ooblayout_ops nand_ooblayout_lp_ops;
 
 static inline struct nand_chip *mtd_to_nand(struct mtd_info *mtd)
 {

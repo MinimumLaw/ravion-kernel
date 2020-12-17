@@ -610,23 +610,23 @@ static unsigned int armada_xp_mbus_win_remap_offset(int win)
 static void __init
 mvebu_mbus_find_bridge_hole(uint64_t *start, uint64_t *end)
 {
-	phys_addr_t reg_start, reg_end;
-	uint64_t i, s = 0;
+	struct memblock_region *r;
+	uint64_t s = 0;
 
-	for_each_mem_range(i, &reg_start, &reg_end) {
+	for_each_memblock(memory, r) {
 		/*
 		 * This part of the memory is above 4 GB, so we don't
 		 * care for the MBus bridge hole.
 		 */
-		if (reg_start >= 0x100000000ULL)
+		if (r->base >= 0x100000000ULL)
 			continue;
 
 		/*
 		 * The MBus bridge hole is at the end of the RAM under
 		 * the 4 GB limit.
 		 */
-		if (reg_end > s)
-			s = reg_end;
+		if (r->base + r->size > s)
+			s = r->base + r->size;
 	}
 
 	*start = s;

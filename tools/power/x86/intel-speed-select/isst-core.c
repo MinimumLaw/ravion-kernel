@@ -396,7 +396,7 @@ int isst_get_pbf_info(int cpu, int level, struct isst_pbf_info *pbf_info)
 {
 	struct isst_pkg_ctdp_level_info ctdp_level;
 	struct isst_pkg_ctdp pkg_dev;
-	int i, ret, max_punit_core, max_mask_index;
+	int i, ret, core_cnt, max;
 	unsigned int req, resp;
 
 	ret = isst_get_ctdp_levels(cpu, &pkg_dev);
@@ -421,10 +421,10 @@ int isst_get_pbf_info(int cpu, int level, struct isst_pbf_info *pbf_info)
 
 	pbf_info->core_cpumask_size = alloc_cpu_set(&pbf_info->core_cpumask);
 
-	max_punit_core = get_max_punit_core_id(get_physical_package_id(cpu), get_physical_die_id(cpu));
-	max_mask_index = max_punit_core > 32 ? 2 : 1;
+	core_cnt = get_core_count(get_physical_package_id(cpu), get_physical_die_id(cpu));
+	max = core_cnt > 32 ? 2 : 1;
 
-	for (i = 0; i < max_mask_index; ++i) {
+	for (i = 0; i < max; ++i) {
 		unsigned long long mask;
 		int count;
 

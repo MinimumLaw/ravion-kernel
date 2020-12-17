@@ -1721,7 +1721,7 @@ static void smiapp_propagate(struct v4l2_subdev *subdev,
 				sensor->binning_vertical = 1;
 			}
 		}
-		fallthrough;
+		/* Fall through */
 	case V4L2_SEL_TGT_COMPOSE:
 		*crops[SMIAPP_PAD_SRC] = *comp;
 		break;
@@ -2120,7 +2120,7 @@ static int __smiapp_sel_supported(struct v4l2_subdev *subdev,
 		    && SMIA_LIM(sensor, SCALING_CAPABILITY)
 		    != SMIAPP_SCALING_CAPABILITY_NONE)
 			return 0;
-		fallthrough;
+		/* Fall through */
 	default:
 		return -EINVAL;
 	}
@@ -2795,7 +2795,7 @@ static struct smiapp_hwconfig *smiapp_get_hwconfig(struct device *dev)
 		case 180:
 			hwcfg->module_board_orient =
 				SMIAPP_MODULE_BOARD_ORIENT_180;
-			fallthrough;
+			/* Fall through */
 		case 0:
 			break;
 		default:

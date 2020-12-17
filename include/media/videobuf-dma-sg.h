@@ -60,7 +60,7 @@ struct videobuf_dmabuf {
 	/* common */
 	struct scatterlist  *sglist;
 	int                 sglen;
-	unsigned long       nr_pages;
+	int                 nr_pages;
 	int                 direction;
 };
 

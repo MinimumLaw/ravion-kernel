@@ -27,11 +27,11 @@
 };
 
 &blsp1_i2c2 {
-	status = "okay";
+	status = "ok";
 };
 
 &blsp1_spi1 {
-	status = "okay";
+	status = "ok";
 
 	m25p80@0 {
 		#address-cells = <1>;
@@ -43,37 +43,37 @@
 };
 
 &blsp1_uart3 {
-	status = "okay";
+	status = "ok";
 };
 
 &blsp1_uart5 {
-	status = "okay";
+	status = "ok";
 };
 
 &pcie0 {
-	status = "okay";
+	status = "ok";
 	perst-gpio = <&tlmm 61 0x1>;
 };
 
 &pcie1 {
-	status = "okay";
+	status = "ok";
 	perst-gpio = <&tlmm 58 0x1>;
 };
 
 &pcie_phy0 {
-	status = "okay";
+	status = "ok";
 };
 
 &pcie_phy1 {
-	status = "okay";
+	status = "ok";
 };
 
 &qpic_bam {
-	status = "okay";
+	status = "ok";
 };
 
 &qpic_nand {
-	status = "okay";
+	status = "ok";
 
 	nand@0 {
 		reg = <0>;
@@ -84,29 +84,29 @@
 };
 
 &sdhc_1 {
-	status = "okay";
+	status = "ok";
 };
 
 &qusb_phy_0 {
-	status = "okay";
+	status = "ok";
 };
 
 &qusb_phy_1 {
-	status = "okay";
+	status = "ok";
 };
 
 &ssphy_0 {
-	status = "okay";
+	status = "ok";
 };
 
 &ssphy_1 {
-	status = "okay";
+	status = "ok";
 };
 
 &usb_0 {
-	status = "okay";
+	status = "ok";
 };
 
 &usb_1 {
-	status = "okay";
+	status = "ok";
 };

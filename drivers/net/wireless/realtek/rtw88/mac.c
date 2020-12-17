@@ -114,13 +114,18 @@ static int rtw_mac_pre_system_cfg(struct rtw_dev *rtwdev)
 
 static bool do_pwr_poll_cmd(struct rtw_dev *rtwdev, u32 addr, u32 mask, u32 target)
 {
-	u32 val;
+	u32 cnt;
 
 	target &= mask;
 
-	return read_poll_timeout_atomic(rtw_read8, val, (val & mask) == target,
-					50, 50 * RTW_PWR_POLLING_CNT, false,
-					rtwdev, addr) == 0;
+	for (cnt = 0; cnt < RTW_PWR_POLLING_CNT; cnt++) {
+		if ((rtw_read8(rtwdev, addr) & mask) == target)
+			return true;
+
+		udelay(50);
+	}
+
+	return false;
 }
 
 static int rtw_pwr_cmd_polling(struct rtw_dev *rtwdev,

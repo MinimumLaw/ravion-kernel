@@ -295,28 +295,6 @@ xfs_inode_item_format_attr_fork(
 	}
 }
 
-/*
- * Convert an incore timestamp to a log timestamp.  Note that the log format
- * specifies host endian format!
- */
-static inline xfs_ictimestamp_t
-xfs_inode_to_log_dinode_ts(
-	struct xfs_inode		*ip,
-	const struct timespec64		tv)
-{
-	struct xfs_legacy_ictimestamp	*lits;
-	xfs_ictimestamp_t		its;
-
-	if (xfs_inode_has_bigtime(ip))
-		return xfs_inode_encode_bigtime(tv);
-
-	lits = (struct xfs_legacy_ictimestamp *)&its;
-	lits->t_sec = tv.tv_sec;
-	lits->t_nsec = tv.tv_nsec;
-
-	return its;
-}
-
 static void
 xfs_inode_to_log_dinode(
 	struct xfs_inode	*ip,
@@ -335,9 +313,12 @@ xfs_inode_to_log_dinode(
 
 	memset(to->di_pad, 0, sizeof(to->di_pad));
 	memset(to->di_pad3, 0, sizeof(to->di_pad3));
-	to->di_atime = xfs_inode_to_log_dinode_ts(ip, inode->i_atime);
-	to->di_mtime = xfs_inode_to_log_dinode_ts(ip, inode->i_mtime);
-	to->di_ctime = xfs_inode_to_log_dinode_ts(ip, inode->i_ctime);
+	to->di_atime.t_sec = inode->i_atime.tv_sec;
+	to->di_atime.t_nsec = inode->i_atime.tv_nsec;
+	to->di_mtime.t_sec = inode->i_mtime.tv_sec;
+	to->di_mtime.t_nsec = inode->i_mtime.tv_nsec;
+	to->di_ctime.t_sec = inode->i_ctime.tv_sec;
+	to->di_ctime.t_nsec = inode->i_ctime.tv_nsec;
 	to->di_nlink = inode->i_nlink;
 	to->di_gen = inode->i_generation;
 	to->di_mode = inode->i_mode;
@@ -359,7 +340,8 @@ xfs_inode_to_log_dinode(
 	if (xfs_sb_version_has_v3inode(&ip->i_mount->m_sb)) {
 		to->di_version = 3;
 		to->di_changecount = inode_peek_iversion(inode);
-		to->di_crtime = xfs_inode_to_log_dinode_ts(ip, from->di_crtime);
+		to->di_crtime.t_sec = from->di_crtime.tv_sec;
+		to->di_crtime.t_nsec = from->di_crtime.tv_nsec;
 		to->di_flags2 = from->di_flags2;
 		to->di_cowextsize = from->di_cowextsize;
 		to->di_ino = ip->i_ino;
@@ -509,7 +491,8 @@ xfs_inode_item_push(
 	    (ip->i_flags & XFS_ISTALE))
 		return XFS_ITEM_PINNED;
 
-	if (xfs_iflags_test(ip, XFS_IFLUSHING))
+	/* If the inode is already flush locked, we're already flushing. */
+	if (xfs_isiflocked(ip))
 		return XFS_ITEM_FLUSHING;
 
 	if (!xfs_buf_trylock(bp))
@@ -720,7 +703,7 @@ xfs_iflush_finish(
 		iip->ili_last_fields = 0;
 		iip->ili_flush_lsn = 0;
 		spin_unlock(&iip->ili_lock);
-		xfs_iflags_clear(iip->ili_inode, XFS_IFLUSHING);
+		xfs_ifunlock(iip->ili_inode);
 		if (drop_buffer)
 			xfs_buf_rele(bp);
 	}
@@ -728,11 +711,11 @@ xfs_iflush_finish(
 
 /*
  * Inode buffer IO completion routine.  It is responsible for removing inodes
- * attached to the buffer from the AIL if they have not been re-logged and
- * completing the inode flush.
+ * attached to the buffer from the AIL if they have not been re-logged, as well
+ * as completing the flush and unlocking the inode.
  */
 void
-xfs_buf_inode_iodone(
+xfs_iflush_done(
 	struct xfs_buf		*bp)
 {
 	struct xfs_log_item	*lip, *n;
@@ -771,21 +754,11 @@ xfs_buf_inode_iodone(
 		list_splice_tail(&flushed_inodes, &bp->b_li_list);
 }
 
-void
-xfs_buf_inode_io_fail(
-	struct xfs_buf		*bp)
-{
-	struct xfs_log_item	*lip;
-
-	list_for_each_entry(lip, &bp->b_li_list, li_bio_list)
-		set_bit(XFS_LI_FAILED, &lip->li_flags);
-}
-
 /*
- * This is the inode flushing abort routine.  It is called when
+ * This is the inode flushing abort routine.  It is called from xfs_iflush when
  * the filesystem is shutting down to clean up the inode state.  It is
  * responsible for removing the inode item from the AIL if it has not been
- * re-logged and clearing the inode's flush state.
+ * re-logged, and unlocking the inode's flush lock.
  */
 void
 xfs_iflush_abort(
@@ -817,7 +790,7 @@ xfs_iflush_abort(
 		list_del_init(&iip->ili_item.li_bio_list);
 		spin_unlock(&iip->ili_lock);
 	}
-	xfs_iflags_clear(ip, XFS_IFLUSHING);
+	xfs_ifunlock(ip);
 	if (bp)
 		xfs_buf_rele(bp);
 }

@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: CEC
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _CEC_ADAP_LOG_ADDRS:
 .. _CEC_ADAP_G_LOG_ADDRS:
@@ -14,22 +20,21 @@ Name
 
 CEC_ADAP_G_LOG_ADDRS, CEC_ADAP_S_LOG_ADDRS - Get or set the logical addresses
 
+
 Synopsis
 ========
 
-.. c:macro:: CEC_ADAP_G_LOG_ADDRS
+.. c:function:: int ioctl( int fd, CEC_ADAP_G_LOG_ADDRS, struct cec_log_addrs *argp )
+   :name: CEC_ADAP_G_LOG_ADDRS
 
-``int ioctl(int fd, CEC_ADAP_G_LOG_ADDRS, struct cec_log_addrs *argp)``
-
-.. c:macro:: CEC_ADAP_S_LOG_ADDRS
-
-``int ioctl(int fd, CEC_ADAP_S_LOG_ADDRS, struct cec_log_addrs *argp)``
+.. c:function:: int ioctl( int fd, CEC_ADAP_S_LOG_ADDRS, struct cec_log_addrs *argp )
+   :name: CEC_ADAP_S_LOG_ADDRS
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :c:func:`open() <cec-open>`.
 
 ``argp``
     Pointer to struct :c:type:`cec_log_addrs`.
@@ -150,6 +155,7 @@ logical address types are already defined will return with error ``EBUSY``.
         give the CEC framework more information about the device type, even
         though the framework won't use it directly in the CEC message.
 
+
 .. tabularcolumns:: |p{7.8cm}|p{1.0cm}|p{8.7cm}|
 
 .. _cec-log-addrs-flags:
@@ -186,6 +192,7 @@ logical address types are already defined will return with error ``EBUSY``.
 
 	All other messages are ignored.
 
+
 .. tabularcolumns:: |p{7.8cm}|p{1.0cm}|p{8.7cm}|
 
 .. _cec-versions:
@@ -210,6 +217,7 @@ logical address types are already defined will return with error ``EBUSY``.
       - ``CEC_OP_CEC_VERSION_2_0``
       - 6
       - CEC version according to the HDMI 2.0 standard.
+
 
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
@@ -255,6 +263,7 @@ logical address types are already defined will return with error ``EBUSY``.
       - ``CEC_OP_PRIM_DEVTYPE_VIDEOPROC``
       - 7
       - Use for a video processor device.
+
 
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
@@ -304,6 +313,7 @@ logical address types are already defined will return with error ``EBUSY``.
 	Control).
 
 
+
 .. tabularcolumns:: |p{6.6cm}|p{2.2cm}|p{8.7cm}|
 
 .. _cec-all-dev-types-flags:
@@ -343,6 +353,7 @@ logical address types are already defined will return with error ``EBUSY``.
       - ``CEC_OP_ALL_DEVTYPE_SWITCH``
       - 0x04
       - This supports the CEC Switch or Video Processing type.
+
 
 
 Return Value

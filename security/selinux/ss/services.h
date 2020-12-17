@@ -22,11 +22,12 @@ struct selinux_map {
 	u16 size; /* array size of mapping */
 };
 
-struct selinux_policy {
+struct selinux_ss {
 	struct sidtab *sidtab;
 	struct policydb policydb;
-	struct selinux_map map;
+	rwlock_t policy_rwlock;
 	u32 latest_granting;
+	struct selinux_map map;
 } __randomize_layout;
 
 void services_compute_xperms_drivers(struct extended_perms *xperms,

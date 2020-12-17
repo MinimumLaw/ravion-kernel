@@ -3031,17 +3031,6 @@ static int mlx4_init_port_info(struct mlx4_dev *dev, int port)
 	if (err)
 		return err;
 
-	/* Ethernet and IB drivers will normally set the port type,
-	 * but if they are not built set the type now to prevent
-	 * devlink_port_type_warn() from firing.
-	 */
-	if (!IS_ENABLED(CONFIG_MLX4_EN) &&
-	    dev->caps.port_type[port] == MLX4_PORT_TYPE_ETH)
-		devlink_port_type_eth_set(&info->devlink_port, NULL);
-	else if (!IS_ENABLED(CONFIG_MLX4_INFINIBAND) &&
-		 dev->caps.port_type[port] == MLX4_PORT_TYPE_IB)
-		devlink_port_type_ib_set(&info->devlink_port, NULL);
-
 	info->dev = dev;
 	info->port = port;
 	if (!mlx4_is_slave(dev)) {
@@ -3946,8 +3935,6 @@ static int mlx4_restart_one_up(struct pci_dev *pdev, bool reload,
 			       struct devlink *devlink);
 
 static int mlx4_devlink_reload_down(struct devlink *devlink, bool netns_change,
-				    enum devlink_reload_action action,
-				    enum devlink_reload_limit limit,
 				    struct netlink_ext_ack *extack)
 {
 	struct mlx4_priv *priv = devlink_priv(devlink);
@@ -3964,8 +3951,7 @@ static int mlx4_devlink_reload_down(struct devlink *devlink, bool netns_change,
 	return 0;
 }
 
-static int mlx4_devlink_reload_up(struct devlink *devlink, enum devlink_reload_action action,
-				  enum devlink_reload_limit limit, u32 *actions_performed,
+static int mlx4_devlink_reload_up(struct devlink *devlink,
 				  struct netlink_ext_ack *extack)
 {
 	struct mlx4_priv *priv = devlink_priv(devlink);
@@ -3973,7 +3959,6 @@ static int mlx4_devlink_reload_up(struct devlink *devlink, enum devlink_reload_a
 	struct mlx4_dev_persistent *persist = dev->persist;
 	int err;
 
-	*actions_performed = BIT(DEVLINK_RELOAD_ACTION_DRIVER_REINIT);
 	err = mlx4_restart_one_up(persist->pdev, true, devlink);
 	if (err)
 		mlx4_err(persist->dev, "mlx4_restart_one_up failed, ret=%d\n",
@@ -3984,7 +3969,6 @@ static int mlx4_devlink_reload_up(struct devlink *devlink, enum devlink_reload_a
 
 static const struct devlink_ops mlx4_devlink_ops = {
 	.port_type_set	= mlx4_devlink_port_type_set,
-	.reload_actions = BIT(DEVLINK_RELOAD_ACTION_DRIVER_REINIT),
 	.reload_down	= mlx4_devlink_reload_down,
 	.reload_up	= mlx4_devlink_reload_up,
 };

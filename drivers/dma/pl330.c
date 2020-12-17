@@ -255,7 +255,7 @@ enum pl330_byteswap {
 static unsigned cmd_line;
 #define PL330_DBGCMD_DUMP(off, x...)	do { \
 						printk("%x:", cmd_line); \
-						printk(KERN_CONT x); \
+						printk(x); \
 						cmd_line += off; \
 					} while (0)
 #define PL330_DBGMC_START(addr)		(cmd_line = addr)
@@ -459,6 +459,9 @@ struct dma_pl330_chan {
 struct pl330_dmac {
 	/* DMA-Engine Device */
 	struct dma_device ddma;
+
+	/* Holds info about sg limitations */
+	struct device_dma_parameters dma_parms;
 
 	/* Pool of descriptors available for the DMAC's channels */
 	struct list_head desc_pool;
@@ -1573,9 +1576,9 @@ static void dma_pl330_rqcb(struct dma_pl330_desc *desc, enum pl330_op_err err)
 	tasklet_schedule(&pch->task);
 }
 
-static void pl330_dotask(struct tasklet_struct *t)
+static void pl330_dotask(unsigned long data)
 {
-	struct pl330_dmac *pl330 = from_tasklet(pl330, t, tasks);
+	struct pl330_dmac *pl330 = (struct pl330_dmac *) data;
 	unsigned long flags;
 	int i;
 
@@ -1979,7 +1982,7 @@ static int pl330_add(struct pl330_dmac *pl330)
 		return ret;
 	}
 
-	tasklet_setup(&pl330->tasks, pl330_dotask);
+	tasklet_init(&pl330->tasks, pl330_dotask, (unsigned long) pl330);
 
 	pl330->state = INIT;
 
@@ -2062,9 +2065,9 @@ static inline void fill_queue(struct dma_pl330_chan *pch)
 	}
 }
 
-static void pl330_tasklet(struct tasklet_struct *t)
+static void pl330_tasklet(unsigned long data)
 {
-	struct dma_pl330_chan *pch = from_tasklet(pch, t, task);
+	struct dma_pl330_chan *pch = (struct dma_pl330_chan *)data;
 	struct dma_pl330_desc *desc, *_dt;
 	unsigned long flags;
 	bool power_down = false;
@@ -2172,7 +2175,7 @@ static int pl330_alloc_chan_resources(struct dma_chan *chan)
 		return -ENOMEM;
 	}
 
-	tasklet_setup(&pch->task, pl330_tasklet);
+	tasklet_init(&pch->task, pl330_tasklet, (unsigned long) pch);
 
 	spin_unlock_irqrestore(&pl330->lock, flags);
 
@@ -2484,7 +2487,7 @@ static void pl330_issue_pending(struct dma_chan *chan)
 	list_splice_tail_init(&pch->submitted_list, &pch->work_list);
 	spin_unlock_irqrestore(&pch->lock, flags);
 
-	pl330_tasklet(&pch->task);
+	pl330_tasklet((unsigned long)pch);
 }
 
 /*
@@ -3031,7 +3034,9 @@ pl330_probe(struct amba_device *adev, const struct amba_id *id)
 
 	pl330->rstc = devm_reset_control_get_optional(&adev->dev, "dma");
 	if (IS_ERR(pl330->rstc)) {
-		return dev_err_probe(&adev->dev, PTR_ERR(pl330->rstc), "Failed to get reset!\n");
+		if (PTR_ERR(pl330->rstc) != -EPROBE_DEFER)
+			dev_err(&adev->dev, "Failed to get reset!\n");
+		return PTR_ERR(pl330->rstc);
 	} else {
 		ret = reset_control_deassert(pl330->rstc);
 		if (ret) {
@@ -3042,8 +3047,9 @@ pl330_probe(struct amba_device *adev, const struct amba_id *id)
 
 	pl330->rstc_ocp = devm_reset_control_get_optional(&adev->dev, "dma-ocp");
 	if (IS_ERR(pl330->rstc_ocp)) {
-		return dev_err_probe(&adev->dev, PTR_ERR(pl330->rstc_ocp),
-				     "Failed to get OCP reset!\n");
+		if (PTR_ERR(pl330->rstc_ocp) != -EPROBE_DEFER)
+			dev_err(&adev->dev, "Failed to get OCP reset!\n");
+		return PTR_ERR(pl330->rstc_ocp);
 	} else {
 		ret = reset_control_deassert(pl330->rstc_ocp);
 		if (ret) {
@@ -3147,6 +3153,8 @@ pl330_probe(struct amba_device *adev, const struct amba_id *id)
 			"unable to register DMA to the generic DT DMA helpers\n");
 		}
 	}
+
+	adev->dev.dma_parms = &pl330->dma_parms;
 
 	/*
 	 * This is the limit for transfers with a buswidth of 1, larger

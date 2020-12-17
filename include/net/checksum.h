@@ -24,32 +24,26 @@
 #ifndef _HAVE_ARCH_COPY_AND_CSUM_FROM_USER
 static inline
 __wsum csum_and_copy_from_user (const void __user *src, void *dst,
-				      int len)
+				      int len, __wsum sum, int *err_ptr)
 {
 	if (copy_from_user(dst, src, len))
-		return 0;
-	return csum_partial(dst, len, ~0U);
+		*err_ptr = -EFAULT;
+	return csum_partial(dst, len, sum);
 }
 #endif
 
 #ifndef HAVE_CSUM_COPY_USER
 static __inline__ __wsum csum_and_copy_to_user
-(const void *src, void __user *dst, int len)
+(const void *src, void __user *dst, int len, __wsum sum, int *err_ptr)
 {
-	__wsum sum = csum_partial(src, len, ~0U);
+	sum = csum_partial(src, len, sum);
 
 	if (copy_to_user(dst, src, len) == 0)
 		return sum;
-	return 0;
-}
-#endif
+	if (len)
+		*err_ptr = -EFAULT;
 
-#ifndef _HAVE_ARCH_CSUM_AND_COPY
-static inline __wsum
-csum_partial_copy_nocheck(const void *src, void *dst, int len)
-{
-	memcpy(dst, src, len);
-	return csum_partial(dst, len, 0);
+	return (__force __wsum)-1; /* invalid checksum */
 }
 #endif
 

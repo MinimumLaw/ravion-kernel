@@ -18,7 +18,6 @@
 #ifndef _LM3554_H_
 #define _LM3554_H_
 
-#include <linux/gpio/consumer.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-subdev.h>
 
@@ -120,9 +119,9 @@
  * lm3554_platform_data - Flash controller platform data
  */
 struct lm3554_platform_data {
-	struct gpio_desc *gpio_torch;
-	struct gpio_desc *gpio_strobe;
-	struct gpio_desc *gpio_reset;
+	int gpio_torch;
+	int gpio_strobe;
+	int gpio_reset;
 
 	unsigned int current_limit;
 	unsigned int envm_tx2;

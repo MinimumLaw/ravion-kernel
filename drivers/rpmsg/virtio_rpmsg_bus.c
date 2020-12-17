@@ -123,12 +123,7 @@ enum rpmsg_ns_flags {
 };
 
 /**
- * struct virtio_rpmsg_channel - rpmsg channel descriptor
- * @rpdev: the rpmsg channel device
- * @vrp: the virtio remote processor device this channel belongs to
- *
- * This structure stores the channel that links the rpmsg device to the virtio
- * remote processor device.
+ * @vrp: the remote processor this channel belongs to
  */
 struct virtio_rpmsg_channel {
 	struct rpmsg_device rpdev;

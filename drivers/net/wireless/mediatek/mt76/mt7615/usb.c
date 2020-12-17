@@ -180,7 +180,9 @@ static int mt7663u_suspend(struct usb_interface *intf, pm_message_t state)
 	}
 
 	mt76u_stop_rx(&dev->mt76);
+
 	mt76u_stop_tx(&dev->mt76);
+	tasklet_kill(&dev->mt76.tx_tasklet);
 
 	return 0;
 }

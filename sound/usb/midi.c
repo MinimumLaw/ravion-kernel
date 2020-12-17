@@ -142,7 +142,7 @@ struct snd_usb_midi_out_endpoint {
 	unsigned int active_urbs;
 	unsigned int drain_urbs;
 	int max_transfer;		/* size of urb buffer */
-	struct work_struct work;
+	struct tasklet_struct tasklet;
 	unsigned int next_urb;
 	spinlock_t buffer_lock;
 
@@ -344,10 +344,9 @@ static void snd_usbmidi_do_output(struct snd_usb_midi_out_endpoint *ep)
 	spin_unlock_irqrestore(&ep->buffer_lock, flags);
 }
 
-static void snd_usbmidi_out_work(struct work_struct *work)
+static void snd_usbmidi_out_tasklet(struct tasklet_struct *t)
 {
-	struct snd_usb_midi_out_endpoint *ep =
-		container_of(work, struct snd_usb_midi_out_endpoint, work);
+	struct snd_usb_midi_out_endpoint *ep = from_tasklet(ep, t, tasklet);
 
 	snd_usbmidi_do_output(ep);
 }
@@ -1178,7 +1177,7 @@ static void snd_usbmidi_output_trigger(struct snd_rawmidi_substream *substream,
 			snd_rawmidi_proceed(substream);
 			return;
 		}
-		queue_work(system_highpri_wq, &port->ep->work);
+		tasklet_schedule(&port->ep->tasklet);
 	}
 }
 
@@ -1441,7 +1440,7 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
 	}
 
 	spin_lock_init(&ep->buffer_lock);
-	INIT_WORK(&ep->work, snd_usbmidi_out_work);
+	tasklet_setup(&ep->tasklet, snd_usbmidi_out_tasklet);
 	init_waitqueue_head(&ep->drain_wait);
 
 	for (i = 0; i < 0x10; ++i)
@@ -1504,7 +1503,7 @@ void snd_usbmidi_disconnect(struct list_head *p)
 	for (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {
 		struct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];
 		if (ep->out)
-			cancel_work_sync(&ep->out->work);
+			tasklet_kill(&ep->out->tasklet);
 		if (ep->out) {
 			for (j = 0; j < OUTPUT_URBS; ++j)
 				usb_kill_urb(ep->out->urbs[j].urb);

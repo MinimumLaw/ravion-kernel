@@ -603,6 +603,7 @@ static void thermal_zone_device_check(struct work_struct *work)
 /**
  * power_actor_get_max_power() - get the maximum power that a cdev can consume
  * @cdev:	pointer to &thermal_cooling_device
+ * @tz:		a valid thermal zone device pointer
  * @max_power:	pointer in which to store the maximum power
  *
  * Calculate the maximum power consumption in milliwats that the
@@ -612,17 +613,18 @@ static void thermal_zone_device_check(struct work_struct *work)
  * power_actor API or -E* on other error.
  */
 int power_actor_get_max_power(struct thermal_cooling_device *cdev,
-			      u32 *max_power)
+			      struct thermal_zone_device *tz, u32 *max_power)
 {
 	if (!cdev_is_power_actor(cdev))
 		return -EINVAL;
 
-	return cdev->ops->state2power(cdev, 0, max_power);
+	return cdev->ops->state2power(cdev, tz, 0, max_power);
 }
 
 /**
  * power_actor_get_min_power() - get the mainimum power that a cdev can consume
  * @cdev:	pointer to &thermal_cooling_device
+ * @tz:		a valid thermal zone device pointer
  * @min_power:	pointer in which to store the minimum power
  *
  * Calculate the minimum power consumption in milliwatts that the
@@ -632,7 +634,7 @@ int power_actor_get_max_power(struct thermal_cooling_device *cdev,
  * power_actor API or -E* on other error.
  */
 int power_actor_get_min_power(struct thermal_cooling_device *cdev,
-			      u32 *min_power)
+			      struct thermal_zone_device *tz, u32 *min_power)
 {
 	unsigned long max_state;
 	int ret;
@@ -644,7 +646,7 @@ int power_actor_get_min_power(struct thermal_cooling_device *cdev,
 	if (ret)
 		return ret;
 
-	return cdev->ops->state2power(cdev, max_state, min_power);
+	return cdev->ops->state2power(cdev, tz, max_state, min_power);
 }
 
 /**
@@ -668,7 +670,7 @@ int power_actor_set_power(struct thermal_cooling_device *cdev,
 	if (!cdev_is_power_actor(cdev))
 		return -EINVAL;
 
-	ret = cdev->ops->power2state(cdev, power, &state);
+	ret = cdev->ops->power2state(cdev, instance->tz, power, &state);
 	if (ret)
 		return ret;
 
@@ -1650,6 +1652,7 @@ static int __init thermal_init(void)
 	if (result)
 		goto error;
 
+	mutex_init(&poweroff_lock);
 	result = thermal_register_governors();
 	if (result)
 		goto error;

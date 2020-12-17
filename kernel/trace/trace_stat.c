@@ -276,13 +276,13 @@ static const struct file_operations tracing_stat_fops = {
 
 static int tracing_stat_init(void)
 {
-	int ret;
+	struct dentry *d_tracing;
 
-	ret = tracing_init_dentry();
-	if (ret)
+	d_tracing = tracing_init_dentry();
+	if (IS_ERR(d_tracing))
 		return -ENODEV;
 
-	stat_dir = tracefs_create_dir("trace_stat", NULL);
+	stat_dir = tracefs_create_dir("trace_stat", d_tracing);
 	if (!stat_dir) {
 		pr_warn("Could not create tracefs 'trace_stat' entry\n");
 		return -ENOMEM;

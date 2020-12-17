@@ -111,9 +111,7 @@ static int
 nfp_map_ptrs_record(struct nfp_app_bpf *bpf, struct nfp_prog *nfp_prog,
 		    struct bpf_prog *prog)
 {
-	int i, cnt, err = 0;
-
-	mutex_lock(&prog->aux->used_maps_mutex);
+	int i, cnt, err;
 
 	/* Quickly count the maps we will have to remember */
 	cnt = 0;
@@ -121,15 +119,13 @@ nfp_map_ptrs_record(struct nfp_app_bpf *bpf, struct nfp_prog *nfp_prog,
 		if (bpf_map_offload_neutral(prog->aux->used_maps[i]))
 			cnt++;
 	if (!cnt)
-		goto out;
+		return 0;
 
 	nfp_prog->map_records = kmalloc_array(cnt,
 					      sizeof(nfp_prog->map_records[0]),
 					      GFP_KERNEL);
-	if (!nfp_prog->map_records) {
-		err = -ENOMEM;
-		goto out;
-	}
+	if (!nfp_prog->map_records)
+		return -ENOMEM;
 
 	for (i = 0; i < prog->aux->used_map_cnt; i++)
 		if (bpf_map_offload_neutral(prog->aux->used_maps[i])) {
@@ -137,14 +133,12 @@ nfp_map_ptrs_record(struct nfp_app_bpf *bpf, struct nfp_prog *nfp_prog,
 						 prog->aux->used_maps[i]);
 			if (err) {
 				nfp_map_ptrs_forget(bpf, nfp_prog);
-				goto out;
+				return err;
 			}
 		}
 	WARN_ON(cnt != nfp_prog->map_records_cnt);
 
-out:
-	mutex_unlock(&prog->aux->used_maps_mutex);
-	return err;
+	return 0;
 }
 
 static int

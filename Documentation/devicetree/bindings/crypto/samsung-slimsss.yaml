@@ -19,7 +19,7 @@ description: |+
 properties:
   compatible:
     items:
-      - const: samsung,exynos5433-slim-sss
+      - const: samsung,exynos5433-slim-ss
 
   reg:
     maxItems: 1

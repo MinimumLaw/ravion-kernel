@@ -29,7 +29,6 @@
 #include "cwsr_trap_handler.h"
 #include "kfd_iommu.h"
 #include "amdgpu_amdkfd.h"
-#include "kfd_smi_events.h"
 
 #define MQD_SIZE_ALIGNED 768
 
@@ -116,7 +115,6 @@ static const struct kfd_device_info carrizo_device_info = {
 	.num_xgmi_sdma_engines = 0,
 	.num_sdma_queues_per_engine = 2,
 };
-#endif
 
 static const struct kfd_device_info raven_device_info = {
 	.asic_family = CHIP_RAVEN,
@@ -135,6 +133,7 @@ static const struct kfd_device_info raven_device_info = {
 	.num_xgmi_sdma_engines = 0,
 	.num_sdma_queues_per_engine = 2,
 };
+#endif
 
 static const struct kfd_device_info hawaii_device_info = {
 	.asic_family = CHIP_HAWAII,
@@ -503,8 +502,8 @@ static const struct kfd_device_info *kfd_supported_devices[][2] = {
 #ifdef KFD_SUPPORT_IOMMU_V2
 	[CHIP_KAVERI] = {&kaveri_device_info, NULL},
 	[CHIP_CARRIZO] = {&carrizo_device_info, NULL},
-#endif
 	[CHIP_RAVEN] = {&raven_device_info, NULL},
+#endif
 	[CHIP_HAWAII] = {&hawaii_device_info, NULL},
 	[CHIP_TONGA] = {&tonga_device_info, NULL},
 	[CHIP_FIJI] = {&fiji_device_info, &fiji_vf_device_info},
@@ -582,8 +581,6 @@ struct kfd_dev *kgd2kfd_probe(struct kgd_dev *kgd,
 		sizeof(kfd->doorbell_available_index));
 
 	atomic_set(&kfd->sram_ecc_flag, 0);
-
-	ida_init(&kfd->doorbell_ida);
 
 	return kfd;
 }
@@ -714,11 +711,11 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 		goto kfd_doorbell_error;
 	}
 
-	kfd->hive_id = amdgpu_amdkfd_get_hive_id(kfd->kgd);
+	if (kfd->kfd2kgd->get_hive_id)
+		kfd->hive_id = kfd->kfd2kgd->get_hive_id(kfd->kgd);
 
-	kfd->unique_id = amdgpu_amdkfd_get_unique_id(kfd->kgd);
-
-	kfd->noretry = amdgpu_amdkfd_get_noretry(kfd->kgd);
+	if (kfd->kfd2kgd->get_unique_id)
+		kfd->unique_id = kfd->kfd2kgd->get_unique_id(kfd->kgd);
 
 	if (kfd_interrupt_init(kfd)) {
 		dev_err(kfd_device, "Error initializing interrupts\n");
@@ -739,9 +736,6 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 			amdgpu_amdkfd_get_num_gws(kfd->kgd));
 		goto gws_error;
 	}
-
-	/* If CRAT is broken, won't set iommu enabled */
-	kfd_double_confirm_iommu_support(kfd);
 
 	if (kfd_iommu_device_init(kfd)) {
 		dev_err(kfd_device, "Error initializing iommuv2\n");
@@ -802,7 +796,6 @@ void kgd2kfd_device_exit(struct kfd_dev *kfd)
 		kfd_interrupt_exit(kfd);
 		kfd_topology_remove_device(kfd);
 		kfd_doorbell_fini(kfd);
-		ida_destroy(&kfd->doorbell_ida);
 		kfd_gtt_sa_fini(kfd);
 		amdgpu_amdkfd_free_gtt_mem(kfd->kgd, kfd->gtt_mem);
 		if (kfd->gws)
@@ -816,8 +809,6 @@ int kgd2kfd_pre_reset(struct kfd_dev *kfd)
 {
 	if (!kfd->init_complete)
 		return 0;
-
-	kfd_smi_event_update_gpu_reset(kfd, false);
 
 	kfd->dqm->ops.pre_reset(kfd->dqm);
 
@@ -846,8 +837,6 @@ int kgd2kfd_post_reset(struct kfd_dev *kfd)
 	atomic_dec(&kfd_locked);
 
 	atomic_set(&kfd->sram_ecc_flag, 0);
-
-	kfd_smi_event_update_gpu_reset(kfd, true);
 
 	return 0;
 }
@@ -1254,12 +1243,6 @@ void kfd_dec_compute_active(struct kfd_dev *kfd)
 	if (count == 0)
 		amdgpu_amdkfd_set_compute_idle(kfd->kgd, true);
 	WARN_ONCE(count < 0, "Compute profile ref. count error");
-}
-
-void kgd2kfd_smi_event_throttle(struct kfd_dev *kfd, uint32_t throttle_bitmask)
-{
-	if (kfd)
-		kfd_smi_event_update_thermal_throttling(kfd, throttle_bitmask);
 }
 
 #if defined(CONFIG_DEBUG_FS)

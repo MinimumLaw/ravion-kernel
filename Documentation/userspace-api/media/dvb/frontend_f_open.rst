@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: DTV.fe
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _frontend_f_open:
 
@@ -12,6 +18,7 @@ Name
 
 fe-open - Open a frontend device
 
+
 Synopsis
 ========
 
@@ -19,7 +26,9 @@ Synopsis
 
     #include <fcntl.h>
 
+
 .. c:function:: int open( const char *device_name, int flags )
+    :name: dvb-fe-open
 
 Arguments
 =========
@@ -41,6 +50,7 @@ Arguments
     driver is temporarily busy.
 
     Other flags have no effect.
+
 
 Description
 ===========
@@ -67,13 +77,15 @@ the specified mode. This implies that the corresponding hardware is
 powered up, and that other front-ends may have been powered down to make
 that possible.
 
+
 Return Value
 ============
 
-On success :c:func:`open()` returns the new file descriptor.
+On success :ref:`open() <frontend_f_open>` returns the new file descriptor.
 On error, -1 is returned, and the ``errno`` variable is set appropriately.
 
 Possible error codes are:
+
 
 On success 0 is returned, and :c:type:`ca_slot_info` is filled.
 
@@ -99,6 +111,7 @@ appropriately.
     -  - ``ENFILE``
        -  The limit on the total number of files open on the system has been
 	  reached.
+
 
 The generic error codes are described at the
 :ref:`Generic Error Codes <gen-errors>` chapter.

@@ -36,7 +36,4 @@ properties:
       - description: Virtual Loongson64 Quad Core + VirtIO
         items:
           - const: loongson,loongson64v-4core-virtio
-
-additionalProperties: true
-
 ...

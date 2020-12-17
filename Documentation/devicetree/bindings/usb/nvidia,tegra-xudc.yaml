@@ -155,8 +155,6 @@ allOf:
         clock-names:
           maxItems: 4
 
-additionalProperties: false
-
 examples:
   - |
     #include <dt-bindings/clock/tegra210-car.h>

@@ -39,8 +39,6 @@
 struct hns_roce_ib_create_cq {
 	__aligned_u64 buf_addr;
 	__aligned_u64 db_addr;
-	__u32 cqe_size;
-	__u32 reserved;
 };
 
 struct hns_roce_ib_create_cq_resp {
@@ -75,7 +73,7 @@ struct hns_roce_ib_create_qp_resp {
 
 struct hns_roce_ib_alloc_ucontext_resp {
 	__u32	qp_tab_size;
-	__u32	cqe_size;
+	__u32	reserved;
 };
 
 struct hns_roce_ib_alloc_pd_resp {

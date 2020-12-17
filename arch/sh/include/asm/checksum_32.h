@@ -30,9 +30,10 @@ asmlinkage __wsum csum_partial(const void *buff, int len, __wsum sum);
  * better 64-bit) boundary
  */
 
-asmlinkage __wsum csum_partial_copy_generic(const void *src, void *dst, int len);
+asmlinkage __wsum csum_partial_copy_generic(const void *src, void *dst,
+					    int len, __wsum sum,
+					    int *src_err_ptr, int *dst_err_ptr);
 
-#define _HAVE_ARCH_CSUM_AND_COPY
 /*
  *	Note: when you get a NULL pointer exception here this means someone
  *	passed in an incorrect kernel address to one of these functions.
@@ -41,18 +42,23 @@ asmlinkage __wsum csum_partial_copy_generic(const void *src, void *dst, int len)
  *	access_ok().
  */
 static inline
-__wsum csum_partial_copy_nocheck(const void *src, void *dst, int len)
+__wsum csum_partial_copy_nocheck(const void *src, void *dst,
+				 int len, __wsum sum)
 {
-	return csum_partial_copy_generic(src, dst, len);
+	return csum_partial_copy_generic(src, dst, len, sum, NULL, NULL);
 }
 
 #define _HAVE_ARCH_COPY_AND_CSUM_FROM_USER
 static inline
-__wsum csum_and_copy_from_user(const void __user *src, void *dst, int len)
+__wsum csum_and_copy_from_user(const void __user *src, void *dst,
+				   int len, __wsum sum, int *err_ptr)
 {
-	if (!access_ok(src, len))
-		return 0;
-	return csum_partial_copy_generic((__force const void *)src, dst, len);
+	if (access_ok(src, len))
+		return csum_partial_copy_generic((__force const void *)src, dst,
+					len, sum, err_ptr, NULL);
+	if (len)
+		*err_ptr = -EFAULT;
+	return sum;
 }
 
 /*
@@ -193,10 +199,16 @@ static inline __sum16 csum_ipv6_magic(const struct in6_addr *saddr,
 #define HAVE_CSUM_COPY_USER
 static inline __wsum csum_and_copy_to_user(const void *src,
 					   void __user *dst,
-					   int len)
+					   int len, __wsum sum,
+					   int *err_ptr)
 {
-	if (!access_ok(dst, len))
-		return 0;
-	return csum_partial_copy_generic((__force const void *)src, dst, len);
+	if (access_ok(dst, len))
+		return csum_partial_copy_generic((__force const void *)src,
+						dst, len, sum, NULL, err_ptr);
+
+	if (len)
+		*err_ptr = -EFAULT;
+
+	return (__force __wsum)-1; /* invalid checksum */
 }
 #endif /* __ASM_SH_CHECKSUM_H */

@@ -128,8 +128,6 @@ required:
   - reg
   - interrupts
 
-unevaluatedProperties: false
-
 examples:
   - |
     spi@e0100000 {

@@ -35,6 +35,7 @@
 #include "dcn30_dpp.h"
 #include "dcn10/dcn10_cm_common.h"
 #include "dcn30_cm_common.h"
+#include "clk_mgr.h"
 #include "reg_helper.h"
 #include "abm.h"
 #include "clk_mgr.h"
@@ -219,13 +220,15 @@ static void dcn30_set_writeback(
 		struct dc_writeback_info *wb_info,
 		struct dc_state *context)
 {
+	struct dwbc *dwb;
 	struct mcif_wb *mcif_wb;
 	struct mcif_buf_params *mcif_buf_params;
 
 	ASSERT(wb_info->dwb_pipe_inst < MAX_DWB_PIPES);
 	ASSERT(wb_info->wb_enabled);
 	ASSERT(wb_info->mpcc_inst >= 0);
-	ASSERT(wb_info->mpcc_inst < dc->res_pool->mpcc_count);
+	ASSERT(wb_info->mpcc_inst < 4);
+	dwb = dc->res_pool->dwbc[wb_info->dwb_pipe_inst];
 	mcif_wb = dc->res_pool->mcif_wb[wb_info->dwb_pipe_inst];
 	mcif_buf_params = &wb_info->mcif_buf_params;
 
@@ -689,23 +692,26 @@ void dcn30_program_dmdata_engine(struct pipe_ctx *pipe_ctx)
 
 bool dcn30_apply_idle_power_optimizations(struct dc *dc, bool enable)
 {
+	unsigned int surface_size;
+
 	if (!dc->ctx->dmub_srv)
 		return false;
 
 	if (enable) {
-		if (dc->current_state) {
-			int i;
+		if (dc->current_state
+				&& dc->current_state->stream_count == 1 // single display only
+				&& dc->current_state->stream_status[0].plane_count == 1 // single surface only
+				&& dc->current_state->stream_status[0].plane_states[0]->address.page_table_base.quad_part == 0 // no VM
+				// Only 8 and 16 bit formats
+				&& dc->current_state->stream_status[0].plane_states[0]->format <= SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616F
+				&& dc->current_state->stream_status[0].plane_states[0]->format >= SURFACE_PIXEL_FORMAT_GRPH_ARGB8888) {
 
-			/* First, check no-memory-requests case */
-			for (i = 0; i < dc->current_state->stream_count; i++) {
-				if (dc->current_state->stream_status[i]
-					    .plane_count)
-					/* Fail eligibility on a visible stream */
-					break;
-			}
+			surface_size = dc->current_state->stream_status[0].plane_states[0]->plane_size.surface_pitch *
+					dc->current_state->stream_status[0].plane_states[0]->plane_size.surface_size.height *
+					(dc->current_state->stream_status[0].plane_states[0]->format >= SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616 ? 8 : 4);
+
 		}
 
-		/* No applicable optimizations */
 		return false;
 	}
 

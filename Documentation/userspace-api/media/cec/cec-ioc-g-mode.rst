@@ -1,5 +1,11 @@
-.. SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.. c:namespace:: CEC
+.. Permission is granted to copy, distribute and/or modify this
+.. document under the terms of the GNU Free Documentation License,
+.. Version 1.1 or any later version published by the Free Software
+.. Foundation, with no Invariant Sections, no Front-Cover Texts
+.. and no Back-Cover Texts. A copy of the license is included at
+.. Documentation/userspace-api/media/fdl-appendix.rst.
+..
+.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
 
 .. _CEC_MODE:
 .. _CEC_G_MODE:
@@ -14,19 +20,17 @@ CEC_G_MODE, CEC_S_MODE - Get or set exclusive use of the CEC adapter
 Synopsis
 ========
 
-.. c:macro:: CEC_G_MODE
+.. c:function:: int ioctl( int fd, CEC_G_MODE, __u32 *argp )
+   :name: CEC_G_MODE
 
-``int ioctl(int fd, CEC_G_MODE, __u32 *argp)``
-
-.. c:macro:: CEC_S_MODE
-
-``int ioctl(int fd, CEC_S_MODE, __u32 *argp)``
+.. c:function:: int ioctl( int fd, CEC_S_MODE, __u32 *argp )
+   :name: CEC_S_MODE
 
 Arguments
 =========
 
 ``fd``
-    File descriptor returned by :c:func:`open()`.
+    File descriptor returned by :c:func:`open() <cec-open>`.
 
 ``argp``
     Pointer to CEC mode.
@@ -103,6 +107,7 @@ Available initiator modes are:
 	CEC adapter. If someone else is already the exclusive initiator
 	then an attempt to become one will return the ``EBUSY`` error code
 	error.
+
 
 Available follower modes are:
 
@@ -195,6 +200,7 @@ Available follower modes are:
 	the process has the ``CAP_NET_ADMIN`` capability. If that is not
 	set, then the ``EPERM`` error code is returned.
 
+
 Core message processing details:
 
 .. tabularcolumns:: |p{6.6cm}|p{10.9cm}|
@@ -271,6 +277,7 @@ Core message processing details:
       - ``CEC_MSG_REPORT_PHYSICAL_ADDR``
       - The CEC framework will make note of the reported physical address
 	and then just pass the message on to the follower(s).
+
 
 
 Return Value

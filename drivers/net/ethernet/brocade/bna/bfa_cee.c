@@ -102,10 +102,14 @@ bfa_cee_get_stats_isr(struct bfa_cee *cee, enum bfa_status status)
 }
 
 /**
- * bfa_cee_reset_stats_isr - CEE ISR for reset-stats responses from f/w
+ * bfa_cee_get_attr_isr()
  *
- * @cee: Input Pointer to the CEE module
- * @status: Return status from the f/w
+ * @brief CEE ISR for reset-stats responses from f/w
+ *
+ * @param[in] cee - Pointer to the CEE module
+ *            status - Return status from the f/w
+ *
+ * @return void
  */
 static void
 bfa_cee_reset_stats_isr(struct bfa_cee *cee, enum bfa_status status)
@@ -144,12 +148,9 @@ bfa_nw_cee_mem_claim(struct bfa_cee *cee, u8 *dma_kva, u64 dma_pa)
 }
 
 /**
- * bfa_nw_cee_get_attr - Send the request to the f/w to fetch CEE attributes.
+ * bfa_cee_get_attr - Send the request to the f/w to fetch CEE attributes.
  *
  * @cee: Pointer to the CEE module data structure.
- * @attr: attribute requested
- * @cbfn: function pointer
- * @cbarg: function pointer arguments
  *
  * Return: status
  */
@@ -180,9 +181,7 @@ bfa_nw_cee_get_attr(struct bfa_cee *cee, struct bfa_cee_attr *attr,
 }
 
 /**
- * bfa_cee_isr - Handles Mail-box interrupts for CEE module.
- * @cbarg: argument passed containing pointer to the CEE module data structure.
- * @m: message pointer
+ * bfa_cee_isrs - Handles Mail-box interrupts for CEE module.
  */
 
 static void
@@ -211,7 +210,6 @@ bfa_cee_isr(void *cbarg, struct bfi_mbmsg *m)
 /**
  * bfa_cee_notify - CEE module heart-beat failure handler.
  *
- * @arg: argument passed containing pointer to the CEE module data structure.
  * @event: IOC event type
  */
 

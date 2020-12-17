@@ -116,7 +116,7 @@ static void rkisp1_stats_vb2_buf_queue(struct vb2_buffer *vb)
 	struct vb2_queue *vq = vb->vb2_queue;
 	struct rkisp1_stats *stats_dev = vq->drv_priv;
 
-	stats_buf->vaddr = vb2_plane_vaddr(vb, 0);
+	stats_buf->vaddr[0] = vb2_plane_vaddr(vb, 0);
 
 	spin_lock_irq(&stats_dev->lock);
 	list_add_tail(&stats_buf->queue, &stats_dev->stat);
@@ -157,9 +157,7 @@ rkisp1_stats_vb2_start_streaming(struct vb2_queue *queue, unsigned int count)
 {
 	struct rkisp1_stats *stats = queue->drv_priv;
 
-	spin_lock_irq(&stats->lock);
 	stats->is_streaming = true;
-	spin_unlock_irq(&stats->lock);
 
 	return 0;
 }
@@ -233,7 +231,7 @@ static void rkisp1_stats_get_afc_meas(struct rkisp1_stats *stats,
 	struct rkisp1_device *rkisp1 = stats->rkisp1;
 	struct rkisp1_cif_isp_af_stat *af;
 
-	pbuf->meas_type |= RKISP1_CIF_ISP_STAT_AFM;
+	pbuf->meas_type |= RKISP1_CIF_ISP_STAT_AFM_FIN;
 
 	af = &pbuf->params.af;
 	af->window[0].sum = rkisp1_read(rkisp1, RKISP1_CIF_ISP_AFM_SUM_A);
@@ -309,7 +307,8 @@ rkisp1_stats_send_measurement(struct rkisp1_stats *stats, u32 isp_ris)
 {
 	struct rkisp1_stat_buffer *cur_stat_buf;
 	struct rkisp1_buffer *cur_buf = NULL;
-	unsigned int frame_sequence = stats->rkisp1->isp.frame_sequence;
+	unsigned int frame_sequence =
+		atomic_read(&stats->rkisp1->isp.frame_sequence);
 	u64 timestamp = ktime_get_ns();
 
 	/* get one empty buffer */
@@ -323,7 +322,7 @@ rkisp1_stats_send_measurement(struct rkisp1_stats *stats, u32 isp_ris)
 		return;
 
 	cur_stat_buf =
-		(struct rkisp1_stat_buffer *)(cur_buf->vaddr);
+		(struct rkisp1_stat_buffer *)(cur_buf->vaddr[0]);
 
 	if (isp_ris & RKISP1_CIF_ISP_AWB_DONE)
 		rkisp1_stats_get_awb_meas(stats, cur_stat_buf);
@@ -376,9 +375,10 @@ static void rkisp1_init_stats(struct rkisp1_stats *stats)
 		sizeof(struct rkisp1_stat_buffer);
 }
 
-int rkisp1_stats_register(struct rkisp1_device *rkisp1)
+int rkisp1_stats_register(struct rkisp1_stats *stats,
+			  struct v4l2_device *v4l2_dev,
+			  struct rkisp1_device *rkisp1)
 {
-	struct rkisp1_stats *stats = &rkisp1->stats;
 	struct rkisp1_vdev_node *node = &stats->vnode;
 	struct video_device *vdev = &node->vdev;
 	int ret;
@@ -395,7 +395,7 @@ int rkisp1_stats_register(struct rkisp1_device *rkisp1)
 	vdev->fops = &rkisp1_stats_fops;
 	vdev->release = video_device_release_empty;
 	vdev->lock = &node->vlock;
-	vdev->v4l2_dev = &rkisp1->v4l2_dev;
+	vdev->v4l2_dev = v4l2_dev;
 	vdev->queue = &node->buf_queue;
 	vdev->device_caps = V4L2_CAP_META_CAPTURE | V4L2_CAP_STREAMING;
 	vdev->vfl_dir =  VFL_DIR_RX;
@@ -406,7 +406,7 @@ int rkisp1_stats_register(struct rkisp1_device *rkisp1)
 	node->pad.flags = MEDIA_PAD_FL_SINK;
 	ret = media_entity_pads_init(&vdev->entity, 1, &node->pad);
 	if (ret)
-		goto err_mutex_destroy;
+		goto err_release_queue;
 
 	ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
 	if (ret) {
@@ -419,18 +419,19 @@ int rkisp1_stats_register(struct rkisp1_device *rkisp1)
 
 err_cleanup_media_entity:
 	media_entity_cleanup(&vdev->entity);
-err_mutex_destroy:
+err_release_queue:
+	vb2_queue_release(vdev->queue);
 	mutex_destroy(&node->vlock);
 	return ret;
 }
 
-void rkisp1_stats_unregister(struct rkisp1_device *rkisp1)
+void rkisp1_stats_unregister(struct rkisp1_stats *stats)
 {
-	struct rkisp1_stats *stats = &rkisp1->stats;
 	struct rkisp1_vdev_node *node = &stats->vnode;
 	struct video_device *vdev = &node->vdev;
 
-	vb2_video_unregister_device(vdev);
+	video_unregister_device(vdev);
 	media_entity_cleanup(&vdev->entity);
+	vb2_queue_release(vdev->queue);
 	mutex_destroy(&node->vlock);
 }
