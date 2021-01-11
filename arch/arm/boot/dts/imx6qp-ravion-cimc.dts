@@ -14,7 +14,8 @@
 /*
  * We need nRESET pulse on every boot, but only this way can make them
  */ 
-#define HSIC_WITH_I2C
+#define	HSIC_WITH_I2C
+#undef	REG_USERSPACE_CONSUMER
 
 #include "imx6qdl-ravion-v2.dtsi"
 
@@ -74,7 +75,7 @@
 		regulator-boot-on;
 		regulator-always-on;
 	};
-
+#ifdef REG_USERSPACE_CONSUMER
 	/*
 	 * Switchable HVCC consumers
 	 */
@@ -83,8 +84,10 @@
 		regulator-name = "MIRS_HVCC";
 		gpio = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm 023 */
 		vin-sunnpy = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
 	};
-	
+
 	switch_mirs {
 		compatible = "reg-userspace-consumer";
 		regulator-name = "MIRS_SWITCH";
@@ -105,11 +108,12 @@
 		regulator-boot-on;
 		regulator-supplies = "VU_HVCC";
 	};
-
 	mfpoupwr: regulator_mfpou {
 		compatible = "regulator-fixed";
 		regulator-name = "MFPOU_HVCC";
-		gpio = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm 027 */
+		gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
+		regulator-boot-on;
+		regulator-always-on;
 		vin-sunnpy = <&pwr_src>;
 	};
 
@@ -117,13 +121,13 @@
 		compatible = "reg-userspace-consumer";
 		regulator-name = "MFPOU_SWITCH";
 		regulator-boot-on;
+		regulator-always-on;
 		regulator-supplies = "MFPOU_HVCC";
 	};
 
 	regulator_msns {
 		compatible = "regulator-fixed";
 		regulator-name = "MSNS_HVCC";
-		gpio = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 029 */
 		vin-sunnpy = <&pwr_src>;
 	};
 
@@ -220,6 +224,7 @@
 		regulator-boot-on;
 		regulator-supplies = "EXT4_5V";
 	};
+#endif
 
 	pps {
 		compatible = "pps-gpio";
@@ -293,12 +298,71 @@
 			gpios = <&gpio4  8 GPIO_ACTIVE_HIGH>;	/* soDimm 150 */
 			default-state = "off";
 		};
-#ifdef HSIC_WITH_I2C
-		/* sys::nRESET toggled by HSIC HUB */
-#else
+#ifndef HSIC_WITH_I2C
 		sys_reset {
 			label = "sys::nRESET";
 			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
+			default-state = "off";
+		};
+#endif
+#ifndef REG_USERSPACE_CONSUMER
+		pwr_mirs {
+			label = "pwr::MIRS";
+			gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
+			default-state = "on";
+		};
+
+		pwr_vu {
+			label = "pwr::VU";
+			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 025 */
+			default-state = "off";
+		};
+
+		pwr_mfpou {
+			label = "pwr::MFPOU";
+			gpios = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
+			default-state = "on";
+		};
+
+		pwr_msns {
+			label = "pwr::MSNS";
+			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 029 */
+			default-state = "on";
+		};
+
+		pwr_vu1 {
+			label = "pwr::VU1";
+			gpios = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 037 */
+			default-state = "off";
+		};
+
+		pwr_vu2 {
+			label = "pwr::VU2";
+			gpios = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 031 */
+			default-state = "off";
+		};
+
+		pwr_5vext1 {
+			label = "pwr::5V_EXT1";
+			gpios = <&gpio6  3 GPIO_ACTIVE_HIGH>;	/* soDimm 059 */
+			default-state = "off";
+		};
+
+		pwr_5vext2 {
+			label = "pwr::5V_EXT2";
+			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;	/* soDimm 106 */
+			default-state = "off";
+		};
+
+		pwr_5vext3 {
+			label = "pwr::5V_EXT3";
+			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
+			default-state = "off";
+		};
+
+		pwr_5vext4 {
+			label = "pwr::5V_EXT4";
+			gpios = <&gpio4  9 GPIO_ACTIVE_HIGH>;	/* soDimm 152 */
 			default-state = "off";
 		};
 #endif
@@ -310,7 +374,9 @@
 	};
 
 	panel {
+#ifdef REG_USERSPACE_CONSUMER
 		power-supply = <&mfpoupwr>;
+#endif
 		compatible = "mitsubishi,ac043na11_02_00"; 
 /****** Alternative record (without panel-simple patches ******
 		compatible = "panel-dpi";
