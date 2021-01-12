@@ -557,6 +557,7 @@
  * High-speed serial bus
  */
 &pcie {
+	reset-gpio = <&gpio5 31 GPIO_ACTIVE_LOW>; /* soDimm 116 */
 	status = "okay";
 	/* Child Device LAN7430i connected to this interface */
 };
