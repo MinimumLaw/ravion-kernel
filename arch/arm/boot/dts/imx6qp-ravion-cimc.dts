@@ -315,7 +315,7 @@
 		pwr_vu {
 			label = "pwr::VU";
 			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 025 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_mfpou {
@@ -326,44 +326,44 @@
 
 		pwr_msns {
 			label = "pwr::MSNS";
-			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 029 */
+			gpios = <&gpio3 25 GPIO_ACTIVE_HIGH>;	/* soDimm 029 */
 			default-state = "on";
 		};
 
 		pwr_vu1 {
 			label = "pwr::VU1";
 			gpios = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 037 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_vu2 {
 			label = "pwr::VU2";
 			gpios = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 031 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_5vext1 {
 			label = "pwr::5V_EXT1";
 			gpios = <&gpio6  3 GPIO_ACTIVE_HIGH>;	/* soDimm 059 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_5vext2 {
 			label = "pwr::5V_EXT2";
 			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;	/* soDimm 106 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_5vext3 {
 			label = "pwr::5V_EXT3";
 			gpios = <&gpio2  0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		pwr_5vext4 {
 			label = "pwr::5V_EXT4";
 			gpios = <&gpio4  9 GPIO_ACTIVE_HIGH>;	/* soDimm 152 */
-			default-state = "off";
+			default-state = "on";
 		};
 #endif
 	};
