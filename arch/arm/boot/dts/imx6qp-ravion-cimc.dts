@@ -11,12 +11,6 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
-/*
- * We need nRESET pulse on every boot, but only this way can make them
- */ 
-#define	HSIC_WITH_I2C
-#undef	REG_USERSPACE_CONSUMER
-
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -75,156 +69,6 @@
 		regulator-boot-on;
 		regulator-always-on;
 	};
-#ifdef REG_USERSPACE_CONSUMER
-	/*
-	 * Switchable HVCC consumers
-	 */
-	regulator_mirs {
-		compatible = "regulator-fixed";
-		regulator-name = "MIRS_HVCC";
-		gpio = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm 023 */
-		vin-sunnpy = <&pwr_src>;
-		regulator-boot-on;
-		regulator-always-on;
-	};
-
-	switch_mirs {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "MIRS_SWITCH";
-		regulator-boot-on;
-		regulator-supplies = "MIRS_HVCC";
-	};
-
-	regulator_vu {
-		compatible = "regulator-fixed";
-		regulator-name = "VU_HVCC";
-		gpio = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 025 */
-		vin-sunnpy = <&pwr_src>;
-	};
-
-	switch_vu {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "VU_SWITCH";
-		regulator-boot-on;
-		regulator-supplies = "VU_HVCC";
-	};
-	mfpoupwr: regulator_mfpou {
-		compatible = "regulator-fixed";
-		regulator-name = "MFPOU_HVCC";
-		gpio = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
-		regulator-boot-on;
-		regulator-always-on;
-		vin-sunnpy = <&pwr_src>;
-	};
-
-	switch_mfpou {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "MFPOU_SWITCH";
-		regulator-boot-on;
-		regulator-always-on;
-		regulator-supplies = "MFPOU_HVCC";
-	};
-
-	regulator_msns {
-		compatible = "regulator-fixed";
-		regulator-name = "MSNS_HVCC";
-		vin-sunnpy = <&pwr_src>;
-	};
-
-	switch_msns {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "MSNS_SWITCH";
-		regulator-boot-on;
-		regulator-supplies = "MSNS_HVCC";
-	};
-
-	regulator_vu1 {
-		compatible = "regulator-fixed";
-		regulator-name = "VU1_HVCC";
-		gpio = <&gpio2 31 GPIO_ACTIVE_HIGH>;	/* soDimm 037 */
-		vin-sunnpy = <&pwr_src>;
-	};
-
-	switch_vu1 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "VU1_SWITCH";
-		regulator-boot-on;
-		regulator-supplies = "VU1_HVCC";
-	};
-
-	regulator_vu2 {
-		compatible = "regulator-fixed";
-		regulator-name = "VU2_HVCC";
-		gpio = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm 031 */
-		vin-sunnpy = <&pwr_src>;
-	};
-
-	switch_vu2 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "VU2_SWITCH";
-		regulator-boot-on;
-		regulator-supplies = "VU2_HVCC";
-	};
-
-	/*
-	 * 5V 2A switchable consumer
-	 */
-	regulator_5v0ext1 {
-		compatible = "regulator-fixed";
-		regulator-name = "EXT1_5V";
-		gpio = <&gpio6  3 GPIO_ACTIVE_LOW>;	/* soDimm 059 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_5v0ext1 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW1_5V";
-		regulator-boot-on;
-		regulator-supplies = "EXT1_5V";
-	};
-
-	regulator_5v0ext2 {
-		compatible = "regulator-fixed";
-		regulator-name = "EXT2_5V";
-		gpio = <&gpio2 24 GPIO_ACTIVE_LOW>;	/* soDimm 106 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_5v0ext2 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW2_5V";
-		regulator-boot-on;
-		regulator-supplies = "EXT2_5V";
-	};
-
-	regulator_5v0ext3 {
-		compatible = "regulator-fixed";
-		regulator-name = "EXT3_5V";
-		gpio = <&gpio2  0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_5v0ext3 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW3_5V";
-		regulator-boot-on;
-		regulator-supplies = "EXT3_5V";
-	};
-
-	regulator_5v0ext4 {
-		compatible = "regulator-fixed";
-		regulator-name = "EXT4_5V";
-		gpio = <&gpio4  9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_5v0ext4 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW4_5V";
-		regulator-boot-on;
-		regulator-supplies = "EXT4_5V";
-	};
-#endif
 
 	pps {
 		compatible = "pps-gpio";
@@ -298,14 +142,13 @@
 			gpios = <&gpio4  8 GPIO_ACTIVE_HIGH>;	/* soDimm 150 */
 			default-state = "off";
 		};
-#ifndef HSIC_WITH_I2C
+
 		sys_reset {
 			label = "sys::nRESET";
 			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
 			default-state = "off";
 		};
-#endif
-#ifndef REG_USERSPACE_CONSUMER
+
 		pwr_mirs {
 			label = "pwr::MIRS";
 			gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* soDimm 023 */
@@ -365,7 +208,6 @@
 			gpios = <&gpio4  9 GPIO_ACTIVE_HIGH>;	/* soDimm 152 */
 			default-state = "on";
 		};
-#endif
 	};
 
 	gpio-poweroff {
@@ -374,10 +216,7 @@
 	};
 
 	panel {
-#ifdef REG_USERSPACE_CONSUMER
-		power-supply = <&mfpoupwr>;
-#endif
-		compatible = "mitsubishi,ac043na11_02_00"; 
+		compatible = "mitsubishi,ac043na11_02_00";
 /****** Alternative record (without panel-simple patches ******
 		compatible = "panel-dpi";
 		height-mm = <54>;
@@ -413,7 +252,6 @@
  */
 &ssi2	{	status = "okay";	};
 
-
 /*
  * Video subsystems
  */
@@ -438,7 +276,6 @@
 /* &uart1 {	status = "okay";	}; => Allways enabled */
 &uart2 {
 	status = "okay";
-
 
 	bluetooth { /* DD19: CC2564CRVM */
 		enable-gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
@@ -507,14 +344,13 @@
 			};
 		};
 	};
-#ifdef HSIC_WITH_I2C
+
 	usb-hub@2d {
 		compatible = "smsc,usb4604";
 		reg = <0x2d>;
-		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
+		reset-gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;	/* soDimm 156 */
 		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
 	};
-#endif
 };
 
 &mipi_csi {
@@ -584,4 +420,3 @@
  */
 &pwm3	{	status = "disabled";	};
 &pwm4	{	status = "disabled";	};
-
