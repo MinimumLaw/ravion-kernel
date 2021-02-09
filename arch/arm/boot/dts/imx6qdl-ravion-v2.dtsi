@@ -59,7 +59,7 @@
 	};
 
 	/* Sound subsystem */
-	sound {
+	module_sound: sound {
 		compatible = "fsl,imx6-ravion-sgtl5000",
 			    "fsl,imx-audio-sgtl5000";
 		model = "ravion-sgtl5000";
