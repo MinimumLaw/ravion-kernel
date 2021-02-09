@@ -10,13 +10,6 @@
  */
 /dts-v1/;
 #include "imx6qp.dtsi"
-
-/*
- * We need nRESET pulse on every boot, but only this way can make them
- */ 
-#define	HSIC_WITH_I2C
-#undef	REG_USERSPACE_CONSUMER
-
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -92,50 +85,11 @@
 			wakeup-source;
 		};
 
-		tangenta {
-			label = "Tangenta";
-			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
 		state {
 			label = "State";
-			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
+			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
 			linux,code = <KEY_F1>;
 			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		/*
-		 * MACRO[1..4] key code point to overcurrent@5v consumer
-		 */
-		oc1 {
-			label = "OC1";
-			gpios = <&gpio6  4 GPIO_ACTIVE_LOW>;	/* soDimm 085 */
-			linux,code = <KEY_MACRO1>;
-			wakeup-source;
-		};
-
-		oc2 {
-			label = "OC2";
-			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
-			linux,code = <KEY_MACRO2>;
-			wakeup-source;
-		};
-
-		oc3 {
-			label = "OC3";
-			gpios = <&gpio2 26 GPIO_ACTIVE_LOW>;	/* soDimm 112 */
-			linux,code = <KEY_MACRO3>;
-			wakeup-source;
-		};
-
-		oc4 {
-			label = "OC4";
-			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
-			linux,code = <KEY_MACRO4>;
 			wakeup-source;
 		};
 	};
