@@ -257,6 +257,10 @@
 		status = "okay";
 	};
 
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di0>, <&ipu1_di1>, <&ipu2_di0>, <&ipu2_di1>;
+	};
 };
 
 /*
@@ -269,7 +273,7 @@
  */
 /* VGA */
 &tft_display_bus {
-	status = "disabled";
+	status = "okay";
 };
 &tft_bus_out {
 	remote-endpoint = <&adv7123_in>;
@@ -563,4 +567,9 @@
 /*
  * Video subsystems
  */
+
+/delete-node/&ipu1_di0_hdmi;
+/delete-node/&hdmi_mux_0;
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &hdmi	{	status = "okay";	};
