@@ -199,7 +199,7 @@
  * Video subsystems
  */
 /* HDMI */
-&hdmi {		status = "disabled";	};
+&hdmi {		status = "okay";	};
 /* TFT */
 &tft_display_bus { status = "disabled"; };
 /* LVDS */
