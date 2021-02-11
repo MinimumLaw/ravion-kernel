@@ -257,6 +257,7 @@
 		status = "okay";
 	};
 
+	/* Display init sequense fixup */
 	display-subsystem {
 		compatible = "fsl,imx-display-subsystem";
 		ports = <&ipu1_di0>, <&ipu1_di1>, <&ipu2_di0>, <&ipu2_di1>;
@@ -392,7 +393,7 @@
 			usb-hub@2d {
 				compatible = "smsc,usb4604";
 				reg = <0x2d>;
-				reset-gpios = <&gpio4 10  GPIO_ACTIVE_HIGH>;
+				reset-gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>;	/* soDimm 154 */
 				initial-mode = <1>; /* 1 for HUB, 2 for STANDBY  */
 			};
 		};
@@ -567,7 +568,7 @@
 /*
  * Video subsystems
  */
-
+/* HDMI: forced to IPU2 */
 /delete-node/&ipu1_di0_hdmi;
 /delete-node/&hdmi_mux_0;
 /delete-node/&ipu1_di1_hdmi;

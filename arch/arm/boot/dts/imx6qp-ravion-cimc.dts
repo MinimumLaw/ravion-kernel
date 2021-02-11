@@ -245,6 +245,12 @@
 			};
 		};
 	};
+
+	/* Display init sequence fixup */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di0>, <&ipu1_di1>, <&ipu2_di0>, <&ipu2_di1>;
+	};
 };
 
 /*
@@ -255,7 +261,11 @@
 /*
  * Video subsystems
  */
-/* HDMI */
+/* HDMI: Forced to IPU2 */
+/delete-node/&ipu1_di0_hdmi;
+/delete-node/&hdmi_mux_0;
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
 &hdmi {		status = "okay";	};
 
 /* TFT */
