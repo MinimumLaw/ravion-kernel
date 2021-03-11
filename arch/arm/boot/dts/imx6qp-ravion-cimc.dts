@@ -157,7 +157,7 @@
 
 		pwr_vu {
 			label = "pwr::VU";
-			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 025 */
+			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm 025 */
 			default-state = "on";
 		};
 
