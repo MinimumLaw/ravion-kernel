@@ -274,8 +274,6 @@
 			vdig_reg: vdig { /* 1V65 */
 				regulator-min-microvolt = <1650000>;
 				regulator-max-microvolt = <1650000>;
-				regulator-boot-on;
-				regulator-always-on;
 			};
 
 			vsd_reg: vsd { /* not used */
@@ -307,8 +305,6 @@
 			vaudio_reg: vaudio { /* 3VANA_PMIC */
 				regulator-min-microvolt = <2300000>;
 				regulator-max-microvolt = <3000000>;
-				regulator-boot-on;
-				regulator-always-on;
 			};
 
 			viohi_reg: viohi { /* 2V775_BOOT */
