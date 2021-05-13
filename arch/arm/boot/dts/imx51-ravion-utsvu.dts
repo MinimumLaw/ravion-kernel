@@ -41,7 +41,7 @@
 		regulator-name = "sw12v_pwen";
 		regulator-min-microvolt = <12000000>;
 		regulator-max-microvolt = <12000000>;
-		gpio = <&gpio4 15 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio1 1 GPIO_ACTIVE_HIGH>;
 		enable-active-low;
 		regulator-always-on;
 		status = "okay";
@@ -435,8 +435,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		eth_phy: ethernet-phy@2 {
-			reg = <2>;
+		eth_phy: ethernet-phy {
 			compatible = "ethernet-phy-ieee802.3-c22";
 			reset-gpios = <&gpio2 14 GPIO_ACTIVE_LOW>;
 		};
