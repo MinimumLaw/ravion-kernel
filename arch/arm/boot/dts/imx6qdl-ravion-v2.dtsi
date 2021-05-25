@@ -408,6 +408,20 @@
 	remote-endpoint = <&tft_bus_in>;
 };
 
+
+/*
+ * Remove unneeded and unconnected parallel sensor port
+ */
+&gpr {
+	ipu1_csi0_mux {
+		/delete-node/port@1;
+	};
+
+	ipu2_csi1_mux {
+		/delete-node/port@1;
+	};
+};
+
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
