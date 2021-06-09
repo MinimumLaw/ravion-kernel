@@ -1,0 +1,62 @@
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+#include "imx6qdl-ravion-v2.dtsi"
+#include "imx6qp-ravion-pkk.dtsi"
+
+/ {
+	model = "ravion:pkk-m7";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	panel {
+		power-supply = <&p3v3_reg>;
+		backlight = <&backlight>;
+		data-mapping = "jeida-24";
+		compatible = "mitsubish,aa070ta01ada11", "panel-lvds";
+		width-mm = <152>;
+		height-mm = <91>;
+
+		panel-timing {
+			clock-frequency = <62800000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len = <10>;
+			hfront-porch = <11>;
+			hback-porch = <11>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <10>;
+			de-active = <1>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds0_out>;
+			};
+		};
+	};
+};
+
+/* LVDS */
+&ldb {
+	status = "okay";
+};
+
+&lvds0_chan {
+	fsl,data-mappings = "spwg"; /* "jeida" */
+	fsl,data-width = <24>;
+	status = "okay";
+};
+
+&lvds0_out {
+	remote-endpoint = <&lvds_panel_in>;
+};

@@ -516,6 +516,9 @@ static int usbmisc_imx6_hsic_set_clk(struct imx_usbmisc_data *data, bool on)
 	struct imx_usbmisc *usbmisc = dev_get_drvdata(data->dev);
 	int offset;
 
+	/* FixMe: Never disable HSIC clocks! Workaround for wakeup troubles. */
+	on = true;
+
 	spin_lock_irqsave(&usbmisc->lock, flags);
 	offset = usbmisc_imx6_hsic_get_reg_offset(data);
 	if (offset < 0) {
