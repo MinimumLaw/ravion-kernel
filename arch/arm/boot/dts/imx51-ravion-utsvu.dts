@@ -438,6 +438,8 @@
 		eth_phy: ethernet-phy {
 			compatible = "ethernet-phy-ieee802.3-c22";
 			reset-gpios = <&gpio2 14 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <100>;
+			reset-deassert-us = <100>;
 		};
 	};
 };
