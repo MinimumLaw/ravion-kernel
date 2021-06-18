@@ -435,7 +435,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		eth_phy: ethernet-phy {
+		eth_phy: ethernet-phy@2 {
+			reg = <2>;
 			compatible = "ethernet-phy-ieee802.3-c22";
 			reset-gpios = <&gpio2 14 GPIO_ACTIVE_LOW>;
 			reset-assert-us = <100>;
