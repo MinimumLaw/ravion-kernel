@@ -121,7 +121,7 @@
 	 * else 5V Level Shifter generate on USB_OTG_VBUS ball 0V or
 	 * 5V volategr;
 	 */
-	req_usb_otg_vbus: regulator-usb-otg-vbus {
+	reg_usb_otg_vbus: regulator-usb-otg-vbus {
 		compatible = "regulator-gpio";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_regulator_usb_otg_vbus>;
@@ -133,9 +133,10 @@
 		enable-gpio = <&gpio6 26 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		gpios = <&gpio6 30 GPIO_ACTIVE_HIGH>;
-		gpios-state = <1>;
-		states = <	5000000	0x1
-				0	0x0	>;
+		gpios-states = <1>;
+		states =
+			< 5000000	0x1 >,
+			< 0		0x0 >;
 
 		regulator-always-on;
 	};
@@ -446,7 +447,12 @@
 	pinctrl-0 = <&pinctrl_hog>;
 
 	pinctrl_hog: hoggrp {
-		fsl,pins = < /* ToDo: place unused soDimm200 gpio(s) here*/ >;
+		/*
+		 * ToDo: place unused soDimm200 gpio(s) here
+		 *
+		fsl,pins = <
+		>;
+		 */
 	};
 
 	pinctrl_gpio_poweroff: gpio-poweroff {
