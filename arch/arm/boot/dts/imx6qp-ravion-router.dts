@@ -105,7 +105,7 @@
 		compatible = "gpio-leds";
 
 		pwr_ow {
-			label = "ow:::pwr";
+			label = "ow::pwr";
 			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;	/* soDimm 124 */
 			default-state = "on";
 		};

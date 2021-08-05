@@ -62,49 +62,49 @@
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
 		w1 {
-			label = "W1";
+			label = "ow::pwr";
 			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 
 		nreset {
-			label = "nRESET";
+			label = "sys::nRESET";
 			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		charge_red {
-			label = "charge_red";
+			label = "charge::red";
 			gpios = <&gpio3 18 GPIO_ACTIVE_LOW>; /* soDimm77 - GPIO4 */
 			default-state = "off";
 		};
 
 		charge_green {
-			label = "charge_green";
+			label = "charge::green";
 			gpios = <&gpio2 10 GPIO_ACTIVE_LOW>; /* soDimm30 - GPIO5 */
 			default-state = "off";
 		};
 
 		charge_blue {
-			label = "charge_blue";
+			label = "charge::blue";
 			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>; /* soDimm100 - GPIO6 */
 			default-state = "off";
 		};
 
 		status_red {
-			label = "status_red";
+			label = "status::red";
 			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm102 - GPIO7 */
 			default-state = "off";
 		};
 
 		status_green {
-			label = "status_green";
+			label = "status::green";
 			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>; /* soDimm104 - GPIO8 */
 			default-state = "off";
 		};
 
 		status_blue {
-			label = "status_blue";
+			label = "status::blue";
 			linux,default-trigger = "heartbeat";
 			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>; /* soDimm134 - GPIO9 */
 			default-state = "on";

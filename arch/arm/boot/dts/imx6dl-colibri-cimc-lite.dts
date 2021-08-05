@@ -89,13 +89,13 @@
 		pinctrl-0 = <&pinctrl_gpio_leds>;
 
 		w1 {
-			label = "W1";
+			label = "ow::pwr";
 			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 
 		nreset {
-			label = "nRESET";
+			label = "sys:nRESET";
 			gpios = <&gpio6 27 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
