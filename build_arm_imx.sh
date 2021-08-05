@@ -8,7 +8,7 @@ export DTBS="${DTBS} imx6qp-ravion-kitsbimx6.dtb	imx6qp-ravion-cimc.dtb"
 export DTBS="${DTBS} imx6qp-ravion-mtu.dtb		imx6qp-ravion-pkk-m7.dtb"
 export DTBS="${DTBS} imx6qp-ravion-router.dtb"
 # Toradex Colibri I.MX6
-export DTBS="${DTBS} imx6dl-colibri-cimc-lite.dtb"
+export DTBS="${DTBS} imx6dl-colibri-cimc-lite.dtb	imx6dl-colibri-router.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     export DEFCONFIG=ravion_imx6_defconfig
