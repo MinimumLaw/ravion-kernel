@@ -312,7 +312,6 @@
 		};
 	};
 
-
 	codec: sgtl5000@a {
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
@@ -322,8 +321,6 @@
 		lrclk-strength = <3>;
 	};
 };
-
-
 
 /*
  * I2C3_SDA/SCL on SODIMM 194/196 (e.g. RTC on carrier board)
