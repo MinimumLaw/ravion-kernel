@@ -12,7 +12,7 @@ if [ -z ${CROSS_COMPILE} ]; then
     export CROSS_COMPILE=aarch64-linux-gnu-
 fi
 if [ -z ${ROOT_FS_PATH} ]; then
-    export ROOT_FS_PATH=/cimc/root/colibri-imx6
+    export ROOT_FS_PATH=/cimc/root/arm64-gentoo
 fi;
 if [ -z ${TFTP_FS_PATH} ]; then
     export TFTP_FS_PATH=/cimc/exporttftp

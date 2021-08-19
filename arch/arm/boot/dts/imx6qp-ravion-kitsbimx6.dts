@@ -143,7 +143,8 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;	/* soDimm 127 */
+			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
+								/*  FixMe: without patch soDimm 127,  &gpio2 8 */
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 			wakeup-source;
