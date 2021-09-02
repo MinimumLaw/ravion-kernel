@@ -11,12 +11,6 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
-/*
- * We need nRESET pulse on every boot, but only this way can make them
- */
-#define HSIC_HUB_WITH_I2C
-#undef USE_USERSPACE_REG_CONSUMER
-
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -61,59 +55,7 @@
 			vin-supply = <&p3v3_reg>;
 			regulator-always-on;
 	};
-#ifdef USE_USERSPACE_REG_CONSUMER
-	dcin_reg: regulator_dcin {
-		regulator-name = "DCIN";
-		gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
-		vin-sunnpy = <&p5v_reg>;
-	};
 
-	switch_dcin {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_DCIN";
-		regulator-boot-on;
-		regulator-supplies = "DCIN";
-	};
-
-	nav_reg: regulator_nav {
-		regulator-name = "NAV";
-		gpio = <&gpio2 26 GPIO_ACTIVE_LOW>;		/* soDimm 112 */
-		vin-sunnpy = <&p3v3_reg>;
-	};
-
-	switch_nav {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_NAV";
-		regulator-boot-on;
-		regulator-supplies = "NAV";
-	};
-
-	abs_reg: regulator_abs {
-		regulator-name = "ABS";
-		gpio = <&gpio5  9 GPIO_ACTIVE_LOW>;		/* soDimm 122 */
-		vin-sunnpy = <&p3v3_reg>;
-	};
-
-	switch_abs {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_ABS";
-		regulator-boot-on;
-		regulator-supplies = "ABS";
-	};
-
-	cell_reg: regulator_cell {
-		regulator-name = "CELL";
-		gpio = <&gpio6  5 GPIO_ACTIVE_LOW>;		/* soDimm 162 */
-		vin-sunnpy = <&vin_reg>;
-	};
-
-	switch_cell {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_CELL";
-		regulator-boot-on;
-		regulator-supplies = "CELL";
-	};
-#endif /* USE_USERSPACE_REG_CONSUMER */
 	pps {
 		compatible = "pps-gpio";
 		gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
@@ -202,39 +144,35 @@
 			default-state = "off";
 		};
 
-#ifndef HSIC_HUB_WITH_I2C
 		sys_reset {
 			label = "sys::nRESET";
 			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
 			default-state = "off";
 		};
-#endif /* HSIC_HUB_WITH_I2C */
 
-#ifndef USE_USERSPACE_REG_CONSUMER
-		ext_dcin {
-			label = "ext::DCIN";
+		pwr_dcin {
+			label = "pwr::DCIN";
 			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;		/* soDimm 113 */
 			default-state = "on";
 		};
 
-		ext_nav {
-			label = "ext::NAV";
+		pwr_nav {
+			label = "pwr::NAV";
 			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;		/* soDimm 112 */
 			default-state = "on";
 		};
 
-		ext_abs {
-			label = "ext::ABS";
+		pwr_abs {
+			label = "pwr::ABS";
 			gpios = <&gpio5  9 GPIO_ACTIVE_HIGH>;		/* soDimm 122 */
 			default-state = "on";
 		};
 
-		ext_cell {
-			label = "ext::CELL";
+		pwr_cellular {
+			label = "pwr::CELLULAR";
 			gpios = <&gpio6  5 GPIO_ACTIVE_HIGH>;		/* soDimm 162 */
 			default-state = "on";
 		};
-#endif /* USE_USERSPACE_REG_CONSUMER */
 	};
 
 	gpio-poweroff {
@@ -382,14 +320,6 @@
 		interrupt-parent = <&gpio6>;
 		interrups = <3 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 059 */
 	};
-#ifdef HSIC_HUB_WITH_I2C
-	usb-hub@2d {
-		compatible = "smsc,usb4604";
-		reg = <0x2d>;
-		reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
-		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
-	};
-#endif /* HSIC_HUB_WITH_I2C */
 };
 
 &mipi_csi {

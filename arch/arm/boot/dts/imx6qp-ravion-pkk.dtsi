@@ -58,97 +58,6 @@
 		regulator-always-on;
 	};
 
-	ext1_reg: regulator_ext1 {
-		regulator-name = "EXT1";
-		gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>;		/* soDimm 111 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_ext1 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_EXT1";
-		regulator-boot-on;
-		regulator-supplies = "EXT1";
-	};
-
-	ext2_reg: regulator_ext2 {
-		regulator-name = "EXT2";
-		gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;		/* soDimm 113 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_ext2 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_EXT2";
-		regulator-boot-on;
-		regulator-supplies = "EXT2";
-	};
-
-	ext3_reg: regulator_ext3 {
-		regulator-name = "EXT3";
-		gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;		/* soDimm 160 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_ext3 {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_EXT3";
-		regulator-boot-on;
-		regulator-supplies = "EXT3";
-	};
-
-	lcd_reg: regulator_lcd {
-		regulator-name = "LCD";
-		gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;		/* soDimm 116 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_lcd {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_LDC";
-		regulator-boot-on;
-		regulator-supplies = "LCD";
-	};
-
-	apd_reg: regulator_apd {
-		regulator-name = "APD";
-		gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;		/* soDimm 118 */
-		vin-sunnpy = <&p5v_reg>;
-	};
-
-	switch_apd {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_APD";
-		regulator-boot-on;
-		regulator-supplies = "APD";
-	};
-
-	nav_reg: regulator_nav {
-		regulator-name = "NAV";
-		gpio = <&gpio2 26 GPIO_ACTIVE_LOW>;		/* soDimm 112 */
-		vin-sunnpy = <&p3v3_reg>;
-	};
-
-	switch_nav {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_NAV";
-		regulator-boot-on;
-		regulator-supplies = "NAV";
-	};
-
-	abs_reg: regulator_abs {
-		regulator-name = "ABS";
-		gpio = <&gpio5  9 GPIO_ACTIVE_LOW>;		/* soDimm 122 */
-		vin-sunnpy = <&p3v3_reg>;
-	};
-
-	switch_abs {
-		compatible = "reg-userspace-consumer";
-		regulator-name = "SW_ABS";
-		regulator-boot-on;
-		regulator-supplies = "ABS";
-	};
-
 	pps {
 		compatible = "pps-gpio";
 		gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
@@ -245,6 +154,48 @@
 			label = "touch::CS";
 			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
 			default-state = "off";
+		};
+
+		pwr_5vext1 {
+			label = "pwr::5V_EXT1";
+			gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>;	/* soDimm 111 */
+			default-state = "on";
+		};
+
+		pwr_5vext2 {
+			label = "pwr::5V_EXT2";
+			gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm 113 */
+			default-state = "on";
+		};
+
+		pwr_5vext3 {
+			label = "pwr::5V_EXT3";
+			gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;	/* soDimm 160 */
+			default-state = "on";
+		};
+
+		pwr_LCD {
+			label = "pwr::LCD";
+			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm 116 */
+			default-state = "on";
+		};
+
+		pwr_APD {
+			label = "pwr::APD";
+			gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;	/* soDimm 118 */
+			default-state = "on";
+		};
+
+		pwr_NAV {
+			label = "pwr::NAV";
+			gpio = <&gpio2 26 GPIO_ACTIVE_LOW>;	/* soDimm 112 */
+			default-state = "on";
+		};
+
+		pwr_ABS {
+			label = "pwr::ABS";
+			gpio = <&gpio5  9 GPIO_ACTIVE_LOW>;	/* soDimm 122 */
+			default-state = "on";
 		};
 	};
 
