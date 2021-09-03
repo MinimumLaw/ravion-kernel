@@ -164,13 +164,13 @@
 
 		pwr_5vext2 {
 			label = "pwr::5V_EXT2";
-			gpio = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm 113 */
+			gpio = <&gpio2 1 GPIO_ACTIVE_HIGH>;	/* soDimm 113 */
 			default-state = "on";
 		};
 
 		pwr_5vext3 {
 			label = "pwr::5V_EXT3";
-			gpios = <&gpio6  1 GPIO_ACTIVE_LOW>;	/* soDimm 160 */
+			gpios = <&gpio6  1 GPIO_ACTIVE_HIGH>;	/* soDimm 160 */
 			default-state = "on";
 		};
 
