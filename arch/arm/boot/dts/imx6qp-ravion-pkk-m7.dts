@@ -10,6 +10,7 @@
  */
 /dts-v1/;
 #include "imx6qp.dtsi"
+
 #include "imx6qdl-ravion-v2.dtsi"
 #include "imx6qp-ravion-pkk.dtsi"
 
