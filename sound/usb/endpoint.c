@@ -275,6 +275,7 @@ static void prepare_silent_urb(struct snd_usb_endpoint *ep,
 
 	urb->number_of_packets = ctx->packets;
 	urb->transfer_buffer_length = offs * ep->stride + ctx->packets * extra;
+	ctx->queued = 0;
 }
 
 /*
@@ -644,7 +645,7 @@ static bool endpoint_compatible(struct snd_usb_endpoint *ep,
 }
 
 /*
- * Check whether the given fp and hw params are compatbile with the current
+ * Check whether the given fp and hw params are compatible with the current
  * setup of the target EP for implicit feedback sync
  */
 bool snd_usb_endpoint_compatible(struct snd_usb_audio *chip,
@@ -1125,6 +1126,10 @@ static int data_ep_set_params(struct snd_usb_endpoint *ep)
 		INIT_LIST_HEAD(&u->ready_list);
 	}
 
+	/* total buffer bytes of all URBs plus the next queue;
+	 * referred in pcm.c
+	 */
+	ep->nominal_queue_size = maxsize * urb_packs * (ep->nurbs + 1);
 	return 0;
 
 out_of_memory:
@@ -1244,7 +1249,7 @@ static int snd_usb_endpoint_set_params(struct snd_usb_audio *chip,
  *
  * This function sets up the EP to be fully usable state.
  * It's called either from hw_params or prepare callback.
- * The function checks need_setup flag, and perfoms nothing unless needed,
+ * The function checks need_setup flag, and performs nothing unless needed,
  * so it's safe to call this multiple times.
  *
  * This returns zero if unchanged, 1 if the configuration has changed,
@@ -1286,6 +1291,11 @@ int snd_usb_endpoint_configure(struct snd_usb_audio *chip,
 	 * to be set up before parameter setups
 	 */
 	iface_first = ep->cur_audiofmt->protocol == UAC_VERSION_1;
+	/* Workaround for Sony WALKMAN NW-A45 DAC;
+	 * it requires the interface setup at first like UAC1
+	 */
+	if (chip->usb_id == USB_ID(0x054c, 0x0b8c))
+		iface_first = true;
 	if (iface_first) {
 		err = endpoint_set_interface(chip, ep, true);
 		if (err < 0)

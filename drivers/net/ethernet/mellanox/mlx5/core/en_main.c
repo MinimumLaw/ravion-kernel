@@ -91,12 +91,16 @@ void mlx5e_update_carrier(struct mlx5e_priv *priv)
 {
 	struct mlx5_core_dev *mdev = priv->mdev;
 	u8 port_state;
+	bool up;
 
 	port_state = mlx5_query_vport_state(mdev,
 					    MLX5_VPORT_STATE_OP_MOD_VNIC_VPORT,
 					    0);
 
-	if (port_state == VPORT_STATE_UP) {
+	up = port_state == VPORT_STATE_UP;
+	if (up == netif_carrier_ok(priv->netdev))
+		netif_carrier_event(priv->netdev);
+	if (up) {
 		netdev_info(priv->netdev, "Link up\n");
 		netif_carrier_on(priv->netdev);
 	} else {
@@ -644,8 +648,8 @@ int mlx5e_create_rq(struct mlx5e_rq *rq, struct mlx5e_rq_param *param)
 		return -ENOMEM;
 
 	ts_format = mlx5_is_real_time_rq(mdev) ?
-		    MLX5_RQC_TIMESTAMP_FORMAT_REAL_TIME :
-		    MLX5_RQC_TIMESTAMP_FORMAT_FREE_RUNNING;
+			    MLX5_TIMESTAMP_FORMAT_REAL_TIME :
+			    MLX5_TIMESTAMP_FORMAT_FREE_RUNNING;
 	rqc = MLX5_ADDR_OF(create_rq_in, in, ctx);
 	wq  = MLX5_ADDR_OF(rqc, rqc, wq);
 
@@ -853,7 +857,7 @@ int mlx5e_open_rq(struct mlx5e_params *params, struct mlx5e_rq_param *param,
 	if (err)
 		goto err_destroy_rq;
 
-	if (mlx5e_is_tls_on(rq->priv) && !mlx5_accel_is_ktls_device(mdev))
+	if (mlx5e_is_tls_on(rq->priv) && !mlx5e_accel_is_ktls_device(mdev))
 		__set_bit(MLX5E_RQ_STATE_FPGA_TLS, &rq->state); /* must be FPGA */
 
 	if (MLX5_CAP_ETH(mdev, cqe_checksum_full))
@@ -1188,8 +1192,8 @@ static int mlx5e_create_sq(struct mlx5_core_dev *mdev,
 		return -ENOMEM;
 
 	ts_format = mlx5_is_real_time_sq(mdev) ?
-		    MLX5_SQC_TIMESTAMP_FORMAT_REAL_TIME :
-		    MLX5_SQC_TIMESTAMP_FORMAT_FREE_RUNNING;
+			    MLX5_TIMESTAMP_FORMAT_REAL_TIME :
+			    MLX5_TIMESTAMP_FORMAT_FREE_RUNNING;
 	sqc = MLX5_ADDR_OF(create_sq_in, in, ctx);
 	wq = MLX5_ADDR_OF(sqc, sqc, wq);
 
@@ -2563,6 +2567,14 @@ static int mlx5e_modify_tirs_lro(struct mlx5e_priv *priv)
 		err = mlx5_core_modify_tir(mdev, priv->indir_tir[tt].tirn, in);
 		if (err)
 			goto free_in;
+
+		/* Verify inner tirs resources allocated */
+		if (!priv->inner_indir_tir[0].tirn)
+			continue;
+
+		err = mlx5_core_modify_tir(mdev, priv->inner_indir_tir[tt].tirn, in);
+		if (err)
+			goto free_in;
 	}
 
 	for (ix = 0; ix < priv->max_nch; ix++) {
@@ -3371,7 +3383,7 @@ static int mlx5e_modify_channels_scatter_fcs(struct mlx5e_channels *chs, bool en
 
 static int mlx5e_modify_channels_vsd(struct mlx5e_channels *chs, bool vsd)
 {
-	int err = 0;
+	int err;
 	int i;
 
 	for (i = 0; i < chs->num; i++) {
@@ -3379,6 +3391,8 @@ static int mlx5e_modify_channels_vsd(struct mlx5e_channels *chs, bool vsd)
 		if (err)
 			return err;
 	}
+	if (chs->ptp && test_bit(MLX5E_PTP_STATE_RX, chs->ptp->state))
+		return mlx5e_modify_rq_vsd(&chs->ptp->rq, vsd);
 
 	return 0;
 }
@@ -3439,8 +3453,7 @@ static int mlx5e_setup_tc_htb(struct mlx5e_priv *priv, struct tc_htb_qopt_offloa
 		return mlx5e_htb_leaf_to_inner(priv, htb->parent_classid, htb->classid,
 					       htb->rate, htb->ceil, htb->extack);
 	case TC_HTB_LEAF_DEL:
-		return mlx5e_htb_leaf_del(priv, htb->classid, &htb->moved_qid, &htb->qid,
-					  htb->extack);
+		return mlx5e_htb_leaf_del(priv, &htb->classid, htb->extack);
 	case TC_HTB_LEAF_DEL_LAST:
 	case TC_HTB_LEAF_DEL_LAST_FORCE:
 		return mlx5e_htb_leaf_del_last(priv, htb->classid,
@@ -4329,6 +4342,11 @@ static netdev_features_t mlx5e_tunnel_features_check(struct mlx5e_priv *priv,
 		if (port == GENEVE_UDP_PORT && mlx5_geneve_tx_allowed(priv->mdev))
 			return features;
 #endif
+		break;
+#ifdef CONFIG_MLX5_EN_IPSEC
+	case IPPROTO_ESP:
+		return mlx5e_ipsec_feature_check(skb, features);
+#endif
 	}
 
 out:
@@ -4344,9 +4362,6 @@ netdev_features_t mlx5e_features_check(struct sk_buff *skb,
 
 	features = vlan_features_check(skb, features);
 	features = vxlan_features_check(skb, features);
-
-	if (mlx5e_ipsec_feature_check(skb, netdev, features))
-		return features;
 
 	/* Validate if the tunneled packet is being offloaded by HW */
 	if (skb->encapsulation &&
@@ -4663,12 +4678,10 @@ void mlx5e_build_nic_params(struct mlx5e_priv *priv, struct mlx5e_xsk *xsk, u16 
 	params->log_sq_size = is_kdump_kernel() ?
 		MLX5E_PARAMS_MINIMUM_LOG_SQ_SIZE :
 		MLX5E_PARAMS_DEFAULT_LOG_SQ_SIZE;
-	MLX5E_SET_PFLAG(params, MLX5E_PFLAG_SKB_TX_MPWQE,
-			MLX5_CAP_ETH(mdev, enhanced_multi_pkt_send_wqe));
+	MLX5E_SET_PFLAG(params, MLX5E_PFLAG_SKB_TX_MPWQE, mlx5e_tx_mpwqe_supported(mdev));
 
 	/* XDP SQ */
-	MLX5E_SET_PFLAG(params, MLX5E_PFLAG_XDP_TX_MPWQE,
-			MLX5_CAP_ETH(mdev, enhanced_multi_pkt_send_wqe));
+	MLX5E_SET_PFLAG(params, MLX5E_PFLAG_XDP_TX_MPWQE, mlx5e_tx_mpwqe_supported(mdev));
 
 	/* set CQE compression */
 	params->rx_cqe_compress_def = false;
@@ -4806,7 +4819,14 @@ static void mlx5e_build_nic_netdev(struct net_device *netdev)
 	netdev->hw_enc_features  |= NETIF_F_HW_VLAN_CTAG_TX;
 	netdev->hw_enc_features  |= NETIF_F_HW_VLAN_CTAG_RX;
 
+	/* Tunneled LRO is not supported in the driver, and the same RQs are
+	 * shared between inner and outer TIRs, so the driver can't disable LRO
+	 * for inner TIRs while having it enabled for outer TIRs. Due to this,
+	 * block LRO altogether if the firmware declares tunneled LRO support.
+	 */
 	if (!!MLX5_CAP_ETH(mdev, lro_cap) &&
+	    !MLX5_CAP_ETH(mdev, tunnel_lro_vxlan) &&
+	    !MLX5_CAP_ETH(mdev, tunnel_lro_gre) &&
 	    mlx5e_check_fragmented_striding_rq_cap(mdev))
 		netdev->vlan_features    |= NETIF_F_LRO;
 
@@ -5106,7 +5126,7 @@ static void mlx5e_nic_enable(struct mlx5e_priv *priv)
 	mlx5e_set_netdev_mtu_boundaries(priv);
 	mlx5e_set_dev_port_mtu(priv);
 
-	mlx5_lag_add(mdev, netdev);
+	mlx5_lag_add_netdev(mdev, netdev);
 
 	mlx5e_enable_async_events(priv);
 	mlx5e_enable_blocking_events(priv);
@@ -5154,7 +5174,7 @@ static void mlx5e_nic_disable(struct mlx5e_priv *priv)
 		priv->en_trap = NULL;
 	}
 	mlx5e_disable_async_events(priv);
-	mlx5_lag_remove(mdev);
+	mlx5_lag_remove_netdev(mdev, priv->netdev);
 	mlx5_vxlan_reset_to_default(mdev->vxlan);
 }
 

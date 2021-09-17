@@ -63,6 +63,11 @@ mlx5_devlink_info_get(struct devlink *devlink, struct devlink_info_req *req,
 	err = devlink_info_version_running_put(req, "fw.version", version_str);
 	if (err)
 		return err;
+	err = devlink_info_version_running_put(req,
+					       DEVLINK_INFO_VERSION_GENERIC_FW,
+					       version_str);
+	if (err)
+		return err;
 
 	/* no pending version, return running (stored) version */
 	if (stored_fw == 0)
@@ -74,8 +79,9 @@ mlx5_devlink_info_get(struct devlink *devlink, struct devlink_info_req *req,
 	err = devlink_info_version_stored_put(req, "fw.version", version_str);
 	if (err)
 		return err;
-
-	return 0;
+	return devlink_info_version_stored_put(req,
+					       DEVLINK_INFO_VERSION_GENERIC_FW,
+					       version_str);
 }
 
 static int mlx5_devlink_reload_fw_activate(struct devlink *devlink, struct netlink_ext_ack *extack)
@@ -664,6 +670,7 @@ params_reg_err:
 void mlx5_devlink_unregister(struct devlink *devlink)
 {
 	mlx5_devlink_traps_unregister(devlink);
+	devlink_params_unpublish(devlink);
 	devlink_params_unregister(devlink, mlx5_devlink_params,
 				  ARRAY_SIZE(mlx5_devlink_params));
 	devlink_unregister(devlink);

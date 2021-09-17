@@ -354,13 +354,6 @@
 			};
 		};
 	};
-
-	usb-hub@2d {
-		compatible = "smsc,usb4604";
-		reg = <0x2d>;
-		reset-gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;	/* soDimm 156 */
-		initial-mode = <1>; /* 1 for HUB, 2 for STANDBY */
-	};
 };
 
 &mipi_csi {
