@@ -18,6 +18,11 @@
 	model = "ravion:pkk-m7";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
+	gpio-leds { /* rotate panel */
+		lcd_cs		{ default-state = "on"; };
+		touch_cs	{ default-state = "on"; };
+	};
+
 	panel {
 		power-supply = <&p3v3_reg>;
 		backlight = <&backlight>;
