@@ -11,6 +11,7 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
+#define SPI_CS_GPIO
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -372,7 +373,20 @@
 /*
  * SPI Bus
  */
-&ecspi1 {	status = "disabled"; };
+&ecspi1 {
+	/delete-property/dmas;
+	/delete-property/dma-names;
+	status = "okay";
+
+	ks8851@0 {
+		reg = <0>;
+		compatible = "micrel,ks8851";
+		interrupts-extended = <&gpio2 6 IRQ_TYPE_LEVEL_LOW>;   /* soDimm123 */
+		vdd-supply = <&p5v_reg>;
+		vdd-io-supply = <&p3v3_reg>;
+		spi-max-frequency = <25000000>; /* 25MHz, max 40MHz */
+       };
+};
 
 /*
  * SD/MMC and eMMC controllers
@@ -395,11 +409,6 @@
 /*
  * High-speed serial bus
  */
-&pcie {
-	reset-gpio = <&gpio5 31 GPIO_ACTIVE_LOW>; /* soDimm 116 */
-	status = "okay";
-	/* Child Device LAN7430i connected to this interface */
-};
 
 &sata {
 	status = "okay";
