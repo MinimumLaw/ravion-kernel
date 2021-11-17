@@ -209,6 +209,12 @@
 			gpios = <&gpio4  9 GPIO_ACTIVE_HIGH>;	/* soDimm 152 */
 			default-state = "on";
 		};
+
+		ext_gpio {
+			label = "ext::GPIO";
+			gpios = <&gpio2 27 GPIO_ACTIVE_LOW>;	/* soDimm 114 */
+			default-state = "off";
+		};
 	};
 
 	gpio-poweroff {
