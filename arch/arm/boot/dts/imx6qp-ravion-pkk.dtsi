@@ -85,7 +85,7 @@
 		fck1 {
 			label = "FCK1";
 			gpios = <&gpio4 8 GPIO_ACTIVE_LOW>;	/* soDimm 150 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F9>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -93,7 +93,7 @@
 		fck2 {
 			label = "FCK2";
 			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F10>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -101,7 +101,7 @@
 		fck3 {
 			label = "FCK3";
 			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm 154 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F11>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -109,7 +109,7 @@
 		fck4 {
 			label = "FCK4";
 			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>;	/* soDimm 156 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F12>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
