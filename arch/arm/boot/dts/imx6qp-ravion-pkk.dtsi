@@ -144,13 +144,13 @@
 			default-state = "off";
 		};
 
-		lcd_sc {
+		lcd_cs {
 			label = "lcd::CS";
 			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm 158 */
 			default-state = "off";
 		};
 
-		touch_sc {
+		touch_cs {
 			label = "touch::CS";
 			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm 110 */
 			default-state = "off";
