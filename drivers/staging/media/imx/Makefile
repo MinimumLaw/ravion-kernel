@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
+
+ccflags-y += -DDEBUG
+
 imx-media-common-objs := imx-media-capture.o imx-media-dev-common.o \
 	imx-media-of.o imx-media-utils.o
 
