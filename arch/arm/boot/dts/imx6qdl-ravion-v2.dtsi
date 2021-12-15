@@ -3,6 +3,10 @@
 ** OAO Radioavionica,
 ** Ravion200 CPU module rev: 0.7.1
 **
+** TUNING:
+** SPI_CS_GPIO	- use ecspi chip-select as GPIO pin
+** DEBUG	- register UART1 as stout patch
+**
 ** (c) 2019, OAO Radiovionica,
 **     190105, Russia, St-Petersburg, Troitskiy pr. 4 liter B.
 ** (c) 2019, Alex A. Mihaylov <minimumlaw@rambler.ru>
@@ -279,6 +283,9 @@
 &ecspi1 { /* ECSPI1 - default diabled */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi>;
+#ifdef SPI_CS_GPIO
+	cs-gpios = <&gpio5 25 GPIO_ACTIVE_LOW>;
+#endif
 	status = "disabled";
 };
 
@@ -327,6 +334,8 @@
 			reg = <0>;
 			phy-is-integrated;
 			reset-gpios = <&gpio6 7 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <100>;
+			reset-deassert-us = <100>;
 			interrupt-parent = <&gpio6>;
 			interrups = <8 IRQ_TYPE_EDGE_RISING>;
 		};
@@ -757,10 +766,14 @@
 
 	pinctrl_spi: spigrp {
 	    fsl,pins = <
-/* 086 */	MX6QDL_PAD_CSI0_DAT7__ECSPI1_SS0	0x1b0b0
-/* 088 */	MX6QDL_PAD_CSI0_DAT4__ECSPI1_SCLK	0x1b0b0
-/* 090 */	MX6QDL_PAD_CSI0_DAT6__ECSPI1_MISO	0x1b0b0
-/* 092 */	MX6QDL_PAD_CSI0_DAT5__ECSPI1_MOSI	0x1b0b0
+#ifdef SPI_CS_GPIO
+/* 086 */	MX6QDL_PAD_CSI0_DAT7__GPIO5_IO25	0x1b0b1
+#else
+/* 086 */	MX6QDL_PAD_CSI0_DAT7__ECSPI1_SS0	0x1b0b1
+#endif
+/* 088 */	MX6QDL_PAD_CSI0_DAT4__ECSPI1_SCLK	0x1b0b1
+/* 090 */	MX6QDL_PAD_CSI0_DAT6__ECSPI1_MISO	0x1b0b1
+/* 092 */	MX6QDL_PAD_CSI0_DAT5__ECSPI1_MOSI	0x1b0b1
 	    >;
 	};
 
