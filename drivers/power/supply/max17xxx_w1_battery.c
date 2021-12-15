@@ -1,8 +1,8 @@
 /*
  * 1-Wire implementation for Maxim Semiconductor
- * MAX7211/MAX17215 stanalone fuel gauge chip
+ * MAX7211/MAX17215 standalone fuel gauge chip
  *
- * Copyright (C) 2017 Radioavionica Corporation
+ * Copyright (C) 2021 Radioavionica Corporation
  * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
  *
  * Use consistent with the GNU GPL is permitted,
@@ -17,18 +17,37 @@
 #include <linux/regmap.h>
 #include <linux/power_supply.h>
 
-#define W1_MAX1721X_FAMILY_ID		0x26
-#define DEF_DEV_NAME_MAX17211		"MAX17211"
-#define DEF_DEV_NAME_MAX17215		"MAX17215"
+#define W1_MAX172XX_FAMILY_ID		0x26
+
+#define DEF_DEV_NAME_MAX172X1		"MAX172X1"
+#define DEF_DEV_NAME_MAX172X5		"MAX172X5"
+#define DEF_DEV_NAME_MAX173X0		"MAX173X1"
+#define DEF_DEV_NAME_MAX173X1		"MAX173X1"
+#define DEF_DEV_NAME_MAX173X2		"MAX173X15"
+#define DEF_DEV_NAME_MAX173X3		"MAX173X15"
+#define DEF_DEV_NAME_MAX17320		"MAX17320"
+#define DEF_DEV_NAME_MAX17330		"MAX17330"
 #define DEF_DEV_NAME_UNKNOWN		"UNKNOWN"
 #define DEF_MFG_NAME			"MAXIM"
+
+#define MAX172XX_REG_DEVNAME	0x021	/* DevName regiter */
+#define MAX172XX_DEVID_MASK	0x000F	/* Device field in DevName register */
+#define MAX172XX_DEVREV_MASK	0xFFF0	/* Revision field in DevName register */
+#define MAX172X1_DEV_ID		0x01
+#define MAX172X5_DEV_ID		0x05
+#define MAX173X0_DEVNAME	0x4069
+#define MAX173X1_DEVNAME	0x4065
+#define MAX173X2_DEVNAME	0x4066
+#define MAX173X3_DEVNAME	0x4067
+#define MAX17320_DEVNAME	0x4209
+#define MAX17330_DEVNAME	0x4309 /* FixMe: correct value required!!! */
 
 #define PSY_MAX_NAME_LEN	32
 
 /* Number of valid register addresses in W1 mode */
 #define MAX1721X_MAX_REG_NR	0x1EF
 
-/* Factory settings (nonvilatile registers) (W1 specific) */
+/* Factory settings (nonvolatile registers) (W1 specific) */
 #define MAX1721X_REG_NRSENSE	0x1CF	/* RSense in 10^-5 Ohm */
 /* Strings */
 #define MAX1721X_REG_MFG_STR	0x1CC
@@ -41,10 +60,6 @@
 /* MAX172XX Output Registers for W1 chips */
 #define MAX172XX_REG_STATUS	0x000	/* status reg */
 #define MAX172XX_BAT_PRESENT	(1<<4)	/* battery connected bit */
-#define MAX172XX_REG_DEVNAME	0x021	/* chip config */
-#define MAX172XX_DEV_MASK	0x000F	/* chip type mask */
-#define MAX172X1_DEV		0x0001
-#define MAX172X5_DEV		0x0005
 #define MAX172XX_REG_TEMP	0x008	/* Temperature */
 #define MAX172XX_REG_BATT	0x0DA	/* Battery voltage */
 #define MAX172XX_REG_CURRENT	0x00A	/* Actual current */
@@ -55,37 +70,77 @@
 #define MAX172XX_REG_TTE	0x011	/* Time to empty */
 #define MAX172XX_REG_TTF	0x020	/* Time to full */
 
-struct max17211_device_info {
+/* MAX173XX Output Registers for W1 chips */
+#define MAX173XX_REG_TEMP	0x01b	/* Temperature */
+#define MAX173XX_REG_CURRENT	0x01c	/* Actual current */
+#define MAX173XX_REG_AVGCURRENT	0x01d	/* Average current */
+
+struct chip_to_ps {
+	/* function for convert raw regs to powersource class value */
+	int (*to_time)(unsigned int reg);
+	int (*to_percent)(unsigned int reg);
+	int (*to_voltage)(unsigned int reg);
+	int (*to_capacity)(unsigned int reg);
+	int (*to_temperature)(unsigned int reg);
+	int (*to_sense_voltage)(unsigned int reg);
+};
+
+struct max172xx_device_info {
 	char name[PSY_MAX_NAME_LEN];
 	struct power_supply *bat;
 	struct power_supply_desc bat_desc;
 	struct device *w1_dev;
 	struct regmap *regmap;
+	struct chip_to_ps* helper;
 	/* battery design format */
 	unsigned int rsense; /* in tenths uOhm */
-	char DeviceName[2 * MAX1721X_REG_DEV_NUMB + 1];
-	char ManufacturerName[2 * MAX1721X_REG_MFG_NUMB + 1];
+	unsigned int TempRegister;
+	unsigned int CurrentRegister;
+	unsigned int AvgCurrentRegister;
+	char DeviceName[9]; /* MAX17XXX\0 */
+	char ManufacturerName[7]; /* MAXIM_\0 */
 	char SerialNumber[13]; /* see get_sn_str() later for comment */
 };
 
-/* Convert regs value to power_supply units */
-
-static inline int max172xx_time_to_ps(unsigned int reg)
+/*
+ * Convert regs value to power_supply units
+ */
+static int max172xx_time_to_ps(unsigned int reg)
 {
 	return reg * 5625 / 1000;	/* in sec. */
 }
 
-static inline int max172xx_percent_to_ps(unsigned int reg)
+static int max173xx_time_to_ps(unsigned int reg)
+{
+	return reg * 5625 / 1000;	/* in sec. */
+}
+
+static int max172xx_percent_to_ps(unsigned int reg)
 {
 	return reg / 256;	/* in percent from 0 to 100 */
 }
 
-static inline int max172xx_voltage_to_ps(unsigned int reg)
+static int max173xx_percent_to_ps(unsigned int reg)
 {
-	return reg * 1250;	/* in uV */
+	return reg / 256;	/* in percent from 0 to 100 */
 }
 
-static inline int max172xx_capacity_to_ps(unsigned int reg)
+static int max172xx_voltage_to_ps(unsigned int reg)
+{
+	return reg * 1250;	/* in uV (1.250uV LSB)*/
+}
+
+static int max173xx_voltage_to_ps(unsigned int reg)
+{
+	return reg * 3125 / 10;	/* in uV (0.3125uV LSB) */
+}
+
+static int max172xx_capacity_to_ps(unsigned int reg)
+{
+	return reg * 500;	/* in uAh */
+}
+
+static int max173xx_capacity_to_ps(unsigned int reg)
 {
 	return reg * 500;	/* in uAh */
 }
@@ -95,7 +150,14 @@ static inline int max172xx_capacity_to_ps(unsigned int reg)
  * value must be converted to signed type
  */
 
-static inline int max172xx_temperature_to_ps(unsigned int reg)
+static int max172xx_temperature_to_ps(unsigned int reg)
+{
+	int val = (int16_t)(reg);
+
+	return val * 10 / 256; /* in tenths of deg. C */
+}
+
+static int max173xx_temperature_to_ps(unsigned int reg)
 {
 	int val = (int16_t)(reg);
 
@@ -105,12 +167,19 @@ static inline int max172xx_temperature_to_ps(unsigned int reg)
 /*
  * Calculating current registers resolution:
  *
- * RSense stored in 10^-5 Ohm, so mesaurment voltage must be
+ * RSense stored in 10^-5 Ohm, so measurement voltage must be
  * in 10^-11 Volts for get current in uA.
  * 16 bit current reg fullscale +/-51.2mV is 102400 uV.
  * So: 102400 / 65535 * 10^5 = 156252
  */
-static inline int max172xx_current_to_voltage(unsigned int reg)
+static int max172xx_to_sense_voltage(unsigned int reg)
+{
+	int val = (int16_t)(reg);
+
+	return val * 156252;
+}
+
+static int max173xx_to_sense_voltage(unsigned int reg)
 {
 	int val = (int16_t)(reg);
 
@@ -118,7 +187,25 @@ static inline int max172xx_current_to_voltage(unsigned int reg)
 }
 
 
-static inline struct max17211_device_info *
+static struct chip_to_ps max172xx_helper = {
+	.to_time	= max172xx_time_to_ps,
+	.to_percent	= max172xx_percent_to_ps,
+	.to_voltage	= max172xx_voltage_to_ps,
+	.to_capacity	= max172xx_capacity_to_ps,
+	.to_temperature	= max172xx_temperature_to_ps,
+	.to_sense_voltage = max172xx_to_sense_voltage,
+};
+
+static struct chip_to_ps max173xx_helper = {
+	.to_time	= max173xx_time_to_ps,
+	.to_percent	= max173xx_percent_to_ps,
+	.to_voltage	= max173xx_voltage_to_ps,
+	.to_capacity	= max173xx_capacity_to_ps,
+	.to_temperature	= max173xx_temperature_to_ps,
+	.to_sense_voltage = max173xx_to_sense_voltage,
+};
+
+static inline struct max172xx_device_info *
 to_device_info(struct power_supply *psy)
 {
 	return power_supply_get_drvdata(psy);
@@ -128,7 +215,7 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
-	struct max17211_device_info *info = to_device_info(psy);
+	struct max172xx_device_info *info = to_device_info(psy);
 	unsigned int reg = 0;
 	int ret = 0;
 
@@ -137,7 +224,7 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 		/*
 		 * POWER_SUPPLY_PROP_PRESENT will always readable via
 		 * sysfs interface. Value return 0 if battery not
-		 * present or unaccesable via W1.
+		 * present or unaccessible via W1.
 		 */
 		val->intval =
 			regmap_read(info->regmap, MAX172XX_REG_STATUS,
@@ -145,47 +232,48 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		ret = regmap_read(info->regmap, MAX172XX_REG_REPSOC, &reg);
-		val->intval = max172xx_percent_to_ps(reg);
+		val->intval = info->helper->to_percent(reg);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = regmap_read(info->regmap, MAX172XX_REG_BATT, &reg);
-		val->intval = max172xx_voltage_to_ps(reg);
+		val->intval = info->helper->to_voltage(reg);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		ret = regmap_read(info->regmap, MAX172XX_REG_DESIGNCAP, &reg);
-		val->intval = max172xx_capacity_to_ps(reg);
+		val->intval = info->helper->to_capacity(reg);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_AVG:
 		ret = regmap_read(info->regmap, MAX172XX_REG_REPCAP, &reg);
-		val->intval = max172xx_capacity_to_ps(reg);
+		val->intval = info->helper->to_capacity(reg);
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
 		ret = regmap_read(info->regmap, MAX172XX_REG_TTE, &reg);
-		val->intval = max172xx_time_to_ps(reg);
+		val->intval = info->helper->to_time(reg);
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_AVG:
 		ret = regmap_read(info->regmap, MAX172XX_REG_TTF, &reg);
-		val->intval = max172xx_time_to_ps(reg);
+		val->intval = info->helper->to_time(reg);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		ret = regmap_read(info->regmap, MAX172XX_REG_TEMP, &reg);
-		val->intval = max172xx_temperature_to_ps(reg);
+		ret = regmap_read(info->regmap, info->TempRegister, &reg);
+		val->intval = info->helper->to_temperature(reg);
 		break;
 	/* We need signed current, so must cast info->rsense to signed type */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = regmap_read(info->regmap, MAX172XX_REG_CURRENT, &reg);
+		ret = regmap_read(info->regmap, info->CurrentRegister, &reg);
 		val->intval =
-			max172xx_current_to_voltage(reg) / (int)info->rsense;
+			info->helper->to_sense_voltage(reg) / (int)info->rsense;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		ret = regmap_read(info->regmap, MAX172XX_REG_AVGCURRENT, &reg);
+		ret = regmap_read(info->regmap, info->AvgCurrentRegister, &reg);
 		val->intval =
-			max172xx_current_to_voltage(reg) / (int)info->rsense;
+			info->helper->to_sense_voltage(reg) / (int)info->rsense;
 		break;
 	/*
 	 * Strings already received and inited by probe.
 	 * We do dummy read for check battery still available.
 	 */
+
 	case POWER_SUPPLY_PROP_MODEL_NAME:
 		ret = regmap_read(info->regmap, MAX1721X_REG_DEV_STR, &reg);
 		val->strval = info->DeviceName;
@@ -198,6 +286,7 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 		ret = regmap_read(info->regmap, MAX1721X_REG_SER_HEX, &reg);
 		val->strval = info->SerialNumber;
 		break;
+
 	default:
 		ret = -EINVAL;
 	}
@@ -218,31 +307,14 @@ static enum power_supply_property max1721x_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	/* strings */
-	POWER_SUPPLY_PROP_MODEL_NAME,
-	POWER_SUPPLY_PROP_MANUFACTURER,
+	POWER_SUPPLY_PROP_MODEL_NAME,		/* FixMe: chip name  */
+	POWER_SUPPLY_PROP_MANUFACTURER,		/* FixMe: chip manufacturer */
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
+
 };
 
-static int get_string(struct max17211_device_info *info,
-			uint16_t reg, uint8_t nr, char *str)
-{
-	unsigned int val;
-
-	if (!str || !(reg == MAX1721X_REG_MFG_STR ||
-			reg == MAX1721X_REG_DEV_STR))
-		return -EFAULT;
-
-	while (nr--) {
-		if (regmap_read(info->regmap, reg++, &val))
-			return -EFAULT;
-		*str++ = val>>8 & 0x00FF;
-		*str++ = val & 0x00FF;
-	}
-	return 0;
-}
-
 /* Maxim say: Serial number is a hex string up to 12 hex characters */
-static int get_sn_string(struct max17211_device_info *info, char *str)
+static int get_sn_string(struct max172xx_device_info *info, char *str)
 {
 	unsigned int val[3];
 
@@ -323,7 +395,8 @@ static const struct regmap_config max1721x_regmap_w1_config = {
 static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 {
 	struct power_supply_config psy_cfg = {};
-	struct max17211_device_info *info;
+	struct max172xx_device_info *info;
+	unsigned int dev_name;
 
 	info = devm_kzalloc(&sl->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
@@ -334,12 +407,12 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 
 	/*
 	 * power_supply class battery name translated from W1 slave device
-	 * unical ID (look like 26-0123456789AB) to "max1721x-0123456789AB\0"
-	 * so, 26 (device family) correcpondent to max1721x devices.
-	 * Device name still unical for any numbers connected devices.
+	 * unique ID (look like 26-0123456789AB) to "bat-0123456789AB\0"
+	 * so, 26 (device family) correspond to max172xx devices.
+	 * Device name still unique for any number of connected devices.
 	 */
 	snprintf(info->name, sizeof(info->name),
-		"max1721x-%012X", (unsigned int)sl->reg_num.id);
+		"bat-%012X", (unsigned int)sl->reg_num.id);
 	info->bat_desc.name = info->name;
 
 	/*
@@ -377,44 +450,72 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 	}
 	dev_info(info->w1_dev, "RSense: %d mOhms.\n", info->rsense / 100);
 
-	if (get_string(info, MAX1721X_REG_MFG_STR,
-			MAX1721X_REG_MFG_NUMB, info->ManufacturerName)) {
-		dev_err(info->w1_dev, "Can't read manufacturer. Hardware error.\n");
+	/*
+	 * Controller specific init
+	 */
+	if (regmap_read(info->regmap, MAX172XX_REG_DEVNAME, &dev_name)) {
+		dev_err(info->w1_dev, "Can't read device name reg.\n");
 		return -ENODEV;
 	}
 
-	if (!info->ManufacturerName[0])
-		strncpy(info->ManufacturerName, DEF_MFG_NAME,
-			2 * MAX1721X_REG_MFG_NUMB);
+	/*
+	 * Fill data for new (MAX173xx) series.
+	 * Redefine for for old (MAX172xx) series later (if required)
+	*/
+	info->helper		= &max173xx_helper;
+	info->TempRegister	= MAX173XX_REG_TEMP;
+	info->CurrentRegister	= MAX173XX_REG_CURRENT;
+	info->AvgCurrentRegister= MAX173XX_REG_AVGCURRENT;
 
-	if (get_string(info, MAX1721X_REG_DEV_STR,
-			MAX1721X_REG_DEV_NUMB, info->DeviceName)) {
-		dev_err(info->w1_dev, "Can't read device. Hardware error.\n");
-		return -ENODEV;
-	}
-	if (!info->DeviceName[0]) {
-		unsigned int dev_name;
+	switch (dev_name) {
+	case MAX17330_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17330,
+			sizeof(info->DeviceName) - 1);
+		break;
+	case MAX17320_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17320,
+			sizeof(info->DeviceName) - 1);
+		break;
+	case MAX173X0_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X0,
+			sizeof(info->DeviceName) - 1);
+		break;
+	case MAX173X1_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X1,
+			sizeof(info->DeviceName) - 1);
+		break;
+	case MAX173X2_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X2,
+			sizeof(info->DeviceName) -1);
+		break;
+	case MAX173X3_DEVNAME:
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X3,
+			sizeof(info->DeviceName) - 1);
+		break;
+	default: /* older (MAX172xx) series check */
+	    info->helper = &max172xx_helper;
+	    info->TempRegister		= MAX172XX_REG_TEMP;
+	    info->CurrentRegister	= MAX172XX_REG_CURRENT;
+	    info->AvgCurrentRegister	= MAX172XX_REG_AVGCURRENT;
 
-		if (regmap_read(info->regmap,
-				MAX172XX_REG_DEVNAME, &dev_name)) {
-			dev_err(info->w1_dev, "Can't read device name reg.\n");
-			return -ENODEV;
-		}
-
-		switch (dev_name & MAX172XX_DEV_MASK) {
-		case MAX172X1_DEV:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17211,
-				2 * MAX1721X_REG_DEV_NUMB);
+	    switch (dev_name & MAX172XX_DEVID_MASK) { /* MAX172XX not specify revision field */
+		case MAX172X1_DEV_ID:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX172X1,
+				sizeof(info->DeviceName) - 1);
 			break;
-		case MAX172X5_DEV:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX17215,
-				2 * MAX1721X_REG_DEV_NUMB);
+		case MAX172X5_DEV_ID:
+			strncpy(info->DeviceName, DEF_DEV_NAME_MAX172X5,
+				sizeof(info->DeviceName) - 1);
 			break;
 		default:
-			strncpy(info->DeviceName, DEF_DEV_NAME_UNKNOWN,
-				2 * MAX1721X_REG_DEV_NUMB);
-		}
+			dev_err(info->w1_dev, "Found ModelGauge m5 Fuel Gaige controller with unsupported chip 0x%04X", dev_name);
+			return -ENOTSUPP;
+	    };
 	}
+
+	/* Ignore ManufacturerName (format uncknown) - set to "MAXIM" */
+	strncpy(info->ManufacturerName, DEF_MFG_NAME,
+		sizeof(info->ManufacturerName) - 1);
 
 	if (get_sn_string(info, info->SerialNumber)) {
 		dev_err(info->w1_dev, "Can't read serial. Hardware error.\n");
@@ -427,22 +528,21 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 		dev_err(info->w1_dev, "failed to register battery\n");
 		return PTR_ERR(info->bat);
 	}
-
 	return 0;
 }
 
-static const struct w1_family_ops w1_max1721x_fops = {
+static const struct w1_family_ops w1_max172xx_fops = {
 	.add_slave = devm_w1_max1721x_add_device,
 };
 
 static struct w1_family w1_max1721x_family = {
-	.fid = W1_MAX1721X_FAMILY_ID,
-	.fops = &w1_max1721x_fops,
+	.fid = W1_MAX172XX_FAMILY_ID,
+	.fops = &w1_max172xx_fops,
 };
 
 module_w1_family(w1_max1721x_family);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
-MODULE_DESCRIPTION("Maxim MAX17211/MAX17215 Fuel Gauage IC driver");
+MODULE_DESCRIPTION("Maxim MAX172xx/MAX173xx Fuel Gauage IC driver");
 MODULE_ALIAS("w1-family-" __stringify(W1_MAX1721X_FAMILY_ID));
