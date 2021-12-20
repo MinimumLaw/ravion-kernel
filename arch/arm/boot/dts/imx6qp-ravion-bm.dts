@@ -193,7 +193,7 @@
 
 		pwr5vext1 {
 			label = "pwr::5V_EXT1";
-			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;	/* soDimm059 */
+			gpios = <&gpio6 3 GPIO_ACTIVE_HIGH>;	/* soDimm059 */
 			default-state = "on";
 		};
 
