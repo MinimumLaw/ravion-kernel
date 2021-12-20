@@ -384,4 +384,4 @@
 /*
  * Video subsystems
  */
-&hdmi	{	status = "disabled";	};
+&hdmi	{	status = "okay";	}; /* FixMe: boot stopped if disabled!!! */
