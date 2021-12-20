@@ -30,9 +30,18 @@
 #define TMP117_REG_EEPROM3		0x8
 #define TMP117_REG_DEVICE_ID		0xF
 
+#define TMP116_REG_EEPROM3		0x7
+#define TMP116_REG_EEPROM4		0x8
+#define TMP116_DEVICE_ID		0x1116
+
 #define TMP117_RESOLUTION_10UC		78125
 #define TMP117_DEVICE_ID		0x0117
 #define MICRODEGREE_PER_10MILLIDEGREE	10000
+
+enum chip_id {
+	ID_TMP116,
+	ID_TMP117,
+};
 
 struct tmp117_data {
 	struct i2c_client *client;
@@ -108,6 +117,13 @@ static const struct iio_chan_spec tmp117_channels[] = {
 	},
 };
 
+static const struct iio_chan_spec tmp116_channels[] = {
+	{
+		.type = IIO_TEMP,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_SCALE),
+	},
+};
+
 static const struct iio_info tmp117_info = {
 	.read_raw = tmp117_read_raw,
 	.write_raw = tmp117_write_raw,
@@ -120,14 +136,16 @@ static int tmp117_identify(struct i2c_client *client)
 	dev_id = i2c_smbus_read_word_swapped(client, TMP117_REG_DEVICE_ID);
 	if (dev_id < 0)
 		return dev_id;
-	if (dev_id != TMP117_DEVICE_ID) {
+
+	if ((dev_id != TMP117_DEVICE_ID) && (dev_id != TMP116_DEVICE_ID)) {
 		dev_err(&client->dev, "TMP117 not found\n");
 		return -ENODEV;
 	}
 	return 0;
 }
 
-static int tmp117_probe(struct i2c_client *client)
+static int tmp117_probe(struct i2c_client *client,
+		const struct i2c_device_id *id)
 {
 	struct tmp117_data *data;
 	struct iio_dev *indio_dev;
@@ -148,24 +166,34 @@ static int tmp117_probe(struct i2c_client *client)
 	data->client = client;
 	data->calibbias = 0;
 
-	indio_dev->name = "tmp117";
+	indio_dev->name = id->name;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->info = &tmp117_info;
 
-	indio_dev->channels = tmp117_channels;
-	indio_dev->num_channels = ARRAY_SIZE(tmp117_channels);
+	switch (id->driver_data) {
+	case ID_TMP116:
+		indio_dev->channels = tmp116_channels;
+		indio_dev->num_channels = ARRAY_SIZE(tmp116_channels);
+		break;
+	case ID_TMP117:
+		indio_dev->channels = tmp117_channels;
+		indio_dev->num_channels = ARRAY_SIZE(tmp117_channels);
+		break;
+	}
 
 	return devm_iio_device_register(&client->dev, indio_dev);
 }
 
 static const struct of_device_id tmp117_of_match[] = {
+	{ .compatible = "ti,tmp116", },
 	{ .compatible = "ti,tmp117", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tmp117_of_match);
 
 static const struct i2c_device_id tmp117_id[] = {
-	{ "tmp117", 0 },
+	{ "tmp117", ID_TMP117 },
+	{ "tmp116", ID_TMP116 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, tmp117_id);
@@ -175,7 +203,7 @@ static struct i2c_driver tmp117_driver = {
 		.name	= "tmp117",
 		.of_match_table = tmp117_of_match,
 	},
-	.probe_new	= tmp117_probe,
+	.probe	= tmp117_probe,
 	.id_table	= tmp117_id,
 };
 module_i2c_driver(tmp117_driver);

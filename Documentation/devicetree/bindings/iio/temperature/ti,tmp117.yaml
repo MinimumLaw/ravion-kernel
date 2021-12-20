@@ -18,6 +18,7 @@ properties:
   compatible:
     enum:
       - ti,tmp117
+      - ti,tmp116
 
   reg:
     maxItems: 1
