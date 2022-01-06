@@ -373,13 +373,6 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-#ifdef HSIC_HUB_WITH_I2C
-	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
-		compatible = "usb0424,4604";
-		reg = <1>;
-	};
-#endif /* HSIC_HUB_WITH_I2C */
 };
 
 /*
@@ -391,4 +384,4 @@
 /*
  * Video subsystems
  */
-&hdmi	{	status = "disabled";	};
+&hdmi	{	status = "okay";	}; /* FixMe: boot stopped if disabled!!! */

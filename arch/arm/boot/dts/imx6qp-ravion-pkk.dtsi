@@ -275,6 +275,11 @@
 		compatible = "maxim,ds2482";
 		reg = <0x18>;
 	};
+
+	tmp116@48 {
+		compatible = "ti,tmp116";
+		reg = <0x48>;
+	};
 };
 
 &i2c3 { /* Extended I2C: soDimm 128, 130 */

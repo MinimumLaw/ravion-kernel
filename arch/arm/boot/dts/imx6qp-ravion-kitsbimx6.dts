@@ -10,7 +10,12 @@
  */
 /dts-v1/;
 #include "imx6qp.dtsi"
-#define RASPBERRY_CAMERA_V2
+
+/* Camera module selection */
+#define	NULL_CSI_SOURCE
+#undef	RAVION_ADV7280_CAMERA
+#undef	RASPBERRY_CAMERA_V1
+#undef	RASPBERRY_CAMERA_V2
 
 #include "imx6qdl-ravion-v2.dtsi"
 
@@ -96,7 +101,26 @@
 			vin-supply = <&p3v3_reg>;
 	};
 
-#if defined (RASPBERRY_CAMERA_V2)
+#if defined	(RAVION_ADV7280_CAMERA)
+	/*
+	 * Not any special setting required for ADV7280-M camera
+	 */
+#elif defined	(NULL_CSI_SOURCE)
+	/*
+	 * Simple driver for external controlled MIPI CSI sensor
+	 */
+	null_csi_cource {
+		compatible = "null,csi-source";
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&csi_port_in>;
+				clock-lanes = <0>;
+				data-lanes = <1>;
+			};
+		};
+	};
+#elif defined	(RASPBERRY_CAMERA_V2)
 	imx219_clk: camera-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -129,7 +153,7 @@
 		vin-supply = <&p3v3_reg>;
 		regulator-always-on;
 	};
-#elif defined (RASPBERRY_CAMERA_V1)
+#elif defined	(RASPBERRY_CAMERA_V1)
 	ov5647_xclk: cam_clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -425,7 +449,20 @@
 			#size-cells = <0>;
 			reg = <1>;
 
-#if defined (RASPBERRY_CAMERA_V2)
+#if defined	(RAVION_ADV7280_CAMERA)
+			sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
+				compatible = "adi,adv7280-m";
+				reg = <0x20>;
+
+				port {
+					csi_sensor_out: endpoint {
+						remote-endpoint = <&csi_port_in>;
+						clock-lanes = <0>;
+						data-lanes = <1>;
+					};
+				};
+			};
+#elif defined	(RASPBERRY_CAMERA_V2)
 			sensor@10 {	/* Raspberry Camera V2 */
 				compatible = "sony,imx219";
 				reg = <0x10>;
@@ -447,7 +484,7 @@
 					};
 				};
 			};
-#elif defined (RASPBERRY_CAMERA_V1)
+#elif defined	(RASPBERRY_CAMERA_V1)
 			camera@36 {	/* Raspberry Camera V1.3 */
 				compatible = "ovti,ov5647";
 				reg = <0x36>;
@@ -484,6 +521,7 @@
 	};
 };
 
+
 &mipi_csi {
 	status = "okay";
 
@@ -492,11 +530,14 @@
 		csi_port_in: endpoint {
 			remote-endpoint = <&csi_sensor_out>;
 			clock-lanes = <0>;
+#if (defined(RASPBERRY_CAMERA_V1) || defined(RASPBERRY_CAMERA_V2))
 			data-lanes = <1 2>;
+#elif (defined(RAVION_ADV7280_CAMERA) || defined(NULL_CSI_SOURCE))
+			data-lanes = <1>;
+#endif
 		};
 	};
 };
-
 /*
  * SPI Bus
  */
@@ -553,11 +594,6 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-	hub@1 { /* USB4604: 4 port HUB with HSIC upstream */
-		compatible = "usb0424,4604";
-		reg = <1>;
-	};
 };
 
 /*
