@@ -12,8 +12,8 @@
 #include "imx6qp.dtsi"
 
 /* Camera module selection */
-#define	NULL_CSI_SOURCE
-#undef	RAVION_ADV7280_CAMERA
+#undef	NULL_CSI_SOURCE
+#define	RAVION_ADV7280_CAMERA
 #undef	RASPBERRY_CAMERA_V1
 #undef	RASPBERRY_CAMERA_V2
 

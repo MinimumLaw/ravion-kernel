@@ -502,34 +502,19 @@ static void adv7180_set_reset_pin(struct adv7180_state *state, bool on)
 
 static int adv7180_set_power(struct adv7180_state *state, bool on)
 {
-	u8 val;
 	int ret;
 
-	if (on)
-		val = ADV7180_PWR_MAN_ON;
-	else
-		val = ADV7180_PWR_MAN_OFF;
+	if (on) {
+		ret = adv7180_write(state, ADV7180_REG_PWR_MAN, ADV7180_PWR_MAN_ON);
+	} else {
+		ret = adv7180_write(state, ADV7180_REG_PWR_MAN, ADV7180_PWR_MAN_OFF);
+	}
 
-	ret = adv7180_write(state, ADV7180_REG_PWR_MAN, val);
 	if (ret)
 		return ret;
 
-	if (state->chip_info->flags & ADV7180_FLAG_MIPI_CSI2) {
-		if (on) {
-			adv7180_csi_write(state, 0xDE, 0x02);
-			adv7180_csi_write(state, 0xD2, 0xF7);
-			adv7180_csi_write(state, 0xD8, 0x65);
-			adv7180_csi_write(state, 0xE0, 0x09);
-			adv7180_csi_write(state, 0x2C, 0x00);
-			if (state->field == V4L2_FIELD_NONE)
-				adv7180_csi_write(state, 0x1D, 0x80);
-			adv7180_csi_write(state, 0x00, 0x00);
-		} else {
-			adv7180_csi_write(state, 0x00, 0x80);
-		}
-	}
-
-	return 0;
+	ret = adv7180_csi_write(state, 0x00, 0x80);
+	return ret;
 }
 
 static int adv7180_s_power(struct v4l2_subdev *sd, int on)
@@ -836,7 +821,8 @@ static int adv7180_s_stream(struct v4l2_subdev *sd, int enable)
 	/* It's always safe to stop streaming, no need to take the lock */
 	if (!enable) {
 		state->streaming = enable;
-		return 0;
+		ret = adv7180_csi_write(state, 0x00, 0x80);
+		return ret;
 	}
 
 	/* Must wait until querystd released the lock */
@@ -844,8 +830,9 @@ static int adv7180_s_stream(struct v4l2_subdev *sd, int enable)
 	if (ret)
 		return ret;
 	state->streaming = enable;
+	ret = adv7180_csi_write(state, 0x00, 0x00);
 	mutex_unlock(&state->mutex);
-	return 0;
+	return ret;
 }
 
 static int adv7180_subscribe_event(struct v4l2_subdev *sd,
@@ -1008,6 +995,19 @@ static int adv7182_init(struct adv7180_state *state)
 	}
 
 	adv7180_write(state, 0x0013, 0x00);
+
+	/* Are we really need do this on init state? */
+	if (state->chip_info->flags & ADV7180_FLAG_MIPI_CSI2) {
+		adv7180_csi_write(state, 0xDE, 0x02);
+		adv7180_csi_write(state, 0xD2, 0xF7);
+		adv7180_csi_write(state, 0xD8, 0x65);
+		adv7180_csi_write(state, 0xE0, 0x09);
+		adv7180_csi_write(state, 0x2C, 0x00);
+		/* Force freerun mode */
+		adv7180_write(state, 0x0C, 0x37); /* FreeRun */
+		adv7180_write(state, 0x02, 0x84); /* PAL */
+		adv7180_write(state, 0x14, 0x11); /* Colour Bars */
+	}
 
 	return 0;
 }
@@ -1401,7 +1401,7 @@ static int adv7180_probe(struct i2c_client *client,
 
 	state->irq = client->irq;
 	mutex_init(&state->mutex);
-	state->curr_norm = V4L2_STD_NTSC;
+	state->curr_norm = V4L2_STD_PAL;
 	if (state->chip_info->flags & ADV7180_FLAG_RESET_POWERED)
 		state->powered = true;
 	else
