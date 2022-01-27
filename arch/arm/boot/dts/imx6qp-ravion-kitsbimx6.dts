@@ -516,7 +516,7 @@
 			clock-lanes = <0>;
 #if (defined(RASPBERRY_CAMERA_V1) || defined(RASPBERRY_CAMERA_V2))
 			data-lanes = <1 2>;
-#elif (defined(RAVION_ADV7280_CAMERA)
+#elif defined(RAVION_ADV7280_CAMERA)
 			data-lanes = <1>;
 #endif
 		};
