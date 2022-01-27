@@ -920,9 +920,11 @@ static int adv7182_init(struct adv7280m_state *state)
 		adv7280m_csi_write(state, 0xD8, 0x65);
 		adv7280m_csi_write(state, 0xE0, 0x09);
 		adv7280m_csi_write(state, 0x2C, 0x00);
+#if 0 /* disabled after checking */
 		/* Force freerun mode */
 		adv7280m_write(state, 0x0C, 0x37); /* FreeRun */
 		adv7280m_write(state, 0x14, 0x11); /* Colour Bars */
+#endif
 	}
 
 	return 0;
