@@ -12,7 +12,6 @@
 #include "imx6qp.dtsi"
 
 /* Camera module selection */
-#undef	NULL_CSI_SOURCE
 #define	RAVION_ADV7280_CAMERA
 #undef	RASPBERRY_CAMERA_V1
 #undef	RASPBERRY_CAMERA_V2
@@ -101,26 +100,7 @@
 			vin-supply = <&p3v3_reg>;
 	};
 
-#if defined	(RAVION_ADV7280_CAMERA)
-	/*
-	 * Not any special setting required for ADV7280-M camera
-	 */
-#elif defined	(NULL_CSI_SOURCE)
-	/*
-	 * Simple driver for external controlled MIPI CSI sensor
-	 */
-	null_csi_cource {
-		compatible = "null,csi-source";
-
-		port {
-			csi_sensor_out: endpoint {
-				remote-endpoint = <&csi_port_in>;
-				clock-lanes = <0>;
-				data-lanes = <1>;
-			};
-		};
-	};
-#elif defined	(RASPBERRY_CAMERA_V2)
+#if defined	(RASPBERRY_CAMERA_V2)
 	imx219_clk: camera-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -532,7 +512,7 @@
 			clock-lanes = <0>;
 #if (defined(RASPBERRY_CAMERA_V1) || defined(RASPBERRY_CAMERA_V2))
 			data-lanes = <1 2>;
-#elif (defined(RAVION_ADV7280_CAMERA) || defined(NULL_CSI_SOURCE))
+#elif defined(RAVION_ADV7280_CAMERA)
 			data-lanes = <1>;
 #endif
 		};
