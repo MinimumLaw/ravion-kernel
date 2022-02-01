@@ -10,6 +10,8 @@
  */
 /dts-v1/;
 #include "imx6qp.dtsi"
+
+#define SPI_CS_GPIO
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -324,7 +326,6 @@
 	ks8851@0 {
 		reg = <0>;
 		compatible = "micrel,ks8851";
-		/* FixMe: PME(NU) - soDimm023 (unused) */
 		interrupts-extended = <&gpio2 6 IRQ_TYPE_LEVEL_LOW>;	/* soDimm123 */
 		vdd-supply = <&p5v_reg>;
 		vdd-io-supply = <&p3v3_reg>;

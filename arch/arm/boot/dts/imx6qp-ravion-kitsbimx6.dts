@@ -100,11 +100,7 @@
 			vin-supply = <&p3v3_reg>;
 	};
 
-#if defined	(RAVION_ADV7280_CAMERA)
-	/*
-	 * Not any special setting required for ADV7280-M camera
-	 */
-#elif defined	(RASPBERRY_CAMERA_V2)
+#if defined	(RASPBERRY_CAMERA_V2)
 	imx219_clk: camera-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
