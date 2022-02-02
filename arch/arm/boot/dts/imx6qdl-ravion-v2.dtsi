@@ -362,6 +362,7 @@
 	pinctrl-0 = <&pinctrl_usbhsic_idle>;
 	pinctrl-1 = <&pinctrl_usbhsic_active>;
 	hsic-supply = <&vgen1_reg>;
+	dr_mode = "host";
 	disable-over-current;
 	status = "disabled";
 };
