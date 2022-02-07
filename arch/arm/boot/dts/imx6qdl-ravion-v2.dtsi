@@ -352,7 +352,7 @@
 
 &usbh1 { /* Host interface - default enabled (always connected to HUB) */
 	disable-over-current;
-	maximum-speed = "full-speed";
+	maximum-speed = "high-speed";
 	dr_mode = "host";
 	status = "okay";
 };
@@ -370,7 +370,7 @@
 &usbotg { /* ITG interface - default enabled */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
-	maximum-speed = "full-speed";
+	maximum-speed = "high-speed";
 	dr_mode = "otg";
 	status = "okay";
 };
