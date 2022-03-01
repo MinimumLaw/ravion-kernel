@@ -142,34 +142,6 @@
 	};
 #endif /* RASPBERRY_CAMERA */
 
-	gpio-keys {
-		compatible = "gpio-keys";
-
-		power {
-			label = "Power";
-			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
-								/*  FixMe: without patch soDimm 127,  &gpio2 8 */
-			linux,code = <KEY_POWER>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-	};
-
-	gpio-leds {
-		compatible = "gpio-leds";
-
-		reset_out {
-			label = "nRESET_OUT";
-			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm 121 */
-			default-state = "on";
-		};
-	};
-
-	gpio-poweroff {
-		compatible = "gpio-poweroff";
-		gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;		/* soDimm 133 */
-	};
-
 	/* External sound subsystem (codec #2) */
 	ext_sound {
 		compatible = "fsl,imx6-ravion-sgtl5000",
