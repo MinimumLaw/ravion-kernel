@@ -66,14 +66,6 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		power {
-			label = "Power";
-			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
-			linux,code = <KEY_POWER>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
 		tangenta {
 			label = "Tangenta";
 			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
@@ -138,11 +130,6 @@
 
 	gpio-leds {
 		compatible = "gpio-leds";
-		nreset {
-			label = "sys::nReset";
-			gpio = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
-			default-state = "off";
-		};
 
 		lcd_cs {
 			label = "lcd::CS";
@@ -199,11 +186,6 @@
 		};
 	};
 
-	gpio-poweroff {
-		compatible = "gpio-poweroff";
-		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
-	};
-
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio2 4 GPIO_ACTIVE_LOW>; /* soDimm  119 */
@@ -212,7 +194,6 @@
 		default-brightness-level = <9>;
 		status = "okay";
 	};
-
 };
 
 /*
