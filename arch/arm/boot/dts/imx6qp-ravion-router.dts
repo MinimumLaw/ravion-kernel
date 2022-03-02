@@ -82,14 +82,6 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		power {
-			label = "Power";
-			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm 125 */
-			linux,code = <KEY_POWER>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
 		state {
 			label = "State";
 			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
@@ -176,17 +168,6 @@
 			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
 			default-state = "on";
 		};
-
-		sys_reset {
-			label = "sys::nRESET";
-			gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;	/* soDimm 121 */
-			default-state = "off";
-		};
-	};
-
-	gpio-poweroff {
-		compatible = "gpio-poweroff";
-		gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;		/* soDimm 127 */
 	};
 };
 
