@@ -2,7 +2,7 @@
 
 export ARCH=arm64
 # Name board(s) DTB file(s)
-export DTBS="${DTBS} freescale/imx8mq-evk.dtb"
+export DTBS="${DTBS} freescale/imx8mq-ravion-rhos.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     # defconfig name
