@@ -19,7 +19,7 @@
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	gpio-leds { /* rotate panel */
-		lcd_cs		{ default-state = "on"; };
+		lcd_cs		{ default-state = "off"; };
 		touch_cs	{ default-state = "on"; };
 	};
 
