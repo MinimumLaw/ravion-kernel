@@ -399,13 +399,11 @@ static int sst25l_probe(struct spi_device *spi)
 	return 0;
 }
 
-static int sst25l_remove(struct spi_device *spi)
+static void sst25l_remove(struct spi_device *spi)
 {
 	struct sst25l_flash *flash = spi_get_drvdata(spi);
 
 	WARN_ON(mtd_device_unregister(&flash->mtd));
-
-	return 0;
 }
 
 static const struct of_device_id sst25l_of_match[] = {
