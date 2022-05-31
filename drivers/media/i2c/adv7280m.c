@@ -760,9 +760,8 @@ static int adv7280m_get_mbus_config(struct v4l2_subdev *sd,
 
 	if (state->chip_info->flags & ADV7280M_FLAG_MIPI_CSI2) {
 		cfg->type = V4L2_MBUS_CSI2_DPHY;
-		cfg->flags = V4L2_MBUS_CSI2_1_LANE |
-				V4L2_MBUS_CSI2_CHANNEL_0 |
-				V4L2_MBUS_CSI2_CONTINUOUS_CLOCK;
+		cfg->bus.mipi_csi2.num_data_lanes = 1;
+		cfg->bus.mipi_csi2.flags = 0;
 	}
 
 	return 0;
