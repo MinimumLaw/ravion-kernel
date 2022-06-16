@@ -2,17 +2,17 @@
 
 export ARCH=arm64
 # Name board(s) DTB file(s)
-export DTBS="${DTBS} freescale/imx8mq-ravion-rhos.dtb"
+export DTBS="${DTBS} ravion/imx8mq-rhos-ravion.dtb ravion/skif-rhos-kitsbimx8.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     # defconfig name
-    export DEFCONFIG=ravion_defconfig
+    export DEFCONFIG=rhos_defconfig
 fi
 if [ -z ${CROSS_COMPILE} ]; then
     export CROSS_COMPILE=aarch64-linux-gnu-
 fi
 if [ -z ${ROOT_FS_PATH} ]; then
-    export ROOT_FS_PATH=/cimc/root/arm64-gentoo
+    export ROOT_FS_PATH=/cimc/root/gentoo-arm64
 fi;
 if [ -z ${TFTP_FS_PATH} ]; then
     export TFTP_FS_PATH=/cimc/exporttftp
@@ -25,7 +25,7 @@ export SUDO=sudo
 
 if [ -z "$*" ]; then
     [ -f .config ] || make ${DEF_ARGS} ${DEFCONFIG}
-    make ${DEF_ARGS} ${DEF_TARGET}
+    make ${DEF_ARGS} ${DEF_TARGET} || exit $?
     echo -n Cleanup old modules...
     ${SUDO} rm -rf ${ROOT_FS_PATH}/lib/modules/* && echo OK || echo FAIL
     ${SUDO} make ${DEF_ARGS} modules_install
