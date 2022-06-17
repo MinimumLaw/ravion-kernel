@@ -168,8 +168,6 @@
 	 */
 	sdhci-caps-mask = <0x7 0x4200000>;
 	sdhci-caps = <0x0 0x0>;
-
-	/* SDIO_WP is not connected on Rock Pi N10 */
 	disable-wp;
 	non-removable;
 };

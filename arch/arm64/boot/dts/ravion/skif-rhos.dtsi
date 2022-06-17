@@ -121,6 +121,12 @@
 	vqmmc-supply = <&p1v8_sw4>;
 };
 
+/* SD Card */
+&sdhci1 {
+	xlnx,fails-without-test-cd;
+	status = "okay";
+};
+
 /*
  * Ethernet
  */
