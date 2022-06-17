@@ -2349,6 +2349,31 @@ static const struct panel_desc winstar_wf35ltiacd = {
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
 };
 
+static const struct drm_display_mode raspberrypi_7inch_mode = {
+	.clock = 27000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 50,
+	.hsync_end = 800 + 50 + 20,
+	.htotal = 800 + 50 + 20 + 40,
+	.vdisplay = 480,
+	.vsync_start = 480 + 7,
+	.vsync_end = 480 + 7 + 2,
+	.vtotal = 480 + 7 + 2 + 5,
+	.vrefresh = 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc raspberrypi_7inch = {
+	.modes = &raspberrypi_7inch_mode,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 154,
+		.height = 86,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+};
+
 static const struct of_device_id platform_of_match[] = {
 	{
 		.compatible = "ampire,am-480272h3tmqw-t01h",
@@ -2537,6 +2562,9 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "qiaodian,qd43003c0-40",
 		.data = &qd43003c0_40,
 	}, {
+		.compatible = "raspberrypi,7inch-dsi",
+		.data = &raspberrypi_7inch,
+	}, {
 		.compatible = "rocktech,rk070er9427",
 		.data = &rocktech_rk070er9427,
 	}, {
@@ -2675,6 +2703,34 @@ static const struct panel_desc_dsi auo_b080uan01 = {
 	.lanes = 4,
 };
 
+static const struct drm_display_mode auo_b101uan01_mode = {
+	.clock = 148500,
+	.hdisplay = 1920,
+	.hsync_start = 1920 + 34,
+	.hsync_end = 1920 + 34 + 32,
+	.htotal = 1920 + 34 + 32 + 66,
+	.vdisplay = 1200,
+	.vsync_start = 1200 + 2,
+	.vsync_end = 1200 + 2 + 2,
+	.vtotal = 1200 + 2 + 2 + 2,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc_dsi auo_b101uan01 = {
+	.desc = {
+		.modes = &auo_b101uan01_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 216,
+			.height = 135,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 4,
+};
+
 static const struct drm_display_mode boe_tv080wum_nl0_mode = {
 	.clock = 160000,
 	.hdisplay = 1200,
@@ -2794,6 +2850,9 @@ static const struct of_device_id dsi_of_match[] = {
 	{
 		.compatible = "auo,b080uan01",
 		.data = &auo_b080uan01
+	}, {
+		.compatible = "auo,b101uan01",
+		.data = &auo_b101uan01
 	}, {
 		.compatible = "boe,tv080wum-nl0",
 		.data = &boe_tv080wum_nl0
