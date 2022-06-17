@@ -1,0 +1,373 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2021 RnD Center "ELVEES", JSC
+ * Copyrighr 2022 Radioavionica Corp
+ */
+
+/dts-v1/;
+
+#include "skif-rhos.dtsi"
+
+/ {
+	model = "SKIF-RHOS module on KitSBiMX8 board";
+	compatible = "ravion,skif-rhos-kitsbimx8",
+		     "ravion,skif-rhos",
+		     "elvees,mcom03";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* from 2 - 0,1 on CPU module */
+	p15v_in: regulator@2 {
+		compatible = "regulator-fixed";
+		regulator-name = "p15v_in";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator@3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p5v: regulator@4 {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator@5 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	avcc: regulator@6 {
+		compatible = "regulator-fixed";
+		regulator-name = "avcc";
+		vin-supply = <&p5v>;
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		regulator-always-on;
+	};
+
+	codec_mclk: fixed-clock { /* XP40, XP41 - both removed  */
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12288000>;
+	};
+
+	/*
+         * Video output(s)
+         */
+#if !defined DISABLE_MIPI
+	panel {	/* LVDS */
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+		/* backlight = <&backlight>;  add later */
+		data-mapping = "jeida-24"; /* "jeida-18", "vesa-24" */
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds_out>;
+			};
+		};
+	};
+#endif
+	hdmi: connector {	/* HDMI */
+		compatible = "hdmi-connector";
+		label = "hdmi";
+
+		type = "a";
+
+		port {
+			hdmi_connector_in: endpoint {
+				remote-endpoint = <&hdmi_tx>;
+			};
+		};
+	};
+
+	soundcard@0 {
+		compatible = "mcom03,sound-sgtl5000";
+		model = "SGTL5000 codec";
+	};
+};
+
+&hdmi_tx {
+	remote-endpoint = <&hdmi_connector_in>;
+};
+
+/* Dedicated console, connected to FT232 on KiTSBiMX8 */
+&uart0 { status = "okay"; };
+
+/* General purpose uarts */
+&uart1 { status = "okay"; };
+&uart2 { status = "okay"; };
+
+#ifdef DISABLE_BLUETOOTH
+&uart3 { status = "okay"; };
+#else
+&uart3 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM */
+		compatible = "ti,wl1271-st";
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_enable>;
+		enable-gpios = <&gpio0b 3 GPIO_ACTIVE_HIGH>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+#endif
+
+/* Connected to MicroSD card */
+&sdhci1 {
+	status = "okay";
+
+	/* Disable High Speed support
+	 * Disable 1.8V support
+	 * Disable SDR50, SDR104 and DDR50 support
+	 */
+	sdhci-caps-mask = <0x7 0x4200000>;
+	sdhci-caps = <0x0 0x0>;
+
+	/* SDIO_WP is not connected on Rock Pi N10 */
+	disable-wp;
+	non-removable;
+};
+
+/* Connected to USB 3.0 Type-C */
+&usb0 {
+	status = "okay";
+};
+
+/* Connected to RJ-45 */
+&emac0 {
+	status = "okay";
+};
+
+/* Connected to M.2 slot */
+&pcie1 {
+	status = "okay";
+};
+
+
+&emac0 {
+	phy-handle = <&ethernet_phy0>;
+	reset-gpios = <&gpio1b 3 GPIO_ACTIVE_LOW>;
+	reset-post-delay-us = <200>;
+
+	ethernet_phy0: ethernet-phy@1 {
+		reg = <0x1>;
+	};
+};
+
+&emac1 {
+	status = "disabled";
+};
+
+&dp {	/* ARM,MALI-DP550 */
+	status = "okay";
+};
+
+&display_encoder {
+#if defined DISABLE_MIPI
+	video-output = "rgb"; /* select "rgb" or "dsi" */
+#else
+	video-output = "dsi";
+#endif
+	status = "okay";
+};
+
+#if !defined DISABLE_MIPI
+&dsi_out	{	remote-endpoint = <&dsi_in>;	};
+#endif
+&rgb_out	{	remote-endpoint = <&adv7511_in>;};
+
+/*
+ * I2C devices
+ */
+&i2c0 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
+	status = "okay";
+
+	i2c-switch@7C {
+		compatible = "ti,tca9846", "nxp,pca9846";
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c_mux_reset>;
+ 		reset-gpios = <&gpio0c 5 GPIO_ACTIVE_LOW>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>;
+
+		/* Sub-buses in a mux doesn't respect status property, so they
+		 * are always enabled. */
+
+		i2c_m2: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_pcie: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_camera: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c_lvds: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+&i2c1 { /* can be diabled on XP68 jumpers removed */
+	eeprom@50 {
+		compatible = "microchip,24c08", "atmel,24c08";
+		reg = <0x50>;
+	};
+#if !defined DISABLE_MIPI
+	sn65dsi83@2d {
+		compatibe = "ti,sn65dsi83";
+		reg = <0x2d>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				dsi_in: endpoint {
+					remote-endpoint = <&dsi_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
+	};
+#endif
+};
+
+&i2c2 {  /* XP67 1-2, 3-4 closed */
+	status = "okay";
+
+	rtc0: ds1342@68 {
+		compatible = "dallas,ds1341";
+		reg = <0x68>;
+		status = "okay";
+	};
+#if 0
+	/* NU This time */
+	usb-hub@2d { /* can be disabled on XP76 jumpers removed */
+		reg = <0x2d>;
+	};
+#endif
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+		clocks = <&codec_mclk 0>;
+		VDDA-supply = <&avcc>;
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&p3v3>;
+		status = "okay";
+	};
+
+};
+
+&spi0 {
+#if 1	/* XP71 1-2 */
+	s25fl256@0 {
+		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
+		reg = <0>;
+		spi-max-frequency = <54000000>;
+	};
+#else	/* XP71 2-3 */
+	mcp2518@0 {
+		compatible = "microchip,mcp2518fd", "microchip,mcp2515";
+		reg = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&can_int_req>, <&can_rxint_req>;
+		spi-max-frequency = <54000000>;
+		interrupts-extended = <&gpio0a 5 IRQ_TYPE_LEVEL_LOW>;
+/*		microchip,rx-int-gpios = <&gpio1a 6 GPIO_ACTIVE_LOW>; */
+	};
+#endif
+};
+
+/*
+ * Device specific pincontrol
+ */
+&lsperiph0_pinctrl {
+	i2c_mux_reset: i2c-mux-reset {
+		pins = "GPIOC_5";
+		bias-pull-up;
+	};
+
+	bt_enable: bt-enable {
+		pins = "GPIOB_3";
+		bias-pull-up;
+	};
+
+	can_int_req: can-int {
+		pins = "GPIOA_5";
+		bias-pull-up;
+	};
+};
+
+&lsperiph0_pinctrl {
+	can_rxint_req: can-rx-int {
+		pins = "GPIOA_6";
+		bias-pull-up;
+	};
+};
