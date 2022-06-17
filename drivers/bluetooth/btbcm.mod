@@ -1,2 +1,0 @@
-drivers/bluetooth/btbcm.o
-
