@@ -1241,7 +1241,7 @@ static int anfc_nand_chip_init(struct anfc_nand_controller *nfc,
 
 	anand_chip->spktsize = SDR_MODE_PACKET_SIZE;
 
-	ret = nand_scan(mtd, 1);
+	ret = nand_scan(chip, 1);
 	if (ret) {
 		dev_err(nfc->dev, "nand_scan_tail for NAND failed\n");
 		return ret;
@@ -1347,7 +1347,7 @@ static int anfc_probe(struct platform_device *pdev)
 
 nandchip_clean_up:
 	list_for_each_entry(anand_chip, &nfc->chips, node)
-		nand_release(nand_to_mtd(&anand_chip->chip));
+		nand_release(&anand_chip->chip);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 	reset_control_assert(nfc->rst);
@@ -1365,7 +1365,7 @@ static int anfc_remove(struct platform_device *pdev)
 	struct anfc_nand_chip *anand_chip;
 
 	list_for_each_entry(anand_chip, &nfc->chips, node)
-		nand_release(nand_to_mtd(&anand_chip->chip));
+		nand_release(&anand_chip->chip);
 
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
