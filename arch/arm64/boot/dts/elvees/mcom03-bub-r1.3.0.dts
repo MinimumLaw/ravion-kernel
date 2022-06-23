@@ -36,6 +36,16 @@
 	status = "okay";
 };
 
+/* Wired to PBD connector */
+&uart1 {
+	status = "okay";
+};
+
+/* Wired to PBD connector */
+&uart2 {
+	status = "okay";
+};
+
 &sdhci0 {
 	status = "okay";
 
@@ -51,6 +61,18 @@
 	non-removable;
 	bus-width = <8>;
 	vqmmc-supply = <&sdhci1_supply>;
+};
+
+&emac0_default {
+	tx_data {
+		groups = "emac0_tx";
+		drive-strength = <12>;
+	};
+
+	txc {
+		pins = "EMAC0_RGMII_TXC";
+		drive-strength = <8>;
+	};
 };
 
 &emac0 {
@@ -72,6 +94,18 @@
 		txc-skew-ps = <1860>;
 		interrupt-parent = <&gpio1a>;
 		interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+	};
+};
+
+&emac1_default {
+	tx_data {
+		groups = "emac1_tx";
+		drive-strength = <12>;
+	};
+
+	txc {
+		pins = "EMAC1_RGMII_TXC";
+		drive-strength = <8>;
 	};
 };
 
@@ -117,13 +151,29 @@
 	};
 };
 
-&qspi {
+&qspi0 {
+	status = "okay";
+
+	flash0: s25fl128s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor", "spi-flash";
+		reg = <0x0>;
+		/* The data transfer is not stable at a higher frequency on
+		 * MCom-03 BuB with SPI flash connected via PLS. */
+		spi-max-frequency = <14000000>;
+	};
+};
+
+&qspi1 {
 	status = "okay";
 };
 
 &i2c0 {
 	clock-frequency = <400000>;
 	status = "okay";
+
+	pinctrl-0 = <&i2c0_mux_data &i2c0_mux_smbalert &i2c0_mux_smbus>;
 };
 
 &i2c1 {
@@ -206,4 +256,16 @@
 		gpios = <1 GPIO_ACTIVE_HIGH>;
 		output-high;
 	};
+};
+
+&csi0 {
+	status = "okay";
+	reset_gpio = <&gpio0a 4 GPIO_ACTIVE_HIGH>;
+	pwdn_gpio = <&gpio0a 5 GPIO_ACTIVE_HIGH>;
+};
+
+&csi1 {
+	status = "okay";
+	reset_gpio = <&gpio0a 4 GPIO_ACTIVE_HIGH>;
+	pwdn_gpio = <&gpio0a 5 GPIO_ACTIVE_HIGH>;
 };

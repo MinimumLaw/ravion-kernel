@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2021 RnD Center "ELVEES", JSC
+ * Copyright 2022 RnD Center "ELVEES", JSC
  */
 
 /dts-v1/;
@@ -12,12 +12,12 @@
 #include "mcom03.dtsi"
 
 / {
-	model = "ELV-MC03-SMARC r1.0";
-	compatible = "elvees,elvmc03smarc-r1.0",
-		     "elvees,elvmc03smarc",
+	model = "EGW-PM r1.0";
+	compatible = "elvees,egwpm-r1.0",
+		     "elvees,egwpm",
 		     "elvees,mcom03";
 
-	elvmc03smarc-leds {
+	egwpm-leds {
 		compatible = "gpio-leds";
 
 		red {
@@ -72,18 +72,12 @@
 };
 
 &gpio0b {
-	gpio-line-names = "GPIO12", "LED_GREEN", "PCIE_A_RST#", "SATA_PERST#",
+	gpio-line-names = "GPIO12", "LED_GREEN", "PCIE_A_RST#", "",
 		"GPIO11", "SER3_RX", "SER3_TX", "SER2_RX";
 
 	pci-perstn {
 		gpio-hog;
 		gpios = <2 GPIO_ACTIVE_HIGH>;
-		output-high;
-	};
-
-	sata-perstn {
-		gpio-hog;
-		gpios = <3 GPIO_ACTIVE_HIGH>;
 		output-high;
 	};
 };
@@ -104,31 +98,24 @@
 	};
 };
 
-&lsperiph1_pinctrl {
-	hdmi_int: hdmi-int {
-		pins = "GPIOA_6";
-		input-enable;
-	};
-};
-
 &gpio1a {
 	gpio-line-names = "I2C1_SCL", "I2C1_SDA", "I2C2_SCL", "I2C2_SDA",
-		"I2C3_SCL", "I2C3_SDA", "HDMI_INT", "RTC_INT";
+		"", "", "", "RTC_INT";
 };
 
 &gpio1b {
-	gpio-line-names = "HDMI_SCLK", "HDMI_LRCLK", "HDMI_I2S0", "TEST#",
-		"HDMI_PD", "PFSOB", "SER1_TX", "SER1_RX";
+	gpio-line-names = "", "", "", "TEST#",
+		"", "PFSOB", "SER1_TX", "SER1_RX";
 };
 
 &gpio1c {
-	gpio-line-names = "CAM0_PWR#", "GPIO4", "CAM0_RST#", "CAM1_RST#",
-		"CAM1_PWR#", "CARRIER_PWR_ON", "FORCE_RECOV#", "SLEEP#";
+	gpio-line-names = "GPIO0", "GPIO4", "GPIO2", "GPIO3",
+		"GPIO1", "CARRIER_PWR_ON", "FORCE_RECOV#", "SLEEP#";
 };
 
 &gpio1d {
 	gpio-line-names = "CARRIER_STBY#", "", "PWM_OUT", "LCD0_BKLT_PWM",
-		"LCD0_BKLT_EN", "PSTANDBY", "GPIO6", "RESET_OUT#";
+		"", "PSTANDBY", "GPIO6", "RESET_OUT#";
 };
 
 &hsperiph_pinctrl {
@@ -151,32 +138,22 @@
 };
 
 &i2c1 {
-	/* Not all devices are checked to 400kHz support */
-	clock-frequency = <100000>;
+	clock-frequency = <400000>;
 	status = "okay";
 
-	adv7513: hdmi@39 {
-		compatible = "adi,adv7513";
-		status = "disabled";
-		reg = <0x39>, <0x3f>;
-		reg-names = "main", "edid";
-		interrupt-parent = <&gpio1a>;
-		interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
-		adi,input-depth = <8>;
-		adi,input-colorspace = "rgb";
-		adi,input-clock = "1x";
-		#address-cells = <1>;
-		#size-cells = <0>;
+	rtc@32 {
+		compatible = "microcrystal,rv8803";
+		reg = <0x32>;
+	};
+};
 
-		pinctrl-names = "default";
-		pinctrl-0 = <&hdmi_int>;
+i2c_gp: &i2c2 {
+	status = "okay";
+	clock-frequency = <400000>;
 
-		port@0 {
-			reg = <0>;
-			adv7513_in: endpoint {
-				remote-endpoint = <&rgb_out>;
-			};
-		};
+	eeprom@50 {
+		compatible = "microchip,24c32", "atmel,24c32";
+		reg = <0x50>;
 	};
 };
 
@@ -203,88 +180,5 @@
 		ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_50_NS>;
 		ti,tx-internal-delay = <DP83867_RGMIIDCTL_2_50_NS>;
 		ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
-	};
-};
-
-&display_encoder {
-	ports {
-		port@2 {
-			reg = <2>;
-
-			rgb_out: endpoint {
-				remote-endpoint = <&adv7513_in>;
-			};
-		};
-	};
-};
-
-i2c_gp: &i2c2 {
-	status = "okay";
-	clock-frequency = <400000>;
-
-	eeprom@50 {
-		compatible = "microchip,24c32", "atmel,24c32";
-		reg = <0x50>;
-	};
-};
-
-&i2c3 {
-	status = "okay";
-
-	/* On MCom-03 video sensors are handled by userspace drivers and are
-	 * not described in DeviceTree. Limit clock-frequency to 100 kHz because
-	 * this is maximum frequency for many sensors (for example OV5647). */
-	clock-frequency = <100000>;
-
-	i2c-switch@70 {
-		compatible = "ti,tca9546", "nxp,pca9546";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-
-		/* Sub-buses in a mux doesn't respect status property, so they
-		 * are always enabled. */
-
-		i2c_cam0: i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-		};
-
-		i2c_cam1: i2c@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c_lcd: i2c@2 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-	};
-};
-
-/* PCIe0 is connected to SATA controller. Should be enabled in carrier DTS. */
-sata: &pcie0 { };
-
-/* Serial port definitions for SMARC */
-ser1: &uart0 { };
-ser2: &uart2 { };
-ser3: &uart1 { };
-
-&qspi0 {
-	status = "okay";
-
-	flash0: s25fl128s@0 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "jedec,spi-nor", "spi-flash";
-		reg = <0x0>;
-		/* This is the highest frequency at which all commands are
-		 * supported by the flash device.
-		 */
-		spi-max-frequency = <66000000>;
-		m25p,fast-read;
 	};
 };

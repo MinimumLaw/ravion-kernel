@@ -14,6 +14,21 @@
 #define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
 #define DISABLE_BLUETOOTH	/* debug only - need sure USART3 work OK */
 
+/* quick fixups */
+/ {
+	sdr {
+		pcie {
+			dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
+		};
+	};
+};
+
+&hsperiph_ucg0 {
+	dma32 {
+		dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
+	};
+};
+
 / {
 	model = "RHOS-SKIF";
 	compatible = "ravion,rhos-skif",
@@ -23,7 +38,7 @@
 	aliases {
 	    spi0 = &spi0;
 	    spi1 = &spi1;
-	    spi2 = &qspi;
+	    spi2 = &qspi0;
 	};
 
 	vgen_3v3: regulator@0 { /* source volatege */
@@ -109,7 +124,18 @@
  * Storage devices
  */
 /* QSPI */
-&qspi	{	status = "okay";	};
+&qspi0 {
+	status = "okay";
+
+	flash0: s25fl256s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor", "spi-flash";
+		reg = <0x0>;
+		spi-max-frequency = <66000000>;
+		m25p,fast-read;
+	};
+};
 
 /* eMMC */
 &sdhci0 {
@@ -121,18 +147,21 @@
 	vqmmc-supply = <&p1v8_sw4>;
 };
 
+/* SD Card */
+&sdhci1 {
+	xlnx,fails-without-test-cd;
+	status = "okay";
+};
+
 /*
  * Ethernet
  */
 &emac0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&emac0_default>;
-
-	phy-handle = <&ethernet_phy0>;
+	phy-handle = <&ethernet_phy>;
 	reset-gpios = <&gpio1b 3 GPIO_ACTIVE_LOW>;
 	reset-post-delay-us = <200>;
 
-	ethernet_phy0: ethernet-phy@1 {
+	ethernet_phy: ethernet-phy@1 {
 		reg = <0x1>;
 	};
 };
@@ -177,10 +206,10 @@
 
 /*
  * Graphics (capture) - NU this time
- *
-&csi0 {
+ */
+&csi0 {	/* is this really used anywhere??? */
 	status = "okay";
-}; */
+};
 
 /*
  * InterIcCommunication - I2C
@@ -256,7 +285,85 @@
 	};
 };
 
-/* i2c4 will be added after start working */
+/*
+ * qlic irq controller can be found in out-off-tree drivers
+ */
+&i2c4 {
+	clock-frequency = <100000>;
+	status = "okay";
+
+	pfuze100: pmic@8 {
+		compatible = "fsl,pfuze100";
+		reg = <0x08>;
+		status = "okay";
+
+		regulators {
+			P0V9_SW1: sw1ab { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V1_SW2: sw2 { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+				status = "okay";
+			};
+
+			P1V8_SW4: sw4 { /* MPU, ETH VDDIO, PCIe clock gen */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			VDDREFDDR: vrefddr { /* DDR */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V5_VGEN1: vgen1 { /* PCIe clock gen IO */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P0V9_VGEN2: vgen2 { /* USB, MIPI */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V8_VGEN3: vgen3 { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V8_VGEN4: vgen4 { /* MPU, SDR/PCIe */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P2V8_VGEN6: vgen6 { /* en sw P3V3 => GEN_3V3 */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+
+	P0V9_CVDD: tps628691@48 { /* 0.850V */
+		compatible = "ti,tps62869";
+		reg = <0x48>;
+		status = "okay";
+	};
+
+	P0V9_MVDD: tps628691@41 { /* 0.900V */
+		compatible = "ti,tps62869";
+		reg = <0x41>;
+		status = "okay";
+	};
+
+	P0V9_AVDD: tps628691@42 { /* 0.950V */
+		compatible = "ti,tps62869";
+		reg = <0x42>;
+		status = "okay";
+	};
+};
 
 /*
  * Serial Peripheral Interface (where??? NU this time?)

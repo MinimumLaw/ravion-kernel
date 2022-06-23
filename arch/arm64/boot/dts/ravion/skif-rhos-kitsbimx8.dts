@@ -168,8 +168,6 @@
 	 */
 	sdhci-caps-mask = <0x7 0x4200000>;
 	sdhci-caps = <0x0 0x0>;
-
-	/* SDIO_WP is not connected on Rock Pi N10 */
 	disable-wp;
 	non-removable;
 };
@@ -228,7 +226,7 @@
 &i2c0 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
 	status = "okay";
 
-	i2c-switch@71 {
+	i2c-switch@7C {
 		compatible = "ti,tca9846", "nxp,pca9846";
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_mux_reset>;
