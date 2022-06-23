@@ -14,6 +14,10 @@
 #define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
 #define DISABLE_BLUETOOTH	/* debug only - need sure USART3 work OK */
 
+/* quick fixups */
+&dma32@0 {	dma-ranges; /* Why dma-ranges = <0 0 8 0 1 0>; in mcom03.dtsi ??? */ };
+&pcie@0 {	dma-ranges; /* Why dma-ranges = <0 0 8 0 1 0>; in mcom03.dtsi ??? */ };
+
 / {
 	model = "RHOS-SKIF";
 	compatible = "ravion,rhos-skif",
@@ -23,7 +27,7 @@
 	aliases {
 	    spi0 = &spi0;
 	    spi1 = &spi1;
-	    spi2 = &qspi;
+	    spi2 = &qspi0;
 	};
 
 	vgen_3v3: regulator@0 { /* source volatege */
@@ -109,7 +113,18 @@
  * Storage devices
  */
 /* QSPI */
-&qspi	{	status = "okay";	};
+&qspi0 {
+	status = "okay";
+
+	flash0: s25fl256s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor", "spi-flash";
+		reg = <0x0>;
+		spi-max-frequency = <66000000>;
+		m25p,fast-read;
+	};
+};
 
 /* eMMC */
 &sdhci0 {
@@ -131,11 +146,11 @@
  * Ethernet
  */
 &emac0 {
-	phy-handle = <&ethernet_phy0>;
+	phy-handle = <&ethernet_phy>;
 	reset-gpios = <&gpio1b 3 GPIO_ACTIVE_LOW>;
 	reset-post-delay-us = <200>;
 
-	ethernet_phy0: ethernet-phy@1 {
+	ethernet_phy: ethernet-phy@1 {
 		reg = <0x1>;
 	};
 };
