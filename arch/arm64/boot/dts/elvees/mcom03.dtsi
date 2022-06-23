@@ -18,7 +18,8 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
-		spi0 = &qspi;
+		spi0 = &qspi0;
+		spi1 = &qspi1;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
 		i2c2 = &i2c2;
@@ -215,6 +216,18 @@
 			interrupts = <37>;
 			i2c-sda-hold-time-ns = <300>;
 			status = "disabled";
+		};
+
+		qspi0: spi@1ff00000 {
+			status = "disabled";
+			compatible = "silvaco,axi-qspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0 0x1ff00000 0 0x10000>;
+			clock-names = "clk_axi", "clk_ext";
+			clocks = <&service_ucg1 SERVICE_QSPI0_CLK>,
+				 <&service_ucg1 SERVICE_QSPI0_EXT_CLK>;
+			num-cs = <4>;
 		};
 	};
 
@@ -714,6 +727,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+		dma-ranges;
 
 		spram: spram@0 {
 			compatible = "mmio-sram";
@@ -910,44 +924,52 @@
 			#clock-cells = <1>;
 		};
 
-		emac0: ethernet@10200000 {
-			compatible = "elvees,arasan-gemac";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0 0x10200000 0 0x1000>;
-			clocks = <&hsperiph_ucg0 HSP_EMAC0_CLK>,
-				 <&hsperiph_ucg2 HSP_EMAC0_RGMII_TXC>;
-			clock-names = "busclk", "txc";
-			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&hsperiph_reset HSPERIPH_RST_EMAC0>;
-			elvees,ctrl-id = <0>;
-			arasan,desc-pool = <&emac_desc_pool>;
-			arasan,axi-bus-width64;
-			phy-mode = "rgmii";
-			status = "disabled";
+		dma32@0 {
+			compatible = "elvees,mcom03-dma32", "simple-bus";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			dma-ranges = <0 0 8 0 1 0>;
 
-			pinctrl-names = "default";
-			pinctrl-0 = <&emac0_default>;
-		};
+			emac0: ethernet@10200000 {
+				compatible = "elvees,arasan-gemac";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0 0x10200000 0 0x1000>;
+				clocks = <&hsperiph_ucg0 HSP_EMAC0_CLK>,
+					 <&hsperiph_ucg2 HSP_EMAC0_RGMII_TXC>;
+				clock-names = "busclk", "txc";
+				interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&hsperiph_reset HSPERIPH_RST_EMAC0>;
+				elvees,ctrl-id = <0>;
+				arasan,desc-pool = <&emac_desc_pool>;
+				arasan,axi-bus-width64;
+				phy-mode = "rgmii";
+				status = "disabled";
 
-		emac1: ethernet@10210000 {
-			compatible = "elvees,arasan-gemac";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0 0x10210000 0 0x1000>;
-			clocks = <&hsperiph_ucg0 HSP_EMAC1_CLK>,
-				 <&hsperiph_ucg2 HSP_EMAC1_RGMII_TXC>;
-			clock-names = "busclk", "txc";
-			interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&hsperiph_reset HSPERIPH_RST_EMAC1>;
-			elvees,ctrl-id = <1>;
-			arasan,desc-pool = <&emac_desc_pool>;
-			arasan,axi-bus-width64;
-			phy-mode = "rgmii";
-			status = "disabled";
+				pinctrl-names = "default";
+				pinctrl-0 = <&emac0_default>;
+			};
 
-			pinctrl-names = "default";
-			pinctrl-0 = <&emac1_default>;
+			emac1: ethernet@10210000 {
+				compatible = "elvees,arasan-gemac";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0 0x10210000 0 0x1000>;
+				clocks = <&hsperiph_ucg0 HSP_EMAC1_CLK>,
+					 <&hsperiph_ucg2 HSP_EMAC1_RGMII_TXC>;
+				clock-names = "busclk", "txc";
+				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&hsperiph_reset HSPERIPH_RST_EMAC1>;
+				elvees,ctrl-id = <1>;
+				arasan,desc-pool = <&emac_desc_pool>;
+				arasan,axi-bus-width64;
+				phy-mode = "rgmii";
+				status = "disabled";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&emac1_default>;
+			};
 		};
 
 		sdhci0: sdhci0@10220000 {
@@ -1026,7 +1048,7 @@
 			status = "disabled";
 		};
 
-		qspi: spi@10260000 {
+		qspi1: spi@10260000 {
 			compatible = "silvaco,axi-qspi";
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1035,7 +1057,6 @@
 			clocks = <&hsperiph_ucg0 HSP_QSPI_CLK>,
 				 <&hsperiph_ucg1 HSP_QSPI_EXT_CLK>;
 			resets = <&hsperiph_reset HSPERIPH_RST_QSPI>;
-			arasan,soc-ctl-syscon = <&hsperiph_urb>;
 			num-cs = <4>;
 			status = "disabled";
 		};
@@ -1090,6 +1111,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+		dma-ranges;
 
 		sdr_pll0: sdr_pll0 {
 			#clock-cells = <0>;
@@ -1162,52 +1184,66 @@
 			#clock-cells = <1>;
 		};
 
-		pcie0: pcie@2000000 {
-			compatible = "elvees,mcom03-pcie";
-			reg = <0x0 0x2000000 0x0 0x400000>,
-			      <0x0 0x1a00000 0x0 0x800>,
-			      <0x0 0x60000000 0x0 0x10000000>;
-			reg-names = "dbi", "apb", "config";
-			#address-cells = <3>;
+		pcie@0 {
+			compatible = "simple-bus";
+			#address-cells = <2>;
 			#size-cells = <2>;
-			device_type = "pci";
-			ranges = <0x83000000 0x0 0x00000000
-				  0x4 0x00000000
-				  0x1 0x00000000>;
-			num-viewport = <32>;
-			num-lanes = <4>;
-			// TODO: Legacy, HP, AER, etc. interrupts
-			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&sdr_reset SDR_RST_EXT_ICT>,
-				 <&sdr_reset SDR_RST_BBD_ICT>,
-				 <&sdr_reset SDR_RST_PCI_ICT>;
-			elvees,urb = <&sdr_urb>;
-			elvees,ctrl-id = <0>;
-			status = "disabled";
-		};
+			ranges;
+			dma-ranges = <0 0 8 0 1 0>;
 
-		pcie1: pcie@2400000 {
-			compatible = "elvees,mcom03-pcie";
-			reg = <0x0 0x2400000 0x0 0x400000>,
-			      <0x0 0x1d00000 0x0 0x800>,
-			      <0x0 0x70000000 0x0 0x10000000>;
-			reg-names = "dbi", "apb", "config";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			device_type = "pci";
-			ranges = <0x83000000 0x0 0x00000000
-				  0x6 0x00000000
-				  0x1 0x00000000>;
-			num-viewport = <32>;
-			num-lanes = <4>;
-			// TODO: Legacy, HP, AER, etc. interrupts
-			interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&sdr_reset SDR_RST_EXT_ICT>,
-				 <&sdr_reset SDR_RST_BBD_ICT>,
-				 <&sdr_reset SDR_RST_PCI_ICT>;
-			elvees,urb = <&sdr_urb>;
-			elvees,ctrl-id = <1>;
-			status = "disabled";
+			pcie0: pcie@2000000 {
+				compatible = "elvees,mcom03-pcie";
+				reg = <0x0 0x2000000 0x0 0x400000>,
+				      <0x0 0x1a00000 0x0 0x800>,
+				      <0x0 0x60000000 0x0 0x10000000>;
+				reg-names = "dbi", "apb", "config";
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				ranges = <0x83000000 0x0 0x00000000
+					  0x4 0x00000000
+					  0x1 0x00000000>;
+				dma-ranges = <0x42000000 0x0 0x0 0x8 0x0 0x1 0x0>,
+					     <0x42000000 0x1 0x0 0x9 0x0 0x1 0x0>,
+					     <0x42000000 0x4 0x0 0xc 0x0 0x1 0x0>;
+				num-viewport = <32>;
+				num-lanes = <4>;
+				// TODO: Legacy, HP, AER, etc. interrupts
+				interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&sdr_reset SDR_RST_EXT_ICT>,
+					 <&sdr_reset SDR_RST_BBD_ICT>,
+					 <&sdr_reset SDR_RST_PCI_ICT>;
+				elvees,urb = <&sdr_urb>;
+				elvees,ctrl-id = <0>;
+				status = "disabled";
+			};
+
+			pcie1: pcie@2400000 {
+				compatible = "elvees,mcom03-pcie";
+				reg = <0x0 0x2400000 0x0 0x400000>,
+				      <0x0 0x1d00000 0x0 0x800>,
+				      <0x0 0x70000000 0x0 0x10000000>;
+				reg-names = "dbi", "apb", "config";
+				#address-cells = <3>;
+				#size-cells = <2>;
+				device_type = "pci";
+				ranges = <0x83000000 0x0 0x00000000
+					  0x6 0x00000000
+					  0x1 0x00000000>;
+				dma-ranges = <0x42000000 0x0 0x0 0x8 0x0 0x1 0x0>,
+					     <0x42000000 0x1 0x0 0x9 0x0 0x1 0x0>,
+					     <0x42000000 0x4 0x0 0xc 0x0 0x1 0x0>;
+				num-viewport = <32>;
+				num-lanes = <4>;
+				// TODO: Legacy, HP, AER, etc. interrupts
+				interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+				resets = <&sdr_reset SDR_RST_EXT_ICT>,
+					 <&sdr_reset SDR_RST_BBD_ICT>,
+					 <&sdr_reset SDR_RST_PCI_ICT>;
+				elvees,urb = <&sdr_urb>;
+				elvees,ctrl-id = <1>;
+				status = "disabled";
+			};
 		};
 
 		/* For DeviceTree bindings see linux/modules/velcore3
