@@ -183,8 +183,10 @@
 		};
 	};
 
-	vga0: connector@0 {
-		compatible = "vga-connector";
+	vga0: connector@0 { /* We use DVI connector with DVI analog pins, VGA not support HPD */
+		compatible = "dvi-connector";
+		analog;
+		hpd_gpio = <&gpio4 11 GPIO_ACTIVE_LOW>; /* GPIO4_11 and +5V fixup required */
 		label = "VGA";
 
 		ddc-i2c-bus = <&vga_ddc>;
