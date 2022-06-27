@@ -14,21 +14,6 @@
 #define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
 #define DISABLE_BLUETOOTH	/* debug only - need sure USART3 work OK */
 
-/* quick fixups */
-/ {
-	sdr {
-		pcie {
-			dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
-		};
-	};
-};
-
-&hsperiph_ucg0 {
-	dma32 {
-		dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
-	};
-};
-
 / {
 	model = "RHOS-SKIF";
 	compatible = "ravion,rhos-skif",

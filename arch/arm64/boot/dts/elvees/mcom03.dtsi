@@ -929,7 +929,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
-			dma-ranges = <0 0 8 0 1 0>;
+			dma-ranges; /* = <0 0 8 0 1 0>; */
 
 			emac0: ethernet@10200000 {
 				compatible = "elvees,arasan-gemac";
@@ -1189,7 +1189,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
-			dma-ranges = <0 0 8 0 1 0>;
+			dma-ranges; /* = <0 0 8 0 1 0>; */
 
 			pcie0: pcie@2000000 {
 				compatible = "elvees,mcom03-pcie";
