@@ -3,7 +3,10 @@
 export ARCH=arm
 # UTSVU board (I.MX511)
 export DTBS="${DTBS} imx51-ravion-utsvu.dtb"
-# Ravion200 quad (Ravion v2)
+# Toradex Colibri (I.MX6DL based) board
+export DTBS="${DTBS} imx6dl-colibri-cimc-lite.dtb imx6dl-colibri-router.dtb"
+export DTBS="${DTBS} imx6dl-colibri-pkk-m7.dtb"
+# Ravion200 (I.MX6QP based) Ravion-v2
 export DTBS="${DTBS} imx6qp-ravion-kitsbimx6.dtb	imx6qp-ravion-cimc.dtb"
 export DTBS="${DTBS} imx6qp-ravion-mtu.dtb		imx6qp-ravion-router.dtb"
 export DTBS="${DTBS} imx6qp-ravion-pkk-m7.dtb		imx6qp-ravion-pkk-m10.dtb"
