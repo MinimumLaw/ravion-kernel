@@ -545,4 +545,4 @@ module_w1_family(w1_max1721x_family);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alex A. Mihaylov <minimumlaw@rambler.ru>");
 MODULE_DESCRIPTION("Maxim MAX172xx/MAX173xx Fuel Gauage IC driver");
-MODULE_ALIAS("w1-family-" __stringify(W1_MAX1721X_FAMILY_ID));
+MODULE_ALIAS("w1-family-" __stringify(W1_MAX172XX_FAMILY_ID));
