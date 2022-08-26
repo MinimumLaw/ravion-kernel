@@ -11,7 +11,6 @@
 #include "./../elvees/mcom03.dtsi"
 
 #define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
-#define DISABLE_BLUETOOTH	/* debug only - need sure USART3 work OK */
 
 / {
 	model = "RHOS-SKIF";
@@ -51,14 +50,6 @@
 			linux,code = <KEY_POWER>;
 			debounce-interval = <100>;
 		};
-	};
-
-	gpio-poweroff {
-		compatible = "gpio-poweroff";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pwr_kill>;
-
-		gpios = <&gpio0b 1 GPIO_ACTIVE_LOW >;					/* soDimm 141 */
 	};
 };
 

@@ -63,6 +63,15 @@
 		regulator-always-on;
 	};
 
+	avdd: regulator@6 {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
 	codec_mclk: fixed-clock { /* XP40, XP41 - both removed  */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -115,10 +124,23 @@
 	};
 
 	soundcard@0 {
-		compatible = "mcom03,sound-sgtl5000";
-		model = "SGTL5000 codec";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "RHOS SKIFF SGTL5000";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+		simple-audio-card,cpu {
+		    sound-dai = <&i2s0 0>;
+		};
+
+		dailink0_master: simple-audio-card,codec {
+		    sound-dai = <&sgtl5000 0>;
+		};
 	};
 };
+
+/* I2S0 connected to SGTL5000 codec */
+&i2s0 {	status = "okay"; };
 
 &hdmi_tx {
 	remote-endpoint = <&hdmi_connector_in>;
@@ -317,7 +339,7 @@
 		clocks = <&codec_mclk 0>;
 		VDDA-supply = <&avcc>;
 		VDDIO-supply = <&p3v3>;
-		VDDD-supply = <&p3v3>;
+		VDDD-supply = <&avdd>;
 		status = "okay";
 	};
 
