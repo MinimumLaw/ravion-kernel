@@ -409,17 +409,16 @@ config BATTERY_MAX17042
 
 	  Driver can be build as a module (max17042_battery).
 
-config BATTERY_MAX1721X
-	tristate "MAX17211/MAX17215 standalone gas-gauge"
+config BATTERY_MAX17XXX_W1
+	tristate "MAX172xx/MAX173xx standalone gas-gauge with OneWire (W1)"
 	depends on W1
 	select REGMAP_W1
 	help
-	  MAX1721x is fuel-gauge systems for lithium-ion (Li+) batteries
-	  in handheld and portable equipment. MAX17211 used with single cell
-	  battery. MAX17215 designed for muticell battery. Both them have
+	  MAX172xx/MAX173xx is fuel-gauge systems for lithium-ion (Li+)
+          batteries in handheld and portable equipment. All them have
 	  OneWire (W1) host interface.
 
-	  Say Y here to enable support for the MAX17211/MAX17215 standalone
+	  Say Y here to enable support for the MAX172xx/MAX173xx standalone
 	  battery gas-gauge.
 
 config BATTERY_Z2

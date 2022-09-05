@@ -1,0 +1,594 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2021 RnD Center "ELVEES", JSC
+ * Copyright 2022 Radioavionica Corp
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include "./../elvees/mcom03.dtsi"
+
+#define DISABLE_HW_SPI		/* not have driver this time		 */
+#define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
+#define DISABLE_BLUETOOTH	/* debug only - need sure USART3 work OK */
+
+/* quick fixups */
+/ {
+	sdr {
+		pcie {
+			dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
+		};
+	};
+};
+
+&hsperiph_ucg0 {
+	dma32 {
+		dma-ranges; /* mcom03.dtsi: dma-ranges = <0 0 8 0 1 0>; */
+	};
+};
+
+/ {
+	model = "RHOS-SKIF";
+	compatible = "ravion,rhos-skif",
+		     "elvees,rhos-skif",
+		     "elvees,mcom03";
+
+	aliases {
+	    spi0 = &spi0;
+	    spi1 = &spi1;
+	    spi2 = &qspi0;
+	};
+
+	vgen_3v3: regulator@0 { /* source volatege */
+		compatible = "regulator-fixed";
+		regulator-name = "vgen_3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p1v8_sw4: regulator@1 { /* PMIC SW4 in real world, quick fixup */
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8_sw4";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	gpio-keys {
+#if 0 /* gpio-keys gpio-keys: Unable to get irq number for GPIO 0, error -6 */
+		compatible = "gpio-keys";
+#else /* polled keys can't be wakeup source - need to be fixed !!! */
+		compatible = "gpio-keys-polled";
+		poll-interval = <25>;
+#endif
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwr_btn>;
+
+		power {
+			label = "Power";
+			gpios = <&gpio0b 0 GPIO_ACTIVE_LOW>;				/* soDimm 139 */
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+		};
+	};
+
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwr_kill>;
+
+		gpios = <&gpio0b 1 GPIO_ACTIVE_LOW >;					/* soDimm 141 */
+	};
+
+	spi0: spi0 {
+		comment = "Must be in mcom03.dtsi";
+	};
+
+	spi1: spi1 {
+		comment = "Must be in mcom03.dtsi";
+	};
+
+};
+
+/*
+ * Dedicated consolenected to FT232 on KiTSBiMX8
+ */
+&uart0	{	status = "okay";	};
+
+/*
+ * General purpose uarts
+ */
+&uart1	{	status = "okay";	};
+&uart2	{	status = "okay";	};
+&uart3	{	status = "okay";	};
+
+/* Watchdog */
+&wdt0	{	status = "okay";	};
+
+/*
+ * USB 3.0 interfaces
+ */
+&usb0	{	status = "okay";	};
+&usb1	{	status = "okay";	};
+
+/*
+ * PCIe 4-lanes
+ */
+&pcie0	{	status = "okay";	};
+&pcie1	{	status = "okay";	};
+
+/*
+ * Storage devices
+ */
+/* QSPI */
+&qspi0 {
+	status = "okay";
+
+	flash0: s25fl256s@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor", "spi-flash";
+		reg = <0x0>;
+		spi-max-frequency = <66000000>;
+		m25p,fast-read;
+	};
+};
+
+/* eMMC */
+&sdhci0 {
+	status = "okay";
+
+	non-removable;
+	bus-width = <8>;
+
+	vqmmc-supply = <&p1v8_sw4>;
+};
+
+/* SD Card */
+&sdhci1 {
+	xlnx,fails-without-test-cd;
+	status = "okay";
+};
+
+/*
+ * Ethernet
+ */
+&emac0 {
+	phy-handle = <&ethernet_phy>;
+	reset-gpios = <&gpio1b 3 GPIO_ACTIVE_LOW>;
+	reset-post-delay-us = <200>;
+
+	ethernet_phy: ethernet-phy@1 {
+		reg = <0x1>;
+	};
+};
+
+/*
+ * Graphics (output)
+ */
+&isp { /* What's this? */
+	status = "okay";
+};
+
+/* ARM,MALI-DP550 */
+&dp {
+	status = "okay";
+};
+
+/* Elvees display encoder */
+&display_encoder {
+	status = "okay";
+
+	ports {
+#if defined DISABLE_MIPI
+		/delete-node/ port@1;
+#else
+		port@1 { /* DSI interface */
+			reg = <1>;
+
+			dsi_out: endpoint {
+				/* remote-endpoint on platform level */
+			};
+		};
+#endif
+		port@2 {
+			reg = <2>;
+
+			rgb_out: endpoint {
+				remote-endpoint = <&adv7511_in>;
+			};
+		};
+	};
+};
+
+/*
+ * Graphics (capture) - NU this time
+ */
+&csi0 {	/* is this really used anywhere??? */
+	status = "okay";
+};
+
+/*
+ * InterIcCommunication - I2C
+ */
+&i2c0 {
+	clock-frequency = <100000>;
+	status = "okay";
+};
+
+&i2c1 {
+	clock-frequency = <100000>;
+	status = "okay";
+};
+
+&i2c2 {
+	clock-frequency = <100000>;
+	status = "okay";
+};
+
+&i2c3 { /* internal use I2C */
+	clock-frequency = <100000>;
+	status = "okay";
+
+	adv7511@39 { /* HDMI transmitter */
+		compatible = "adi,adv7511w";
+		status = "okay";
+		reg = <0x39>, <0x3f>;
+		reg-names = "main", "edid";
+		interrupt-parent = <&gpio0a>;
+		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+
+		adi,input-depth = <8>;
+		adi,input-colorspace = "rgb";
+		adi,input-clock = "1x";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		dvdd-3v-supply = <&vgen_3v3>;
+		avdd-supply = <&p1v8_sw4>;
+		dvdd-supply = <&p1v8_sw4>;
+		pvdd-supply = <&p1v8_sw4>;
+		bgvdd-supply = <&p1v8_sw4>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmi_int>;
+
+		port@0 {
+			reg = <0>;
+			adv7511_in: endpoint {
+				remote-endpoint = <&rgb_out>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			hdmi_tx: endpoint {
+				/* remote endpoint will be on high level */
+			};
+		};
+
+		port@2 {
+			reg = <2>;
+			codec_ep: endpoint {
+				/* remote endpoint on hsperiph BC23, AY24, BA24
+				   not supported this time                       */
+			};
+		};
+	};
+
+	9FGV0642A@60 { /* PCIe clock generator */
+		reg = <0x60>;
+		status = "okay";
+	};
+};
+
+/*
+ * qlic irq controller can be found in out-off-tree drivers
+ */
+&i2c4 {
+	clock-frequency = <100000>;
+	status = "okay";
+
+	pfuze100: pmic@8 {
+		compatible = "fsl,pfuze100";
+		reg = <0x08>;
+		status = "okay";
+
+		regulators {
+			P0V9_SW1: sw1ab { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V1_SW2: sw2 { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+				status = "okay";
+			};
+
+			P1V8_SW4: sw4 { /* MPU, ETH VDDIO, PCIe clock gen */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			VDDREFDDR: vrefddr { /* DDR */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V5_VGEN1: vgen1 { /* PCIe clock gen IO */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P0V9_VGEN2: vgen2 { /* USB, MIPI */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V8_VGEN3: vgen3 { /* MPU */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P1V8_VGEN4: vgen4 { /* MPU, SDR/PCIe */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			P2V8_VGEN6: vgen6 { /* en sw P3V3 => GEN_3V3 */
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+
+	P0V9_CVDD: tps628691@48 { /* 0.850V */
+		compatible = "ti,tps62869";
+		reg = <0x48>;
+		status = "okay";
+	};
+
+	P0V9_MVDD: tps628691@41 { /* 0.900V */
+		compatible = "ti,tps62869";
+		reg = <0x41>;
+		status = "okay";
+	};
+
+	P0V9_AVDD: tps628691@42 { /* 0.950V */
+		compatible = "ti,tps62869";
+		reg = <0x42>;
+		status = "okay";
+	};
+};
+
+/*
+ * Serial Peripheral Interface (where??? NU this time?)
+ */
+&spi0 {
+#if defined DISABLE_HW_SPI
+	compatible = "spi-gpio";
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_gpio>;
+
+	#address-cells = <0x1>;
+	#size-cells = <0x0>;
+
+	sck-gpios	= <&gpio0c 0 0>;
+	mosi-gpios	= <&gpio0c 1 0>;
+	miso-gpios	= <&gpio0c 2 0>;
+	cs-gpios	= <&gpio0c 4 0>;
+	num-chipselects = <1>;
+#else /*not DISABLE_HW_SPI */
+	compatible = "elvees,spi-contoller";
+#endif
+	status = "okay";
+};
+
+&spi1 {
+	status = "disabled";
+};
+
+/*
+ * Timers (we really need all of them???)
+ */
+&timer0	{	status = "okay";	};
+&timer1	{	status = "okay";	};
+&timer2	{	status = "okay";	};
+&timer3	{	status = "okay";	};
+&timer4	{	status = "okay";	};
+&timer5	{	status = "okay";	};
+&timer6	{	status = "okay";	};
+&timer7	{	status = "okay";	};
+
+/*
+ * ToDo: May be just delete unused, not delete all and reconfigure
+ */
+
+&gpio0a {
+	gpio-line-names =
+		"UART3_RXD",	"UART3_TXD",	"UART3_CTS",	"HDMI_INT",
+		"PMIC_INT#",	"UIO1_1",	"UIO1_2",	"UART3_RTS";
+
+	/delete-node/ uart3_mux_data;
+	/delete-node/ uart3_mux_modem;
+
+	gpio0a_mux_data: gpio0a-mux-data {
+		data {
+#ifdef DISABLE_BLUETOOTH
+			groups = "pin0", "pin1";
+#else
+			groups = "pin0", "pin1", "pin2", "pin7";
+#endif
+			function = "HW";
+		};
+	};
+};
+
+&gpio0b {
+	gpio-line-names =
+		"POWER_BTN",	"POWER_KILL",	"UIO1_5",	"UIO1_6",
+		"UIO1_7",	"UART1_RXD",	"UART1_TXD",	"UART2_RXD";
+
+	/delete-node/ uart3_portb_mux_modem;
+	/delete-node/ uart3_mux_rs485;
+	/delete-node/ uart1_mux_data;
+	/delete-node/ uart2_portb_mux_data;
+
+	gpio0b_mux_data: gpio0b-mux-data {
+		data {
+			groups = "pin5", "pin6", "pin7";
+			function = "HW";
+		};
+	};
+};
+
+&gpio0c {
+	gpio-line-names =
+		"SPI_CLK",	"SPI_MOSI",	"SPI_MISO",	"UIO1_8",
+		"SPI_CS",	"UIO2_1",	"UIO2_2",	"UIO2_3";
+
+	/delete-node/ spi0_mux_data;
+	/delete-node/ spi0_mux_ss_in;
+	/delete-node/ spi0_mux_ss0;
+	/delete-node/ spi0_mux_ss1;
+	/delete-node/ spi0_mux_ss2;
+	/delete-node/ spi0_mux_ss3;
+
+#if defined DISABLE_HW_SPI
+	/* do noting - SPI pins accessible as GPIO */
+#else /*not DISABLE_HW_SPI */
+	gpio0c_mux_data: gpio0c-mux-data {
+		data {
+			groups = "pin0", "pin1", "pin2", "pin4";
+			function = "HW";
+		};
+	};
+#endif
+};
+
+&gpio0d {
+	gpio-line-names =
+		"UART2_TXD",	"UIO2_4",	"UIO2_5",	"SMB_SCL",
+		"SMD_SDA",	"SMB_ALERT",	"SMB_IN",	"SMB_OUT";
+
+	/delete-node/ uart2_portd_mux_data;
+	/delete-node/ uart2_mux_irda;
+	/delete-node/ i2c0_mux_data;
+	/delete-node/ i2c0_mux_smbalert;
+	/delete-node/ i2c0_mux_smbus;
+
+	gpio0d_mux_data: gpio0d-mux-data {
+		data {
+			groups = "pin0", "pin3", "pin4";
+			function = "HW";
+		};
+	};
+};
+
+
+&gpio1a {
+	gpio-line-names =
+		"I2C1_SCL",	"I2C1_SDA",	"I2C2_SCL",	"I2C2_SDA",
+		"I2C3_SCL",	"I2C3_SDA",	"UIO1_3",	"UIO1_4";
+
+	/delete-node/ i2c1_mux_data;
+	/delete-node/ i2c2_mux_data;
+	/delete-node/ i2c3_mux_data;
+
+	gpio1a_mux_data: gpio1a-mux-data {
+		data {
+			groups = "pin0", "pin1", "pin2", "pin3", "pin4", "pin5";
+			function = "HW";
+		};
+	};
+};
+
+&gpio1b {
+	gpio-line-names =
+		"I2S_SCLK",	"I2S_WS",	"I2S_TXDAT0",	"ETHPHY_RESET",
+		"I2S_RXDAT0",	"I2S_CLK_IN",	"UART0_TXD",	"UART1_RXD";
+
+	/delete-node/ i2s0_mux_sdo0;
+	/delete-node/ i2s0_mux_sdo1;
+	/delete-node/ i2s0_mux_sdi0;
+	/delete-node/ i2s0_mux_ext_clk;
+	/delete-node/ uart0_mux_data;
+
+	gpio1b_mux_data: gpio1b-mux-data {
+		data {
+			groups = "pin0", "pin1", "pin2", "pin4", "pin5", "pin6", "pin7";
+			function = "HW";
+		};
+	};
+};
+
+&gpio1c {
+	gpio-line-names =
+		"UIO2_6",	"UIO2_7",	"UIO2_8",	"UIO3_1",
+		"UIO3_2",	"UIO3_3",	"UIO3_4",	"UIO3_5";
+
+	/delete-node/ spi1_mux_data;
+	/delete-node/ spi1_mux_ss0;
+	/delete-node/ spi1_mux_ss1;
+	/delete-node/ spi1_mux_ss2;
+	/delete-node/ spi1_mux_ss3;
+	/delete-node/ spi1_mux_ss_in;
+};
+
+&gpio1d {
+	gpio-line-names =
+		"PWM0",		"PWM1",		"UIO3_6",	"UIO3_7",
+		"UIO3_8",	"PCI0_PERSTn",	"PCI1_PERSTn",	"GPIO1_PORTD_7";
+
+	/delete-node/ timer0_toggle_mux;
+	/delete-node/ timer1_toggle_mux;
+	/delete-node/ pwm_oena0_mux;
+	/delete-node/ pwm_oenb0_mux;
+	/delete-node/ pwm_oena1_mux;
+	/delete-node/ pwm_oenb1_mux;
+	/delete-node/ pwm_tu0_mux;
+	/delete-node/ pwm_tu1_mux;
+
+	gpio1d_mux_data: gpio1d-mux-data {
+		data {
+			groups = "pin0", "pin1";
+			function = "HW";
+		};
+	};
+};
+
+&hsperiph_pinctrl {
+	pinctrl-0 = <&hsperiph_misc_default &emac_v18>;
+};
+
+
+&lsperiph0_pinctrl {
+	pwr_btn: pwr-btn {
+		pins = "GPIOB_0";
+		bias-pull-up;
+	};
+
+	pwr_kill: pwr-kill {
+		pins = "GPIOB_1";
+		bias-pull-up;
+	};
+
+	hdmi_int: hdmi-int {
+		pins = "GPIOA_3";
+		bias-pull-up;
+	};
+
+	pmic_int: pmic-int {
+		pins = "GPIOA_4";
+		bias-pull-up;
+	};
+
+	spi0_gpio: spi0-gpio {
+		pins = "GPIOC_0", "GPIOC_1", "GPIOC_2", "GPIOC_4";
+		bias-pull-up;
+	};
+};

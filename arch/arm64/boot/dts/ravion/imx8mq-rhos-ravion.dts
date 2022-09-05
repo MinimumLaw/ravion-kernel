@@ -1,0 +1,568 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "./../freescale/imx8mq.dtsi"
+
+/ {
+	model = "NXP i.MX8MQ EVK";
+	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
+
+	chosen {
+		stdout-path = &uart1;
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x00000000 0x40000000 0 0xc0000000>;
+	};
+};
+
+#warning FIXME: sw4_reg incorrect value!!! For build only!!!
+&A53_0 {
+	cpu-supply = <&sw4_reg>;
+};
+
+&A53_1 {
+	cpu-supply = <&sw4_reg>;
+};
+
+&A53_2 {
+	cpu-supply = <&sw4_reg>;
+};
+
+&A53_3 {
+	cpu-supply = <&sw4_reg>;
+};
+
+&ddrc {
+	operating-points-v2 = <&ddrc_opp_table>;
+
+	ddrc_opp_table: opp-table {
+		compatible = "operating-points-v2";
+
+		opp-25M {
+			opp-hz = /bits/ 64 <25000000>;
+		};
+
+		opp-100M {
+			opp-hz = /bits/ 64 <100000000>;
+		};
+
+		/*
+		 * On imx8mq B0 PLL can't be bypassed so low bus is 166M
+		 */
+		opp-166M {
+			opp-hz = /bits/ 64 <166935483>;
+		};
+
+		opp-800M {
+			opp-hz = /bits/ 64 <800000000>;
+		};
+	};
+};
+
+&dphy {
+	status = "okay";
+};
+
+&fec1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethphy0>;
+	fsl,magic-packet;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@0 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <0>;
+/*			reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <10000>; 			*/
+		};
+	};
+};
+
+&i2c1 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	status = "okay";
+
+	pmic@8 {
+		compatible = "fsl,pfuze100";
+		reg = <0x8>;
+
+		regulators {
+			sw1a_reg: sw1ab {
+				regulator-min-microvolt = <825000>;
+				regulator-max-microvolt = <1100000>;
+			};
+
+			sw1c_reg: sw1c {
+				regulator-min-microvolt = <825000>;
+				regulator-max-microvolt = <1100000>;
+			};
+
+			sw2_reg: sw2 {
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-always-on;
+			};
+
+			sw3a_reg: sw3ab {
+				regulator-min-microvolt = <825000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-always-on;
+			};
+
+			sw4_reg: sw4 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+			};
+
+			swbst_reg: swbst {
+				regulator-min-microvolt = <5000000>;
+				regulator-max-microvolt = <5150000>;
+			};
+
+			snvs_reg: vsnvs {
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-always-on;
+			};
+
+			vref_reg: vrefddr {
+				regulator-always-on;
+			};
+
+			vgen1_reg: vgen1 {
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <1550000>;
+			};
+
+			vgen2_reg: vgen2 {
+				regulator-min-microvolt = <850000>;
+				regulator-max-microvolt = <975000>;
+				regulator-always-on;
+			};
+
+			vgen3_reg: vgen3 {
+				regulator-min-microvolt = <1675000>;
+				regulator-max-microvolt = <1975000>;
+				regulator-always-on;
+			};
+
+			vgen4_reg: vgen4 {
+				regulator-min-microvolt = <1625000>;
+				regulator-max-microvolt = <1875000>;
+				regulator-always-on;
+			};
+
+			vgen5_reg: vgen5 {
+				regulator-min-microvolt = <3075000>;
+				regulator-max-microvolt = <3625000>;
+				regulator-always-on;
+			};
+
+			vgen6_reg: vgen6 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+			};
+		};
+	};
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2>;
+	status = "okay";
+};
+
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_smbus>;
+	status = "okay";
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1>;
+	status = "okay";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	status = "okay";
+};
+
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart3>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_btuart>;
+	fsl,have-ctsrts;
+	status = "okay";
+};
+
+
+&usb3_phy1 {
+	status = "okay";
+};
+
+&usb_dwc3_1 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usdhc1 {
+	assigned-clocks = <&clk IMX8MQ_CLK_USDHC1>;
+	assigned-clock-rates = <400000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_emmc>;
+	vqmmc-supply = <&sw4_reg>;
+	bus-width = <8>;
+	non-removable;
+	no-sd;
+	no-sdio;
+	status = "okay";
+};
+
+&usdhc2 {
+	assigned-clocks = <&clk IMX8MQ_CLK_USDHC2>;
+	assigned-clock-rates = <200000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdcard>;
+	status = "okay";
+};
+
+&iomuxc {
+	pinctrl_hog: hoggrp {
+		fsl,pins = <
+/* int */		MX8MQ_IOMUXC_SAI1_TXD7_GPIO4_IO19          0x00000016 /* add01 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD3_GPIO4_IO15          0x00000016 /* add02 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD5_GPIO4_IO7           0x00000016 /* add03 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD7_GPIO4_IO9           0x00000016 /* add04 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD4_GPIO4_IO6           0x00000016 /* add05 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXC_GPIO4_IO1            0x00000016 /* add06 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXFS_GPIO4_IO0           0x00000016 /* add07 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD2_GPIO4_IO14          0x00000016 /* add08 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD5_GPIO4_IO17          0x00000016 /* add09 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD4_GPIO4_IO16          0x00000016 /* add10 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD1_GPIO4_IO13          0x00000016 /* add11 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD6_GPIO4_IO8           0x00000016 /* add12 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD2_GPIO4_IO4           0x00000016 /* add13 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD3_GPIO4_IO5           0x00000016 /* add14 */
+/* int */		MX8MQ_IOMUXC_SAI1_RXD1_GPIO4_IO3           0x00000016 /* add15 */
+/* int */		MX8MQ_IOMUXC_SAI1_TXD6_GPIO4_IO18          0x00000016 /* add16 */
+/* int */		MX8MQ_IOMUXC_SAI3_TXD_GPIO5_IO1            0x00000016 /* add17 */
+/* int */		MX8MQ_IOMUXC_SAI3_RXD_GPIO4_IO30           0x00000016 /* add18 */
+/* int */		MX8MQ_IOMUXC_SAI3_TXFS_GPIO4_IO31          0x00000016 /* add19 */
+/* int */		MX8MQ_IOMUXC_SAI2_RXC_GPIO4_IO22           0x00000016 /* add20 */
+/* int */		MX8MQ_IOMUXC_SAI3_TXC_GPIO5_IO0            0x00001816 /* add21 */
+/* int */		MX8MQ_IOMUXC_SAI3_RXC_GPIO4_IO29           0x00000016 /* add22 */
+/* int */		MX8MQ_IOMUXC_SAI3_RXFS_GPIO4_IO28          0x00000016 /* add23 */
+/* int */		MX8MQ_IOMUXC_SAI2_TXFS_GPIO4_IO24          0x00001816 /* add24 */
+/* int */		MX8MQ_IOMUXC_SAI2_RXFS_GPIO4_IO21          0x00000016 /* add25 */
+								    /* requested add26 */
+/* int */		MX8MQ_IOMUXC_ECSPI2_SCLK_GPIO5_IO10        0x00001816 /* add28 */
+/* int */		MX8MQ_IOMUXC_ECSPI2_MOSI_GPIO5_IO11        0x00000016 /* add29 */
+/* int */		MX8MQ_IOMUXC_SAI2_TXD0_GPIO4_IO26          0x00000016 /* add30 */
+/* int */		MX8MQ_IOMUXC_SAI2_MCLK_GPIO4_IO27          0x00000016 /* add31 */
+/* int */		MX8MQ_IOMUXC_SAI2_TXC_GPIO4_IO25           0x00000016 /* add32 */
+								    /* requested add33 */
+/* int */		MX8MQ_IOMUXC_SPDIF_EXT_CLK_GPIO5_IO5       0x00000016 /* add34 */
+/* int */		MX8MQ_IOMUXC_SPDIF_RX_GPIO5_IO4            0x00000016 /* add35 */
+/* int */		MX8MQ_IOMUXC_SAI2_RXD0_GPIO4_IO23          0x00000016 /* add36 */
+/* int */		MX8MQ_IOMUXC_NAND_CE0_B_GPIO3_IO1          0x00000016 /* add37 */
+		>;
+	};
+
+	pinctrl_pwrctl: pwrctlgrp {
+		fsl,pins = <
+/* 139 */		MX8MQ_IOMUXC_GPIO1_IO02_GPIO1_IO2          0x00000056 /* PWR Button */
+/* 141 */		MX8MQ_IOMUXC_GPIO1_IO03_GPIO1_IO3          0x00000016 /* PWR Kill */
+		>;
+	};
+
+	pinctrl_uio0: uio0grp {
+		fsl,pins = <
+/* 146 */		MX8MQ_IOMUXC_NAND_CE1_B_GPIO3_IO2          0x00000016	/* UIO1_1 */
+/* 148 */		MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3          0x00000016	/* UIO1_2 */
+/* 150 */		MX8MQ_IOMUXC_NAND_CE3_B_GPIO3_IO4          0x00000016	/* UIO1_3 */
+/* 152 */		MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5            0x00000016	/* UIO1_4 */
+/* 154 */		MX8MQ_IOMUXC_NAND_DATA00_GPIO3_IO6         0x00000016	/* UIO1_5 */
+/* 156 */		MX8MQ_IOMUXC_NAND_DATA01_GPIO3_IO7         0x00000016	/* UIO1_6 */
+/* 158 */		MX8MQ_IOMUXC_NAND_DATA02_GPIO3_IO8         0x00000016	/* UIO1_7 */
+/* 160 */		MX8MQ_IOMUXC_NAND_DATA03_GPIO3_IO9         0x00001816	/* UIO1_8 */
+		>;
+	};
+
+	pinctrl_uio0: uio0grp {
+		fsl,pins = <
+/* 163 */		MX8MQ_IOMUXC_NAND_DATA04_GPIO3_IO10        0x00000016	/* UIO2_1 */
+/* 165 */		MX8MQ_IOMUXC_NAND_DATA05_GPIO3_IO11        0x00000016	/* UIO2_2 */
+/* 167 */		MX8MQ_IOMUXC_NAND_DATA06_GPIO3_IO12        0x00000016	/* UIO2_3 */
+/* 169 */		MX8MQ_IOMUXC_NAND_DATA07_GPIO3_IO13        0x00000016	/* UIO2_4 */
+/* 171 */		MX8MQ_IOMUXC_NAND_DQS_GPIO3_IO14           0x00000016	/* UIO2_5 */
+/* 173 */		MX8MQ_IOMUXC_NAND_RE_B_GPIO3_IO15          0x00000016	/* UIO2_6 */
+/* 175 */		MX8MQ_IOMUXC_NAND_READY_B_GPIO3_IO16       0x00000016	/* UIO2_7 */
+/* 177 */		MX8MQ_IOMUXC_SAI5_RXD3_GPIO3_IO24          0x00000016	/* UIO2_8 */
+		>;
+	};
+
+	pinctrl_uio0: uio0grp {
+		fsl,pins = <
+/* 164 */		MX8MQ_IOMUXC_NAND_WE_B_GPIO3_IO17          0x00000016	/* UIO3_1 */
+/* 166 */		MX8MQ_IOMUXC_NAND_WP_B_GPIO3_IO18          0x00000016	/* UIO3_2 */
+/* 168 */		MX8MQ_IOMUXC_SAI5_RXD2_GPIO3_IO23          0x00000016	/* UIO3_3 */
+/* 170 */		MX8MQ_IOMUXC_SAI5_RXC_GPIO3_IO20           0x00000016	/* UIO3_4 */
+/* 172 */		MX8MQ_IOMUXC_SAI5_RXD0_GPIO3_IO21          0x00000016	/* UIO3_5 */
+/* 174 */		MX8MQ_IOMUXC_SAI5_RXD1_GPIO3_IO22          0x00001816	/* UIO3_6 */
+/* 176 */		MX8MQ_IOMUXC_SAI5_RXFS_GPIO3_IO19          0x00000016	/* UIO3_7 */
+/* 178 */		MX8MQ_IOMUXC_SAI5_MCLK_GPIO3_IO25          0x00000016	/* UIO3_8 */
+		>;
+	};
+
+	pinctrl_spi: spigrp {
+		fsl,pins = <
+/* 117 */		MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK       0x00000016	/* SPI_SCK  */
+/* 119 */		MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI       0x00000016	/* SPI_MOSI */
+/* 121 */		MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO       0x00000016	/* SPI_MISO */
+/* 123 */		MX8MQ_IOMUXC_ECSPI1_SS0_ECSPI1_SS0         0x00000016	/* SPI_CS   */
+		>;
+	};
+
+	pinctrl_uart1: uart1grp {
+		fsl,pins = <
+/* 105 */		MX8MQ_IOMUXC_UART1_TXD_UART1_DCE_TX        0x00000016	/* CON RX1 */
+/* 107 */		MX8MQ_IOMUXC_UART1_RXD_UART1_DCE_RX        0x00000016	/* CON TX1 */
+		>;
+	};
+
+	pinctrl_uart2: uart2grp {
+		fsl,pins = <
+/* 106 */		MX8MQ_IOMUXC_UART2_TXD_UART2_DCE_TX        0x00000016	/* DED TX2 */
+/* 108 */		MX8MQ_IOMUXC_UART2_RXD_UART2_DCE_RX        0x00000016	/* DED RX2 */
+		>;
+	};
+
+	pinctrl_uart3: uart3grp {
+		fsl,pins = <
+/* 111 */		MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX        0x00000016	/* DED TX3 */
+/* 113 */		MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX        0x00001816	/* DED RX3 */
+		>;
+	};
+
+	pinctrl_btuart: btuartgrp {
+		fsl,pins = <
+/* 112 */		MX8MQ_IOMUXC_UART4_TXD_UART4_DCE_TX        0x00000016	/* BT  TX4 */
+/* 114 */		MX8MQ_IOMUXC_UART4_RXD_UART4_DCE_RX        0x00000016	/* BT  RX4 */
+/* 116 */		MX8MQ_IOMUXC_ECSPI2_MISO_UART4_DCE_CTS_B   0x00000016	/* BT CTS4 */
+/* 118 */		MX8MQ_IOMUXC_ECSPI2_SS0_UART4_DCE_RTS_B    0x00000016	/* BT RTS4 */
+		>;
+	};
+
+	pinctrl_rgmii: rgmiigrp {
+		fsl,pins = <
+/* int */		MX8MQ_IOMUXC_ENET_MDC_ENET1_MDC            0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_MDIO_ENET1_MDIO          0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RD0_ENET1_RGMII_RD0      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RD1_ENET1_RGMII_RD1      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RD2_ENET1_RGMII_RD2      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RD3_ENET1_RGMII_RD3      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RXC_ENET1_RGMII_RXC      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_RX_CTL_ENET1_RGMII_RX_CTL 0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TD0_ENET1_RGMII_TD0      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TD1_ENET1_RGMII_TD1      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TD2_ENET1_RGMII_TD2      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TD3_ENET1_RGMII_TD3      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TXC_ENET1_RGMII_TXC      0x00000016
+/* int */		MX8MQ_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL 0x00001816
+/* int */		MX8MQ_IOMUXC_GPIO1_IO00_CCMSRCGPCMIX_ENET_PHY_REF_CLK_ROOT 0x00000014
+		>;
+	};
+
+	pinctrl_i2c1: i2c1grp {
+		fsl,pins = <
+/* 099 */		MX8MQ_IOMUXC_I2C1_SDA_I2C1_SDA             0x00000016 /* I2C1 SDA */
+/* 101 */		MX8MQ_IOMUXC_I2C1_SCL_I2C1_SCL             0x00000016 /* I2C1 SCL */
+		>;
+	};
+
+	pinctrl_i2c2: i2c2grp {
+		fsl,pins = <
+/* 100 */		MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA             0x00000016 /* I2C2 SDA */
+/* 102 */		MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL             0x00000016 /* I2C2 SCL */
+		>;
+	};
+
+	pinctrl_smbus: smbusgrp {
+		fsl,pins = <
+/* 127 */		MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL             0x00001816 /* SMB_SCL   */
+/* 129 */		MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA             0x00000016 /* SMB_SDA   */
+/* 131 */		MX8MQ_IOMUXC_GPIO1_IO01_GPIO1_IO1          0x00000016 /* SMB_ALERT */
+/* 133 */		MX8MQ_IOMUXC_GPIO1_IO05_GPIO1_IO5          0x00000056 /* SMB_IN    */
+/* 135 */		MX8MQ_IOMUXC_GPIO1_IO06_GPIO1_IO6          0x00000016 /* SMB_OUT   */
+		>;
+	};
+
+	pinctrl_emmc: emmcgrp {
+		fsl,pins = <
+/* int */		MX8MQ_IOMUXC_SD1_CLK_USDHC1_CLK            0x00000016 /* eMMC CLK  */
+/* int */		MX8MQ_IOMUXC_SD1_CMD_USDHC1_CMD            0x00000016 /* eMMC CMD  */
+/* int */		MX8MQ_IOMUXC_SD1_DATA0_USDHC1_DATA0        0x00000016 /* eMMC DAT0 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA1_USDHC1_DATA1        0x00000016 /* eMMC DAT1 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA2_USDHC1_DATA2        0x00000016 /* eMMC DAT2 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA3_USDHC1_DATA3        0x00001816 /* eMMC DAT3 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA4_USDHC1_DATA4        0x00000016 /* eMMC DAT4 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA5_USDHC1_DATA5        0x00000016 /* eMMC DAT5 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA6_USDHC1_DATA6        0x00000016 /* eMMC DAT6 */
+/* int */		MX8MQ_IOMUXC_SD1_DATA7_USDHC1_DATA7        0x00000016 /* eMMC DAT7 */
+/* int */		MX8MQ_IOMUXC_SD1_RESET_B_USDHC1_RESET_B    0x00000016 /* eMMC RST  */
+/* int */		MX8MQ_IOMUXC_SD1_STROBE_USDHC1_STROBE      0x00000016 /* eMMC ???? */
+		>;
+	};
+
+	pinctrl_sdcard: sdcardgrp {
+		fsl,pins = <
+/* 145 */		MX8MQ_IOMUXC_SD2_CMD_USDHC2_CMD            0x00000016 /* SDMMC1 CMD  */
+/* 147 */		MX8MQ_IOMUXC_SD2_CLK_USDHC2_CLK            0x00000016 /* SDMMC1 CLK  */
+/* 149 */		MX8MQ_IOMUXC_SD2_DATA0_USDHC2_DATA0        0x00001816 /* SDMMC1 DAT0 */
+/* 151 */		MX8MQ_IOMUXC_SD2_DATA1_USDHC2_DATA1        0x00000016 /* SDMMC1 DAT1 */
+/* 153 */		MX8MQ_IOMUXC_SD2_DATA2_USDHC2_DATA2        0x00000016 /* SDMMC1 DAT2 */
+/* 155 */		MX8MQ_IOMUXC_SD2_DATA3_USDHC2_DATA3        0x00000016 /* SDMMC1 DAT3 */
+/* 157 */		MX8MQ_IOMUXC_SD2_RESET_B_GPIO2_IO19        0x00000016 /* SDMMC1_PWR  */
+/* 159 */		MX8MQ_IOMUXC_GPIO1_IO04_USDHC2_VSELECT     0x00000016 /* SDMMC1_18EN */
+		>;
+	};
+
+	pinctrl_sai: saigrp {
+		fsl,pins = <
+/* 128 */		MX8MQ_IOMUXC_SAI1_MCLK_SAI1_MCLK           0x00000016 /* I2S MCLK */
+/* 130 */		MX8MQ_IOMUXC_SAI1_TXC_SAI1_TX_BCLK         0x00000016 /* I2S BCLK */
+/* 132 */		MX8MQ_IOMUXC_SAI1_TXFS_SAI1_TX_SYNC        0x00001816 /* I2S WS   */
+/* 134 */		MX8MQ_IOMUXC_SAI1_RXD0_SAI1_RX_DATA0       0x00000016 /* I2S DI   */
+/* 136 */		MX8MQ_IOMUXC_SAI1_TXD0_SAI1_TX_DATA0       0x00000016 /* I2S DO   */
+		>;
+	};
+
+	pinctrl_pwm3: pwm3grp {
+		fsl,pins = <
+/* 122 */		MX8MQ_IOMUXC_SPDIF_TX_PWM3_OUT             0x00000016 /* PWM0 */
+		>;
+	};
+
+	pinctrl_pwm4: pwm4grp {
+		fsl,pins = <
+/* 124 */		MX8MQ_IOMUXC_SAI3_MCLK_PWM4_OUT            0x00000016 /* PWM1 */
+		>;
+	};
+
+	pinctrl_otg1: otg1grp {
+		fsl,pins = <
+/* 006 */		MX8MQ_IOMUXC_GPIO1_IO10_USB1_OTG_ID        0x00000016	/* USB1_ID  */
+/* 008 */									/* USB1_VBUS */
+/* 010 */									/* USB1_DP  */
+/* 012 */									/* USB1_DM  */
+/* 014 */		MX8MQ_IOMUXC_GPIO1_IO12_USB1_OTG_PWR       0x00000016	/* USB1_PEN */
+/* 016 */		MX8MQ_IOMUXC_GPIO1_IO13_USB1_OTG_OC        0x00000016	/* USB1_OC  */
+/* 018 */									/* USB1_RXP */
+/* 020 */									/* USB1_RXM */
+/* 022 */									/* USB1_TXP */
+/* 024 */									/* USB1_TXM */
+		>;
+	};
+
+	pinctrl_otg2: otg2grp {
+		fsl,pins = <
+/* 005 */		MX8MQ_IOMUXC_GPIO1_IO11_USB2_OTG_ID        0x00000016	/* USB2_ID  */
+/* 007 */									/* USB2_VBUS */
+/* 009 */									/* USB2_DP  */
+/* 011 */									/* USB2_DM  */
+/* 013 */		MX8MQ_IOMUXC_GPIO1_IO07_GPIO1_IO7          0x00001816	/* USB2_PEN */
+/* 015 */		MX8MQ_IOMUXC_GPIO1_IO08_GPIO1_IO8          0x00000016	/* USB2_OC  */
+/* 017 */									/* USB2_RXP */
+/* 019 */									/* USB2_RXM */
+/* 021 */									/* USB2_TXP */
+/* 023 */									/* USB2_TXM */
+		>;
+	};
+
+	pinctrl_pcie1: pcie1grp {
+		fsl,pins = <
+/* 029 */									/* PCIE0_CLKM */
+/* 031 */									/* PCIE0_CLKP */
+/* 033 */									/* PCIE0_RX0M */
+/* 035 */									/* PCIE0_RX0P */
+/* 037 */									/* PCIE0_TX0M */
+/* 039 */									/* PCIE0_TX0P */
+/* 041 */		MX8MQ_IOMUXC_GPIO1_IO09_GPIO1_IO9          0x00000016	/* PCIE0_PERSTn */
+/* 043 */									/* ---------- */
+/* 045 */									/* ---------- */
+/* 047 */									/* ---------- */
+/* 049 */									/* ---------- */
+/* 051 */		MX8MQ_IOMUXC_SD2_WP_GPIO2_IO20             0x00000016	/* PCIE0_WAKE   */
+/* 053 */									/* ---------- */
+/* 055 */									/* ---------- */
+/* 057 */									/* ---------- */
+/* 059 */									/* ---------- */
+/* 061 */		MX8MQ_IOMUXC_I2C4_SCL_PCIE1_CLKREQ_B       0x00000016	/* PCIE0_CLKREQ */
+/* 063 */									/* ---------- */
+/* 065 */									/* ---------- */
+/* 067 */									/* ---------- */
+/* 069 */									/* ---------- */
+		>;
+	};
+
+	pinctrl_pcie2: pcie2grp {
+		fsl,pins = <
+/* 030 */									/* PCIE1_CLKM */
+/* 032 */									/* PCIE1_CLKP */
+/* 034 */									/* PCIE1_RX0M */
+/* 036 */									/* PCIE1_RX0P */
+/* 038 */									/* PCIE1_TX0M */
+/* 040 */									/* PCIE1_TX0P */
+/* 042 */		MX8MQ_IOMUXC_SD2_CD_B_GPIO2_IO12           0x00000016	/* PCIE1_PERSTn */
+/* 044 */									/* ---------- */
+/* 046 */									/* ---------- */
+/* 048 */									/* ---------- */
+/* 050 */									/* ---------- */
+/* 052 */		MX8MQ_IOMUXC_NAND_ALE_GPIO3_IO0            0x00000016	/* PCIE1_WAKE   */
+/* 054 */									/* ---------- */
+/* 056 */									/* ---------- */
+/* 058 */									/* ---------- */
+/* 060 */									/* ---------- */
+/* 062 */		MX8MQ_IOMUXC_I2C4_SDA_PCIE2_CLKREQ_B       0x00000016	/* PCIE1_CLKREQ */
+/* 064 */									/* ---------- */
+/* 066 */									/* ---------- */
+/* 068 */									/* ---------- */
+/* 070 */									/* ---------- */
+		>;
+	};
+
+	pinctrl_clko1: clko1grp {
+		fsl,pins = <
+/* 140 */		MX8MQ_IOMUXC_GPIO1_IO14_CCMSRCGPCMIX_CLKO1 0x00000016	/* CLKO0 */
+		>;
+	};
+
+	pinctrl_clko2: clko2grp {
+		fsl,pins = <
+/* 142 */		MX8MQ_IOMUXC_GPIO1_IO15_CCMSRCGPCMIX_CLKO2 0x00000016	/* CLKO1 */
+		>;
+	};
+};

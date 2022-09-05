@@ -1081,6 +1081,18 @@ config VIDEO_ADV7183
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7183.
 
+config VIDEO_ADV7280M
+	tristate "Analog Devices ADV7280M (MIPI) decoder"
+	depends on GPIOLIB && VIDEO_DEV && I2C
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_ASYNC
+	help
+	  Support for the Analog Devices ADV7180 video decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called adv7180.
+
 config VIDEO_ADV748X
 	tristate "Analog Devices ADV748x decoder"
 	depends on VIDEO_DEV && I2C
