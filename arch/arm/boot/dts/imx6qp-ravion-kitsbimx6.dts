@@ -217,7 +217,7 @@
 			vfront-porch = <10>;
 			vback-porch = <10>;
 			vsync-len = <11>;
-			de-active = <0>;
+			de-active = <1>;
 		};
 
 		port {
