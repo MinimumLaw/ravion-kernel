@@ -15,7 +15,7 @@
 #include "imx6qp-ravion-pkk.dtsi"
 
 / {
-	model = "ravion:pkk-m7";
+	model = "ravion:pkk-m10";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	gpio-leds { /* rotate panel */
