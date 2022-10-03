@@ -39,6 +39,55 @@
 		};
 	};
 
+	cpu_opp_table: cpu_opp_table {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp-378000000 {
+			opp-hz = /bits/ 64 <378000000>;
+		};
+
+		opp-756000000 {
+			opp-hz = /bits/ 64 <756000000>;
+		};
+
+		opp-1161000000 {
+			opp-hz = /bits/ 64 <1161000000>;
+		};
+	};
+
+	cpu-subsystem@800000 {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		cpu_pll: cpu_pll {
+			#clock-cells = <0>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1000050 0 0x8>;
+			clocks = <&xti_clk>;
+		};
+
+		cpu_ucg: ucg@1080000 {
+			compatible = "elvees,mcom03-clk-ucg";
+			reg = <0 0x1080000 0 0x80>;
+			clocks = <&cpu_pll>;
+			clock-output-names = "cpu_sys_clk", "cpu_core_clk",
+					     "cpu_dbus_clk";
+			enabled-clocks = <CPU_SYS_CLK
+					  CPU_CORE_CLK
+					  CPU_DBUS_CLK>;
+
+			/* Set all channels as fixed because any attempt to
+			 * change frequency will result in a violation of
+			 * frequency ratio and this will cause a hang.
+			 */
+			elvees,fixed-freq-mask = <0x7>;
+			#clock-cells = <1>;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -48,6 +97,8 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x0>;
+			clocks = <&cpu_pll>;
+			operating-points-v2 = <&cpu_opp_table>;
 			i-cache-size = <0x8000>;
 			i-cache-line-size = <64>;
 			i-cache-sets = <256>;
@@ -62,6 +113,8 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x1>;
+			clocks = <&cpu_pll>;
+			operating-points-v2 = <&cpu_opp_table>;
 			i-cache-size = <0x8000>;
 			i-cache-line-size = <64>;
 			i-cache-sets = <256>;
@@ -76,6 +129,8 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x2>;
+			clocks = <&cpu_pll>;
+			operating-points-v2 = <&cpu_opp_table>;
 			i-cache-size = <0x8000>;
 			i-cache-line-size = <64>;
 			i-cache-sets = <256>;
@@ -90,6 +145,8 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x3>;
+			clocks = <&cpu_pll>;
+			operating-points-v2 = <&cpu_opp_table>;
 			i-cache-size = <0x8000>;
 			i-cache-line-size = <64>;
 			i-cache-sets = <256>;
@@ -142,8 +199,11 @@
 
 		service_pll: service_pll {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <594000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1f001000 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&service_pll>;
+			assigned-clock-rates = <594000000>;
 		};
 
 		service_ucg1: ucg@1f020000 {
@@ -254,26 +314,38 @@
 
 		media_pll0: media_pll0 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <1998000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1320000 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&media_pll0>;
+			assigned-clock-rates = <1998000000>;
 		};
 
 		media_pll1: media_pll1 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <594000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1320010 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&media_pll1>;
+			assigned-clock-rates = <594000000>;
 		};
 
 		media_pll2: media_pll2 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <495000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1320020 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&media_pll2>;
+			assigned-clock-rates = <495000000>;
 		};
 
 		media_pll3: media_pll3 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <594000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1320030 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&media_pll3>;
+			assigned-clock-rates = <594000000>;
 		};
 
 		media_ucg0: ucg@1320040 {
@@ -559,7 +631,7 @@
 			clocks = <&lsperiph0_ucg0 LSP0_UART3_CLK
 				  &lsperiph0_ucg0 LSP0_SYS_CLK>;
 			clock-names = "baudclk", "apb_pclk";
-			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -895,13 +967,45 @@
 					groups = "emac_v18";
 					power-source = <1800>;
 				};
+
+				qspi1_default: qspi1-default {
+					ctrl {
+						groups = "qspi1_ctrl";
+						elvees,pad-enable;
+					};
+
+					data_and_ss {
+						groups = "qspi1_data",
+							 "qspi1_ss";
+						bias-pull-up;
+					};
+
+					clk {
+						pins = "QSPI1_SCLK";
+						bias-pull-up;
+					};
+				};
+
+				qspi1_default_18: qspi1-default-18 {
+					groups = "qspi1_ctrl";
+					power-source = <1800>;
+				};
+
+				qspi1_default_33: qspi1-default-33 {
+					groups = "qspi1_ctrl";
+					power-source = <3300>;
+				};
 			};
 		};
 
 		hsperiph_pll: hsperiph_pll {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <1125000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x10401000 0 0x8>;
+			clocks = <&xti_clk>;
+			elvees,pll-max-nr = /bits/ 8 <3>;
+			assigned-clocks = <&hsperiph_pll>;
+			assigned-clock-rates = <1125000000>;
 		};
 
 		hsperiph_ucg0: ucg@10410000 {
@@ -1128,6 +1232,9 @@
 			resets = <&hsperiph_reset HSPERIPH_RST_QSPI>;
 			num-cs = <4>;
 			status = "disabled";
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&qspi1_default>;
 		};
 
 		usb0: usb@10000000 {
@@ -1184,20 +1291,29 @@
 
 		sdr_pll0: sdr_pll0 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <1890000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1910000 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&sdr_pll0>;
+			assigned-clock-rates = <1890000000>;
 		};
 
 		sdr_pll1: sdr_pll1 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <648000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1910008 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&sdr_pll1>;
+			assigned-clock-rates = <648000000>;
 		};
 
 		sdr_pll2: sdr_pll2 {
 			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <459000000>;
+			compatible = "elvees,mcom03-clk-pll";
+			reg = <0 0x1910010 0 0x8>;
+			clocks = <&xti_clk>;
+			assigned-clocks = <&sdr_pll2>;
+			assigned-clock-rates = <459000000>;
 		};
 
 		sdr_ucg0: ucg@1900000 {
@@ -1348,6 +1464,7 @@
 				 <&sdr_ucg0 SDR_PCI_CLK>;
 			clock-names = "main_clk", "clk_cfg", "ext_clk",
 				      "int_clk", "pci_clk";
+			operating-points-v2 = <&dsp_opp_table>;
 		};
 
 		elcore1: elcore@1c80000 {
@@ -1368,6 +1485,36 @@
 				 <&sdr_ucg0 SDR_PCI_CLK>;
 			clock-names = "main_clk", "clk_cfg", "ext_clk",
 				      "int_clk", "pci_clk";
+			operating-points-v2 = <&dsp_opp_table>;
+		};
+
+		dsp_opp_table: dsp-opp-table {
+			compatible = "operating-points-v2";
+			opp-shared;
+			opp-81000000 {
+				opp-hz = /bits/ 64 <81000000>;
+			};
+			opp-135000000 {
+				opp-hz = /bits/ 64 <135000000>;
+			};
+			opp-189000000 {
+				opp-hz = /bits/ 64 <189000000>;
+			};
+			opp-243000000 {
+				opp-hz = /bits/ 64 <243000000>;
+			};
+			opp-297000000 {
+				opp-hz = /bits/ 64 <297000000>;
+			};
+			opp-351000000 {
+				opp-hz = /bits/ 64 <351000000>;
+			};
+			opp-405000000 {
+				opp-hz = /bits/ 64 <405000000>;
+			};
+			opp-459000000 {
+				opp-hz = /bits/ 64 <459000000>;
+			};
 		};
 	};
 
@@ -1409,6 +1556,12 @@
 				i2c3_cfg_default: i2c3-cfg {
 					/* pins = i2c3_scl, i2c3_sda */
 					pins = "GPIOA_4", "GPIOA_5";
+					input-enable;
+				};
+
+				i2s0_cfg_default: i2s0-cfg {
+					/* pins = i2s0_sdi0 i2s0_sclk_in */
+					pins = "GPIOB_4", "GPIOB_5";
 					input-enable;
 				};
 
@@ -1534,7 +1687,8 @@
 			status = "disabled";
 
 			pinctrl-names = "default";
-			pinctrl-0 = <&i2s0_mux_sdo0 &i2s0_mux_sdi0>;
+			pinctrl-0 = <&i2s0_cfg_default &i2s0_mux_sdo0
+				     &i2s0_mux_sdi0>;
 		};
 
 		uart0: serial0@1750000 {
