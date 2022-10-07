@@ -181,7 +181,7 @@
 
 		pwr_ABS {
 			label = "pwr::ABS";
-			gpio = <&gpio5  9 GPIO_ACTIVE_LOW>;	/* soDimm 122 */
+			gpio = <&gpio5  9 GPIO_ACTIVE_HIGH>;	/* soDimm 122 */
 			default-state = "on";
 		};
 	};
