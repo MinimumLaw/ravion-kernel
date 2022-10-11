@@ -8,7 +8,10 @@
 #include <linux/crc32.h>
 #include <linux/microchipphy.h>
 #include <linux/net_tstamp.h>
+#include <linux/of_mdio.h>
+#include <linux/of_net.h>
 #include <linux/phy.h>
+#include <linux/phy_fixed.h>
 #include <linux/rtnetlink.h>
 #include <linux/iopoll.h>
 #include <linux/crc16.h>
@@ -799,9 +802,9 @@ static int lan743x_mac_init(struct lan743x_adapter *adapter)
 
 	netdev = adapter->netdev;
 
-	/* setup auto duplex, and speed detection */
+	/* disable auto duplex, and speed detection. Phylib does that */
 	data = lan743x_csr_read(adapter, MAC_CR);
-	data |= MAC_CR_ADD_ | MAC_CR_ASD_;
+	data &= ~(MAC_CR_ADD_ | MAC_CR_ASD_);
 	data |= MAC_CR_CNTR_RST_;
 	lan743x_csr_write(adapter, MAC_CR, data);
 
@@ -947,12 +950,46 @@ static void lan743x_phy_link_status_change(struct net_device *netdev)
 {
 	struct lan743x_adapter *adapter = netdev_priv(netdev);
 	struct phy_device *phydev = netdev->phydev;
+	u32 data;
 
 	phy_print_status(phydev);
 	if (phydev->state == PHY_RUNNING) {
 		struct ethtool_link_ksettings ksettings;
 		int remote_advertisement = 0;
 		int local_advertisement = 0;
+
+		data = lan743x_csr_read(adapter, MAC_CR);
+
+		/* set interface mode */
+		if (phy_interface_is_rgmii(phydev))
+			/* RGMII */
+			data &= ~MAC_CR_MII_EN_;
+		else
+			/* GMII */
+			data |= MAC_CR_MII_EN_;
+
+		/* set duplex mode */
+		if (phydev->duplex)
+			data |= MAC_CR_DPX_;
+		else
+			data &= ~MAC_CR_DPX_;
+
+		/* set bus speed */
+		switch (phydev->speed) {
+		case SPEED_10:
+			data &= ~MAC_CR_CFG_H_;
+			data &= ~MAC_CR_CFG_L_;
+		break;
+		case SPEED_100:
+			data &= ~MAC_CR_CFG_H_;
+			data |= MAC_CR_CFG_L_;
+		break;
+		case SPEED_1000:
+			data |= MAC_CR_CFG_H_;
+			data &= ~MAC_CR_CFG_L_;
+		break;
+		}
+		lan743x_csr_write(adapter, MAC_CR, data);
 
 		memset(&ksettings, 0, sizeof(ksettings));
 		phy_ethtool_get_link_ksettings(netdev, &ksettings);
@@ -980,22 +1017,28 @@ static void lan743x_phy_close(struct lan743x_adapter *adapter)
 
 static int lan743x_phy_open(struct lan743x_adapter *adapter)
 {
+	struct net_device *netdev = adapter->netdev;
 	struct lan743x_phy *phy = &adapter->phy;
 	struct phy_device *phydev;
-	struct net_device *netdev;
 	int ret = -EIO;
 	u32 mii_adv;
 
-	netdev = adapter->netdev;
-	phydev = phy_find_first(adapter->mdiobus);
-	if (!phydev)
-		goto return_error;
+	/* try devicetree phy, or fixed link */
+	phydev = of_phy_get_and_connect(netdev, adapter->pdev->dev.of_node,
+					lan743x_phy_link_status_change);
 
-	ret = phy_connect_direct(netdev, phydev,
-				 lan743x_phy_link_status_change,
-				 PHY_INTERFACE_MODE_GMII);
-	if (ret)
-		goto return_error;
+	if (!phydev) {
+		/* try internal phy */
+		phydev = phy_find_first(adapter->mdiobus);
+		if (!phydev)
+			goto return_error;
+
+		ret = phy_connect_direct(netdev, phydev,
+					 lan743x_phy_link_status_change,
+					 PHY_INTERFACE_MODE_GMII);
+		if (ret)
+			goto return_error;
+	}
 
 	/* MAC doesn't support 1000T Half */
 	phydev->supported &= ~SUPPORTED_1000baseT_Half;
@@ -1009,6 +1052,7 @@ static int lan743x_phy_open(struct lan743x_adapter *adapter)
 
 	phy_start(phydev);
 	phy_start_aneg(phydev);
+	phy_attached_info(phydev);
 	return 0;
 
 return_error:
@@ -2738,7 +2782,7 @@ static int lan743x_mdiobus_init(struct lan743x_adapter *adapter)
 		adapter->mdiobus->phy_mask = ~(u32)BIT(1);
 
 	/* register mdiobus */
-	ret = mdiobus_register(adapter->mdiobus);
+	ret = of_mdiobus_register(adapter->mdiobus, adapter->pdev->dev.of_node);
 	if (ret < 0)
 		goto return_error;
 	return 0;
