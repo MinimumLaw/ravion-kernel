@@ -75,6 +75,14 @@
 #define MAX173XX_REG_CURRENT	0x01c	/* Actual current */
 #define MAX173XX_REG_AVGCURRENT	0x01d	/* Average current */
 
+/* MAX17xxx SBS Compatible area STATUS register */
+#define MAX17XXX_REG_SBS_STATUS		0x116
+#define MAX17XXX_REG_SBS_CURRENT	0x10A /* charge/discharge status */
+#define SBS_STATUS_INITIALIZED		0x0080
+#define SBS_STATUS_DISCHARGING		0x0040
+#define SBS_STATUS_FULLY_CHARGED	0x0020
+#define SBS_STATUS_FULLY_DISCHARGED	0x0010
+
 struct chip_to_ps {
 	/* function for convert raw regs to powersource class value */
 	int (*to_time)(unsigned int reg);
@@ -230,6 +238,38 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 			regmap_read(info->regmap, MAX172XX_REG_STATUS,
 			&reg) ? 0 : !(reg & MAX172XX_BAT_PRESENT);
 		break;
+	case POWER_SUPPLY_PROP_STATUS:
+		/*
+		    POWER_SUPPLY_STATUS_UNKNOWN
+		    POWER_SUPPLY_STATUS_CHARGING
+		    POWER_SUPPLY_STATUS_DISCHARGING
+		    POWER_SUPPLY_STATUS_NOT_CHARGING
+		    POWER_SUPPLY_STATUS_FULL
+		*/
+		ret = regmap_read(info->regmap, MAX17XXX_REG_SBS_STATUS, &reg);
+		if (ret)
+			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
+		else {
+			if (reg & SBS_STATUS_FULLY_CHARGED)
+				val->intval = POWER_SUPPLY_STATUS_FULL;
+			else if (reg & SBS_STATUS_DISCHARGING)
+				val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+			else if (reg & SBS_STATUS_FULLY_DISCHARGED)
+				val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+			else if (reg & SBS_STATUS_INITIALIZED) {
+				unsigned int reg;
+				int sbs_current;
+
+				regmap_read(info->regmap, MAX17XXX_REG_SBS_CURRENT, &reg);
+				sbs_current = max173xx_to_sense_voltage(reg);
+				if (sbs_current > 0)
+					val->intval = POWER_SUPPLY_STATUS_CHARGING;
+				else
+					val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+			} else
+				val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
+		};
+		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		ret = regmap_read(info->regmap, MAX172XX_REG_REPSOC, &reg);
 		val->intval = info->helper->to_percent(reg);
@@ -297,6 +337,7 @@ static int max1721x_battery_get_property(struct power_supply *psy,
 static enum power_supply_property max1721x_battery_props[] = {
 	/* int */
 	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
@@ -337,6 +378,7 @@ static int get_sn_string(struct max172xx_device_info *info, char *str)
  */
 static const struct regmap_range max1721x_allow_range[] = {
 	regmap_reg_range(0, 0xDF),	/* volatile data */
+	regmap_reg_range(0x100, 0x17F), /* SBS Compliant Memory */
 	regmap_reg_range(0x180, 0x1DF),	/* non-volatile memory */
 	regmap_reg_range(0x1E0, 0x1EF),	/* non-volatile history (unused) */
 };
@@ -358,7 +400,17 @@ static const struct regmap_range max1721x_deny_range[] = {
 	regmap_reg_range(0xBF, 0xD0),
 	regmap_reg_range(0xDB, 0xDB),
 	/* hole between volatile and non-volatile registers */
-	regmap_reg_range(0xE0, 0x17F),
+	regmap_reg_range(0xE0, 0xFF),
+	/* SBS Compliant Memory */
+	regmap_reg_range(0x105, 0x105),
+	regmap_reg_range(0x11d, 0x11F),
+	regmap_reg_range(0x124, 0x134),
+	regmap_reg_range(0x13A, 0x13A),
+	regmap_reg_range(0x140, 0x14B),
+	regmap_reg_range(0x150, 0x167),
+	regmap_reg_range(0x169, 0x16C),
+	regmap_reg_range(0x16E, 0x16F),
+	regmap_reg_range(0x171, 0x17F),
 };
 
 static const struct regmap_access_table max1721x_regs = {
