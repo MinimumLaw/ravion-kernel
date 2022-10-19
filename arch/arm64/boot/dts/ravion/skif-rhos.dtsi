@@ -35,12 +35,10 @@
 	};
 
 	gpio-keys {
-#if 0 /* gpio-keys gpio-keys: Unable to get irq number for GPIO 0, error -6 */
-		compatible = "gpio-keys";
-#else /* polled keys can't be wakeup source - need to be fixed !!! */
+		/* FixMe: gpio0b 0 can't be irq source - need schematic fixup */
 		compatible = "gpio-keys-polled";
 		poll-interval = <25>;
-#endif
+
 		pinctrl-names = "default";
 		pinctrl-0 = <&pwr_btn>;
 
@@ -351,11 +349,7 @@
 
 	gpio0a_mux_data: gpio0a-mux-data {
 		data {
-#ifdef DISABLE_BLUETOOTH
-			groups = "pin0", "pin1";
-#else
 			groups = "pin0", "pin1", "pin2", "pin7";
-#endif
 			function = "HW";
 		};
 	};

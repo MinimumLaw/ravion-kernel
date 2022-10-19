@@ -153,9 +153,6 @@
 &uart1 { status = "okay"; };
 &uart2 { status = "okay"; };
 
-#ifdef DISABLE_BLUETOOTH
-&uart3 { status = "okay"; };
-#else
 &uart3 {
 	status = "okay";
 
@@ -178,7 +175,6 @@
 		};
 	};
 };
-#endif
 
 /* Connected to MicroSD card */
 &sdhci1 {
