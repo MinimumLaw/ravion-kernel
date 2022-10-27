@@ -225,8 +225,6 @@
 			swbst_reg: swbst {
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5150000>;
-				regulator-boot-on;
-				regulator-always-on;
 			};
 
 			snvs_reg: vsnvs {
@@ -386,6 +384,7 @@
 &usbh1 { /* Host interface - default enabled (always connected to HUB) */
 	disable-over-current;
 	maximum-speed = "high-speed";
+	vbus-supply = <&swbst_reg>;
 	dr_mode = "host";
 	status = "okay";
 };
@@ -403,6 +402,7 @@
 &usbotg { /* ITG interface - default enabled */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
+	vbus-supply = <&swbst_reg>;
 	maximum-speed = "high-speed";
 	dr_mode = "otg";
 	status = "okay";
