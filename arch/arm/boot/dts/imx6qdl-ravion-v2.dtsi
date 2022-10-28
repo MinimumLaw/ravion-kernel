@@ -399,7 +399,7 @@
 	status = "disabled";
 };
 
-&usbotg { /* ITG interface - default enabled */
+&usbotg { /* OTG interface - default enabled */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg>;
 	vbus-supply = <&swbst_reg>;
