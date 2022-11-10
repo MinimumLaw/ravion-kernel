@@ -5,11 +5,11 @@
 
 /dts-v1/;
 
-#include "./../freescale/imx8mq.dtsi"
+#include "imx8mq.dtsi"
 
 / {
-	model = "NXP i.MX8MQ EVK";
-	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
+	model = "RHOS CPU module with I.MX8MQ CPU";
+	compatible = "ravion,imx8mq-rhos", "fsl,imx8mq";
 
 	chosen {
 		stdout-path = &uart1;

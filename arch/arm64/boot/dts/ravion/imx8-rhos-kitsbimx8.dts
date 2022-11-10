@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "imx8mq-rhos.dtsi"
+
+/ {
+	model = "RHOS Module with I.MX8MQ CPU on KitSBiMX8 board";
+	compatible = "ravion,imx8mq-rhos", "fsl,imx8mq";
+
+	chosen {
+		stdout-path = &uart1;
+	};
+};
+
