@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "imx8mq-rhos.dtsi"
+
+/ {
+	model = "RHOS Module with I.MX8MQ CPU on KitSBiMX8 board";
+	compatible = "ravion,imx8mq-rhos", "fsl,imx8mq";
+
+	chosen {                                                                                                                                                                  
+		stdout-path = "serial0:115200n8";                                                                                                                                 
+	};
+
+	/* from 2 - 0,1 on CPU module */
+	p15v_in: regulator@2 {
+		compatible = "regulator-fixed"; 
+		regulator-name = "p15v_in"; 
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator@3 { 
+		compatible = "regulator-fixed"; 
+		regulator-name = "p12v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <12000000>; 
+		regulator-max-microvolt = <12000000>; 
+		regulator-always-on;
+	};
+
+	p5v: regulator@4 {
+		compatible = "regulator-fixed"; 
+		regulator-name = "p5v"; 
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator@5 { 
+		compatible = "regulator-fixed"; 
+		regulator-name = "p3v3";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	avcc: regulator@6 { 
+		compatible = "regulator-fixed"; 
+		regulator-name = "avcc";
+		vin-supply = <&p5v>;
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		regulator-always-on;
+	};
+
+	avdd: regulator@7 { 
+		compatible = "regulator-fixed"; 
+		regulator-name = "avdd";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	codec_mclk: fixed-clock { /* XP40, XP41 - both removed*/
+		compatible = "fixed-clock"; 
+		#clock-cells = <0>; 
+		clock-frequency = <12288000>; 
+	};
+
+	soundcard@0 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+		simple-audio-card,cpu {
+			sound-dai = <&sai1 0>;
+		};
+
+		dailink0_master: simple-audio-card,codec {
+			sound-dai = <&sgtl5000 0>;
+		};
+	};
+
+};
+
+&ecspi1 {
+	status = "okay";
+#if 1	/* XP71 1-2 */
+	s25fl256@0 {
+		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
+		reg = <0>;
+		spi-max-frequency = <54000000>;
+	};
+#else	/* XP71 2-3 */
+	mcp2518@0 {
+		compatible = "microchip,mcp2518fd", "microchip,mcp2515";
+		reg = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&can_int_req>, <&can_rxint_req>;
+		spi-max-frequency = <54000000>;
+/*		interrupts-extended = <&gpio0a 5 IRQ_TYPE_LEVEL_LOW>;
+		microchip,rx-int-gpios = <&gpio1a 6 GPIO_ACTIVE_LOW>; */
+	};
+#endif
+};
+
+&i2c2 {
+	status = "okay";
+
+	rtc0: ds1342@68 {
+		compatible = "dallas,ds1341";
+		reg = <0x68>;
+		status = "okay";
+	};
+#if 0
+	/* NU This time */
+	usb-hub@2d { /* can be disabled on XP76 jumpers removed */
+		reg = <0x2d>;
+	};
+#endif
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+		clocks = <&codec_mclk 0>;
+		VDDA-supply = <&avcc>;
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&avdd>;
+		status = "okay";
+	};
+};
