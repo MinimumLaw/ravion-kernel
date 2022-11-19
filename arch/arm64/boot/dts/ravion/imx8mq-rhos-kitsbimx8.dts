@@ -11,8 +11,8 @@
 	model = "RHOS Module with I.MX8MQ CPU on KitSBiMX8 board";
 	compatible = "ravion,imx8mq-rhos", "fsl,imx8mq";
 
-	chosen {                                                                                                                                                                  
-		stdout-path = "serial0:115200n8";                                                                                                                                 
+	chosen {
+		stdout-path = "serial0:115200n8";
 	};
 
 	/* from 2 - 0,1 on CPU module */
@@ -75,6 +75,51 @@
 		clock-frequency = <12288000>; 
 	};
 
+	/*Recomended LVDS display panel
+	 *****************************/
+	lvds_panel: panel {
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+		/* backlight = <&lvds_backlight>; - FixMe: later */
+		data-mapping = "jeida-24";
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&bridge_lvds_out>;
+			};
+		};
+	};
+
+	/* HDMI connector
+	 ***************/
+	connector {
+		compatible = "hdmi-connector";
+		label = "hdmi";
+
+		type = "a";
+
+		port {
+			hdmi_connector_in: endpoint {
+				/* remote-endpoint added later */
+			};
+		};
+	};
+
 	soundcard@0 {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "RHOS IMX8MQ SGTL5000";
@@ -92,6 +137,39 @@
 
 };
 
+/* Interface to DSI-LVDS bridge
+ *****************************/
+&lcdif	{	status = "okay";	};
+&mipi_dsi {
+	status = "okay";
+
+	ports {
+		port@1 {
+			reg = <1>;
+
+			imx8mq_mipi_dsi_out: endpoint {
+				remote-endpoint = <&bridge_dsi_in>;
+			};
+		};
+	};
+};
+&dphy	{	status = "okay";	};
+
+/* MIPI CSI interface
+ *******************/
+&imx8mq_csi_in {
+	remote-endpoint = <&csi_sensor_out>;
+	data-lane = <1>;
+};
+
+/* &i2c_camera { sensor here}; FixMe: Why this not work (see next) */
+
+/* Serial audio interface
+ ***********************/
+&sai1	{	status = "okay";	};
+
+/* SPI interface
+ **************/
 &ecspi1 {
 	status = "okay";
 #if 1	/* XP71 1-2 */
@@ -113,7 +191,99 @@
 #endif
 };
 
-&i2c2 {
+/* Bluetooth interface
+ ********************/
+&uart4	{
+	status = "okay";
+
+	cc2564: bluetooth { /* DD19: CC2564CRVM */
+		compatible = "ti,wl1271-st";
+		/* pinctrl, enable-gpios ;*/
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+/* MicroSD card slot
+ ******************/
+&usdhc2	{	status = "okay";	};
+
+/* PCIe M.2 slot
+ **************/
+&pcie0	{	status = "okay";	};
+
+/* PCIe 4x slot
+ *************/
+&pcie1	{	status = "okay";	};
+
+/*
+ * I2C devices
+ */
+&i2c1 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
+	status = "okay";
+
+	i2c-switch@71 {
+		compatible = "ti,tca9846", "nxp,pca9846";
+		/* pinctrl and reset-gpios not here */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>; /* FixMe: 0x7c ??? */
+
+		/* Sub-buses in a mux doesn't respect status property, so they
+		 * are always enabled. */
+
+		i2c_m2: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c_pcie: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_camera: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+			/* FixMe: why it's here and &i2c_camera upper not work */
+			sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
+				compatible = "adi,adv7280-m";
+				reg = <0x20>;
+
+				port {
+					csi_sensor_out: endpoint {
+						remote-endpoint = <&imx8mq_csi_in>;
+						clock-lanes = <0>;
+						data-lanes = <1>;
+					};
+				};
+			};
+
+		};
+
+		i2c_lvds: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+&i2c2 {  /* XP67 1-2, 3-4 closed */
 	status = "okay";
 
 	rtc0: ds1342@68 {
@@ -121,12 +291,11 @@
 		reg = <0x68>;
 		status = "okay";
 	};
-#if 0
-	/* NU This time */
+
 	usb-hub@2d { /* can be disabled on XP76 jumpers removed */
 		reg = <0x2d>;
 	};
-#endif
+
 	sgtl5000: codec@a {
 		compatible = "fsl,sgtl5000";
 		reg = <0xa>;
@@ -136,5 +305,38 @@
 		VDDIO-supply = <&p3v3>;
 		VDDD-supply = <&avdd>;
 		status = "okay";
+	};
+};
+
+&i2c3 { /* can be diabled on XP68 jumpers removed */
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "microchip,24c08", "atmel,24c08";
+		reg = <0x50>;
+	};
+
+	sn65dsi83@2d {
+		compatibe = "ti,sn65dsi83";
+		reg = <0x2d>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				bridge_dsi_in: endpoint {
+					remote-endpoint = <&imx8mq_mipi_dsi_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				bridge_lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
 	};
 };
