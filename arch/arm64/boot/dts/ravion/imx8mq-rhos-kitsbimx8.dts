@@ -16,34 +16,34 @@
 	};
 
 	/* from 2 - 0,1 on CPU module */
-	p15v_in: regulator@2 {
-		compatible = "regulator-fixed"; 
-		regulator-name = "p15v_in"; 
+	p15v_in: regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "p15v_in";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
 
-	p12v: regulator@3 { 
-		compatible = "regulator-fixed"; 
+	p12v: regulator {
+		compatible = "regulator-fixed";
 		regulator-name = "p12v";
 		vin-supply = <&p15v_in>;
-		regulator-min-microvolt = <12000000>; 
-		regulator-max-microvolt = <12000000>; 
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
 		regulator-always-on;
 	};
 
-	p5v: regulator@4 {
-		compatible = "regulator-fixed"; 
-		regulator-name = "p5v"; 
+	p5v: regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
 		vin-supply = <&p15v_in>;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		regulator-always-on;
 	};
 
-	p3v3: regulator@5 { 
-		compatible = "regulator-fixed"; 
+	p3v3: regulator {
+		compatible = "regulator-fixed";
 		regulator-name = "p3v3";
 		vin-supply = <&p15v_in>;
 		regulator-min-microvolt = <3300000>;
@@ -51,8 +51,17 @@
 		regulator-always-on;
 	};
 
-	avcc: regulator@6 { 
-		compatible = "regulator-fixed"; 
+	p1v8: regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	avcc: regulator {
+		compatible = "regulator-fixed";
 		regulator-name = "avcc";
 		vin-supply = <&p5v>;
 		regulator-min-microvolt = <3000000>;
@@ -60,8 +69,8 @@
 		regulator-always-on;
 	};
 
-	avdd: regulator@7 { 
-		compatible = "regulator-fixed"; 
+	avdd: regulator {
+		compatible = "regulator-fixed";
 		regulator-name = "avdd";
 		vin-supply = <&p3v3>;
 		regulator-min-microvolt = <1800000>;
@@ -70,9 +79,9 @@
 	};
 
 	codec_mclk: fixed-clock { /* XP40, XP41 - both removed*/
-		compatible = "fixed-clock"; 
-		#clock-cells = <0>; 
-		clock-frequency = <12288000>; 
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12288000>;
 	};
 
 	/*Recomended LVDS display panel
@@ -134,7 +143,6 @@
 			sound-dai = <&sgtl5000 0>;
 		};
 	};
-
 };
 
 /* Interface to DSI-LVDS bridge
@@ -194,11 +202,12 @@
 /* Bluetooth interface
  ********************/
 &uart4	{
+	fsl,dte-mode;
 	status = "okay";
 
-	cc2564: bluetooth { /* DD19: CC2564CRVM */
+	bluetooth { /* DD19: CC2564CRVM */
 		compatible = "ti,wl1271-st";
-		/* pinctrl, enable-gpios ;*/
+		enable-gpios = <&gpio3 7 GPIO_ACTIVE_LOW>; /* soDimm 156 - nBT_SHDN */
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
 		max-speed = <3686400>;
@@ -234,10 +243,10 @@
 
 	i2c-switch@71 {
 		compatible = "ti,tca9846", "nxp,pca9846";
-		/* pinctrl and reset-gpios not here */
+		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg = <0x71>; /* FixMe: 0x7c ??? */
+		reg = <0x71>; /* FixMe: 0x7C ??? */
 
 		/* Sub-buses in a mux doesn't respect status property, so they
 		 * are always enabled. */
@@ -293,6 +302,7 @@
 	};
 
 	usb-hub@2d { /* can be disabled on XP76 jumpers removed */
+		compatible = "ignore,no-device-driver-required";
 		reg = <0x2d>;
 	};
 
@@ -314,11 +324,15 @@
 	eeprom@50 {
 		compatible = "microchip,24c08", "atmel,24c08";
 		reg = <0x50>;
+		vcc-supply = <&p1v8>;
+		status = "okay";
 	};
 
-	sn65dsi83@2d {
+	sn65dsi83@2c {
 		compatibe = "ti,sn65dsi83";
-		reg = <0x2d>;
+		enable-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>; /* XP78 - closed */
+		reg = <0x2c>;
+		status = "okay";
 
 		ports {
 			#address-cells = <1>;
