@@ -16,7 +16,7 @@
 	};
 
 	/* from 2 - 0,1 on CPU module */
-	p15v_in: regulator {
+	p15v_in: regulator-p15v_in {
 		compatible = "regulator-fixed";
 		regulator-name = "p15v_in";
 		regulator-min-microvolt = <1800000>;
@@ -24,7 +24,7 @@
 		regulator-always-on;
 	};
 
-	p12v: regulator {
+	p12v: regulator-p12v {
 		compatible = "regulator-fixed";
 		regulator-name = "p12v";
 		vin-supply = <&p15v_in>;
@@ -33,7 +33,7 @@
 		regulator-always-on;
 	};
 
-	p5v: regulator {
+	p5v: regulator-p5v {
 		compatible = "regulator-fixed";
 		regulator-name = "p5v";
 		vin-supply = <&p15v_in>;
@@ -42,7 +42,7 @@
 		regulator-always-on;
 	};
 
-	p3v3: regulator {
+	p3v3: regulator-p3v3 {
 		compatible = "regulator-fixed";
 		regulator-name = "p3v3";
 		vin-supply = <&p15v_in>;
@@ -51,7 +51,7 @@
 		regulator-always-on;
 	};
 
-	p1v8: regulator {
+	p1v8: regulator-p1v8 {
 		compatible = "regulator-fixed";
 		regulator-name = "p1v8";
 		vin-supply = <&p3v3>;
@@ -60,7 +60,7 @@
 		regulator-always-on;
 	};
 
-	avcc: regulator {
+	avcc: regulator-avcc {
 		compatible = "regulator-fixed";
 		regulator-name = "avcc";
 		vin-supply = <&p5v>;
@@ -69,7 +69,7 @@
 		regulator-always-on;
 	};
 
-	avdd: regulator {
+	avdd: regulator-avdd {
 		compatible = "regulator-fixed";
 		regulator-name = "avdd";
 		vin-supply = <&p3v3>;
@@ -78,7 +78,7 @@
 		regulator-always-on;
 	};
 
-	codec_mclk: fixed-clock { /* XP40, XP41 - both removed*/
+	codec_mclk: codec-mclk-clock { /* XP40, XP41 - both removed*/
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <12288000>;
@@ -328,10 +328,11 @@
 		status = "okay";
 	};
 
-	sn65dsi83@2c {
+	dsi2lvds-bridge@2d {
 		compatibe = "ti,sn65dsi83";
+		reg = <0x2d>;
 		enable-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>; /* XP78 - closed */
-		reg = <0x2c>;
+		vcc-supply = <&p1v8>;
 		status = "okay";
 
 		ports {
@@ -340,13 +341,14 @@
 
 			port@0 {
 				reg = <0>;
+				data-lanes = <4>;
 				bridge_dsi_in: endpoint {
 					remote-endpoint = <&imx8mq_mipi_dsi_out>;
 				};
 			};
 
-			port@1 {
-				reg = <1>;
+			port@2 {
+				reg = <2>;
 				bridge_lvds_out: endpoint {
 					remote-endpoint = <&lvds_panel_in>;
 				};

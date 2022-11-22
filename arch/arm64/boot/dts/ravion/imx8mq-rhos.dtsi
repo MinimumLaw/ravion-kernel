@@ -36,45 +36,24 @@
 		regulator-max-microvolt = <900000>;
 		regilator-allways-on;
 	};
-	
+
 	/* System crytical generators */
 	pcie0_refclk: pcie0-refclk { /* DD7, DIF0 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
-		clock-frequency = <100000000>;   
-	}; 
+		clock-frequency = <100000000>;
+	};
 
 	pcie1_refclk: pcie1-refclk { /* DD7, DIF1 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
-		clock-frequency = <100000000>;   
-	}; 
+		clock-frequency = <100000000>;
+	};
 
-	/*
-	 * ToDo: must be moved into imx8mq.dtsi
-	 */
-	dcss: display-controller@32e00000 {
-		compatible = "nxp,imx8mq-dcss";
-		reg = <0x32e00000 0x2d000>, <0x32e2f000 0x1000>;
-		interrupts = <6>, <8>, <9>;
-		interrupt-names = "ctxld", "ctxld_kick", "vblank";
-		interrupt-parent = <&irqsteer>;
-		clocks = <&clk IMX8MQ_CLK_DISP_APB_ROOT>, <&clk IMX8MQ_CLK_DISP_AXI_ROOT>,
-			<&clk IMX8MQ_CLK_DISP_RTRM_ROOT>, <&clk IMX8MQ_VIDEO2_PLL_OUT>,
-			<&clk IMX8MQ_CLK_DISP_DTRC>;
-		clock-names = "apb", "axi", "rtrm", "pix", "dtrc";
-		assigned-clocks = <&clk IMX8MQ_CLK_DISP_AXI>, <&clk IMX8MQ_CLK_DISP_RTRM>,
-			<&clk IMX8MQ_VIDEO2_PLL1_REF_SEL>;
-		assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_800M>, <&clk IMX8MQ_SYS1_PLL_800M>,
-			<&clk IMX8MQ_CLK_27M>;
-		assigned-clock-rates = <800000000>, <400000000>;
-		status = "disabled";
-
-		port {
-			dcss_hdmi_out: endpoint {
-				remote-endpoint = <&hdmi_connector_in>;
-			};
-		};
+	hdmi_refclk: hdmi-refclk { /* DD6 */
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <27000000>;
 	};
 };
 
@@ -168,7 +147,7 @@
 		 <&clk IMX8MQ_CLK_PCIE2_AUX>,
 		 <&clk IMX8MQ_CLK_PCIE2_PHY>,
 		 <&pcie1_refclk>;
-	clock-names = "pcie", "pcie_aux", "pcie_phy", "pcie_bus";	
+	clock-names = "pcie", "pcie_aux", "pcie_phy", "pcie_bus";
 	status = "okay";
 };
 
@@ -177,9 +156,9 @@
 	pinctrl-0 = <&pinctrl_rgmii>;
 	phy-mode = "rgmii-id";
 	phy-handle = <&ethphy0>;
-	phy-reset-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <500>;
 	reset-post-delay-us = <200>;
+	phy-reset-gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;
 	fsl,magic-packet;
 	status = "okay";
 
@@ -190,6 +169,7 @@
 		ethphy0: ethernet-phy@1 {
 			compatible = "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			vddio-supply = <&P1V8_SW4>;
 		};
 	};
 };
@@ -548,8 +528,8 @@
 /* int */		MX8MQ_IOMUXC_ENET_TD3_ENET1_RGMII_TD3	0x0000001f
 /* int */		MX8MQ_IOMUXC_ENET_TXC_ENET1_RGMII_TXC	0x0000001f
 /* int */		MX8MQ_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL 0x0000001f
-/* int */		MX8MQ_IOMUXC_GPIO1_IO00_CCMSRCGPCMIX_ENET_PHY_REF_CLK_ROOT 0x00000014
-/* int */		MX8MQ_IOMUXC_SAI1_TXD3_GPIO4_IO15	0x00000016	/* RSTN_ETHPHY */
+/* int **		MX8MQ_IOMUXC_GPIO1_IO00_CCMSRCGPCMIX_ENET_PHY_REF_CLK_ROOT 0x00000014 <- FixMe: Must be undefined!!!*/
+/* int */		MX8MQ_IOMUXC_SAI1_TXD3_GPIO4_IO15	0x00000019	/* RSTN_ETHPHY */
 		>;
 	};
 
