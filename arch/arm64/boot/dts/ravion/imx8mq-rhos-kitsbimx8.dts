@@ -148,6 +148,7 @@
 /* Interface to DSI-LVDS bridge
  *****************************/
 &lcdif	{	status = "okay";	};
+
 &mipi_dsi {
 	status = "okay";
 
@@ -161,11 +162,16 @@
 		};
 	};
 };
+
 &dphy	{	status = "okay";	};
 
 /* MIPI CSI interface
  *******************/
+&mipi_csi1	{	status = "okay";	};
+&csi1		{	status = "okay";	};
+
 &imx8mq_csi_in {
+	status = "okay";
 	remote-endpoint = <&csi_sensor_out>;
 	data-lane = <1>;
 };
@@ -202,7 +208,6 @@
 /* Bluetooth interface
  ********************/
 &uart4	{
-	fsl,dte-mode;
 	status = "okay";
 
 	bluetooth { /* DD19: CC2564CRVM */
@@ -238,18 +243,15 @@
 /*
  * I2C devices
  */
-&i2c1 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
-	status = "okay";
+&i2c3 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
 
 	i2c-switch@71 {
 		compatible = "ti,tca9846", "nxp,pca9846";
 		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
+		status = "disabled";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg = <0x71>; /* FixMe: 0x7C ??? */
-
-		/* Sub-buses in a mux doesn't respect status property, so they
-		 * are always enabled. */
+		reg = <0x71>;
 
 		i2c_m2: i2c@0 {
 			#address-cells = <1>;
@@ -281,7 +283,6 @@
 					};
 				};
 			};
-
 		};
 
 		i2c_lvds: i2c@3 {
@@ -301,8 +302,9 @@
 		status = "okay";
 	};
 
-	usb-hub@2d { /* can be disabled on XP76 jumpers removed */
+	usb-hub@2d { /* can be disabled on XP76 [2-4],[6-8] def. [3-4],[5-6] */
 		compatible = "ignore,no-device-driver-required";
+		status = "disabled";
 		reg = <0x2d>;
 	};
 
@@ -318,7 +320,7 @@
 	};
 };
 
-&i2c3 { /* can be diabled on XP68 jumpers removed */
+&i2c1 { /* can be diabled on XP68 jumpers removed def [1-2],[3-4] */
 	status = "okay";
 
 	eeprom@50 {
@@ -328,10 +330,10 @@
 		status = "okay";
 	};
 
-	dsi2lvds-bridge@2d {
-		compatibe = "ti,sn65dsi83";
-		reg = <0x2d>;
-		enable-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>; /* XP78 - closed */
+	dsi2lvds-bridge@2c {
+		compatible = "ti,sn65dsi83";
+		reg = <0x2c>;
+		enable-gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;  /* XP78 - closed */
 		vcc-supply = <&p1v8>;
 		status = "okay";
 

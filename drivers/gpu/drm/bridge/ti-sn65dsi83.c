@@ -627,8 +627,10 @@ static int sn65dsi83_host_attach(struct sn65dsi83 *ctx)
 	of_node_put(host_node);
 	of_node_put(endpoint);
 
-	if (!host)
+	if (!host) {
+		dev_err(dev, "Host DSI not found. Delay initialisation...\n");
 		return -EPROBE_DEFER;
+	}
 
 	if (dsi_lanes < 0)
 		return dsi_lanes;
