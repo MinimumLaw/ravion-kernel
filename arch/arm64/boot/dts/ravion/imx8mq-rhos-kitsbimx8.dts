@@ -60,6 +60,15 @@
 		regulator-always-on;
 	};
 
+	p1v8_bt: regulator-p1v8_bt { /* XP48 */
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8_bt";
+		vin-supply = <&p3v3>;
+		gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
 	avcc: regulator-avcc {
 		compatible = "regulator-fixed";
 		regulator-name = "avcc";
@@ -143,7 +152,24 @@
 			sound-dai = <&sgtl5000 0>;
 		};
 	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		power-key {
+			label = "Power";
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
 };
+
+/* PWMs
+ *****/
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
 
 /* Interface to DSI-LVDS bridge
  *****************************/
@@ -190,17 +216,14 @@
 	s25fl256@0 {
 		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
 		reg = <0>;
-		spi-max-frequency = <54000000>;
+		spi-max-frequency = <1000000>;
 	};
 #else	/* XP71 2-3 */
 	mcp2518@0 {
+		/* FixMe: not all required params present!!! */
 		compatible = "microchip,mcp2518fd", "microchip,mcp2515";
 		reg = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&can_int_req>, <&can_rxint_req>;
 		spi-max-frequency = <54000000>;
-/*		interrupts-extended = <&gpio0a 5 IRQ_TYPE_LEVEL_LOW>;
-		microchip,rx-int-gpios = <&gpio1a 6 GPIO_ACTIVE_LOW>; */
 	};
 #endif
 };
@@ -210,9 +233,11 @@
 &uart4	{
 	status = "okay";
 
-	bluetooth { /* DD19: CC2564CRVM */
+	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
 		compatible = "ti,wl1271-st";
-		enable-gpios = <&gpio3 7 GPIO_ACTIVE_LOW>; /* soDimm 156 - nBT_SHDN */
+		enable-gpios = <&gpio3 7 GPIO_ACTIVE_LOW>; /* XP48 */
+		vio-supply = <&p1v8_bt>;
+		vbat-supply = <&p3v3>;
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
 		max-speed = <3686400>;
@@ -253,19 +278,19 @@
 		#size-cells = <0>;
 		reg = <0x71>;
 
-		i2c_m2: i2c@0 {
+		i2c@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 		};
 
-		i2c_pcie: i2c@1 {
+		i2c@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
 		};
 
-		i2c_camera: i2c@2 {
+		i2c@2 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
@@ -285,7 +310,7 @@
 			};
 		};
 
-		i2c_lvds: i2c@3 {
+		i2c@3 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
