@@ -358,6 +358,7 @@
 	dr_mode = "otg";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_otg1>;
+	fsl,over-current-active-low;
 	status = "okay";
 };
 

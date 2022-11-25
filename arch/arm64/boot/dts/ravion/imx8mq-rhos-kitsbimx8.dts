@@ -64,7 +64,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p1v8_bt";
 		vin-supply = <&p3v3>;
-		gpio = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio3 6 GPIO_ACTIVE_LOW>;
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 	};
@@ -198,8 +198,8 @@
 
 &imx8mq_csi_in {
 	status = "okay";
-	remote-endpoint = <&csi_sensor_out>;
-	data-lane = <1>;
+/*	remote-endpoint = <&csi_sensor_out>;
+	data-lane = <1>; */
 };
 
 /* &i2c_camera { sensor here}; FixMe: Why this not work (see next) */
@@ -235,7 +235,7 @@
 
 	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
 		compatible = "ti,wl1271-st";
-		enable-gpios = <&gpio3 7 GPIO_ACTIVE_LOW>; /* XP48 */
+		enable-gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>; /* XP48 */
 		vio-supply = <&p1v8_bt>;
 		vbat-supply = <&p3v3>;
 		clocks = <&clk_32k_bt 0>;
@@ -273,24 +273,24 @@
 	i2c-switch@71 {
 		compatible = "ti,tca9846", "nxp,pca9846";
 		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
-		status = "disabled";
+		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x71>;
 
-		i2c@0 {
+		i2c-mux0@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 		};
 
-		i2c@1 {
+		i2c-mux1@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
 		};
 
-		i2c@2 {
+		i2c-mux2@2 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
@@ -302,15 +302,15 @@
 
 				port {
 					csi_sensor_out: endpoint {
-						remote-endpoint = <&imx8mq_csi_in>;
+/*						remote-endpoint = <&imx8mq_csi_in>;
 						clock-lanes = <0>;
-						data-lanes = <1>;
+						data-lanes = <1>; */
 					};
 				};
 			};
 		};
 
-		i2c@3 {
+		i2c-mux3@3 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
