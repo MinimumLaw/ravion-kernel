@@ -64,7 +64,8 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p1v8_bt";
 		vin-supply = <&p3v3>;
-		gpio = <&gpio3 6 GPIO_ACTIVE_LOW>;
+		gpio = <&gpio3 6 0>; /* FixMe: broken GPIO_ACTIVE_HIGH */
+		enable-active-high;
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 	};
