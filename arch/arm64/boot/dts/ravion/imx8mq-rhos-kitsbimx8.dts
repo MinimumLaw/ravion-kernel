@@ -51,6 +51,26 @@
 		regulator-always-on;
 	};
 
+	p3v3_cam: regulator-p3v3_cam {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_cam";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio3 9 0>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_lcd: regulator-p3v3_lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_lcd";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio3 8 0>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	p1v8: regulator-p1v8 {
 		compatible = "regulator-fixed";
 		regulator-name = "p1v8";
@@ -199,8 +219,8 @@
 
 &imx8mq_csi_in {
 	status = "okay";
-/*	remote-endpoint = <&csi_sensor_out>;
-	data-lane = <1>; */
+	remote-endpoint = <&csi_sensor_out>;
+	data-lane = <1>;
 };
 
 /* &i2c_camera { sensor here}; FixMe: Why this not work (see next) */
@@ -303,9 +323,9 @@
 
 				port {
 					csi_sensor_out: endpoint {
-/*						remote-endpoint = <&imx8mq_csi_in>;
+						remote-endpoint = <&imx8mq_csi_in>;
 						clock-lanes = <0>;
-						data-lanes = <1>; */
+						data-lanes = <1>;
 					};
 				};
 			};
