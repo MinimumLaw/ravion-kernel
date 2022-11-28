@@ -121,20 +121,18 @@
 	status = "okay";
 };
 
-&mipi_csi1 {
+&mipi_csi1
+{
 	status = "disabled";
 
-	port@0 {
-		imx8mq_csi_in: endpoint {
-			/* remote-endpoint, data-lanes later */
-		};
-	};
+        ports {
+                port@0 {
+			reg = <0>;
+                        imx8mq_csi_in: endpoint {};
+                };
+        };
 };
 &csi1		{	status = "disabled";	};
-
-/* CSI2 not user on RHOS boards */
-&mipi_csi2	{	status = "disabled";	};
-&csi2		{	status = "disabled";	};
 
 &pcie0 {
 	pinctrl-names = "default";

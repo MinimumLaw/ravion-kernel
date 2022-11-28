@@ -212,18 +212,6 @@
 
 &dphy	{	status = "okay";	};
 
-/* MIPI CSI interface
- *******************/
-&mipi_csi1	{	status = "okay";	};
-&csi1		{	status = "okay";	};
-
-&imx8mq_csi_in {
-	status = "okay";
-	remote-endpoint = <&csi_sensor_out>;
-	data-lane = <1>;
-};
-
-/* &i2c_camera { sensor here}; FixMe: Why this not work (see next) */
 
 /* Serial audio interface
  ***********************/
@@ -291,51 +279,42 @@
  */
 &i2c3 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
 
-	i2c-switch@71 {
-		compatible = "ti,tca9846", "nxp,pca9846";
+	i2c-mux@71 {
+		compatible = "nxp,pca9846";
 		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x71>;
 
-		i2c-mux0@0 {
+		m2_slot: i2c@0 {
+			status = "disabled";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
 		};
 
-		i2c-mux1@1 {
+		pcie_slot: i2c@1 {
+			status = "disabled";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <1>;
 		};
 
-		i2c-mux2@2 {
+		i2c_camera: i2c@2 {
+			status = "okay";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
-
-			/* FixMe: why it's here and &i2c_camera upper not work */
-			sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
-				compatible = "adi,adv7280-m";
-				reg = <0x20>;
-
-				port {
-					csi_sensor_out: endpoint {
-						remote-endpoint = <&imx8mq_csi_in>;
-						clock-lanes = <0>;
-						data-lanes = <1>;
-					};
-				};
-			};
 		};
 
-		i2c-mux3@3 {
+		lcd_ddc: i2c@3 {
+			status = "disabled";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <3>;
 		};
+
 	};
 };
 
@@ -400,6 +379,33 @@
 				bridge_lvds_out: endpoint {
 					remote-endpoint = <&lvds_panel_in>;
 				};
+			};
+		};
+	};
+};
+
+/* MIPI CSI interface
+ *******************/
+&csi1		{	status = "okay";	};
+&mipi_csi1 	{	status = "okay";	};
+
+&imx8mq_csi_in {
+	remote-endpoint = <&csi_sensor_out>;
+	data-lane = <1>;
+};
+
+&i2c_camera
+{
+	sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
+		compatible = "adi,adv7280-m";
+		status = "okay";
+		reg = <0x20>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1>;
 			};
 		};
 	};
