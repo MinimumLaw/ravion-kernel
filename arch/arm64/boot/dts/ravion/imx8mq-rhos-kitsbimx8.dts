@@ -233,9 +233,23 @@
 #else /* !defined SPI_FLASH, XP71 2-3 */
 	mcp2518@0 {
 		/* FixMe: not all required params present!!! */
-		compatible = "microchip,mcp2518fd", "microchip,mcp2515";
+		compatible = "microchip,mcp2518fd";
 		reg = <0>;
-		spi-max-frequency = <54000000>;
+		clocks = <&clk_20m_can 0>;
+		interrupts-extended = <&gpio3 2 IRQ_TYPE_LEVEL_LOW>;
+		vdd-supply = <&p3v3>;
+		xceiver-supply = <&p5v>;
+		microchip,int0-gpios = <&gpio3 2 0>;	/* not used, just for info */
+		microchip,rx-int-gpios = <&gpio3 4 0>;	/* GPIO1/INT1 pinout */
+		spi-max-frequency = <10000000>;		/* clocks/2 or less */
+		status = "okay";
+
+		clk_20m_can: can_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+			clock-accuracy = <100>;
+		};
 	};
 #endif /* SPI_FLASH */
 };
