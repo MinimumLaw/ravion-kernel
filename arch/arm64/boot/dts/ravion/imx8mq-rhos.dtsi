@@ -108,10 +108,12 @@
 };
 &dphy 		{	status = "disabled";	};
 
-
 &ecspi1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_spi>;
+	cs-gpios = <&gpio5 9 0>;
+	num-cs = <1>;
+
 	status = "disabled";
 };
 
@@ -493,10 +495,10 @@
 
 	pinctrl_spi: spigrp {
 		fsl,pins = < /* LVTTL, MEDIUM_100, 40Ohms */
-/* 117 */		MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK	0x0000010F	/* SPI_SCK  */
-/* 119 */		MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI	0x0000010F	/* SPI_MOSI */
-/* 121 */		MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO	0x0000010F	/* SPI_MISO */
-/* 123 */		MX8MQ_IOMUXC_ECSPI1_SS0_ECSPI1_SS0	0x00000147	/* SPI_CS   */
+/* 117 */		MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK	0x0000014F	/* SPI_SCK  */
+/* 119 */		MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI	0x0000014F	/* SPI_MOSI */
+/* 121 */		MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO	0x0000014F	/* SPI_MISO */
+/* 123 */		MX8MQ_IOMUXC_ECSPI1_SS0_GPIO5_IO9	0x00000147	/* SPI_CS   */
 		>;
 	};
 

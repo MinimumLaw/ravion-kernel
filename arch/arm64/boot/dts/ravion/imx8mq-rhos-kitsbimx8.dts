@@ -5,6 +5,9 @@
 
 /dts-v1/;
 
+/* For SPI_CAN comment and move XP71 from 1-2 to 2-3 position */
+#define	SPI_FLASH
+
 #include "imx8mq-rhos.dtsi"
 
 / {
@@ -221,20 +224,20 @@
  **************/
 &ecspi1 {
 	status = "okay";
-#if 1	/* XP71 1-2 */
+#if defined SPI_FLASH	/* XP71 1-2 */
 	s25fl256@0 {
 		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
 		reg = <0>;
-		spi-max-frequency = <1000000>;
+		spi-max-frequency = <20000000>; /* 40MHz ABSOLUTE MAXIMUM */
 	};
-#else	/* XP71 2-3 */
+#else /* !defined SPI_FLASH, XP71 2-3 */
 	mcp2518@0 {
 		/* FixMe: not all required params present!!! */
 		compatible = "microchip,mcp2518fd", "microchip,mcp2515";
 		reg = <0>;
 		spi-max-frequency = <54000000>;
 	};
-#endif
+#endif /* SPI_FLASH */
 };
 
 /* Bluetooth interface
