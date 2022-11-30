@@ -232,7 +232,14 @@
  ***********************/
 &sai1	{
 	status = "okay";
+	/* default & I2S - 1-st tx/rx, PDM - disabled */
+	fst,dataline = <0 0x01 0x01 1 0x01 0x01 2 0x00 0x00>;
 #ifdef	CODEC_MASTER
+	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
+		<&codec_mclk 0>,
+		<&clk IMX8MQ_CLK_DUMMY>,
+		<&clk IMX8MQ_CLK_DUMMY>;
+	clock-names = "bus", "mclk1", "mclk2", "mclk3";
 	assigned-clock-rates = <12280000>;
 #else
 	fsl,sai-mclk-direction-output;
