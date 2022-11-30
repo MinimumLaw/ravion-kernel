@@ -7,6 +7,8 @@
 
 /* For SPI_CAN comment and move XP71 from 1-2 to 2-3 position */
 #define	SPI_FLASH
+/* SGTL5000 act as I2S master device. FixMe: XP...*/
+#define	CODEC_MASTER
 
 #include "imx8mq-rhos.dtsi"
 
@@ -164,15 +166,25 @@
 
 	soundcard@0 {
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "RHOS IMX8MQ SGTL5000";
+#ifdef	CODEC_MASTER
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(M)";
+#else
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(S)";
+#endif
+		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&dailink0_master>;
 		simple-audio-card,frame-master = <&dailink0_master>;
 
+#ifndef	CODEC_MASTER
+		dailink0_master:
+#endif
 		simple-audio-card,cpu {
 			sound-dai = <&sai1 0>;
 		};
-
-		dailink0_master: simple-audio-card,codec {
+#ifdef	CODEC_MASTER
+		dailink0_master:
+#endif
+		simple-audio-card,codec {
 			sound-dai = <&sgtl5000 0>;
 		};
 	};
@@ -218,7 +230,15 @@
 
 /* Serial audio interface
  ***********************/
-&sai1	{	status = "okay";	};
+&sai1	{
+	status = "okay";
+#ifdef	CODEC_MASTER
+	assigned-clock-rates = <12280000>;
+#else
+	fsl,sai-mclk-direction-output;
+	assigned-clock-rates = <12288000>;
+#endif
+};
 
 /* SPI interface
  **************/
@@ -354,7 +374,16 @@
 		compatible = "fsl,sgtl5000";
 		reg = <0xa>;
 		#sound-dai-cells = <0>;
+#ifdef	CODEC_MASTER
 		clocks = <&codec_mclk 0>;
+#else /* !defined CODEC_MASTER */
+		#warning FixMe: Is this correct?
+                clocks = <&clk IMX8MQ_CLK_SAI1_ROOT>;
+                clock-names = "mclk";
+		assigned-clocks = <&clk IMX8MQ_CLK_SAI1>;
+		assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+		assigned-clock-rates = <24576000>;
+#endif
 		VDDA-supply = <&avcc>;
 		VDDIO-supply = <&p3v3>;
 		VDDD-supply = <&avdd>;
