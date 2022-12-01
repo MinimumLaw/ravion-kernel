@@ -121,6 +121,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai>;
 	status = "okay";
+	/* FixMe: error in imx8mq.dtsi ??? */
+	dmas = <&sdma2 8 24 0>, <&sdma2 9 24 0>;
 };
 
 &mipi_csi1
