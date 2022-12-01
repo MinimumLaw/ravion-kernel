@@ -243,7 +243,7 @@
 	assigned-clock-rates = <12280000>;
 #else
 	fsl,sai-mclk-direction-output;
-	assigned-clock-rates = <12288000>;
+	assigned-clock-rates = <8192000>;
 #endif
 };
 
@@ -259,7 +259,6 @@
 	};
 #else /* !defined SPI_FLASH, XP71 2-3 */
 	mcp2518@0 {
-		/* FixMe: not all required params present!!! */
 		compatible = "microchip,mcp2518fd";
 		reg = <0>;
 		clocks = <&clk_20m_can 0>;
@@ -384,12 +383,12 @@
 #ifdef	CODEC_MASTER
 		clocks = <&codec_mclk 0>;
 #else /* !defined CODEC_MASTER */
-		#warning FixMe: Is this correct?
+#warning Codec clock MUST be 8K or more, so rate in SLAVE mode min 8192K/512=16K
                 clocks = <&clk IMX8MQ_CLK_SAI1_ROOT>;
                 clock-names = "mclk";
 		assigned-clocks = <&clk IMX8MQ_CLK_SAI1>;
 		assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
-		assigned-clock-rates = <24576000>;
+		assigned-clock-rates = <8192000>;
 #endif
 		VDDA-supply = <&avcc>;
 		VDDIO-supply = <&p3v3>;
