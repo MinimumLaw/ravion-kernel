@@ -9,6 +9,8 @@
 #define	SPI_FLASH
 /* SGTL5000 act as I2S master device. FixMe: XP...*/
 #define	CODEC_MASTER
+/* define for use external clock generator for codec */
+#undef	CODEC_CLOCK_SELF
 
 #include "imx8mq-rhos.dtsi"
 
@@ -235,12 +237,20 @@
 	/* default - any, I2S - 1-st tx/rx, PDM - disabled */
 	fst,dataline = <0 0x0F 0x0F 0x01 0x01 0x01 0x02 0x00 0x00>;
 #ifdef	CODEC_MASTER
+#ifdef	CODEC_CLOCK_SELF
 	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
-		<&codec_mclk 0>,
+		<&codec_mclk 0>,		/* MCLK connected to generator */
 		<&clk IMX8MQ_CLK_DUMMY>,
 		<&clk IMX8MQ_CLK_DUMMY>;
 	clock-names = "bus", "mclk1", "mclk2", "mclk3";
 	assigned-clock-rates = <12280000>;
+#else	/* !CODEC_CLOCK_SELF - use codec clock from CPU CLKO1 */
+	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
+		<&clk IMX8MQ_CLK_DUMMY>,	/* MCLK floated on SAI side  */
+		<&clk IMX8MQ_CLK_DUMMY>,
+		<&clk IMX8MQ_CLK_DUMMY>;
+	clock-names = "bus", "mclk1", "mclk2", "mclk3";
+#endif	/* CODEC_CLOCK_SELF */
 #else
 	fsl,sai-mclk-direction-output;
 	assigned-clock-rates = <8192000>;
@@ -381,7 +391,14 @@
 		reg = <0xa>;
 		#sound-dai-cells = <0>;
 #ifdef	CODEC_MASTER
+#ifdef	CODECK_CLOCK_SELF
 		clocks = <&codec_mclk 0>;
+#else	/* !CODEC_CLOCK_SELF - use CLKO1 from CPU */
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_clko1>;
+
+		clocks = <&clk IMX8MQ_CLK_CLKO1>;
+#endif	/* CODEC_CLOCK_SELF */
 #else /* !defined CODEC_MASTER */
 #warning Codec clock MUST be 8K or more, so rate in SLAVE mode min 8192K/512=16K
                 clocks = <&clk IMX8MQ_CLK_SAI1_ROOT>;
