@@ -460,7 +460,7 @@
 
 &imx8mq_csi_in {
 	remote-endpoint = <&csi_sensor_out>;
-	data-lane = <1>;
+	data-lanes = <1>;
 };
 
 &i2c_camera
