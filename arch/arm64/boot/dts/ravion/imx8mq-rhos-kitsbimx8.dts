@@ -161,7 +161,7 @@
 
 		port {
 			hdmi_connector_in: endpoint {
-				/* remote-endpoint added later */
+				remote-endpoint = <&dcss_out>;
 			};
 		};
 	};
@@ -211,8 +211,17 @@
 
 /* Interface to DSI-LVDS bridge
  *****************************/
-&lcdif	{	status = "okay";	};
+&dcss	{
+	status = "okay";
 
+	port {
+		dcss_out: endpoint {
+			remote-endpoint = <&hdmi_connector_in>;
+		};
+	};
+};
+
+&lcdif	{	status = "okay";	};
 &mipi_dsi {
 	status = "okay";
 
