@@ -202,8 +202,6 @@
 			compatible = "elvees,mcom03-clk-pll";
 			reg = <0 0x1f001000 0 0x8>;
 			clocks = <&xti_clk>;
-			assigned-clocks = <&service_pll>;
-			assigned-clock-rates = <594000000>;
 		};
 
 		service_ucg1: ucg@1f020000 {
@@ -222,23 +220,16 @@
 					     "i2c4_ext_clk", "qspi0_ext_clk",
 					     "clkout_clk", "risc0_tck_clk";
 
-			assigned-clocks = <&service_ucg1 SERVICE_APB_CLK>,
-					  <&service_ucg1 SERVICE_CORE_CLK>,
-					  <&service_ucg1 SERVICE_PVTCTR_CLK>,
-					  <&service_ucg1 SERVICE_I2C4_CLK>,
-					  <&service_ucg1 SERVICE_I2C4_EXT_CLK>;
-
-			assigned-clock-rates = <49500000
-						297000000
-						49500000
-						49500000
-						49500000>;
-
 			enabled-clocks = <SERVICE_APB_CLK
 					  SERVICE_CORE_CLK
-					  SERVICE_I2C4_CLK>;
+					  SERVICE_QSPI0_CLK
+					  SERVICE_RISC0_CLK
+					  SERVICE_MAILBOX0_CLK
+					  SERVICE_PVTCTR_CLK
+					  SERVICE_TRNG_CLK
+					  SERVICE_QSPI0_EXT_CLK>;
 
-			elvees,fixed-freq-mask = <0xfff>;
+			elvees,fixed-freq-mask = <0x3fff>;
 		};
 
 		wdt0: watchdog@1f080000 {
@@ -247,35 +238,13 @@
 			clocks = <&service_ucg1 SERVICE_APB_CLK>;
 		};
 
-		pvt@1f050000 {
+		pvt: pvt@1f050000 {
 			compatible = "moortec,mr75202";
 			reg = <0 0x1f050000 0 0x1000>;
 			clocks = <&service_ucg1 SERVICE_PVTCTR_CLK>;
 			moortec,name = "mcom03";
 			moortec,labels = "cpu", "sdr", "media", "service";
 			#thermal-sensor-cells = <1>;
-		};
-
-		qlic0: interrupt-controller@1fe00000 {
-			compatible = "elvees,qlic";
-			interrupt-controller;
-			targets = <4>;
-			#interrupt-cells = <1>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
-			reg = <0 0x1fe00000 0 0x40000>;
-		};
-
-		i2c4: i2c@1f090000 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			compatible = "snps,designware-i2c";
-			reg = <0 0x1f090000 0 0x10000>;
-			clocks = <&service_ucg1 SERVICE_I2C4_EXT_CLK>;
-			interrupt-parent = <&qlic0>;
-			interrupts = <37>;
-			i2c-sda-hold-time-ns = <300>;
-			status = "disabled";
 		};
 
 		qspi0: spi@1ff00000 {
@@ -288,6 +257,28 @@
 			clocks = <&service_ucg1 SERVICE_QSPI0_CLK>,
 				 <&service_ucg1 SERVICE_QSPI0_EXT_CLK>;
 			num-cs = <4>;
+		};
+
+		mfbsp0_gpio: gpio-controller@0x1f0a1300 {
+			compatible = "elvees,mfbsp-gpio";
+			clocks = <&service_ucg1 SERVICE_MFBSP0_CLK>;
+			clock-names = "bus";
+			reg-names = "dat", "dirout";
+			reg = <0 0x1f0a130c 0 4>, <0 0x1f0a1308 0 4>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			status = "disabled";
+		};
+
+		mfbsp1_gpio: gpio-controller@0x1f0b1300 {
+			compatible = "elvees,mfbsp-gpio";
+			clocks = <&service_ucg1 SERVICE_MFBSP1_CLK>;
+			clock-names = "bus";
+			reg-names = "dat", "dirout";
+			reg = <0 0x1f0b130c 0 4>, <0 0x1f0b1308 0 4>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			status = "disabled";
 		};
 	};
 
@@ -357,7 +348,7 @@
 			assigned-clocks = <&media_ucg0 MEDIA_SYS_ACLK>,
 					  <&media_ucg0 MEDIA_ISP_SYS_CLK>;
 			assigned-clock-rates = <124875000
-						199800000>;
+						399600000>;
 			enabled-clocks = <MEDIA_SYS_ACLK>;
 			#clock-cells = <1>;
 		};
@@ -1026,6 +1017,32 @@
 					groups = "qspi1_ctrl";
 					power-source = <3300>;
 				};
+
+				nand_default: nand-default {
+					ctrl {
+						groups = "nfc_ctrl";
+						elvees,pad-enable;
+					};
+
+					io-mux {
+						groups = "nfc_io";
+						function = "NAND";
+					};
+				};
+
+				nand_voltage_33: nand-voltage-33 {
+					volt {
+						groups = "nfc_ctrl";
+						power-source = <3300>;
+					};
+				};
+
+				nand_voltage_18: nand-voltage-18 {
+					volt {
+						groups = "nfc_ctrl";
+						power-source = <1800>;
+					};
+				};
 			};
 		};
 
@@ -1250,6 +1267,9 @@
 				 <&hsperiph_ucg0 HSP_NFC_CLK>;
 			clock-names = "clk_flash", "clk_sys";
 			status = "disabled";
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&nand_default &nand_voltage_33>;
 		};
 
 		qspi1: spi@10260000 {
@@ -1287,6 +1307,8 @@
 				reg = <0 0x10000000 0 0x100000>;
 				interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
 				snps,dis_u2_susphy_quirk;
+				snps,parkmode-disable-ss-quirk;
+				dr_mode = "host";
 			};
 		};
 
@@ -1309,6 +1331,8 @@
 				reg = <0 0x10100000 0 0x100000>;
 				interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
 				snps,dis_u2_susphy_quirk;
+				snps,parkmode-disable-ss-quirk;
+				dr_mode = "host";
 			};
 		};
 	};
@@ -2040,6 +2064,13 @@
 					};
 				};
 			};
+		};
+
+		pwm: pwm@0x1770000 {
+			compatible = "elvees,mcom-pwm";
+			reg = <0 0x1770000 0 0x1000>;
+			#pwm-cells = <2>;
+			clocks = <&lsperiph1_ucg0 LSP1_PWM0_CLK>;
 		};
 	};
 

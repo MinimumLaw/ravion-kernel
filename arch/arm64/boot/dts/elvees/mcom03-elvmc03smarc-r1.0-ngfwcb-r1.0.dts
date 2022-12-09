@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/net/ti-dp83869.h>
 
 #include "mcom03-elvmc03smarc-r1.0.dtsi"
 
@@ -43,6 +44,7 @@
 /* Connected to RJ-45 through RS-485 transceiver */
 &uart2 {
 	status = "okay";
+	rts-gpios = <&gpio0b 4 GPIO_ACTIVE_HIGH>;
 };
 
 /* Connected to MicroSD card */
@@ -84,6 +86,40 @@
 	ds2482: 1wire@18 {
 		compatible = "maxim,ds2482";
 		reg = <0x18>;
+	};
+
+	hwmon@49 {
+		compatible = "ti,lm73";
+		reg = <0x49>;
+	};
+
+	hwmon@4a {
+		compatible = "ti,lm73";
+		reg = <0x4a>;
+	};
+
+	fancontrol: emc2303@4d {
+		compatible = "microchip,emc2305";
+		reg = <0x4d>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		microchip,pwm-separate;
+		#cooling-cells = <2>;
+
+		channel@0 {
+			reg = <0>;
+			microchip,pwm-push-pull;
+		};
+
+		channel@1 {
+			reg = <1>;
+			microchip,pwm-push-pull;
+		};
+
+		channel@2 {
+			reg = <2>;
+			microchip,pwm-push-pull;
+		};
 	};
 };
 
@@ -232,4 +268,59 @@
 /* Connected to PCIe bridge */
 &pcie1 {
 	status = "okay";
+
+	dwc-pcie@0,0 {
+		reg = <0 0 0 0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+
+		plx-pex@1,0 {
+			reg = <0 0 0 0 0>;
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			plx-pex@2,5 {
+				reg = <0x2800 0 0 0 0>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+
+				lan7431@7,0 {
+					reg = <0 0 0 0 0>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					phy-connection-type = "rgmii-rxid";
+					phy-handle = <&ethernet_phy>;
+
+					ethernet_phy: ethernet-phy@0 {
+						reg = <0>;
+						ti,op-mode = <DP83869_RGMII_COPPER_ETHERNET>;
+						ti,clk-output-sel = <DP83869_CLK_O_SEL_125MHZ>;
+						rx-fifo-depth = <DP83869_PHYCR_FIFO_DEPTH_8_B_NIB>;
+						tx-fifo-depth = <DP83869_PHYCR_FIFO_DEPTH_8_B_NIB>;
+						enet-phy-lane-swap;
+					};
+				};
+			};
+		};
+	};
+};
+
+/*
+ * The fans are enabled on boot (a hardware feature).
+ * The fan controller driver disables them if the CPU temperature is
+ * lower than the trip point.
+ * Upon reaching the trip point the thermal subsystem driver enables the fans.
+ *
+ * Thermal zones can be enabled/disabled via sysfs by writing said state into
+ * the corresponding /sys/class/thermal/thermal_zoneX/mode file.
+ */
+&cpu_thermal {
+	cooling_maps: cooling-maps {
+		map0 {
+			trip = <&cpu_alert0>;
+			cooling-device = <&fancontrol
+					  THERMAL_NO_LIMIT
+					  THERMAL_NO_LIMIT>;
+		};
+	};
 };
