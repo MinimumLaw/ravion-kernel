@@ -350,9 +350,9 @@
 				pinctrl-0 = <&pinctrl_ext_aud5>, <&pinctrl_clkext>;
 				compatible = "fsl,sgtl5000";
 				reg = <0x0a>;
-				VDDA-supply = <&avcc_reg>;
-				VDDIO-supply = <&vcc_reg>;
-				VDDD-supply = <&vgen2_reg>;
+				VDDA-supply  = <&p3v3_reg>;
+				VDDIO-supply = <&p3v3_reg>;
+				VDDD-supply  = <&p3v3_reg>;
 				clocks = <&clks IMX6QDL_CLK_CKO2>; /* FixMe: CCM_CKO2 pin??? */
 				lrclk-strength = <3>;
 			};
