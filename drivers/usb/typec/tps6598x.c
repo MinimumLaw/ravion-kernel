@@ -12,8 +12,13 @@
 #include <linux/regmap.h>
 #include <linux/interrupt.h>
 #include <linux/usb/typec.h>
+#include <linux/usb/role.h>
+#include <linux/of_graph.h>
+#include <linux/of_platform.h>
 
 /* Register offsets */
+#define TPS_REG_VID			0x00
+#define TPS_REG_MODE			0x03
 #define TPS_REG_CMD1			0x08
 #define TPS_REG_DATA1			0x09
 #define TPS_REG_INT_EVENT1		0x14
@@ -66,6 +71,20 @@ struct tps6598x_rx_identity_reg {
 #define TPS_TASK_TIMEOUT		1
 #define TPS_TASK_REJECTED		3
 
+enum {
+	TPS_MODE_APP,
+	TPS_MODE_BOOT,
+	TPS_MODE_BIST,
+	TPS_MODE_DISC,
+};
+
+static const char *const modes[] = {
+	[TPS_MODE_APP]	= "APP ",
+	[TPS_MODE_BOOT]	= "BOOT",
+	[TPS_MODE_BIST]	= "BIST",
+	[TPS_MODE_DISC]	= "DISC",
+};
+
 /* Unrecognized commands will be replaced with "!CMD" */
 #define INVALID_CMD(_cmd_)		(_cmd_ == 0x444d4321)
 
@@ -79,6 +98,7 @@ struct tps6598x {
 	struct typec_partner *partner;
 	struct usb_pd_identity partner_identity;
 	struct typec_capability typec_cap;
+	struct usb_role_switch *role_sw;
 };
 
 /*
@@ -175,6 +195,23 @@ static int tps6598x_read_partner_identity(struct tps6598x *tps)
 	return 0;
 }
 
+static void tps6598x_set_data_role(struct tps6598x *tps,
+				   enum typec_data_role role, bool connected)
+{
+	enum usb_role role_val;
+
+	if (role == TYPEC_HOST)
+		role_val = USB_ROLE_HOST;
+	else
+		role_val = USB_ROLE_DEVICE;
+
+	if (!connected)
+		role_val = USB_ROLE_NONE;
+
+	usb_role_switch_set_role(tps->role_sw, role_val);
+	typec_set_data_role(tps->port, role);
+}
+
 static int tps6598x_connect(struct tps6598x *tps, u32 status)
 {
 	struct typec_partner_desc desc;
@@ -205,7 +242,7 @@ static int tps6598x_connect(struct tps6598x *tps, u32 status)
 	typec_set_pwr_opmode(tps->port, mode);
 	typec_set_pwr_role(tps->port, TPS_STATUS_PORTROLE(status));
 	typec_set_vconn_role(tps->port, TPS_STATUS_VCONN(status));
-	typec_set_data_role(tps->port, TPS_STATUS_DATAROLE(status));
+	tps6598x_set_data_role(tps, TPS_STATUS_DATAROLE(status), true);
 
 	tps->partner = typec_register_partner(tps->port, &desc);
 	if (IS_ERR(tps->partner))
@@ -225,7 +262,7 @@ static void tps6598x_disconnect(struct tps6598x *tps, u32 status)
 	typec_set_pwr_opmode(tps->port, TYPEC_PWR_MODE_USB);
 	typec_set_pwr_role(tps->port, TPS_STATUS_PORTROLE(status));
 	typec_set_vconn_role(tps->port, TPS_STATUS_VCONN(status));
-	typec_set_data_role(tps->port, TPS_STATUS_DATAROLE(status));
+	tps6598x_set_data_role(tps, TPS_STATUS_DATAROLE(status), false);
 }
 
 static int tps6598x_exec_cmd(struct tps6598x *tps, const char *cmd,
@@ -314,7 +351,7 @@ tps6598x_dr_set(const struct typec_capability *cap, enum typec_data_role role)
 		goto out_unlock;
 	}
 
-	typec_set_data_role(tps->port, role);
+	tps6598x_set_data_role(tps, role, true);
 
 out_unlock:
 	mutex_unlock(&tps->lock);
@@ -398,11 +435,88 @@ err_unlock:
 	return IRQ_HANDLED;
 }
 
+static int tps6598x_check_mode(struct tps6598x *tps)
+{
+	char mode[5] = { };
+	int ret;
+
+	ret = tps6598x_read32(tps, TPS_REG_MODE, (void *)mode);
+	if (ret)
+		return ret;
+
+	switch (match_string(modes, ARRAY_SIZE(modes), mode)) {
+	case TPS_MODE_APP:
+		return 0;
+	case TPS_MODE_BOOT:
+		dev_warn(tps->dev, "dead-battery condition\n");
+		return 0;
+	case TPS_MODE_BIST:
+	case TPS_MODE_DISC:
+	default:
+		dev_err(tps->dev, "controller in unsupported mode \"%s\"\n",
+			mode);
+		break;
+	}
+
+	return -ENODEV;
+}
+
 static const struct regmap_config tps6598x_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = 0x7F,
 };
+
+static int tps6598x_usb_role_switch_get(struct tps6598x *tps)
+{
+	struct device_node *ep, *pp;
+	struct platform_device *pdev;
+	struct device_connection tps6598x_role_switch_conn;
+	char role_switch_dev_name[64];
+	int ret = 0;
+
+	ep = of_graph_get_next_endpoint(tps->dev->of_node, NULL);
+	if (!ep) {
+		dev_dbg(tps->dev, "Failed to find local endpoint\n");
+		return -ENOENT;
+	}
+
+	pp = of_graph_get_remote_port_parent(ep);
+	if (!pp) {
+		dev_err(tps->dev, "Failed to find remote port parent\n");
+		ret = -ENODEV;
+		goto free_ep_node;
+	}
+
+	pdev = of_find_device_by_node(pp);
+	if (!pdev) {
+		dev_err(tps->dev, "Failed to find platform device\n");
+		ret = -ENODEV;
+		goto free_pp_node;
+	}
+
+	sprintf(role_switch_dev_name, "%s-role-switch", dev_name(&pdev->dev));
+
+	tps6598x_role_switch_conn.endpoint[0] = dev_name(tps->dev);
+	tps6598x_role_switch_conn.endpoint[1] = role_switch_dev_name;
+	tps6598x_role_switch_conn.id = "usb-role-switch";
+
+	device_connection_add(&tps6598x_role_switch_conn);
+
+	tps->role_sw = usb_role_switch_get(tps->dev);
+	if (IS_ERR(tps->role_sw))
+		ret = PTR_ERR(tps->role_sw);
+
+	device_connection_remove(&tps6598x_role_switch_conn);
+	put_device(&pdev->dev);
+
+free_pp_node:
+	of_node_put(pp);
+free_ep_node:
+	of_node_put(ep);
+
+	return ret;
+}
 
 static int tps6598x_probe(struct i2c_client *client)
 {
@@ -423,10 +537,8 @@ static int tps6598x_probe(struct i2c_client *client)
 	if (IS_ERR(tps->regmap))
 		return PTR_ERR(tps->regmap);
 
-	ret = tps6598x_read32(tps, 0, &vid);
-	if (ret < 0)
-		return ret;
-	if (!vid)
+	ret = tps6598x_read32(tps, TPS_REG_VID, &vid);
+	if (ret < 0 || !vid)
 		return -ENODEV;
 
 	/*
@@ -439,12 +551,21 @@ static int tps6598x_probe(struct i2c_client *client)
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
 		tps->i2c_protocol = true;
 
+	/* Make sure the controller has application firmware running */
+	ret = tps6598x_check_mode(tps);
+	if (ret)
+		return ret;
+
 	ret = tps6598x_read32(tps, TPS_REG_STATUS, &status);
 	if (ret < 0)
 		return ret;
 
 	ret = tps6598x_read32(tps, TPS_REG_SYSTEM_CONF, &conf);
 	if (ret < 0)
+		return ret;
+
+	ret = tps6598x_usb_role_switch_get(tps);
+	if (ret && ret != -ENOENT)
 		return ret;
 
 	tps->typec_cap.revision = USB_TYPEC_REV_1_2;
@@ -477,12 +598,15 @@ static int tps6598x_probe(struct i2c_client *client)
 		tps->typec_cap.data = TYPEC_PORT_DFP;
 		break;
 	default:
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_role_put;
 	}
 
 	tps->port = typec_register_port(&client->dev, &tps->typec_cap);
-	if (IS_ERR(tps->port))
-		return PTR_ERR(tps->port);
+	if (IS_ERR(tps->port)) {
+		ret = PTR_ERR(tps->port);
+		goto err_role_put;
+	}
 
 	if (status & TPS_STATUS_PLUG_PRESENT) {
 		ret = tps6598x_connect(tps, status);
@@ -497,12 +621,16 @@ static int tps6598x_probe(struct i2c_client *client)
 	if (ret) {
 		tps6598x_disconnect(tps, 0);
 		typec_unregister_port(tps->port);
-		return ret;
+		goto err_role_put;
 	}
 
 	i2c_set_clientdata(client, tps);
 
 	return 0;
+
+err_role_put:
+	usb_role_switch_put(tps->role_sw);
+	return ret;
 }
 
 static int tps6598x_remove(struct i2c_client *client)
@@ -511,23 +639,31 @@ static int tps6598x_remove(struct i2c_client *client)
 
 	tps6598x_disconnect(tps, 0);
 	typec_unregister_port(tps->port);
+	usb_role_switch_put(tps->role_sw);
 
 	return 0;
 }
 
-static const struct acpi_device_id tps6598x_acpi_match[] = {
-	{ "INT3515", 0 },
+static const struct of_device_id tps6598x_of_match[] = {
+	{ .compatible = "ti,tps6598x", },
+	{}
+};
+MODULE_DEVICE_TABLE(of, tps6598x_of_match);
+
+static const struct i2c_device_id tps6598x_id[] = {
+	{ "tps6598x" },
 	{ }
 };
-MODULE_DEVICE_TABLE(acpi, tps6598x_acpi_match);
+MODULE_DEVICE_TABLE(i2c, tps6598x_id);
 
 static struct i2c_driver tps6598x_i2c_driver = {
 	.driver = {
 		.name = "tps6598x",
-		.acpi_match_table = tps6598x_acpi_match,
+		.of_match_table = tps6598x_of_match,
 	},
 	.probe_new = tps6598x_probe,
 	.remove = tps6598x_remove,
+	.id_table = tps6598x_id,
 };
 module_i2c_driver(tps6598x_i2c_driver);
 

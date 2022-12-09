@@ -29,6 +29,36 @@ additionalProperties:
     description: |
       All additional object properties are pin configuration nodes that client
       devices reference.
+
+      special pins - are pins that can be configured separately.
+
+      -------------------------------------------------------------
+      |     periph      |     groups      |     special pins      |
+      -------------------------------------------------------------
+      |    SDMMC{0,1}   | sdmmc{0,1}_ctrl |     SDMMC{0,1}_CMD    |
+      |                 | sdmmc{0,1}_data |     SDMMC{0,1}_CLK    |
+      |                 | sdmmc_wp        |                       |
+      |                 | sdmmc_cdn       |                       |
+      |                 | sdmmc_18en_pwr  |                       |
+      -------------------------------------------------------------
+      |    EMAC{0,1}    | emac{0,1}_ctrl  | EMAC{0,1}_RGMII_MDIO  |
+      |                 | emac{0,1}_tx    | EMAC{0,1}_RGMII_MDC   |
+      |                 | emac{0,1}_rx    | EMAC{0,1}_RGMII_TXC   |
+      |                 | emac_v18        | EMAC{0,1}_RGMII_RXC   |
+      -------------------------------------------------------------
+      |    QSPI1        | qspi1_ctrl      |     QSPI1_SCLK        |
+      |                 | qspi1_ss        |                       |
+      |                 | qspi1_data      |                       |
+      |                 |                 |                       |
+      -------------------------------------------------------------
+      |    NAND         | nfc_ctrl        |     NFC_REN           |
+      |                 | nfc_ale_cle     |     NFC_WEN           |
+      |                 | nfc_cen         |     NFC_DQS           |
+      |                 | nfc_io          |                       |
+      |                 | nfc_rbn         |                       |
+      -------------------------------------------------------------
+      |                 | hsperiph_misc   |                       |
+      -------------------------------------------------------------
   then:
     properties:
       phandle: true
@@ -242,6 +272,27 @@ additionalProperties:
           additionalProperties: false
 
         - type: object
+
+          properties:
+            pins:
+              enum: [EMAC0_RGMII_RXC, EMAC1_RGMII_RXC]
+
+            bias-disable:
+              $ref: pincfg-node.yaml#/properties/bias-disable
+            bias-bus-hold:
+              $ref: pincfg-node.yaml#/properties/bias-bus-hold
+            bias-pull-up:
+              $ref: pincfg-node.yaml#/properties/bias-pull-up
+            bias-pull-down:
+              $ref: pincfg-node.yaml#/properties/bias-pull-down
+            input-schmitt-enable:
+              $ref: pincfg-node.yaml#/properties/input-schmitt-enable
+            input-schmitt-disable:
+              $ref: pincfg-node.yaml#/properties/input-schmitt-disable
+
+          additionalProperties: false
+
+        - type: object
           description: |
             emac_v18: Contains EMAC{0,1}_* pins.
 
@@ -260,7 +311,8 @@ additionalProperties:
 
           properties:
             pins:
-              enum: [EMAC0_RGMII_MDIO, EMAC1_RGMII_MDIO]
+              enum: [EMAC0_RGMII_MDIO, EMAC1_RGMII_MDIO, QSPI1_SCLK, NFC_REN,
+                     NFC_WEN, NFC_DQS]
 
             bias-disable:
               $ref: pincfg-node.yaml#/properties/bias-disable
@@ -307,10 +359,13 @@ additionalProperties:
               $ref: pincfg-node.yaml#/properties/drive-strength
               enum: [0, 2, 4, 6, 8, 10, 12]
               description: 0mA puts the pads in high impedance mode.
-            input-schmitt-enable:
-              $ref: pincfg-node.yaml#/properties/input-schmitt-enable
-            input-schmitt-disable:
-              $ref: pincfg-node.yaml#/properties/input-schmitt-disable
+            slew-rate:
+              $ref: pincfg-node.yaml#/properties/slew-rate
+              enum: [0, 3]
+              default: 3
+              description: |
+                0: Lower Slew rate (slower edges)
+                3: Higher Slew rate (faster edges)
 
           additionalProperties: false
 
@@ -318,7 +373,7 @@ additionalProperties:
 
           properties:
             groups:
-              enum: [qspi1_ctrl]
+              enum: [qspi1_ctrl, nfc_ctrl]
 
             drive-open-drain:
               $ref: pincfg-node.yaml#/properties/drive-open-drain
@@ -336,10 +391,16 @@ additionalProperties:
           additionalProperties: false
 
         - type: object
+          description: |
+            qspi1_ss: Contains QSPI1_SS* pins
+            qspi1_data: Contains QSPI1_SISO*
+            nfc_cen: Contains NFC_CEN* pins
+            nfc_rbn: Contains NFC_RBN* pins
+            nfc_ale_cle: Conatins NFC_ALE, NFC_CLE pins
 
           properties:
             groups:
-              enum: [qspi1_ss, qspi1_data]
+              enum: [qspi1_ss, qspi1_data, nfc_cen, nfc_rbn, nfc_ale_cle]
 
             bias-disable:
               $ref: pincfg-node.yaml#/properties/bias-disable
@@ -368,10 +429,12 @@ additionalProperties:
           additionalProperties: false
 
         - type: object
+          description: |
+            nfc_io: Contains NFC_IO* pins
 
           properties:
-            pins:
-              enum: [qspi1_sclk]
+            groups:
+              enum: [nfc_io]
 
             bias-disable:
               $ref: pincfg-node.yaml#/properties/bias-disable
@@ -396,6 +459,9 @@ additionalProperties:
               description: |
                 0: Lower Slew rate (slower edges)
                 3: Higher Slew rate (faster edges)
+            function:
+              enum: [NFC, GNSS]
+              default: NFC
 
           additionalProperties: false
 

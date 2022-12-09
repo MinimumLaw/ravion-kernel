@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2021 RnD Center "ELVEES", JSC
+ * Copyright 2022 RnD Center "ELVEES", JSC
  */
 
 /dts-v1/;
@@ -8,16 +8,15 @@
 #include <dt-bindings/mfd/arizona.h>
 #include <dt-bindings/input/linux-event-codes.h>
 
-#include "mcom03-trustphonepm-r1.5.dtsi"
-#include "mcom03-i2c4.dtsi"
+#include "mcom03-trustphonepm-r2.1.dtsi"
 
 / {
-	model = "Trustphone PM r1.5, Trustphone CB r1.1";
-	compatible = "elvees,trustphonepm-r1.5-trustphonecb-r1.1",
+	model = "Trustphone PM r2.1, Trustphone CB r2.0";
+	compatible = "elvees,trustphonepm-r2.1-trustphonecb-r2.0",
 		     "elvees,trustphonepm-trustphonecb",
-		     "elvees,trustphonecb-r1.1",
+		     "elvees,trustphonecb-r2.0",
 		     "elvees,trustphonecb",
-		     "elvees,trustphonepm-r1.5",
+		     "elvees,trustphonepm-r2.1",
 		     "elvees,trustphonepm",
 		     "elvees,mcom03";
 
@@ -70,13 +69,7 @@
 		};
 	};
 
-	adv7513_cec_clk: adv7513_cec_clk {
-		#clock-cells = <0>;
-		compatible = "fixed-clock";
-		clock-frequency = <12000000>;
-	};
-
-	/* regulator@0 is described in mcom03-trustphonepm-r1.5.dtsi */
+	/* regulator@0 is described in mcom03-trustphonepm-r2.1.dtsi */
 	wm8998_supply_core: regulator@1 {
 		compatible = "regulator-fixed";
 		regulator-name = "wm8998-supply-core";
@@ -103,8 +96,7 @@
 
 	wifi_pwrseq: pwrseq {
 		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&mcp23s08 2 GPIO_ACTIVE_LOW>,
-			      <&gpio1c 4 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio1c 4 GPIO_ACTIVE_HIGH>;
 		post-power-on-delay-ms = <500>;
 		power-off-delay-us = <500>;
 	};
@@ -122,10 +114,18 @@
 			"IN2B", "MICBIAS1",
 			"IN1BL", "MICVDD";
 
+		cpu {
+			sound-dai = <&i2s0>;
+		};
+
 		codec {
 			sound-dai = <&wm8998>;
 		};
 	};
+};
+
+&i2s0 {
+	status = "okay";
 };
 
 &uart0 {
@@ -138,11 +138,14 @@
 	cs-gpios = <&gpio0c 4 GPIO_ACTIVE_LOW>, <&gpio0c 5 GPIO_ACTIVE_LOW>,
 		   <&gpio0c 6 GPIO_ACTIVE_LOW>, <&gpio0c 7 GPIO_ACTIVE_LOW>;
 
+	/* DD22 */
 	mcp23s08: gpio-expander@1 {
 		compatible = "microchip,mcp23s08";
 		reg = <1>;
 		#gpio-cells = <2>;
 		gpio-controller;
+
+		/* Maximum frequency is 5 MHz if VDD=1.8V */
 		spi-max-frequency = <5000000>;
 		microchip,spi-present-mask = <0x1>;
 		gpio-line-names = "CAMR_CUT", "CAMF_CUT", "WIFI_CUT",
@@ -160,6 +163,7 @@
 		interrupts = <0 IRQ_TYPE_EDGE_RISING>;
 	};
 
+	/* DD12 */
 	gnss@3 {
 		compatible = "u-blox,zoe-m8b-spi";
 		reg = <3>;
@@ -180,7 +184,7 @@
 };
 
 &gpio0c {
-	gpio-line-names = "SPI0_CLK", "SPI0_MOSI", "SPI0_MISO", "D_GPIO",
+	gpio-line-names = "SPI0_CLK", "SPI0_MOSI", "SPI0_MISO", "LTE_AP_READY",
 		"SPI0_nCS_FP", "SPI0_nCS_CUT", "SPI0_nCS_GYRO", "SPI0_nCS_GNSS";
 };
 
@@ -213,7 +217,7 @@
 
 &gpio1d {
 	gpio-line-names = "CAMR2_FSIN", "", "DSP_PWM", "VIBRO_PWM",
-		"LTE_PWR_ON", "LTE_AP_READY", "D_RAIL_EN", "GPS_SAFEBOOT";
+		"LTE_PWR_ON", "D_GPIO", "D_RAIL_EN", "GPS_SAFEBOOT";
 
 	/* GPS_SAFEBOOT is used to choose GNSS receiver mode: normal (high
 	 * level) or QSPI programming. Move GNSS receiver to 'normal mode'.
@@ -225,6 +229,25 @@
 	};
 };
 
+/* Connected to Type-C receptable */
+&usb0 {
+	status = "okay";
+
+	dwc3@10000000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		dr_mode = "otg";
+		usb-role-switch;
+
+		port@0 {
+			reg = <0>;
+			dwc3_endpoint: endpoint {
+				remote-endpoint = <&tps65982_endpoint>;
+			};
+		};
+	};
+};
+
 &sdhci1 {
 	status = "okay";
 	non-removable;
@@ -232,9 +255,6 @@
 	vqmmc-supply = <&sdhci1_supply>;
 	xlnx,fails-without-test-cd;
 	mmc-pwrseq = <&wifi_pwrseq>;
-
-	/* TODO: Need more testing... may be max-frequency is not necessary */
-	max-frequency = <5000000>;
 };
 
 /* Connected to USB hub */
@@ -242,29 +262,82 @@
 	status = "okay";
 };
 
-&i2c4 {
-	/* Not all devices are checked to 400kHz support */
-	clock-frequency = <100000>;
-	status = "okay";
+/* pinctrl driver doesn't enable pad receiver when GPIO pin is requested as an
+ * interrupt. This is a workaround for this issue.
+ */
+&lsperiph1_pinctrl {
+	tca9554_0_default: tca9554_0-cfg {
+		pins = "GPIOA_4";
+		input-enable;
+	};
 
-	adv7513: hdmi@39 {
-		compatible = "adi,adv7513";
-		reg = <0x39>, <0x3f>;
-		reg-names = "main", "edid";
-		interrupt-parent = <&gpio0a>;
-		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
-		clocks = <&adv7513_cec_clk>;
-		clock-names = "cec";
-		adi,input-depth = <8>;
-		adi,input-colorspace = "rgb";
-		adi,input-clock = "1x";
-		#address-cells = <1>;
-		#size-cells = <0>;
+	pwr_button_cfg_default: gpioa1-power-cfg {
+		pins = "GPIOA_7";
+		input-enable;
+	};
 
-		port@0 {
-			reg = <0>;
-			adv7513_in: endpoint {
-				remote-endpoint = <&rgb_out>;
+	tps65982_default: tps65982-cfg {
+		pins = "GPIOA_5";
+	};
+
+	bq25895_default: bq25895_default-cfg {
+		pins = "GPIOA_6";
+		input-enable;
+	};
+
+	pwm0_cfg_default: pwm0-cfg {
+		pins = "GPIOD_3";
+		drive-strength = <4>;
+		slew-rate = <3>;
+	};
+};
+
+&i2c01 {
+	/* DA41 */
+	wm8998: audio-codec@1a {
+		compatible = "wlf,wm8998";
+		reg = <0x1a>;
+		interrupts-extended = <&tca9554_0 1 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		reset-gpios = <&tca9554_1 7 0>;
+		#sound-dai-cells = <0>;
+
+		AVDD-supply = <&wm8998_supply_core>;
+		CPVDD-supply = <&wm8998_supply_core>;
+		DBVDD1-supply = <&wm8998_supply_core>;
+		DBVDD2-supply = <&wm8998_supply_core>;
+		DBVDD3-supply = <&wm8998_supply_core>;
+		LDOVDD-supply = <&wm8998_supply_core>;
+		SPKVDDL-supply = <&wm8998_supply_speaker>;
+		SPKVDDR-supply = <&wm8998_supply_speaker>;
+
+		wlf,inmode = <1 1 1 1>;
+		wlf,clk32k-source = <ARIZONA_32KZ_NONE>;
+	};
+
+	tps65982: typec-controller@3f {
+		compatible = "ti,tps6598x";
+		reg = <0x3f>;
+
+		interrupt-parent = <&gpio1a>;
+		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-names = "irq";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps65982_default>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				tps65982_endpoint: endpoint {
+					remote-endpoint = <&dwc3_endpoint>;
+				};
 			};
 		};
 	};
@@ -299,32 +372,12 @@
 	};
 };
 
-/* pinctrl driver doesn't enable pad receiver when GPIO pin is requested as an
- * interrupt. This is a workaround for this issue.
- */
-&lsperiph1_pinctrl {
-	tca9554_0_default: tca9554_0-cfg {
-		pins = "GPIOA_4";
-		input-enable;
-	};
-
-	pwr_button_cfg_default: gpioa1-power-cfg {
-		pins = "GPIOA_7";
-		input-enable;
-	};
-
-	bq25895_default: bq25895_default-cfg {
-		pins = "GPIOA_6";
-		input-enable;
-	};
-};
-
 &i2c1 {
 	/* Not all devices are checked to 400kHz support */
 	clock-frequency = <100000>;
 	status = "okay";
 
-	/* DD29 */
+	/* DD24 */
 	tca9554_0: gpio-expander@3c {
 		compatible = "ti,tca9554";
 		reg = <0x3c>;
@@ -334,15 +387,15 @@
 		interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&tca9554_0_default>;
 		gpio-line-names = "GYRO_INT", "AUD_INT", "FP_INT", "FG_ALRT",
 				  "PROX_INT", "TOUCH_INT", "VOLUME_UP",
 				  "VOLUME_DOWN";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tca9554_0_default>;
 	};
 
-	/* DD30 */
+	/* DD25 */
 	tca9554_1: gpio-expander@3e {
 		compatible = "ti,tca9554";
 		reg = <0x3e>;
@@ -353,35 +406,12 @@
 				  "USB2SD_RESET", "AUD_nRESET";
 	};
 
-	wm8998: audio-codec@1a {
-		compatible = "wlf,wm8998";
-		reg = <0x1a>;
-		interrupts-extended = <&tca9554_0 1 IRQ_TYPE_EDGE_FALLING>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		reset-gpios = <&tca9554_1 7 0>;
-		#sound-dai-cells = <0>;
-
-		AVDD-supply = <&wm8998_supply_core>;
-		CPVDD-supply = <&wm8998_supply_core>;
-		DBVDD1-supply = <&wm8998_supply_core>;
-		DBVDD2-supply = <&wm8998_supply_core>;
-		DBVDD3-supply = <&wm8998_supply_core>;
-		LDOVDD-supply = <&wm8998_supply_core>;
-		SPKVDDL-supply = <&wm8998_supply_speaker>;
-		SPKVDDR-supply = <&wm8998_supply_speaker>;
-
-		wlf,inmode = <1 1 1 1>;
-		wlf,clk32k-source = <ARIZONA_32KZ_NONE>;
-	};
-
-	i2c-switch@70 {
-		compatible = "pericom,pi4msd5v9540", "nxp,pca9540";
+	/* DD26 */
+	i2c-switch@74 {
+		compatible = "ti,tca9546", "nxp,pca9546";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg = <0x70>;
+		reg = <0x74>;
 
 		i2c_camr: i2c@0 {
 			#address-cells = <1>;
@@ -394,6 +424,14 @@
 			#size-cells = <0>;
 			reg = <1>;
 		};
+	};
+
+	apds9930: sensor@39 {
+		compatible = "avago,apds9930";
+		reg = <0x39>;
+		interrupts-extended = <&tca9554_0 4 IRQ_TYPE_EDGE_FALLING>;
+		amstaos,proximity-diodes = <0 1>;
+		led-max-microamp = <100000>;
 	};
 
 	tps61050: flash@33 {
@@ -419,8 +457,15 @@
 	status = "okay";
 };
 
-&dp {
+&adv7513 {
 	status = "okay";
+
+	port@0 {
+		reg = <0>;
+		adv7513_in: endpoint {
+			remote-endpoint = <&rgb_out>;
+		};
+	};
 };
 
 &display_encoder {
@@ -436,6 +481,10 @@
 			};
 		};
 	};
+};
+
+&dp {
+	status = "okay";
 };
 
 &isp {
@@ -458,9 +507,10 @@
 	status = "okay";
 
 	gpio-line-names = "", "SPIc_CLK", "SPIc_nCS1", "SPIc_nCS0",
-	"SPIc_MISO", "SPIc_MOSI", "", "SWITCH_SPI", "SWITCH_SPI_BTN",
-	"AUD_LDOEN", "", "", "", "", "", "", "", "", "", "", "", "", "",
-	"", "", "", "", "", "", "", "", "" ;
+		"SPIc_MISO", "SPIc_MOSI", "", "SWITCH_SPI", "SWITCH_SPI_BTN",
+		"AUD_LDOEN", "", "", "", "", "", "", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "", "";
+
 	gpio-reserved-ranges = <0 7>, <10 22>;
 };
 
@@ -468,8 +518,18 @@
 	status = "okay";
 
 	gpio-line-names = "", "CUTTER_nRST", "FLASH_SYNC", "FLASH_GPIO",
-	"RGB_INDC_R", "RGB_INDC_G", "RGB_INDC_B", "LTE_nRESET",
-	"GPS_nRESET", "FP_nRST", "", "", "", "", "", "", "", "", "", "",
-	"", "", "", "", "", "", "", "", "", "", "", "" ;
+		"RGB_INDC_R", "RGB_INDC_G", "RGB_INDC_B", "LTE_nRESET",
+		"GPS_nRESET", "FP_nRST", "", "", "", "", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "", "", "", "", "";
+
 	gpio-reserved-ranges = <0 1>, <10 22>;
+};
+
+&pwm {
+	status = "okay";
+	elvees,output-channel = <1 0 0 0>;
+	elvees,state-on-disable = <1 0 0 0>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm_oenb0_mux &pwm0_cfg_default>;
 };

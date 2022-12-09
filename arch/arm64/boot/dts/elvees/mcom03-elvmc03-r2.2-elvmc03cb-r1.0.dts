@@ -8,6 +8,7 @@
 #include <dt-bindings/net/ti-dp83867.h>
 
 #include "mcom03-elvmc03-r2.2.dtsi"
+#include "mcom03-i2c4.dtsi"
 
 / {
 	model = "ELV-MC03 r2.2, ELV-MC03-CB r1.0";
@@ -134,9 +135,18 @@
 	status = "okay";
 };
 
+&lsperiph1_pinctrl {
+	emac1_int_cfg: emac1-int-cfg {
+		phy {
+			pins = "GPIOA_7";
+			input-enable;
+		};
+	};
+};
+
 &emac1 {
 	status = "okay";
-
+	pinctrl-0 = <&emac1_default &emac1_int_cfg>;
 	phy-handle = <&ethernet_phy1>;
 	reset-gpios = <&gpio1d 6 GPIO_ACTIVE_LOW>;
 	reset-post-delay-us = <400000>;
