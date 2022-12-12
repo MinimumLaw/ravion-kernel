@@ -57,7 +57,6 @@ obj-y				+= bcm/
 obj-$(CONFIG_PINCTRL_BERLIN)	+= berlin/
 obj-y				+= cirrus/
 obj-y				+= freescale/
-obj-y				+= elvees/
 obj-$(CONFIG_X86)		+= intel/
 obj-y				+= mediatek/
 obj-$(CONFIG_PINCTRL_MESON)	+= meson/
