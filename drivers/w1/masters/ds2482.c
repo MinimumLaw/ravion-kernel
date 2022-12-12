@@ -526,7 +526,7 @@ exit:
 	return err;
 }
 
-static int ds2482_remove(struct i2c_client *client)
+static void ds2482_remove(struct i2c_client *client)
 {
 	struct ds2482_data   *data = i2c_get_clientdata(client);
 	int idx;
@@ -539,7 +539,6 @@ static int ds2482_remove(struct i2c_client *client)
 
 	/* Free the memory */
 	kfree(data);
-	return 0;
 }
 
 /*
