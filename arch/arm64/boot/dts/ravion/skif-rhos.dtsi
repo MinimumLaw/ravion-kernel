@@ -8,7 +8,8 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-#include "./../elvees/mcom03.dtsi"
+#include "mcom03.dtsi"
+#include "mcom03-i2c4.dtsi"
 
 #define DISABLE_MIPI		/* sn65dsi83 ananced in next kernel only */
 
