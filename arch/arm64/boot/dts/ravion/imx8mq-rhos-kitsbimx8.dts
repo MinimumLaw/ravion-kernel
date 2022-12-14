@@ -12,6 +12,13 @@
 /* define for use external clock generator for codec */
 #undef	CODEC_CLOCK_SELF
 
+/* CAMERA SELETION (select one)
+ *****************************/
+#undef	RASPBERRY_CAMERA_V1
+#undef	RASPBERRY_CAMERA_V2
+#define	RAVION_ADV7280_CAMERA
+
+
 #include "imx8mq-rhos.dtsi"
 
 / {
@@ -35,6 +42,15 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p12v";
 		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p12v_lcd: regulator-p12v-lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p12v>;
 		regulator-min-microvolt = <12000000>;
 		regulator-max-microvolt = <12000000>;
 		regulator-always-on;
@@ -121,11 +137,53 @@
 		clock-frequency = <12288000>;
 	};
 
+#if defined	(RASPBERRY_CAMERA_V2)
+	imx219_clk: camera-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+
+	imx219_1v2_reg: cam1v2_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_1V2";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+
+	imx219_1v8_reg: cam1v8_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_1V8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+
+	imx219_2v8_reg: cam2v8_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_2V8";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+#elif defined	(RASPBERRY_CAMERA_V1)
+	ov5647_xclk: cam_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+		clock-accuracy = <100>;
+	};
+#endif /* RASPBERRY_CAMERA */
+
 	/*Recomended LVDS display panel
 	 *****************************/
-	lvds_panel: panel {
+	lvds_panel {
 		compatible = "sharp,LQ121K1LG52", "panel-lvds";
-		/* backlight = <&lvds_backlight>; - FixMe: later */
+		backlight = <&lvds_backlight>;
 		data-mapping = "jeida-24";
 
 		width-mm = <261>;
@@ -151,19 +209,14 @@
 		};
 	};
 
-	/* HDMI connector
-	 ***************/
-	connector {
-		compatible = "hdmi-connector";
-		label = "hdmi";
-
-		type = "a";
-
-		port {
-			hdmi_connector_in: endpoint {
-				remote-endpoint = <&dcss_out>;
-			};
-		};
+	lvds_backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
+		enable-gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* soDimm  169 */
+		pwms = <&pwm3 0 100000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <8>;
+		status = "okay";
 	};
 
 	soundcard@0 {
@@ -202,23 +255,46 @@
 			wakeup-source;
 		};
 	};
+
+	sound-hdmi {
+		compatible = "fsl,imx-audio-hdmi";
+		model = "imx-audio-hdmi";
+		audio-cpu = <&sai2>;
+		hdmi-out;
+		status = "okay";
+		constraint-rate = <44100>,
+				<88200>,
+				<176400>,
+				<32000>,
+				<48000>,
+				<96000>,
+				<192000>;
+	};
 };
 
-/* PWMs
- *****/
-&pwm3	{	status = "okay";	};
-&pwm4	{	status = "okay";	};
-
-&irqsteer	{	status = "okay";	};
-
-/* Interface to DSI-LVDS bridge
- *****************************/
-&dcss	{
+&irqsteer {
 	status = "okay";
+};
 
-	port {
+&dcss {
+	status = "okay";
+	disp-dev = "hdmi_disp";
+
+	port@0 {
 		dcss_out: endpoint {
-			remote-endpoint = <&hdmi_connector_in>;
+			remote-endpoint = <&hdmi_in>;
+		};
+	};
+};
+
+&hdmi {
+	compatible = "cdn,imx8mq-hdmi";
+	lane-mapping = <0xe4>;
+	hdcp-config = <0x3>;
+	status = "okay";
+	port@1 {
+		hdmi_in: endpoint {
+			remote-endpoint = <&dcss_out>;
 		};
 	};
 };
@@ -228,17 +304,25 @@
 	status = "okay";
 
 	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		port@1 {
 			reg = <1>;
-
-			imx8mq_mipi_dsi_out: endpoint {
+			mipi_dsi_out: endpoint {
 				remote-endpoint = <&bridge_dsi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
 };
-
 &dphy	{	status = "okay";	};
+
+/* PWMs
+ *****/
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
 
 
 /* Serial audio interface
@@ -267,6 +351,8 @@
 	assigned-clock-rates = <8192000>;
 #endif
 };
+
+&sai2	{	status = "okay";	};
 
 /* SPI interface
  **************/
@@ -438,7 +524,7 @@
 	dsi2lvds-bridge@2c {
 		compatible = "ti,sn65dsi83";
 		reg = <0x2c>;
-		enable-gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;  /* XP78 - closed */
+		enable-gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* XP78 - closed */
 		vcc-supply = <&p1v8>;
 		status = "okay";
 
@@ -448,9 +534,10 @@
 
 			port@0 {
 				reg = <0>;
-				data-lanes = <4>;
 				bridge_dsi_in: endpoint {
-					remote-endpoint = <&imx8mq_mipi_dsi_out>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&mipi_dsi_out>;
 				};
 			};
 
@@ -466,16 +553,22 @@
 
 /* MIPI CSI interface
  *******************/
-&csi1		{	status = "okay";	};
-&mipi_csi1 	{	status = "okay";	};
+&csi1          {       status = "okay";        };
+&mipi_csi1     {       status = "okay";        };
 
 &imx8mq_csi_in {
 	remote-endpoint = <&csi_sensor_out>;
+	clock-lanes = <0>;
+#if defined	(RAVION_ADV7280_CAMERA)
 	data-lanes = <1>;
+#else /* RASPBERRY_CAMERA_V1 & V2 */
+	data-lanes = <1 2>;
+#endif
 };
 
 &i2c_camera
 {
+#if defined	(RAVION_ADV7280_CAMERA)
 	sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
 		compatible = "adi,adv7280-m";
 		status = "okay";
@@ -489,4 +582,40 @@
 			};
 		};
 	};
+#elif defined	(RASPBERRY_CAMERA_V2)
+	sensor@10 {	/* Raspberry Camera V2 */
+		compatible = "sony,imx219";
+		reg = <0x10>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&imx219_clk>;
+		clock-names = "xclk";
+		VDIG-supply = <&imx219_1v8_reg>; /* 1.8v */
+		VANA-supply = <&imx219_2v8_reg>; /* 2.8v */
+		VDDL-supply = <&imx219_1v2_reg>; /* 1.2v */
+
+		port {
+			csi_sensor_out: endpoint {
+				link-frequencies = /bits/ 64 <456000000>;
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+#elif defined	(RASPBERRY_CAMERA_V1)
+	camera@36 {	/* Raspberry Camera V1.3 */
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		clocks = <&ov5647_xclk>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+#endif /* RASPBERRY_CAMERA */
 };

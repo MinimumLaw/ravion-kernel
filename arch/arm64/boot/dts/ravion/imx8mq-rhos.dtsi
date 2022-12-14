@@ -127,6 +127,15 @@
 	};
 };
 
+&aips4 {
+	hdmi: hdmi@32c00000 {
+		reg = <0x32c00000 0x100000>, <0x32e40000 0x40000>;
+		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>,
+			 <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "plug_in", "plug_out";
+	};
+};
+
 &lcdif		{	status = "disabled";	};
 &mipi_dsi	{	status = "disabled";	};
 &dphy 		{	status = "disabled";	};
