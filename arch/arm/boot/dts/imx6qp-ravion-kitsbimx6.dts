@@ -46,9 +46,18 @@
 	p3v3_reg: p3v3_regulator {
 			compatible = "regulator-fixed";
 			regulator-name = "P3V3";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
 			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p1v8_extaudio_reg: p1v8_extaudio_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&p3v3_reg>;
 			regulator-always-on;
 	};
 
@@ -352,7 +361,7 @@
 				reg = <0x0a>;
 				VDDA-supply  = <&p3v3_reg>;
 				VDDIO-supply = <&p3v3_reg>;
-				VDDD-supply  = <&p3v3_reg>;
+				VDDD-supply  = <&p1v8_extaudio_reg>;
 				clocks = <&clks IMX6QDL_CLK_CKO2>; /* FixMe: CCM_CKO2 pin??? */
 				lrclk-strength = <3>;
 			};
