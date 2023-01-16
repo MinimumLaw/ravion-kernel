@@ -336,7 +336,6 @@
 /* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
 
 &usbotg	{ /* OTG */
-	power-active-high;
 	status = "okay";
 };
 
