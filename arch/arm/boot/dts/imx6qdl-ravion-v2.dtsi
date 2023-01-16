@@ -405,6 +405,7 @@
 	vbus-supply = <&swbst_reg>;
 	maximum-speed = "high-speed";
 	dr_mode = "otg";
+	power-active-high;
 	status = "okay";
 };
 
