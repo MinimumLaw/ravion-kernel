@@ -571,6 +571,17 @@
 	    >;
 	};
 
+	pinctrl_uart1ctrl: uart1ctrlgrp {
+	    fsl,pins = <
+/* 023 */	MX6QDL_PAD_EIM_D24__UART1_DTR_B		0x1b0b0
+/* 025 */	MX6QDL_PAD_EIM_D19__UART1_RTS_B		0x1b0b0
+/* 027 */	MX6QDL_PAD_EIM_D20__UART1_CTS_B		0x1b0b0
+/* 029 */	MX6QDL_PAD_EIM_D25__UART1_DSR_B		0x1b0b0
+/* 031 */	MX6QDL_PAD_EIM_D23__UART1_DCD_B		0x1b0b0
+/* 037 */	MX6QDL_PAD_EIM_EB3__UART1_RI_B		0x1b0b0
+	    >;
+	};
+
 	pinctrl_uart1gpio: uart1gpiogrp {
 	    fsl,pins = <
 /* 023 */	MX6QDL_PAD_EIM_D24__GPIO3_IO24		0x1b0b0
