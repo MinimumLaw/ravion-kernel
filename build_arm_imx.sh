@@ -10,7 +10,7 @@ export DTBS="${DTBS} imx6dl-colibri-pkk-m7.dtb"
 export DTBS="${DTBS} imx6qp-ravion-kitsbimx6.dtb	imx6qp-ravion-cimc.dtb"
 export DTBS="${DTBS} imx6qp-ravion-mtu.dtb		imx6qp-ravion-router.dtb"
 export DTBS="${DTBS} imx6qp-ravion-pkk-m7.dtb		imx6qp-ravion-pkk-m10.dtb"
-export DTBS="${DTBS} imx6qp-ravion-bm.dtb"
+export DTBS="${DTBS} imx6qp-ravion-cimc215.dtb		imx6qp-ravion-bm.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     export DEFCONFIG=ravion_imx6_defconfig
