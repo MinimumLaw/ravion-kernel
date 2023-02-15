@@ -13,8 +13,10 @@
 #include "rk3399-opp.dtsi"
 
 / {
-	model = "Firefly-RK3399 Board";
-	compatible = "firefly,firefly-rk3399", "rockchip,rk3399";
+	model = "Firefly-RK3399Pro Board";
+	compatible = "firefly,firefly-rk3399pro",
+		"firefly,firefly-rk3399",
+		"rockchip,rk3399";
 
 	aliases {
 		mmc0 = &sdio0;
@@ -318,9 +320,9 @@
 	i2c-scl-falling-time-ns = <4>;
 	status = "okay";
 
-	rk808: pmic@1b {
+	rk808: pmic@20 {
 		compatible = "rockchip,rk808";
-		reg = <0x1b>;
+		reg = <0x20>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <21 IRQ_TYPE_LEVEL_LOW>;
 		#clock-cells = <1>;
@@ -563,7 +565,37 @@
 	i2c-scl-rising-time-ns = <600>;
 	i2c-scl-falling-time-ns = <20>;
 	status = "okay";
+#if 0 /* ToDo: we need them later */
+	tc_bridge:bridge@f {
+		compatible="toshiba,tc358775";
+		reg = <0x0f>;
 
+		vdd-supply = <&vdd_core>;
+		vddio-supply = <&vcc3v3_sys>;
+
+		stby-gpios = <&msmgpio99GPIO_ACTIVE_LOW>;
+		reset-gpios = <&<&gpio1 RK_PB5 GPIO_ACTIVE_LOW>;
+
+		ports {
+			#address-cells=<1>;
+			#size-cells=<0>;
+
+			port@0 {
+				reg = <0>;
+				d2l_in_test:endpoint {
+					remote-endpoint=<&dsi0_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				lvds_out:endpoint {
+					remote-endpoint=<&panel_in>;
+				};
+			};
+		};
+	};
+#endif
 	fusb0: typec-portc@22 {
 		compatible = "fcs,fusb302";
 		reg = <0x22>;
