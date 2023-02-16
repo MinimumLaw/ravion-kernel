@@ -117,8 +117,8 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	old-battery@68 { /* Very old battery */
-		reg = <0x68>;
+	old-battery@34 { /* Very old battery */
+		reg = <0x34>;
 		compatible = "maxim,ds2782";
 	};
 
