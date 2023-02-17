@@ -233,9 +233,7 @@
 		};
 
 		wdt0: watchdog@1f080000 {
-			compatible = "snps,dw-wdt";
-			reg = < 0 0x1f080000 0 0x1000>;
-			clocks = <&service_ucg1 SERVICE_APB_CLK>;
+			compatible = "elvees,mcom03-wdt";
 		};
 
 		pvt: pvt@1f050000 {
@@ -245,6 +243,17 @@
 			moortec,name = "mcom03";
 			moortec,labels = "cpu", "sdr", "media", "service";
 			#thermal-sensor-cells = <1>;
+		};
+
+		qlic0: interrupt-controller@1fe00000 {
+			compatible = "elvees,qlic";
+			interrupt-controller;
+			targets = <4>;
+			#interrupt-cells = <1>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+			reg = <0 0x1fe00000 0 0x40000>;
+			status = "disabled";
 		};
 
 		qspi0: spi@1ff00000 {
@@ -259,6 +268,39 @@
 			num-cs = <4>;
 		};
 
+		mfbsp0_can: mfbsp@1f0a0000 {
+			compatible = "elvees,mfbsp-can";
+			clocks = <&service_ucg1 SERVICE_MFBSP0_CLK>;
+			reg = <0x0 0x1f0a0000 0x0 0x0200>,
+			      <0x0 0x1f0a0200 0x0 0x1100>,
+			      <0x0 0x1f0a1380 0x0 0x0040>;
+			reg-names = "can",
+				    "filters_and_elements",
+				    "cfg";
+			interrupt-parent = <&qlic0>;
+			interrupts = <26>;
+			can,mram-cfg = <0x0 128 64 64 32 32 64>;
+
+			status = "disabled";
+		};
+
+		mfbsp1_can: mfbsp@1f0b0000 {
+			compatible = "elvees,mfbsp-can";
+			clocks = <&service_ucg1 SERVICE_MFBSP1_CLK>;
+			reg = <0x0 0x1f0b0000 0x0 0x0200>,
+			      <0x0 0x1f0b0200 0x0 0x1100>,
+			      <0x0 0x1f0b1380 0x0 0x0040>;
+			reg-names = "can",
+				    "filters_and_elements",
+				    "cfg";
+			interrupt-parent = <&qlic0>;
+			interrupts = <28>;
+			can,mram-cfg = <0x0 128 64 64 32 32 64>;
+
+			status = "disabled";
+		};
+
+
 		mfbsp0_gpio: gpio-controller@0x1f0a1300 {
 			compatible = "elvees,mfbsp-gpio";
 			clocks = <&service_ucg1 SERVICE_MFBSP0_CLK>;
@@ -267,6 +309,23 @@
 			reg = <0 0x1f0a130c 0 4>, <0 0x1f0a1308 0 4>;
 			#gpio-cells = <2>;
 			gpio-controller;
+			status = "disabled";
+		};
+
+		mfbsp0_i2s: i2s@0x1f0a1300 {
+			compatible = "elvees,mfbsp-i2s";
+			reg = <0 0x1f0a1300 0 0x40>,
+			      <0 0x1f0a1340 0 0x20>,
+			      <0 0x1f0a1360 0 0x20>;
+			reg-names = "mfbsp",
+				    "dma-playback",
+				    "dma-capture";
+			interrupt-parent = <&qlic0>;
+			interrupts = <22>, <23>;
+			interrupt-names = "dma-playback",
+					  "dma-capture";
+			#sound-dai-cells = <0>;
+			clocks = <&service_ucg1 SERVICE_MFBSP0_CLK>;
 			status = "disabled";
 		};
 
@@ -301,6 +360,23 @@
 				reg = <0x1000 0x20>;
 				elvees,subsystem = <MCOM03_SUBSYSTEM_MEDIA>;
 				#reset-cells = <1>;
+			};
+
+			media_pinctrl: media-pinctrl {
+				compatible = "elvees,mcom03-media-pinctrl";
+				#address-cells = <0>;
+				#size-cells = <0>;
+				elvees,urb = <&media_urb>;
+
+				display_processor_mux: display-processor-mux {
+					groups = "media_mux_grp";
+					function = "DP";
+				};
+
+				isp_mux: isp-mux {
+					groups = "media_mux_grp";
+					function = "ISP";
+				};
 			};
 		};
 
@@ -487,6 +563,9 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
+			pinctrl-names = "default";
+			pinctrl-0 = <&display_processor_mux>;
+
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -553,29 +632,23 @@
 					     "spi0_clk", "i2c0_clk",
 					     "gpio0_dbclk";
 			assigned-clocks = <&lsperiph0_ucg0 LSP0_SYS_CLK>,
-					  <&lsperiph0_ucg0 LSP0_UART3_CLK>,
-					  <&lsperiph0_ucg0 LSP0_UART1_CLK>,
-					  <&lsperiph0_ucg0 LSP0_UART2_CLK>,
 					  <&lsperiph0_ucg0 LSP0_SPI0_CLK>,
 					  <&lsperiph0_ucg0 LSP0_I2C0_CLK>,
 					  <&lsperiph0_ucg0 LSP0_GPIO0_DBCLK>;
 			assigned-clock-rates = <94500000
-						13500000
-						13500000
-						13500000
 						94500000
 						94500000
 						1000000>;
 			enabled-clocks = <LSP0_SYS_CLK>;
 			#clock-cells = <1>;
-			/* When driver UART requests to change clock, clock
+			/* When driver UART requests to change clock and clock
 			 * driver sets it lower than the requested one, baud
 			 * rate divisor for the UART becomes less than one.
 			 * With integer divisor set to zero, the baud clock
 			 * is disabled and no serial communications will occur.
-			 * Disable changing UARTx_CLK clocks
+			 * Round up requested frequency for UARTs.
 			 */
-			elvees,fixed-freq-mask = <0xE>;
+			elvees,round-up-mask = <0xE>;
 		};
 
 
@@ -877,6 +950,8 @@
 			clocks = <&lsperiph0_ucg0 LSP0_SPI0_CLK>;
 			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 			num-cs = <4>;
+			/* Workaround of bug MCOM03-1879 with overrun error */
+			snps,fifo-size = <63>;
 
 			status = "disabled";
 
@@ -1567,8 +1642,8 @@
 			opp-405000000 {
 				opp-hz = /bits/ 64 <405000000>;
 			};
-			opp-459000000 {
-				opp-hz = /bits/ 64 <459000000>;
+			opp-432000000 {
+				opp-hz = /bits/ 64 <432000000>;
 			};
 		};
 	};
@@ -1652,7 +1727,6 @@
 					  <&lsperiph1_ucg0 LSP1_I2C3_CLK>,
 					  <&lsperiph1_ucg0 LSP1_GPIO1_DBCLK>,
 					  <&lsperiph1_ucg0 LSP1_SSI1_CLK>,
-					  <&lsperiph1_ucg0 LSP1_UART0_CLK>,
 					  <&lsperiph1_ucg0 LSP1_TIMERS0_CLK>,
 					  <&lsperiph1_ucg0 LSP1_PWM0_CLK>,
 					  <&lsperiph1_ucg0 LSP1_WDT1_CLK>;
@@ -1662,20 +1736,19 @@
 						102375000
 						87750000
 						153562500
-						27920454
 						87750000
 						87750000
 						87750000>;
 			enabled-clocks = <LSP1_SYS_CLK>;
 			#clock-cells = <1>;
-			/* When driver UART requests to change clock, clock
+			/* When driver UART requests to change clock and clock
 			 * driver sets it lower than the requested one, baud
 			 * rate divisor for the UART becomes less than one.
 			 * With integer divisor set to zero, the baud clock
 			 * is disabled and no serial communications will occur.
-			 * Disable changing UARTx_CLK clocks
+			 * Round up requested frequency for UART0.
 			 */
-			elvees,fixed-freq-mask = <0x40>;
+			elvees,round-up-mask = <0x40>;
 
 		};
 

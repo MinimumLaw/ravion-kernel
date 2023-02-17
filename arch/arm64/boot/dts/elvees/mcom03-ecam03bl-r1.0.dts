@@ -33,6 +33,15 @@
 			system-clock-frequency = <24576000>;
 		};
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		ir {
+			gpios = <&gpio1c 3 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
 };
 
 /* On ecam03bl no pull-up resistors on i2c1 interface.
@@ -65,4 +74,14 @@
 
 &i2s0 {
 	status = "okay";
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	adc@4f {
+		compatible = "ti,ads1110";
+		reg = <0x4f>;
+	};
 };
