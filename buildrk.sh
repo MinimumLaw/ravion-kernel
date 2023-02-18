@@ -6,13 +6,13 @@ export DTBS="${DTBS} rockchip/rk3399pro-firefly.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     # defconfig name
-    export DEFCONFIG=rk3399_defconfig
+    export DEFCONFIG=rk3399pro_defconfig
 fi
 if [ -z ${CROSS_COMPILE} ]; then
     export CROSS_COMPILE=aarch64-linux-gnu-
 fi
 if [ -z ${ROOT_FS_PATH} ]; then
-    export ROOT_FS_PATH=/cimc/root/gentoo-arm64
+    export ROOT_FS_PATH=/cimc/root/aarch64-root
 fi;
 if [ -z ${TFTP_FS_PATH} ]; then
     export TFTP_FS_PATH=/cimc/exporttftp
