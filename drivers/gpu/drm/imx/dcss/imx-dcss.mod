@@ -1,0 +1,11 @@
+drivers/gpu/drm/imx/dcss/dcss-drv.o
+drivers/gpu/drm/imx/dcss/dcss-dev.o
+drivers/gpu/drm/imx/dcss/dcss-blkctl.o
+drivers/gpu/drm/imx/dcss/dcss-ctxld.o
+drivers/gpu/drm/imx/dcss/dcss-dtg.o
+drivers/gpu/drm/imx/dcss/dcss-ss.o
+drivers/gpu/drm/imx/dcss/dcss-dpr.o
+drivers/gpu/drm/imx/dcss/dcss-scaler.o
+drivers/gpu/drm/imx/dcss/dcss-kms.o
+drivers/gpu/drm/imx/dcss/dcss-crtc.o
+drivers/gpu/drm/imx/dcss/dcss-plane.o

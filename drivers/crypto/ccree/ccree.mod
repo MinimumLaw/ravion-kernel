@@ -1,0 +1,9 @@
+drivers/crypto/ccree/cc_driver.o
+drivers/crypto/ccree/cc_buffer_mgr.o
+drivers/crypto/ccree/cc_request_mgr.o
+drivers/crypto/ccree/cc_cipher.o
+drivers/crypto/ccree/cc_hash.o
+drivers/crypto/ccree/cc_aead.o
+drivers/crypto/ccree/cc_sram_mgr.o
+drivers/crypto/ccree/cc_debugfs.o
+drivers/crypto/ccree/cc_pm.o
