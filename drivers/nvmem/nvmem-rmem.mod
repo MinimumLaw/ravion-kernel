@@ -1,0 +1,1 @@
+drivers/nvmem/rmem.o

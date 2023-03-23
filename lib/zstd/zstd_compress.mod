@@ -1,0 +1,13 @@
+lib/zstd/zstd_compress_module.o
+lib/zstd/compress/fse_compress.o
+lib/zstd/compress/hist.o
+lib/zstd/compress/huf_compress.o
+lib/zstd/compress/zstd_compress.o
+lib/zstd/compress/zstd_compress_literals.o
+lib/zstd/compress/zstd_compress_sequences.o
+lib/zstd/compress/zstd_compress_superblock.o
+lib/zstd/compress/zstd_double_fast.o
+lib/zstd/compress/zstd_fast.o
+lib/zstd/compress/zstd_lazy.o
+lib/zstd/compress/zstd_ldm.o
+lib/zstd/compress/zstd_opt.o
