@@ -424,6 +424,11 @@ static int ds278x_battery_probe(struct i2c_client *client,
 	info->capacity = 100;
 	info->status = POWER_SUPPLY_STATUS_FULL;
 
+	if (ds278x_get_status(info, &info->status)) {
+		dev_err(&client->dev, "failed to reead battery status\n");
+		goto fail_register;
+	}
+
 	INIT_DELAYED_WORK(&info->bat_work, ds278x_bat_work);
 
 	info->battery = power_supply_register(&client->dev,
