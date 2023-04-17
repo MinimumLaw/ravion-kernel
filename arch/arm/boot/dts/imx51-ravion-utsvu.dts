@@ -455,6 +455,13 @@
 		compatible = "maxim,ds2782";
 		reg = <0x34>;
 	};
+
+	sbs-battery@b {
+		status = "okay";
+		compatible = "maxim,max17320", "sbs,sbs-battery";
+		reg = <0xb>;
+		sbs,disable-charger-broadcasts; /* no SBS complaint charger */
+	};
 };
 
 &i2c2 {
