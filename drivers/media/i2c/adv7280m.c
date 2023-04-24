@@ -1119,9 +1119,9 @@ out_unlock:
 	return ret;
 }
 
-static int adv7280m_probe(struct i2c_client *client,
-			 const struct i2c_device_id *id)
+static int adv7280m_probe(struct i2c_client *client)
 {
+	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 	struct adv7280m_state *state;
 	struct v4l2_subdev *sd;
 	int ret;
@@ -1308,7 +1308,7 @@ static struct i2c_driver adv7280m_driver = {
 		   .pm = ADV7280M_PM_OPS,
 		   .of_match_table = of_match_ptr(adv7280m_of_id),
 		   },
-	.probe = adv7280m_probe,
+	.probe_new = adv7280m_probe,
 	.remove = adv7280m_remove,
 	.id_table = adv7280m_id,
 };
