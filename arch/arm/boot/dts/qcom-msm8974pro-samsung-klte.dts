@@ -704,6 +704,7 @@
 			pins = "gpio75";
 			function = "gpio";
 			drive-strength = <16>;
+			input-enable;
 		};
 
 		devwake-pins {
@@ -759,12 +760,14 @@
 	i2c_touchkey_pins: i2c-touchkey-state {
 		pins = "gpio95", "gpio96";
 		function = "gpio";
+		input-enable;
 		bias-pull-up;
 	};
 
 	i2c_led_gpioex_pins: i2c-led-gpioex-state {
 		pins = "gpio120", "gpio121";
 		function = "gpio";
+		input-enable;
 		bias-pull-down;
 	};
 
@@ -778,6 +781,7 @@
 	wifi_pin: wifi-state {
 		pins = "gpio92";
 		function = "gpio";
+		input-enable;
 		bias-pull-down;
 	};
 

@@ -621,13 +621,15 @@ err_release_mem:
 	return err;
 }
 
-static void efifb_remove(struct platform_device *pdev)
+static int efifb_remove(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
 
 	/* efifb_destroy takes care of info cleanup */
 	unregister_framebuffer(info);
 	sysfs_remove_groups(&pdev->dev.kobj, efifb_groups);
+
+	return 0;
 }
 
 static struct platform_driver efifb_driver = {
@@ -635,7 +637,7 @@ static struct platform_driver efifb_driver = {
 		.name = "efi-framebuffer",
 	},
 	.probe = efifb_probe,
-	.remove_new = efifb_remove,
+	.remove = efifb_remove,
 };
 
 builtin_platform_driver(efifb_driver);

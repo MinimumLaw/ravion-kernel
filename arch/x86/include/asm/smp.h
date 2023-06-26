@@ -93,13 +93,12 @@ static inline void __cpu_die(unsigned int cpu)
 	smp_ops.cpu_die(cpu);
 }
 
-static inline void __noreturn play_dead(void)
+static inline void play_dead(void)
 {
 	smp_ops.play_dead();
-	BUG();
 }
 
-static inline void arch_smp_send_reschedule(int cpu)
+static inline void smp_send_reschedule(int cpu)
 {
 	smp_ops.smp_send_reschedule(cpu);
 }
@@ -125,7 +124,7 @@ int native_cpu_up(unsigned int cpunum, struct task_struct *tidle);
 int native_cpu_disable(void);
 int common_cpu_die(unsigned int cpu);
 void native_cpu_die(unsigned int cpu);
-void __noreturn hlt_play_dead(void);
+void hlt_play_dead(void);
 void native_play_dead(void);
 void play_dead_common(void);
 void wbinvd_on_cpu(int cpu);
@@ -200,8 +199,5 @@ extern void nmi_selftest(void);
 #define nmi_selftest() do { } while (0)
 #endif
 
-extern unsigned int smpboot_control;
-
-#endif /* !__ASSEMBLY__ */
-
+#endif /* __ASSEMBLY__ */
 #endif /* _ASM_X86_SMP_H */

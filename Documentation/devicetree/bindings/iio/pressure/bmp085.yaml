@@ -17,7 +17,6 @@ description: |
     https://www.bosch-sensortec.com/bst/products/all_products/bmp280
     https://www.bosch-sensortec.com/bst/products/all_products/bme280
     https://www.bosch-sensortec.com/bst/products/all_products/bmp380
-    https://www.bosch-sensortec.com/bst/products/all_products/bmp580
 
 properties:
   compatible:
@@ -27,7 +26,6 @@ properties:
       - bosch,bmp280
       - bosch,bme280
       - bosch,bmp380
-      - bosch,bmp580
 
   reg:
     maxItems: 1

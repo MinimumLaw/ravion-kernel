@@ -210,10 +210,10 @@ err1:
 	return err;
 }
 
-static int rxe_set_page(struct ib_mr *ibmr, u64 dma_addr)
+static int rxe_set_page(struct ib_mr *ibmr, u64 iova)
 {
 	struct rxe_mr *mr = to_rmr(ibmr);
-	struct page *page = ib_virt_dma_to_page(dma_addr);
+	struct page *page = virt_to_page(iova & mr->page_mask);
 	bool persistent = !!(mr->access & IB_ACCESS_FLUSH_PERSISTENT);
 	int err;
 
@@ -279,16 +279,16 @@ static int rxe_mr_copy_xarray(struct rxe_mr *mr, u64 iova, void *addr,
 	return 0;
 }
 
-static void rxe_mr_copy_dma(struct rxe_mr *mr, u64 dma_addr, void *addr,
+static void rxe_mr_copy_dma(struct rxe_mr *mr, u64 iova, void *addr,
 			    unsigned int length, enum rxe_mr_copy_dir dir)
 {
-	unsigned int page_offset = dma_addr & (PAGE_SIZE - 1);
+	unsigned int page_offset = iova & (PAGE_SIZE - 1);
 	unsigned int bytes;
 	struct page *page;
 	u8 *va;
 
 	while (length) {
-		page = ib_virt_dma_to_page(dma_addr);
+		page = virt_to_page(iova & mr->page_mask);
 		bytes = min_t(unsigned int, length,
 				PAGE_SIZE - page_offset);
 		va = kmap_local_page(page);
@@ -300,7 +300,7 @@ static void rxe_mr_copy_dma(struct rxe_mr *mr, u64 dma_addr, void *addr,
 
 		kunmap_local(va);
 		page_offset = 0;
-		dma_addr += bytes;
+		iova += bytes;
 		addr += bytes;
 		length -= bytes;
 	}
@@ -488,7 +488,7 @@ int rxe_mr_do_atomic_op(struct rxe_mr *mr, u64 iova, int opcode,
 
 	if (mr->ibmr.type == IB_MR_TYPE_DMA) {
 		page_offset = iova & (PAGE_SIZE - 1);
-		page = ib_virt_dma_to_page(iova);
+		page = virt_to_page(iova & PAGE_MASK);
 	} else {
 		unsigned long index;
 		int err;
@@ -545,7 +545,7 @@ int rxe_mr_do_atomic_write(struct rxe_mr *mr, u64 iova, u64 value)
 
 	if (mr->ibmr.type == IB_MR_TYPE_DMA) {
 		page_offset = iova & (PAGE_SIZE - 1);
-		page = ib_virt_dma_to_page(iova);
+		page = virt_to_page(iova & PAGE_MASK);
 	} else {
 		unsigned long index;
 		int err;
@@ -719,6 +719,19 @@ int rxe_reg_fast_mr(struct rxe_qp *qp, struct rxe_send_wqe *wqe)
 	mr->ibmr.iova = wqe->wr.wr.reg.mr->iova;
 	mr->state = RXE_MR_STATE_VALID;
 
+	return 0;
+}
+
+int rxe_dereg_mr(struct ib_mr *ibmr, struct ib_udata *udata)
+{
+	struct rxe_mr *mr = to_rmr(ibmr);
+
+	/* See IBA 10.6.7.2.6 */
+	if (atomic_read(&mr->num_mw) > 0)
+		return -EINVAL;
+
+	rxe_cleanup(mr);
+	kfree_rcu(mr);
 	return 0;
 }
 

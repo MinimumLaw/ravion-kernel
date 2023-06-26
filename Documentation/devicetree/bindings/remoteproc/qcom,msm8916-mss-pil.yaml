@@ -157,7 +157,6 @@ properties:
 
   mba:
     type: object
-    additionalProperties: false
     description:
       MBA reserved region (prefer using memory-region with two items)
     properties:
@@ -168,7 +167,6 @@ properties:
 
   mpss:
     type: object
-    additionalProperties: false
     description:
       MPSS reserved region (prefer using memory-region with two items)
     properties:

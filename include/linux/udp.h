@@ -97,7 +97,10 @@ struct udp_sock {
 
 #define UDP_MAX_SEGMENTS	(1 << 6UL)
 
-#define udp_sk(ptr) container_of_const(ptr, struct udp_sock, inet.sk)
+static inline struct udp_sock *udp_sk(const struct sock *sk)
+{
+	return (struct udp_sock *)sk;
+}
 
 static inline void udp_set_no_check6_tx(struct sock *sk, bool val)
 {

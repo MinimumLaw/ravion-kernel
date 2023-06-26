@@ -168,7 +168,7 @@ static int nfcmrvl_i2c_parse_dt(struct device_node *node,
 		return ret;
 	}
 
-	if (of_property_read_bool(node, "i2c-int-falling"))
+	if (of_find_property(node, "i2c-int-falling", NULL))
 		pdata->irq_polarity = IRQF_TRIGGER_FALLING;
 	else
 		pdata->irq_polarity = IRQF_TRIGGER_RISING;

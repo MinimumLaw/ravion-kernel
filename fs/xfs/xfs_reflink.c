@@ -616,10 +616,8 @@ xfs_reflink_cancel_cow_blocks(
 			xfs_refcount_free_cow_extent(*tpp, del.br_startblock,
 					del.br_blockcount);
 
-			error = xfs_free_extent_later(*tpp, del.br_startblock,
+			xfs_free_extent_later(*tpp, del.br_startblock,
 					  del.br_blockcount, NULL);
-			if (error)
-				break;
 
 			/* Roll the transaction */
 			error = xfs_defer_finish(tpp);

@@ -7,7 +7,7 @@
 #include <linux/in6.h>
 #include <linux/rbtree_types.h>
 #include <linux/refcount.h>
-#include <net/dropreason-core.h>
+#include <net/dropreason.h>
 
 /* Per netns frag queues directory */
 struct fqdir {

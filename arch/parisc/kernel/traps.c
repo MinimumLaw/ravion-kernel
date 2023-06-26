@@ -47,10 +47,6 @@
 #include <linux/kgdb.h>
 #include <linux/kprobes.h>
 
-#if defined(CONFIG_LIGHTWEIGHT_SPINLOCK_CHECK)
-#include <asm/spinlock.h>
-#endif
-
 #include "../math-emu/math-emu.h"	/* for handle_fpe() */
 
 static void parisc_show_stack(struct task_struct *task,
@@ -310,12 +306,6 @@ static void handle_break(struct pt_regs *regs)
 		iir == PARISC_KGDB_BREAK_INSN)) && !user_mode(regs)) {
 		kgdb_handle_exception(9, SIGTRAP, 0, regs);
 		return;
-	}
-#endif
-
-#ifdef CONFIG_LIGHTWEIGHT_SPINLOCK_CHECK
-        if ((iir == SPINLOCK_BREAK_INSN) && !user_mode(regs)) {
-		die_if_kernel("Spinlock was trashed", regs, 1);
 	}
 #endif
 

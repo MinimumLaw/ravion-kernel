@@ -485,7 +485,7 @@ err_release_region:
 	return err;
 }
 
-static void vesafb_remove(struct platform_device *pdev)
+static int vesafb_remove(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
 
@@ -494,6 +494,8 @@ static void vesafb_remove(struct platform_device *pdev)
 
 	/* vesafb_destroy takes care of info cleanup */
 	unregister_framebuffer(info);
+
+	return 0;
 }
 
 static struct platform_driver vesafb_driver = {
@@ -501,7 +503,7 @@ static struct platform_driver vesafb_driver = {
 		.name = "vesa-framebuffer",
 	},
 	.probe = vesafb_probe,
-	.remove_new = vesafb_remove,
+	.remove = vesafb_remove,
 };
 
 module_platform_driver(vesafb_driver);

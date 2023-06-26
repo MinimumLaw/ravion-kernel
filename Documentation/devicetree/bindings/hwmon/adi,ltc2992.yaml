@@ -32,7 +32,6 @@ properties:
 patternProperties:
   "^channel@([0-1])$":
     type: object
-    additionalProperties: false
     description: |
       Represents the two supplies to be monitored.
 

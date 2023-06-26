@@ -347,7 +347,7 @@ static void check_modem_status(struct serial_state *info)
 #if (defined(SERIAL_DEBUG_INTR) || defined(SERIAL_DEBUG_FLOW))
 				printk("CTS tx start...");
 #endif
-				port->tty->hw_stopped = false;
+				port->tty->hw_stopped = 0;
 				info->IER |= UART_IER_THRI;
 				amiga_custom.intena = IF_SETCLR | IF_TBE;
 				mb();
@@ -362,7 +362,7 @@ static void check_modem_status(struct serial_state *info)
 #if (defined(SERIAL_DEBUG_INTR) || defined(SERIAL_DEBUG_FLOW))
 				printk("CTS tx stop...");
 #endif
-				port->tty->hw_stopped = true;
+				port->tty->hw_stopped = 1;
 				info->IER &= ~UART_IER_THRI;
 				/* disable Tx interrupt and remove any pending interrupts */
 				amiga_custom.intena = IF_TBE;
@@ -1197,7 +1197,7 @@ static void rs_set_termios(struct tty_struct *tty, const struct ktermios *old_te
 
 	/* Handle turning off CRTSCTS */
 	if ((old_termios->c_cflag & CRTSCTS) && !C_CRTSCTS(tty)) {
-		tty->hw_stopped = false;
+		tty->hw_stopped = 0;
 		rs_start(tty);
 	}
 

@@ -238,20 +238,6 @@ static bool has_die_topology(void)
 	return true;
 }
 
-const struct cpu_topology *online_topology(void)
-{
-	static const struct cpu_topology *topology;
-
-	if (!topology) {
-		topology = cpu_topology__new();
-		if (!topology) {
-			pr_err("Error creating CPU topology");
-			abort();
-		}
-	}
-	return topology;
-}
-
 struct cpu_topology *cpu_topology__new(void)
 {
 	struct cpu_topology *tp = NULL;

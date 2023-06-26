@@ -3,6 +3,7 @@
 
 #include <linux/module.h>
 #include <linux/interrupt.h>
+#include <linux/aer.h>
 
 #include "fm10k.h"
 

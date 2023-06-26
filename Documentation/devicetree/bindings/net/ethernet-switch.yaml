@@ -40,10 +40,6 @@ patternProperties:
         type: object
         description: Ethernet switch ports
 
-    required:
-      - "#address-cells"
-      - "#size-cells"
-
 oneOf:
   - required:
       - ports
@@ -55,7 +51,7 @@ additionalProperties: true
 $defs:
   base:
     description: An ethernet switch without any extra port properties
-    $ref: '#'
+    $ref: '#/'
 
     patternProperties:
       "^(ethernet-)?port@[0-9]+$":

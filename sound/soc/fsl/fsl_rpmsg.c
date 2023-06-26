@@ -247,12 +247,14 @@ static int fsl_rpmsg_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void fsl_rpmsg_remove(struct platform_device *pdev)
+static int fsl_rpmsg_remove(struct platform_device *pdev)
 {
 	struct fsl_rpmsg *rpmsg = platform_get_drvdata(pdev);
 
 	if (rpmsg->card_pdev)
 		platform_device_unregister(rpmsg->card_pdev);
+
+	return 0;
 }
 
 #ifdef CONFIG_PM
@@ -300,7 +302,7 @@ static const struct dev_pm_ops fsl_rpmsg_pm_ops = {
 
 static struct platform_driver fsl_rpmsg_driver = {
 	.probe  = fsl_rpmsg_probe,
-	.remove_new = fsl_rpmsg_remove,
+	.remove = fsl_rpmsg_remove,
 	.driver = {
 		.name = "fsl_rpmsg",
 		.pm = &fsl_rpmsg_pm_ops,

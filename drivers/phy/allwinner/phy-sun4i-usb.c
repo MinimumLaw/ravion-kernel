@@ -698,7 +698,7 @@ static struct phy *sun4i_usb_phy_xlate(struct device *dev,
 	return data->phys[args->args[0]].phy;
 }
 
-static void sun4i_usb_phy_remove(struct platform_device *pdev)
+static int sun4i_usb_phy_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct sun4i_usb_phy_data *data = dev_get_drvdata(dev);
@@ -711,6 +711,8 @@ static void sun4i_usb_phy_remove(struct platform_device *pdev)
 		devm_free_irq(dev, data->vbus_det_irq, data);
 
 	cancel_delayed_work_sync(&data->detect);
+
+	return 0;
 }
 
 static const unsigned int sun4i_usb_phy0_cable[] = {
@@ -756,7 +758,7 @@ static int sun4i_usb_phy_probe(struct platform_device *pdev)
 		return PTR_ERR(data->vbus_det_gpio);
 	}
 
-	if (of_property_present(np, "usb0_vbus_power-supply")) {
+	if (of_find_property(np, "usb0_vbus_power-supply", NULL)) {
 		data->vbus_power_supply = devm_power_supply_get_by_phandle(dev,
 						     "usb0_vbus_power-supply");
 		if (IS_ERR(data->vbus_power_supply)) {
@@ -1052,7 +1054,7 @@ MODULE_DEVICE_TABLE(of, sun4i_usb_phy_of_match);
 
 static struct platform_driver sun4i_usb_phy_driver = {
 	.probe	= sun4i_usb_phy_probe,
-	.remove_new = sun4i_usb_phy_remove,
+	.remove	= sun4i_usb_phy_remove,
 	.driver = {
 		.of_match_table	= sun4i_usb_phy_of_match,
 		.name  = "sun4i-usb-phy",

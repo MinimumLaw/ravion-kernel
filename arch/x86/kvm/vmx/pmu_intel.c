@@ -57,7 +57,7 @@ static void reprogram_fixed_counters(struct kvm_pmu *pmu, u64 data)
 		pmc = get_fixed_pmc(pmu, MSR_CORE_PERF_FIXED_CTR0 + i);
 
 		__set_bit(INTEL_PMC_IDX_FIXED + i, pmu->pmc_in_use);
-		kvm_pmu_request_counter_reprogram(pmc);
+		kvm_pmu_request_counter_reprogam(pmc);
 	}
 }
 
@@ -76,13 +76,13 @@ static struct kvm_pmc *intel_pmc_idx_to_pmc(struct kvm_pmu *pmu, int pmc_idx)
 static void reprogram_counters(struct kvm_pmu *pmu, u64 diff)
 {
 	int bit;
+	struct kvm_pmc *pmc;
 
-	if (!diff)
-		return;
-
-	for_each_set_bit(bit, (unsigned long *)&diff, X86_PMC_IDX_MAX)
-		set_bit(bit, pmu->reprogram_pmi);
-	kvm_make_request(KVM_REQ_PMU, pmu_to_vcpu(pmu));
+	for_each_set_bit(bit, (unsigned long *)&diff, X86_PMC_IDX_MAX) {
+		pmc = intel_pmc_idx_to_pmc(pmu, bit);
+		if (pmc)
+			kvm_pmu_request_counter_reprogam(pmc);
+	}
 }
 
 static bool intel_hw_event_available(struct kvm_pmc *pmc)
@@ -351,47 +351,45 @@ static int intel_pmu_get_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 	switch (msr) {
 	case MSR_CORE_PERF_FIXED_CTR_CTRL:
 		msr_info->data = pmu->fixed_ctr_ctrl;
-		break;
+		return 0;
 	case MSR_CORE_PERF_GLOBAL_STATUS:
 		msr_info->data = pmu->global_status;
-		break;
+		return 0;
 	case MSR_CORE_PERF_GLOBAL_CTRL:
 		msr_info->data = pmu->global_ctrl;
-		break;
+		return 0;
 	case MSR_CORE_PERF_GLOBAL_OVF_CTRL:
 		msr_info->data = 0;
-		break;
+		return 0;
 	case MSR_IA32_PEBS_ENABLE:
 		msr_info->data = pmu->pebs_enable;
-		break;
+		return 0;
 	case MSR_IA32_DS_AREA:
 		msr_info->data = pmu->ds_area;
-		break;
+		return 0;
 	case MSR_PEBS_DATA_CFG:
 		msr_info->data = pmu->pebs_data_cfg;
-		break;
+		return 0;
 	default:
 		if ((pmc = get_gp_pmc(pmu, msr, MSR_IA32_PERFCTR0)) ||
 		    (pmc = get_gp_pmc(pmu, msr, MSR_IA32_PMC0))) {
 			u64 val = pmc_read_counter(pmc);
 			msr_info->data =
 				val & pmu->counter_bitmask[KVM_PMC_GP];
-			break;
+			return 0;
 		} else if ((pmc = get_fixed_pmc(pmu, msr))) {
 			u64 val = pmc_read_counter(pmc);
 			msr_info->data =
 				val & pmu->counter_bitmask[KVM_PMC_FIXED];
-			break;
+			return 0;
 		} else if ((pmc = get_gp_pmc(pmu, msr, MSR_P6_EVNTSEL0))) {
 			msr_info->data = pmc->eventsel;
-			break;
-		} else if (intel_pmu_handle_lbr_msrs_access(vcpu, msr_info, true)) {
-			break;
-		}
-		return 1;
+			return 0;
+		} else if (intel_pmu_handle_lbr_msrs_access(vcpu, msr_info, true))
+			return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
@@ -404,43 +402,44 @@ static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 
 	switch (msr) {
 	case MSR_CORE_PERF_FIXED_CTR_CTRL:
-		if (data & pmu->fixed_ctr_ctrl_mask)
-			return 1;
-
-		if (pmu->fixed_ctr_ctrl != data)
+		if (pmu->fixed_ctr_ctrl == data)
+			return 0;
+		if (!(data & pmu->fixed_ctr_ctrl_mask)) {
 			reprogram_fixed_counters(pmu, data);
+			return 0;
+		}
 		break;
 	case MSR_CORE_PERF_GLOBAL_STATUS:
-		if (!msr_info->host_initiated)
-			return 1; /* RO MSR */
-
-		pmu->global_status = data;
-		break;
+		if (msr_info->host_initiated) {
+			pmu->global_status = data;
+			return 0;
+		}
+		break; /* RO MSR */
 	case MSR_CORE_PERF_GLOBAL_CTRL:
-		if (!kvm_valid_perf_global_ctrl(pmu, data))
-			return 1;
-
-		if (pmu->global_ctrl != data) {
+		if (pmu->global_ctrl == data)
+			return 0;
+		if (kvm_valid_perf_global_ctrl(pmu, data)) {
 			diff = pmu->global_ctrl ^ data;
 			pmu->global_ctrl = data;
 			reprogram_counters(pmu, diff);
+			return 0;
 		}
 		break;
 	case MSR_CORE_PERF_GLOBAL_OVF_CTRL:
-		if (data & pmu->global_ovf_ctrl_mask)
-			return 1;
-
-		if (!msr_info->host_initiated)
-			pmu->global_status &= ~data;
+		if (!(data & pmu->global_ovf_ctrl_mask)) {
+			if (!msr_info->host_initiated)
+				pmu->global_status &= ~data;
+			return 0;
+		}
 		break;
 	case MSR_IA32_PEBS_ENABLE:
-		if (data & pmu->pebs_enable_mask)
-			return 1;
-
-		if (pmu->pebs_enable != data) {
+		if (pmu->pebs_enable == data)
+			return 0;
+		if (!(data & pmu->pebs_enable_mask)) {
 			diff = pmu->pebs_enable ^ data;
 			pmu->pebs_enable = data;
 			reprogram_counters(pmu, diff);
+			return 0;
 		}
 		break;
 	case MSR_IA32_DS_AREA:
@@ -448,14 +447,15 @@ static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			return 1;
 		if (is_noncanonical_address(data, vcpu))
 			return 1;
-
 		pmu->ds_area = data;
-		break;
+		return 0;
 	case MSR_PEBS_DATA_CFG:
-		if (data & pmu->pebs_data_cfg_mask)
-			return 1;
-
-		pmu->pebs_data_cfg = data;
+		if (pmu->pebs_data_cfg == data)
+			return 0;
+		if (!(data & pmu->pebs_data_cfg_mask)) {
+			pmu->pebs_data_cfg = data;
+			return 0;
+		}
 		break;
 	default:
 		if ((pmc = get_gp_pmc(pmu, msr, MSR_IA32_PERFCTR0)) ||
@@ -463,38 +463,33 @@ static int intel_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			if ((msr & MSR_PMC_FULL_WIDTH_BIT) &&
 			    (data & ~pmu->counter_bitmask[KVM_PMC_GP]))
 				return 1;
-
 			if (!msr_info->host_initiated &&
 			    !(msr & MSR_PMC_FULL_WIDTH_BIT))
 				data = (s64)(s32)data;
 			pmc->counter += data - pmc_read_counter(pmc);
 			pmc_update_sample_period(pmc);
-			break;
+			return 0;
 		} else if ((pmc = get_fixed_pmc(pmu, msr))) {
 			pmc->counter += data - pmc_read_counter(pmc);
 			pmc_update_sample_period(pmc);
-			break;
+			return 0;
 		} else if ((pmc = get_gp_pmc(pmu, msr, MSR_P6_EVNTSEL0))) {
+			if (data == pmc->eventsel)
+				return 0;
 			reserved_bits = pmu->reserved_bits;
 			if ((pmc->idx == 2) &&
 			    (pmu->raw_event_mask & HSW_IN_TX_CHECKPOINTED))
 				reserved_bits ^= HSW_IN_TX_CHECKPOINTED;
-			if (data & reserved_bits)
-				return 1;
-
-			if (data != pmc->eventsel) {
+			if (!(data & reserved_bits)) {
 				pmc->eventsel = data;
-				kvm_pmu_request_counter_reprogram(pmc);
+				kvm_pmu_request_counter_reprogam(pmc);
+				return 0;
 			}
-			break;
-		} else if (intel_pmu_handle_lbr_msrs_access(vcpu, msr_info, false)) {
-			break;
-		}
-		/* Not a known PMU MSR. */
-		return 1;
+		} else if (intel_pmu_handle_lbr_msrs_access(vcpu, msr_info, false))
+			return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 static void setup_fixed_pmc_eventsel(struct kvm_pmu *pmu)
@@ -535,16 +530,6 @@ static void intel_pmu_refresh(struct kvm_vcpu *vcpu)
 	pmu->fixed_ctr_ctrl_mask = ~0ull;
 	pmu->pebs_enable_mask = ~0ull;
 	pmu->pebs_data_cfg_mask = ~0ull;
-
-	memset(&lbr_desc->records, 0, sizeof(lbr_desc->records));
-
-	/*
-	 * Setting passthrough of LBR MSRs is done only in the VM-Entry loop,
-	 * and PMU refresh is disallowed after the vCPU has run, i.e. this code
-	 * should never be reached while KVM is passing through MSRs.
-	 */
-	if (KVM_BUG_ON(lbr_desc->msr_passthrough, vcpu->kvm))
-		return;
 
 	entry = kvm_find_cpuid_entry(vcpu, 0xa);
 	if (!entry || !vcpu->kvm->arch.enable_pmu)

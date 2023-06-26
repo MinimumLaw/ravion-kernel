@@ -10,7 +10,6 @@
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "key.h"
-#include "debugfs_netdev.h"
 
 void ieee80211_link_setup(struct ieee80211_link_data *link)
 {
@@ -35,7 +34,6 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 	link->link_id = link_id;
 	link->conf = link_conf;
 	link_conf->link_id = link_id;
-	link_conf->vif = &sdata->vif;
 
 	INIT_WORK(&link->csa_finalize_work,
 		  ieee80211_csa_finalize_work);
@@ -62,8 +60,6 @@ void ieee80211_link_init(struct ieee80211_sub_if_data *sdata,
 		default:
 			WARN_ON(1);
 		}
-
-		ieee80211_link_debugfs_add(link);
 	}
 }
 
@@ -97,7 +93,6 @@ static void ieee80211_tear_down_links(struct ieee80211_sub_if_data *sdata,
 		if (WARN_ON(!link))
 			continue;
 		ieee80211_remove_link_keys(link, &keys);
-		ieee80211_link_debugfs_remove(link);
 		ieee80211_link_stop(link);
 	}
 

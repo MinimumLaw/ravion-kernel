@@ -17,7 +17,6 @@
 #include <linux/thermal.h>
 
 #include "thermal_hwmon.h"
-#include "thermal_core.h"
 
 /* hwmon sys I/F */
 /* thermal zone devices with the same type share one hwmon device */
@@ -264,7 +263,7 @@ static void devm_thermal_hwmon_release(struct device *dev, void *res)
 	thermal_remove_hwmon_sysfs(*(struct thermal_zone_device **)res);
 }
 
-int devm_thermal_add_hwmon_sysfs(struct device *dev, struct thermal_zone_device *tz)
+int devm_thermal_add_hwmon_sysfs(struct thermal_zone_device *tz)
 {
 	struct thermal_zone_device **ptr;
 	int ret;
@@ -281,7 +280,7 @@ int devm_thermal_add_hwmon_sysfs(struct device *dev, struct thermal_zone_device 
 	}
 
 	*ptr = tz;
-	devres_add(dev, ptr);
+	devres_add(&tz->device, ptr);
 
 	return ret;
 }

@@ -69,10 +69,7 @@ io_mapping_map_atomic_wc(struct io_mapping *mapping,
 
 	BUG_ON(offset >= mapping->size);
 	phys_addr = mapping->base + offset;
-	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
-		preempt_disable();
-	else
-		migrate_disable();
+	preempt_disable();
 	pagefault_disable();
 	return __iomap_local_pfn_prot(PHYS_PFN(phys_addr), mapping->prot);
 }
@@ -82,10 +79,7 @@ io_mapping_unmap_atomic(void __iomem *vaddr)
 {
 	kunmap_local_indexed((void __force *)vaddr);
 	pagefault_enable();
-	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
-		preempt_enable();
-	else
-		migrate_enable();
+	preempt_enable();
 }
 
 static inline void __iomem *
@@ -168,10 +162,7 @@ static inline void __iomem *
 io_mapping_map_atomic_wc(struct io_mapping *mapping,
 			 unsigned long offset)
 {
-	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
-		preempt_disable();
-	else
-		migrate_disable();
+	preempt_disable();
 	pagefault_disable();
 	return io_mapping_map_wc(mapping, offset, PAGE_SIZE);
 }
@@ -181,10 +172,7 @@ io_mapping_unmap_atomic(void __iomem *vaddr)
 {
 	io_mapping_unmap(vaddr);
 	pagefault_enable();
-	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
-		preempt_enable();
-	else
-		migrate_enable();
+	preempt_enable();
 }
 
 static inline void __iomem *

@@ -795,20 +795,12 @@ void exit_lazy_flush_tlb(struct mm_struct *mm, bool always_flush)
 		goto out;
 
 	if (current->active_mm == mm) {
-		unsigned long flags;
-
 		WARN_ON_ONCE(current->mm != NULL);
-		/*
-		 * It is a kernel thread and is using mm as the lazy tlb, so
-		 * switch it to init_mm. This is not always called from IPI
-		 * (e.g., flush_type_needed), so must disable irqs.
-		 */
-		local_irq_save(flags);
-		mmgrab_lazy_tlb(&init_mm);
+		/* Is a kernel thread and is using mm as the lazy tlb */
+		mmgrab(&init_mm);
 		current->active_mm = &init_mm;
 		switch_mm_irqs_off(mm, &init_mm, current);
-		mmdrop_lazy_tlb(mm);
-		local_irq_restore(flags);
+		mmdrop(mm);
 	}
 
 	/*

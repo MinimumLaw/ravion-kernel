@@ -14,9 +14,9 @@
  */
 	.section .kprobes.text, "ax"
 	.align 4096
-SYM_CODE_START(kprobes_insn_page)
+ENTRY(kprobes_insn_page)
 	.rept 2048
 	.word 0x07fe
 	.endr
-SYM_CODE_END(kprobes_insn_page)
+ENDPROC(kprobes_insn_page)
 	.previous

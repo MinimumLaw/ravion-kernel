@@ -2,27 +2,15 @@
 
 .. _it_linux_doc:
 
-==================================
-La documentazione del kernel Linux
-==================================
+===================
+Traduzione italiana
+===================
 
 .. raw:: latex
 
 	\kerneldocCJKoff
 
 :manutentore: Federico Vaga <federico.vaga@vaga.pv.it>
-
-Questo è il livello principale della documentazione del kernel in
-lingua italiana. La traduzione è incompleta, noterete degli avvisi
-che vi segnaleranno la mancanza di una traduzione o di un gruppo di
-traduzioni.
-
-Più in generale, la documentazione, come il kernel stesso, sono in
-costante sviluppo; particolarmente vero in quanto stiamo lavorando
-alla riorganizzazione della documentazione in modo più coerente.
-I miglioramenti alla documentazione sono sempre i benvenuti; per cui,
-se vuoi aiutare, iscriviti alla lista di discussione linux-doc presso
-vger.kernel.org.
 
 .. _it_disclaimer:
 
@@ -66,8 +54,23 @@ Se avete bisogno d'aiuto per comunicare con la comunità Linux ma non vi sentite
 a vostro agio nello scrivere in inglese, potete chiedere aiuto al manutentore
 della traduzione.
 
+La documentazione del kernel Linux
+==================================
+
+Questo è il livello principale della documentazione del kernel in
+lingua italiana. La traduzione è incompleta, noterete degli avvisi
+che vi segnaleranno la mancanza di una traduzione o di un gruppo di
+traduzioni.
+
+Più in generale, la documentazione, come il kernel stesso, sono in
+costante sviluppo; particolarmente vero in quanto stiamo lavorando
+alla riorganizzazione della documentazione in modo più coerente.
+I miglioramenti alla documentazione sono sempre i benvenuti; per cui,
+se vuoi aiutare, iscriviti alla lista di discussione linux-doc presso
+vger.kernel.org.
+
 Lavorare con la comunità di sviluppo
-====================================
+------------------------------------
 
 Le guide fondamentali per l'interazione con la comunità di sviluppo del kernel e
 su come vedere il proprio lavoro integrato.
@@ -82,7 +85,7 @@ su come vedere il proprio lavoro integrato.
 
 
 Manuali sull'API interna
-========================
+------------------------
 
 Di seguito una serie di manuali per gli sviluppatori che hanno bisogno di
 interfacciarsi con il resto del kernel.
@@ -93,7 +96,7 @@ interfacciarsi con il resto del kernel.
    core-api/index
 
 Strumenti e processi per lo sviluppo
-====================================
+------------------------------------
 
 Di seguito una serie di manuali contenenti informazioni utili a tutti gli
 sviluppatori del kernel.
@@ -106,7 +109,7 @@ sviluppatori del kernel.
    kernel-hacking/index
 
 Documentazione per gli utenti
-=============================
+-----------------------------
 
 Di seguito una serie di manuali per gli *utenti* del kernel - ovvero coloro che
 stanno cercando di farlo funzionare al meglio per un dato sistema, ma anche
@@ -117,16 +120,16 @@ Consultate anche `Linux man pages <https://www.kernel.org/doc/man-pages/>`_, che
 vengono mantenuti separatamente dalla documentazione del kernel Linux
 
 Documentazione relativa ai firmware
-===================================
+-----------------------------------
 Di seguito informazioni sulle aspettative del kernel circa i firmware.
 
 
 Documentazione specifica per architettura
-=========================================
+-----------------------------------------
 
 
 Documentazione varia
-====================
+--------------------
 
 Ci sono documenti che sono difficili da inserire nell'attuale organizzazione
 della documentazione; altri hanno bisogno di essere migliorati e/o convertiti

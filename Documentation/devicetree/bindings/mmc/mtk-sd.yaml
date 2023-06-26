@@ -34,7 +34,6 @@ properties:
               - mediatek,mt8188-mmc
               - mediatek,mt8192-mmc
               - mediatek,mt8195-mmc
-              - mediatek,mt8365-mmc
           - const: mediatek,mt8183-mmc
 
   reg:

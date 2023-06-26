@@ -126,6 +126,7 @@ static int qcom_rmtfs_mem_release(struct inode *inode, struct file *filp)
 }
 
 static struct class rmtfs_class = {
+	.owner          = THIS_MODULE,
 	.name           = "rmtfs",
 };
 

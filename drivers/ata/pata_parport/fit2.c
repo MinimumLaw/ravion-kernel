@@ -13,6 +13,8 @@
 
 */
 
+#define FIT2_VERSION      "1.0"
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -20,7 +22,8 @@
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <asm/io.h>
-#include "pata_parport.h"
+
+#include <linux/pata_parport.h>
 
 #define j44(a,b)                (((a>>4)&0x0f)|(b&0xf0))
 
@@ -34,13 +37,13 @@ devices.
 
 */
 
-static void fit2_write_regr(struct pi_adapter *pi, int cont, int regr, int val)
+static void  fit2_write_regr( PIA *pi, int cont, int regr, int val)
 
 {	if (cont == 1) return;
 	w2(0xc); w0(regr); w2(4); w0(val); w2(5); w0(0); w2(4);
 }
 
-static int fit2_read_regr(struct pi_adapter *pi, int cont, int regr)
+static int fit2_read_regr( PIA *pi, int cont, int regr )
 
 {	int  a, b, r;
 
@@ -58,7 +61,7 @@ static int fit2_read_regr(struct pi_adapter *pi, int cont, int regr)
 
 }
 
-static void fit2_read_block(struct pi_adapter *pi, char *buf, int count)
+static void fit2_read_block( PIA *pi, char * buf, int count )
 
 {	int  k, a, b, c, d;
 
@@ -84,7 +87,7 @@ static void fit2_read_block(struct pi_adapter *pi, char *buf, int count)
 
 }
 
-static void fit2_write_block(struct pi_adapter *pi, char *buf, int count)
+static void fit2_write_block( PIA *pi, char * buf, int count )
 
 {	int k;
 
@@ -97,24 +100,23 @@ static void fit2_write_block(struct pi_adapter *pi, char *buf, int count)
 	w2(4);
 }
 
-static void fit2_connect(struct pi_adapter *pi)
+static void fit2_connect ( PIA *pi  )
 
 {       pi->saved_r0 = r0();
         pi->saved_r2 = r2();
 	w2(0xcc); 
 }
 
-static void fit2_disconnect(struct pi_adapter *pi)
+static void fit2_disconnect ( PIA *pi )
 
 {       w0(pi->saved_r0);
         w2(pi->saved_r2);
 } 
 
-static void fit2_log_adapter(struct pi_adapter *pi)
+static void fit2_log_adapter( PIA *pi, char * scratch, int verbose )
 
-{
-	dev_info(&pi->dev, "FIT 2000 adapter at 0x%x, delay %d\n",
-		pi->port, pi->delay);
+{       printk("%s: fit2 %s, FIT 2000 adapter at 0x%x, delay %d\n",
+                pi->device,FIT2_VERSION,pi->port,pi->delay);
 
 }
 
@@ -134,5 +136,16 @@ static struct pi_protocol fit2 = {
 	.log_adapter	= fit2_log_adapter,
 };
 
+static int __init fit2_init(void)
+{
+	return paride_register(&fit2);
+}
+
+static void __exit fit2_exit(void)
+{
+	paride_unregister(&fit2);
+}
+
 MODULE_LICENSE("GPL");
-module_pata_parport_driver(fit2);
+module_init(fit2_init)
+module_exit(fit2_exit)

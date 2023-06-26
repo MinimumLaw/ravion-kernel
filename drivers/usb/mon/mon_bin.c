@@ -1379,7 +1379,7 @@ int __init mon_bin_init(void)
 {
 	int rc;
 
-	mon_bin_class = class_create("usbmon");
+	mon_bin_class = class_create(THIS_MODULE, "usbmon");
 	if (IS_ERR(mon_bin_class)) {
 		rc = PTR_ERR(mon_bin_class);
 		goto err_class;

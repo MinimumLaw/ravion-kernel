@@ -173,11 +173,14 @@ static int bpf_dummy_ops_check_member(const struct btf_type *t,
 
 static int bpf_dummy_ops_btf_struct_access(struct bpf_verifier_log *log,
 					   const struct bpf_reg_state *reg,
-					   int off, int size)
+					   int off, int size, enum bpf_access_type atype,
+					   u32 *next_btf_id,
+					   enum bpf_type_flag *flag)
 {
 	const struct btf_type *state;
 	const struct btf_type *t;
 	s32 type_id;
+	int err;
 
 	type_id = btf_find_by_name_kind(reg->btf, "bpf_dummy_ops_state",
 					BTF_KIND_STRUCT);
@@ -191,12 +194,11 @@ static int bpf_dummy_ops_btf_struct_access(struct bpf_verifier_log *log,
 		return -EACCES;
 	}
 
-	if (off + size > sizeof(struct bpf_dummy_ops_state)) {
-		bpf_log(log, "write access at off %d with size %d\n", off, size);
-		return -EACCES;
-	}
+	err = btf_struct_access(log, reg, off, size, atype, next_btf_id, flag);
+	if (err < 0)
+		return err;
 
-	return NOT_INIT;
+	return atype == BPF_READ ? err : NOT_INIT;
 }
 
 static const struct bpf_verifier_ops bpf_dummy_verifier_ops = {

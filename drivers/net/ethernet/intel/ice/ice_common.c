@@ -1619,6 +1619,7 @@ ice_sq_send_cmd_retry(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 {
 	struct ice_aq_desc desc_cpy;
 	bool is_cmd_for_retry;
+	u8 *buf_cpy = NULL;
 	u8 idx = 0;
 	u16 opcode;
 	int status;
@@ -1628,8 +1629,11 @@ ice_sq_send_cmd_retry(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	memset(&desc_cpy, 0, sizeof(desc_cpy));
 
 	if (is_cmd_for_retry) {
-		/* All retryable cmds are direct, without buf. */
-		WARN_ON(buf);
+		if (buf) {
+			buf_cpy = kzalloc(buf_size, GFP_KERNEL);
+			if (!buf_cpy)
+				return -ENOMEM;
+		}
 
 		memcpy(&desc_cpy, desc, sizeof(desc_cpy));
 	}
@@ -1641,11 +1645,16 @@ ice_sq_send_cmd_retry(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		    hw->adminq.sq_last_status != ICE_AQ_RC_EBUSY)
 			break;
 
+		if (buf_cpy)
+			memcpy(buf, buf_cpy, buf_size);
+
 		memcpy(desc, &desc_cpy, sizeof(desc_cpy));
 
-		msleep(ICE_SQ_SEND_DELAY_TIME_MS);
+		mdelay(ICE_SQ_SEND_DELAY_TIME_MS);
 
 	} while (++idx < ICE_SQ_SEND_MAX_EXECUTE);
+
+	kfree(buf_cpy);
 
 	return status;
 }
@@ -1983,19 +1992,19 @@ ice_acquire_res_exit:
  */
 void ice_release_res(struct ice_hw *hw, enum ice_aq_res_ids res)
 {
-	unsigned long timeout;
+	u32 total_delay = 0;
 	int status;
+
+	status = ice_aq_release_res(hw, res, 0, NULL);
 
 	/* there are some rare cases when trying to release the resource
 	 * results in an admin queue timeout, so handle them correctly
 	 */
-	timeout = jiffies + 10 * ICE_CTL_Q_SQ_CMD_TIMEOUT;
-	do {
+	while ((status == -EIO) && (total_delay < hw->adminq.sq_cmd_timeout)) {
+		mdelay(1);
 		status = ice_aq_release_res(hw, res, 0, NULL);
-		if (status != -EIO)
-			break;
-		usleep_range(1000, 2000);
-	} while (time_before(jiffies, timeout));
+		total_delay++;
+	}
 }
 
 /**

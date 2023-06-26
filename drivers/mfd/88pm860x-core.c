@@ -1117,7 +1117,8 @@ static int pm860x_dt_init(struct device_node *np,
 {
 	int ret;
 
-	pdata->irq_mode = of_property_read_bool(np, "marvell,88pm860x-irq-read-clr");
+	if (of_get_property(np, "marvell,88pm860x-irq-read-clr", NULL))
+		pdata->irq_mode = 1;
 	ret = of_property_read_u32(np, "marvell,88pm860x-slave-addr",
 				   &pdata->companion_addr);
 	if (ret) {
@@ -1275,3 +1276,4 @@ module_exit(pm860x_i2c_exit);
 
 MODULE_DESCRIPTION("PMIC Driver for Marvell 88PM860x");
 MODULE_AUTHOR("Haojian Zhuang <haojian.zhuang@marvell.com>");
+MODULE_LICENSE("GPL");

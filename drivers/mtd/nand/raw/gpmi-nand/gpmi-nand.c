@@ -2777,7 +2777,7 @@ exit_acquire_resources:
 	return ret;
 }
 
-static void gpmi_nand_remove(struct platform_device *pdev)
+static int gpmi_nand_remove(struct platform_device *pdev)
 {
 	struct gpmi_nand_data *this = platform_get_drvdata(pdev);
 	struct nand_chip *chip = &this->nand;
@@ -2791,6 +2791,7 @@ static void gpmi_nand_remove(struct platform_device *pdev)
 	nand_cleanup(chip);
 	gpmi_free_dma_buffer(this);
 	release_resources(this);
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -2859,7 +2860,7 @@ static struct platform_driver gpmi_nand_driver = {
 		.of_match_table = gpmi_nand_id_table,
 	},
 	.probe   = gpmi_nand_probe,
-	.remove_new = gpmi_nand_remove,
+	.remove  = gpmi_nand_remove,
 };
 module_platform_driver(gpmi_nand_driver);
 

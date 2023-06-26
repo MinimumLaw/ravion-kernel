@@ -343,7 +343,7 @@ err_pm_disable:
 	return ret;
 }
 
-static void img_pwm_remove(struct platform_device *pdev)
+static int img_pwm_remove(struct platform_device *pdev)
 {
 	struct img_pwm_chip *imgchip = platform_get_drvdata(pdev);
 
@@ -352,6 +352,8 @@ static void img_pwm_remove(struct platform_device *pdev)
 		img_pwm_runtime_suspend(&pdev->dev);
 
 	pwmchip_remove(&imgchip->chip);
+
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -421,7 +423,7 @@ static struct platform_driver img_pwm_driver = {
 		.of_match_table = img_pwm_of_match,
 	},
 	.probe = img_pwm_probe,
-	.remove_new = img_pwm_remove,
+	.remove = img_pwm_remove,
 };
 module_platform_driver(img_pwm_driver);
 

@@ -21,8 +21,8 @@ description: |
 properties:
   compatible:
     oneOf:
-      - enum:
-          - mediatek,mt8173-disp-split
+      - items:
+          - const: mediatek,mt8173-disp-split
 
   reg:
     maxItems: 1

@@ -308,12 +308,14 @@ err_platform_device_put:
 	return ret;
 }
 
-static void jz4740_remove(struct platform_device *pdev)
+static int jz4740_remove(struct platform_device *pdev)
 {
 	struct jz4740_glue *glue = platform_get_drvdata(pdev);
 
 	platform_device_unregister(glue->pdev);
 	clk_disable_unprepare(glue->clk);
+
+	return 0;
 }
 
 static const struct of_device_id jz4740_musb_of_match[] = {
@@ -325,7 +327,7 @@ MODULE_DEVICE_TABLE(of, jz4740_musb_of_match);
 
 static struct platform_driver jz4740_driver = {
 	.probe		= jz4740_probe,
-	.remove_new	= jz4740_remove,
+	.remove		= jz4740_remove,
 	.driver		= {
 		.name	= "musb-jz4740",
 		.of_match_table = jz4740_musb_of_match,

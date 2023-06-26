@@ -126,6 +126,7 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
 {
 	struct address_space *mapping[2];
 	unsigned int flags;
+	unsigned fgp_flags = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE;
 
 	BUG_ON(!inode1 || !inode2);
 	if (inode1 < inode2) {
@@ -138,20 +139,20 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
 	}
 
 	flags = memalloc_nofs_save();
-	folio[0] = __filemap_get_folio(mapping[0], index1, FGP_WRITEBEGIN,
+	folio[0] = __filemap_get_folio(mapping[0], index1, fgp_flags,
 			mapping_gfp_mask(mapping[0]));
-	if (IS_ERR(folio[0])) {
+	if (!folio[0]) {
 		memalloc_nofs_restore(flags);
-		return PTR_ERR(folio[0]);
+		return -ENOMEM;
 	}
 
-	folio[1] = __filemap_get_folio(mapping[1], index2, FGP_WRITEBEGIN,
+	folio[1] = __filemap_get_folio(mapping[1], index2, fgp_flags,
 			mapping_gfp_mask(mapping[1]));
 	memalloc_nofs_restore(flags);
-	if (IS_ERR(folio[1])) {
+	if (!folio[1]) {
 		folio_unlock(folio[0]);
 		folio_put(folio[0]);
-		return PTR_ERR(folio[1]);
+		return -ENOMEM;
 	}
 	/*
 	 * __filemap_get_folio() may not wait on folio's writeback if
@@ -168,27 +169,25 @@ mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
 
 /* Force page buffers uptodate w/o dropping page's lock */
 static int
-mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
+mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
 {
-	struct inode *inode = folio->mapping->host;
+	struct inode *inode = page->mapping->host;
 	sector_t block;
 	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
 	unsigned int blocksize, block_start, block_end;
 	int i, err,  nr = 0, partial = 0;
-	BUG_ON(!folio_test_locked(folio));
-	BUG_ON(folio_test_writeback(folio));
+	BUG_ON(!PageLocked(page));
+	BUG_ON(PageWriteback(page));
 
-	if (folio_test_uptodate(folio))
+	if (PageUptodate(page))
 		return 0;
 
 	blocksize = i_blocksize(inode);
-	head = folio_buffers(folio);
-	if (!head) {
-		create_empty_buffers(&folio->page, blocksize, 0);
-		head = folio_buffers(folio);
-	}
+	if (!page_has_buffers(page))
+		create_empty_buffers(page, blocksize, 0);
 
-	block = (sector_t)folio->index << (PAGE_SHIFT - inode->i_blkbits);
+	head = page_buffers(page);
+	block = (sector_t)page->index << (PAGE_SHIFT - inode->i_blkbits);
 	for (bh = head, block_start = 0; bh != head || !block_start;
 	     block++, block_start = block_end, bh = bh->b_this_page) {
 		block_end = block_start + blocksize;
@@ -202,11 +201,11 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
 		if (!buffer_mapped(bh)) {
 			err = ext4_get_block(inode, block, bh, 0);
 			if (err) {
-				folio_set_error(folio);
+				SetPageError(page);
 				return err;
 			}
 			if (!buffer_mapped(bh)) {
-				folio_zero_range(folio, block_start, blocksize);
+				zero_user(page, block_start, blocksize);
 				set_buffer_uptodate(bh);
 				continue;
 			}
@@ -228,7 +227,7 @@ mext_page_mkuptodate(struct folio *folio, unsigned from, unsigned to)
 	}
 out:
 	if (!partial)
-		folio_mark_uptodate(folio);
+		SetPageUptodate(page);
 	return 0;
 }
 
@@ -356,7 +355,7 @@ again:
 		goto unlock_folios;
 	}
 data_copy:
-	*err = mext_page_mkuptodate(folio[0], from, from + replaced_size);
+	*err = mext_page_mkuptodate(&folio[0]->page, from, from + replaced_size);
 	if (*err)
 		goto unlock_folios;
 

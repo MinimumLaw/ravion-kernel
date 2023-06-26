@@ -1831,17 +1831,10 @@ static ssize_t vmci_transport_stream_dequeue(
 	size_t len,
 	int flags)
 {
-	ssize_t err;
-
 	if (flags & MSG_PEEK)
-		err = vmci_qpair_peekv(vmci_trans(vsk)->qpair, msg, len, 0);
+		return vmci_qpair_peekv(vmci_trans(vsk)->qpair, msg, len, 0);
 	else
-		err = vmci_qpair_dequev(vmci_trans(vsk)->qpair, msg, len, 0);
-
-	if (err < 0)
-		err = -ENOMEM;
-
-	return err;
+		return vmci_qpair_dequev(vmci_trans(vsk)->qpair, msg, len, 0);
 }
 
 static ssize_t vmci_transport_stream_enqueue(

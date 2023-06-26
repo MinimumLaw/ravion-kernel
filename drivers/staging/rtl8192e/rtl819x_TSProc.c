@@ -517,7 +517,6 @@ void TsStartAddBaProcess(struct rtllib_device *ieee, struct tx_ts_record *pTxTS)
 			netdev_dbg(ieee->dev, "Immediately Start ADDBA\n");
 			mod_timer(&pTxTS->TsAddBaTimer, jiffies + 10);
 		}
-	} else {
+	} else
 		netdev_dbg(ieee->dev, "BA timer is already added\n");
-	}
 }

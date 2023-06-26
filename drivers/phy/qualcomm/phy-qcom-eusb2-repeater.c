@@ -223,14 +223,16 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void eusb2_repeater_remove(struct platform_device *pdev)
+static int eusb2_repeater_remove(struct platform_device *pdev)
 {
 	struct eusb2_repeater *rptr = platform_get_drvdata(pdev);
 
 	if (!rptr)
-		return;
+		return 0;
 
 	eusb2_repeater_exit(rptr->phy);
+
+	return 0;
 }
 
 static const struct of_device_id eusb2_repeater_of_match_table[] = {
@@ -244,7 +246,7 @@ MODULE_DEVICE_TABLE(of, eusb2_repeater_of_match_table);
 
 static struct platform_driver eusb2_repeater_driver = {
 	.probe		= eusb2_repeater_probe,
-	.remove_new	= eusb2_repeater_remove,
+	.remove		= eusb2_repeater_remove,
 	.driver = {
 		.name	= "qcom-eusb2-repeater",
 		.of_match_table = eusb2_repeater_of_match_table,

@@ -65,11 +65,6 @@ struct rtw8821ce_efuse {
 	u8 res7;
 };
 
-struct rtw8821cs_efuse {
-	u8 res4[0x4a];			/* 0xd0 */
-	u8 mac_addr[ETH_ALEN];		/* 0x11a */
-} __packed;
-
 struct rtw8821c_efuse {
 	__le16 rtl_id;
 	u8 res0[0x0e];
@@ -99,7 +94,6 @@ struct rtw8821c_efuse {
 	union {
 		struct rtw8821ce_efuse e;
 		struct rtw8821cu_efuse u;
-		struct rtw8821cs_efuse s;
 	};
 };
 

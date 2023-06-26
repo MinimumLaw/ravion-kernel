@@ -93,13 +93,14 @@ static void macronix_nand_onfi_init(struct nand_chip *chip)
 	struct nand_parameters *p = &chip->parameters;
 	struct nand_onfi_vendor_macronix *mxic;
 	struct device_node *dn = nand_get_flash_node(chip);
-	int rand_otp;
+	int rand_otp = 0;
 	int ret;
 
 	if (!p->onfi)
 		return;
 
-	rand_otp = of_property_read_bool(dn, "mxic,enable-randomizer-otp");
+	if (of_find_property(dn, "mxic,enable-randomizer-otp", NULL))
+		rand_otp = 1;
 
 	mxic = (struct nand_onfi_vendor_macronix *)p->onfi->vendor;
 	/* Subpage write is prohibited in randomizer operatoin */

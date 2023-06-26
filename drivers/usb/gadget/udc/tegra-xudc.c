@@ -2162,14 +2162,15 @@ static int tegra_xudc_gadget_stop(struct usb_gadget *gadget)
 static int tegra_xudc_gadget_vbus_draw(struct usb_gadget *gadget,
 						unsigned int m_a)
 {
+	int ret = 0;
 	struct tegra_xudc *xudc = to_xudc(gadget);
 
 	dev_dbg(xudc->dev, "%s: %u mA\n", __func__, m_a);
 
 	if (xudc->curr_usbphy && xudc->curr_usbphy->chg_type == SDP_TYPE)
-		return usb_phy_set_power(xudc->curr_usbphy, m_a);
+		ret = usb_phy_set_power(xudc->curr_usbphy, m_a);
 
-	return 0;
+	return ret;
 }
 
 static int tegra_xudc_set_selfpowered(struct usb_gadget *gadget, int is_on)

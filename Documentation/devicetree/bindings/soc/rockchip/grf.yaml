@@ -80,17 +80,13 @@ allOf:
       properties:
         compatible:
           contains:
-            enum:
-              - rockchip,px30-grf
+            const: rockchip,px30-grf
 
     then:
       properties:
         lvds:
-          type: object
-
-          $ref: /schemas/display/rockchip/rockchip,lvds.yaml#
-
-          unevaluatedProperties: false
+          description:
+            Documentation/devicetree/bindings/display/rockchip/rockchip-lvds.txt
 
   - if:
       properties:

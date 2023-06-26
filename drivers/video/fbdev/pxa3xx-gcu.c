@@ -675,7 +675,7 @@ err_free_dma:
 	return ret;
 }
 
-static void pxa3xx_gcu_remove(struct platform_device *pdev)
+static int pxa3xx_gcu_remove(struct platform_device *pdev)
 {
 	struct pxa3xx_gcu_priv *priv = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
@@ -685,6 +685,8 @@ static void pxa3xx_gcu_remove(struct platform_device *pdev)
 	dma_free_coherent(dev, SHARED_SIZE, priv->shared, priv->shared_phys);
 	clk_disable_unprepare(priv->clk);
 	pxa3xx_gcu_free_buffers(dev, priv);
+
+	return 0;
 }
 
 #ifdef CONFIG_OF
@@ -697,7 +699,7 @@ MODULE_DEVICE_TABLE(of, pxa3xx_gcu_of_match);
 
 static struct platform_driver pxa3xx_gcu_driver = {
 	.probe	  = pxa3xx_gcu_probe,
-	.remove_new	 = pxa3xx_gcu_remove,
+	.remove	 = pxa3xx_gcu_remove,
 	.driver	 = {
 		.name   = DRV_NAME,
 		.of_match_table = of_match_ptr(pxa3xx_gcu_of_match),

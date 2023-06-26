@@ -135,15 +135,15 @@ static int kernel_get_symbol_address_by_name(const char *name, u64 *addr,
 	/* ref_reloc_sym is just a label. Need a special fix*/
 	reloc_sym = kernel_get_ref_reloc_sym(&map);
 	if (reloc_sym && strcmp(name, reloc_sym->name) == 0)
-		*addr = (!map__reloc(map) || reloc) ? reloc_sym->addr :
+		*addr = (!map->reloc || reloc) ? reloc_sym->addr :
 			reloc_sym->unrelocated_addr;
 	else {
 		sym = machine__find_kernel_symbol_by_name(host_machine, name, &map);
 		if (!sym)
 			return -ENOENT;
-		*addr = map__unmap_ip(map, sym->start) -
-			((reloc) ? 0 : map__reloc(map)) -
-			((reladdr) ? map__start(map) : 0);
+		*addr = map->unmap_ip(map, sym->start) -
+			((reloc) ? 0 : map->reloc) -
+			((reladdr) ? map->start : 0);
 	}
 	return 0;
 }
@@ -151,28 +151,23 @@ static int kernel_get_symbol_address_by_name(const char *name, u64 *addr,
 static struct map *kernel_get_module_map(const char *module)
 {
 	struct maps *maps = machine__kernel_maps(host_machine);
-	struct map_rb_node *pos;
+	struct map *pos;
 
 	/* A file path -- this is an offline module */
 	if (module && strchr(module, '/'))
 		return dso__new_map(module);
 
 	if (!module) {
-		struct map *map = machine__kernel_map(host_machine);
-
-		return map__get(map);
+		pos = machine__kernel_map(host_machine);
+		return map__get(pos);
 	}
 
 	maps__for_each_entry(maps, pos) {
 		/* short_name is "[module]" */
-		struct dso *dso = map__dso(pos->map);
-		const char *short_name = dso->short_name;
-		u16 short_name_len =  dso->short_name_len;
-
-		if (strncmp(short_name + 1, module,
-			    short_name_len - 2) == 0 &&
-		    module[short_name_len - 2] == '\0') {
-			return map__get(pos->map);
+		if (strncmp(pos->dso->short_name + 1, module,
+			    pos->dso->short_name_len - 2) == 0 &&
+		    module[pos->dso->short_name_len - 2] == '\0') {
+			return map__get(pos);
 		}
 	}
 	return NULL;
@@ -183,15 +178,13 @@ struct map *get_target_map(const char *target, struct nsinfo *nsi, bool user)
 	/* Init maps of given executable or kernel */
 	if (user) {
 		struct map *map;
-		struct dso *dso;
 
 		map = dso__new_map(target);
-		dso = map ? map__dso(map) : NULL;
-		if (dso) {
-			mutex_lock(&dso->lock);
-			nsinfo__put(dso->nsinfo);
-			dso->nsinfo = nsinfo__get(nsi);
-			mutex_unlock(&dso->lock);
+		if (map && map->dso) {
+			mutex_lock(&map->dso->lock);
+			nsinfo__put(map->dso->nsinfo);
+			map->dso->nsinfo = nsinfo__get(nsi);
+			mutex_unlock(&map->dso->lock);
 		}
 		return map;
 	} else {
@@ -257,7 +250,7 @@ static bool kprobe_warn_out_range(const char *symbol, u64 address)
 
 	map = kernel_get_module_map(NULL);
 	if (map) {
-		ret = address <= map__start(map) || map__end(map) < address;
+		ret = address <= map->start || map->end < address;
 		if (ret)
 			pr_warning("%s is out of .text, skip it.\n", symbol);
 		map__put(map);
@@ -344,7 +337,7 @@ static int kernel_get_module_dso(const char *module, struct dso **pdso)
 		snprintf(module_name, sizeof(module_name), "[%s]", module);
 		map = maps__find_by_name(machine__kernel_maps(host_machine), module_name);
 		if (map) {
-			dso = map__dso(map);
+			dso = map->dso;
 			goto found;
 		}
 		pr_debug("Failed to find module %s.\n", module);
@@ -352,7 +345,7 @@ static int kernel_get_module_dso(const char *module, struct dso **pdso)
 	}
 
 	map = machine__kernel_map(host_machine);
-	dso = map__dso(map);
+	dso = map->dso;
 	if (!dso->has_build_id)
 		dso__read_running_kernel_build_id(dso, host_machine);
 
@@ -400,7 +393,7 @@ static int find_alternative_probe_point(struct debuginfo *dinfo,
 					   "Consider identifying the final function used at run time and set the probe directly on that.\n",
 					   pp->function);
 		} else
-			address = map__unmap_ip(map, sym->start) - map__reloc(map);
+			address = map->unmap_ip(map, sym->start) - map->reloc;
 		break;
 	}
 	if (!address) {
@@ -866,7 +859,7 @@ post_process_kernel_probe_trace_events(struct probe_trace_event *tevs,
 			free(tevs[i].point.symbol);
 		tevs[i].point.symbol = tmp;
 		tevs[i].point.offset = tevs[i].point.address -
-			(map__reloc(map) ? reloc_sym->unrelocated_addr :
+			(map->reloc ? reloc_sym->unrelocated_addr :
 				      reloc_sym->addr);
 	}
 	return skipped;
@@ -2249,7 +2242,7 @@ static int find_perf_probe_point_from_map(struct probe_trace_point *tp,
 		goto out;
 
 	pp->retprobe = tp->retprobe;
-	pp->offset = addr - map__unmap_ip(map, sym->start);
+	pp->offset = addr - map->unmap_ip(map, sym->start);
 	pp->function = strdup(sym->name);
 	ret = pp->function ? 0 : -ENOMEM;
 
@@ -3123,7 +3116,7 @@ static int find_probe_trace_events_from_map(struct perf_probe_event *pev,
 			goto err_out;
 		}
 		/* Add one probe point */
-		tp->address = map__unmap_ip(map, sym->start) + pp->offset;
+		tp->address = map->unmap_ip(map, sym->start) + pp->offset;
 
 		/* Check the kprobe (not in module) is within .text  */
 		if (!pev->uprobes && !pev->target &&
@@ -3740,7 +3733,6 @@ int show_available_funcs(const char *target, struct nsinfo *nsi,
 {
         struct rb_node *nd;
 	struct map *map;
-	struct dso *dso;
 	int ret;
 
 	ret = init_probe_symbol_maps(user);
@@ -3766,14 +3758,14 @@ int show_available_funcs(const char *target, struct nsinfo *nsi,
 			       (target) ? : "kernel");
 		goto end;
 	}
-	dso = map__dso(map);
-	if (!dso__sorted_by_name(dso))
-		dso__sort_by_name(dso);
+	if (!dso__sorted_by_name(map->dso))
+		dso__sort_by_name(map->dso);
 
 	/* Show all (filtered) symbols */
 	setup_pager();
 
-	for (nd = rb_first_cached(&dso->symbol_names); nd; nd = rb_next(nd)) {
+	for (nd = rb_first_cached(&map->dso->symbol_names); nd;
+	     nd = rb_next(nd)) {
 		struct symbol_name_rb_node *pos = rb_entry(nd, struct symbol_name_rb_node, rb_node);
 
 		if (strfilter__compare(_filter, pos->sym.name))

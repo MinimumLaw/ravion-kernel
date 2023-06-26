@@ -946,7 +946,7 @@ int ath12k_ce_alloc_pipes(struct ath12k_base *ab)
 
 		ret = ath12k_ce_alloc_pipe(ab, i);
 		if (ret) {
-			/* Free any partial successful allocation */
+			/* Free any parial successful allocation */
 			ath12k_ce_free_pipes(ab);
 			return ret;
 		}

@@ -126,16 +126,12 @@ static void stable_tsc_check_supported(void)
 		goto skip_test;
 
 	if (fgets(buf, sizeof(buf), fp) == NULL)
-		goto close_fp;
+		goto skip_test;
 
 	if (strncmp(buf, "tsc", sizeof(buf)))
-		goto close_fp;
+		goto skip_test;
 
-	fclose(fp);
 	return;
-
-close_fp:
-	fclose(fp);
 skip_test:
 	print_skip("Kernel does not use TSC clocksource - assuming that host TSC is not stable");
 	exit(KSFT_SKIP);

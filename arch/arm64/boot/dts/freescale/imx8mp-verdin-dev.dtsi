@@ -91,14 +91,7 @@
 	/* TODO: Audio Codec */
 };
 
-/* Verdin PCIE_1 */
-&pcie {
-	status = "okay";
-};
-
-&pcie_phy {
-	status = "okay";
-};
+/* TODO: Verdin PCIE_1 */
 
 /* Verdin PWM_1 */
 &pwm1 {

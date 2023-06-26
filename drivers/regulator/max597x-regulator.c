@@ -501,7 +501,6 @@ static int max597x_regulator_probe(struct platform_device *pdev)
 static struct platform_driver max597x_regulator_driver = {
 	.driver = {
 		.name = "max597x-regulator",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 	.probe = max597x_regulator_probe,
 };

@@ -10,7 +10,6 @@
 #include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
@@ -87,8 +86,8 @@ MODULE_DEVICE_TABLE(of, weim_id_table);
 static int imx_weim_gpr_setup(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
-	struct of_range_parser parser;
-	struct of_range range;
+	struct property *prop;
+	const __be32 *p;
 	struct regmap *gpr;
 	u32 gprvals[4] = {
 		05,	/* CS0(128M) CS1(0M)  CS2(0M)  CS3(0M)  */
@@ -107,13 +106,13 @@ static int imx_weim_gpr_setup(struct platform_device *pdev)
 		return 0;
 	}
 
-	if (of_range_parser_init(&parser, np))
-		goto err;
-
-	for_each_of_range(&parser, &range) {
-		cs = range.bus_addr >> 32;
-		val = (range.size / SZ_32M) | 1;
-		gprval |= val << cs * 3;
+	of_property_for_each_u32(np, "ranges", prop, p, val) {
+		if (i % 4 == 0) {
+			cs = val;
+		} else if (i % 4 == 3 && val) {
+			val = (val / SZ_32M) | 1;
+			gprval |= val << cs * 3;
+		}
 		i++;
 	}
 

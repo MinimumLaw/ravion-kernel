@@ -192,7 +192,6 @@ struct sparx5_port {
 	u16 ts_id;
 	struct sk_buff_head tx_skbs;
 	bool is_mrouter;
-	struct list_head tc_templates; /* list of TC templates on this port */
 };
 
 enum sparx5_core_clockfreq {

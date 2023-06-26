@@ -72,7 +72,7 @@ static const struct ata_port_info ahci_port_seattle_info = {
 	.port_ops	= &ahci_seattle_ops,
 };
 
-static const struct scsi_host_template ahci_platform_sht = {
+static struct scsi_host_template ahci_platform_sht = {
 	AHCI_SHT(DRV_NAME),
 };
 

@@ -358,12 +358,10 @@ static int intel_resume_child_device(struct device *dev, void *data)
 	}
 
 	ret = pm_request_resume(dev);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(dev, "%s: pm_request_resume failed: %d\n", __func__, ret);
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int __maybe_unused intel_pm_prepare(struct device *dev)

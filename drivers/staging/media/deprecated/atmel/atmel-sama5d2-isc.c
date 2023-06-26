@@ -389,6 +389,7 @@ static int atmel_isc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct isc_device *isc;
+	struct resource *res;
 	void __iomem *io_base;
 	struct isc_subdev_entity *subdev_entity;
 	int irq;
@@ -402,7 +403,8 @@ static int atmel_isc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, isc);
 	isc->dev = dev;
 
-	io_base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	io_base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(io_base))
 		return PTR_ERR(io_base);
 
@@ -578,7 +580,7 @@ unprepare_hclk:
 	return ret;
 }
 
-static void atmel_isc_remove(struct platform_device *pdev)
+static int atmel_isc_remove(struct platform_device *pdev)
 {
 	struct isc_device *isc = platform_get_drvdata(pdev);
 
@@ -592,6 +594,8 @@ static void atmel_isc_remove(struct platform_device *pdev)
 	clk_disable_unprepare(isc->hclock);
 
 	atmel_isc_clk_cleanup(isc);
+
+	return 0;
 }
 
 static int __maybe_unused isc_runtime_suspend(struct device *dev)
@@ -634,7 +638,7 @@ MODULE_DEVICE_TABLE(of, atmel_isc_of_match);
 
 static struct platform_driver atmel_isc_driver = {
 	.probe	= atmel_isc_probe,
-	.remove_new = atmel_isc_remove,
+	.remove	= atmel_isc_remove,
 	.driver	= {
 		.name		= "atmel-sama5d2-isc",
 		.pm		= &atmel_isc_dev_pm_ops,

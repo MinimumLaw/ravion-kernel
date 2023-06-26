@@ -10,7 +10,6 @@
 #include <api/fs/fs.h>
 #include <linux/kernel.h>
 #include <linux/err.h>
-#include <linux/zalloc.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -101,8 +100,8 @@ static void iio_root_ports_list_free(struct iio_root_ports_list *list)
 
 	if (list) {
 		for (idx = 0; idx < list->nr_entries; idx++)
-			zfree(&list->rps[idx]);
-		zfree(&list->rps);
+			free(list->rps[idx]);
+		free(list->rps);
 		free(list);
 	}
 }
@@ -391,7 +390,7 @@ void iostat_release(struct evlist *evlist)
 	evlist__for_each_entry(evlist, evsel) {
 		if (rp != evsel->priv) {
 			rp = evsel->priv;
-			zfree(&evsel->priv);
+			free(evsel->priv);
 		}
 	}
 }

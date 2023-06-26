@@ -112,7 +112,7 @@
 		};
 
 		pci@c0000000 {
-			status = "okay";
+			status = "ok";
 
 			/*
 			 * Taken from Vulcan PCI boardfile.
@@ -137,7 +137,7 @@
 
 		/* EthB */
 		ethernet@c8009000 {
-			status = "okay";
+			status = "ok";
 			queue-rx = <&qmgr 3>;
 			queue-txready = <&qmgr 20>;
 			phy-mode = "rgmii";
@@ -159,7 +159,7 @@
 
 		/* EthC */
 		ethernet@c800a000 {
-			status = "okay";
+			status = "ok";
 			queue-rx = <&qmgr 4>;
 			queue-txready = <&qmgr 21>;
 			phy-mode = "rgmii";

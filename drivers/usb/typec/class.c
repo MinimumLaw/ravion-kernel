@@ -22,6 +22,7 @@ static DEFINE_IDA(typec_index_ida);
 
 struct class typec_class = {
 	.name = "typec",
+	.owner = THIS_MODULE,
 };
 
 /* ------------------------------------------------------------------------- */

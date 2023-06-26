@@ -27,7 +27,6 @@ enum btrfs_reserve_flush_enum {
 	 * - Running delayed refs
 	 * - Running delalloc and waiting for ordered extents
 	 * - Allocating a new chunk
-	 * - Committing transaction
 	 */
 	BTRFS_RESERVE_FLUSH_EVICT,
 

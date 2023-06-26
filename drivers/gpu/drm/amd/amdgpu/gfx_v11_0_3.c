@@ -62,18 +62,10 @@ static int gfx_v11_0_3_rlc_gc_fed_irq(struct amdgpu_device *adev,
 		return -EINVAL;
 	}
 
-	dev_warn(adev->dev, "RLC %s FED IRQ\n", ras_if->name);
+	ih_data.head = *ras_if;
 
-	if (!amdgpu_sriov_vf(adev)) {
-		ih_data.head = *ras_if;
-		amdgpu_ras_interrupt_dispatch(adev, &ih_data);
-	} else {
-		if (adev->virt.ops && adev->virt.ops->ras_poison_handler)
-			adev->virt.ops->ras_poison_handler(adev);
-		else
-			dev_warn(adev->dev,
-				"No ras_poison_handler interface in SRIOV for %s!\n", ras_if->name);
-	}
+	dev_warn(adev->dev, "RLC %s FED IRQ\n", ras_if->name);
+	amdgpu_ras_interrupt_dispatch(adev, &ih_data);
 
 	return 0;
 }

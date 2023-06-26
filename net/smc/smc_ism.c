@@ -429,7 +429,7 @@ static void smcd_register_dev(struct ism_dev *ism)
 		u8 *system_eid = NULL;
 
 		system_eid = smcd->ops->get_system_eid();
-		if (smcd->ops->supports_v2()) {
+		if (system_eid[24] != '0' || system_eid[28] != '0') {
 			smc_ism_v2_capable = true;
 			memcpy(smc_ism_v2_system_eid, system_eid,
 			       SMC_MAX_EID_LEN);

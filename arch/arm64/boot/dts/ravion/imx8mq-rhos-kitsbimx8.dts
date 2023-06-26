@@ -1,0 +1,621 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+/* For SPI_CAN comment and move XP71 from 1-2 to 2-3 position */
+#define	SPI_FLASH
+/* SGTL5000 act as I2S master device. FixMe: XP...*/
+#define	CODEC_MASTER
+/* define for use external clock generator for codec */
+#undef	CODEC_CLOCK_SELF
+
+/* CAMERA SELETION (select one)
+ *****************************/
+#undef	RASPBERRY_CAMERA_V1
+#undef	RASPBERRY_CAMERA_V2
+#define	RAVION_ADV7280_CAMERA
+
+
+#include "imx8mq-rhos.dtsi"
+
+/ {
+	model = "RHOS Module with I.MX8MQ CPU on KitSBiMX8 board";
+	compatible = "ravion,imx8mq-rhos", "fsl,imx8mq";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* from 2 - 0,1 on CPU module */
+	p15v_in: regulator-p15v_in {
+		compatible = "regulator-fixed";
+		regulator-name = "p15v_in";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator-p12v {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p12v_lcd: regulator-p12v-lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p12v>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p5v: regulator-p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator-p3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_cam: regulator-p3v3_cam {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_cam";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio3 9 0>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_lcd: regulator-p3v3_lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_lcd";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio3 8 0>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p1v8: regulator-p1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p1v8_bt: regulator-p1v8_bt { /* XP48 */
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8_bt";
+		vin-supply = <&p3v3>;
+		gpio = <&gpio3 6 0>; /* FixMe: broken GPIO_ACTIVE_HIGH */
+		enable-active-high;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	avcc: regulator-avcc {
+		compatible = "regulator-fixed";
+		regulator-name = "avcc";
+		vin-supply = <&p5v>;
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		regulator-always-on;
+	};
+
+	avdd: regulator-avdd {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	codec_mclk: codec-mclk-clock { /* XP40, XP41 - both removed*/
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12288000>;
+	};
+
+#if defined	(RASPBERRY_CAMERA_V2)
+	imx219_clk: camera-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+
+	imx219_1v2_reg: cam1v2_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_1V2";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+
+	imx219_1v8_reg: cam1v8_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_1V8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+
+	imx219_2v8_reg: cam2v8_regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "IMX219_2V8";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&p3v3_cam>;
+		regulator-always-on;
+	};
+#elif defined	(RASPBERRY_CAMERA_V1)
+	ov5647_xclk: cam_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+		clock-accuracy = <100>;
+	};
+#endif /* RASPBERRY_CAMERA */
+
+	/*Recomended LVDS display panel
+	 *****************************/
+	lvds_panel {
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+		backlight = <&lvds_backlight>;
+		data-mapping = "jeida-24";
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&bridge_lvds_out>;
+			};
+		};
+	};
+
+	lvds_backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
+		enable-gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* soDimm  169 */
+		pwms = <&pwm3 0 100000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <8>;
+		status = "okay";
+	};
+
+	soundcard@0 {
+		compatible = "simple-audio-card";
+#ifdef	CODEC_MASTER
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(M)";
+#else
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(S)";
+#endif
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+#ifndef	CODEC_MASTER
+		dailink0_master:
+#endif
+		simple-audio-card,cpu {
+			sound-dai = <&sai1 0>;
+		};
+#ifdef	CODEC_MASTER
+		dailink0_master:
+#endif
+		simple-audio-card,codec {
+			sound-dai = <&sgtl5000 0>;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		power-key {
+			label = "Power";
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	sound-hdmi {
+		compatible = "fsl,imx-audio-hdmi";
+		model = "imx-audio-hdmi";
+		audio-cpu = <&sai2>;
+		hdmi-out;
+		status = "okay";
+		constraint-rate = <44100>,
+				<88200>,
+				<176400>,
+				<32000>,
+				<48000>,
+				<96000>,
+				<192000>;
+	};
+};
+
+&irqsteer {
+	status = "okay";
+};
+
+&dcss {
+	status = "okay";
+	disp-dev = "hdmi_disp";
+
+	port@0 {
+		dcss_out: endpoint {
+			remote-endpoint = <&hdmi_in>;
+		};
+	};
+};
+
+&hdmi {
+	compatible = "cdn,imx8mq-hdmi";
+	lane-mapping = <0xe4>;
+	hdcp-config = <0x3>;
+	status = "okay";
+	port@1 {
+		hdmi_in: endpoint {
+			remote-endpoint = <&dcss_out>;
+		};
+	};
+};
+
+&lcdif	{	status = "okay";	};
+&mipi_dsi {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+			mipi_dsi_out: endpoint {
+				remote-endpoint = <&bridge_dsi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+&dphy	{	status = "okay";	};
+
+/* PWMs
+ *****/
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
+
+
+/* Serial audio interface
+ ***********************/
+&sai1	{
+	status = "okay";
+	/* default - any, I2S - 1-st tx/rx, PDM - disabled */
+	fst,dataline = <0 0x0F 0x0F 0x01 0x01 0x01 0x02 0x00 0x00>;
+#ifdef	CODEC_MASTER
+#ifdef	CODEC_CLOCK_SELF
+	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
+		<&codec_mclk 0>,		/* MCLK connected to generator */
+		<&clk IMX8MQ_CLK_DUMMY>,
+		<&clk IMX8MQ_CLK_DUMMY>;
+	clock-names = "bus", "mclk1", "mclk2", "mclk3";
+	assigned-clock-rates = <12280000>;
+#else	/* !CODEC_CLOCK_SELF - use codec clock from CPU CLKO1 */
+	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
+		<&clk IMX8MQ_CLK_DUMMY>,	/* MCLK floated on SAI side  */
+		<&clk IMX8MQ_CLK_DUMMY>,
+		<&clk IMX8MQ_CLK_DUMMY>;
+	clock-names = "bus", "mclk1", "mclk2", "mclk3";
+#endif	/* CODEC_CLOCK_SELF */
+#else
+	fsl,sai-mclk-direction-output;
+	assigned-clock-rates = <8192000>;
+#endif
+};
+
+&sai2	{	status = "okay";	};
+
+/* SPI interface
+ **************/
+&ecspi1 {
+	status = "okay";
+#if defined SPI_FLASH	/* XP71 1-2 */
+	s25fl256@0 {
+		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
+		reg = <0>;
+		spi-max-frequency = <20000000>; /* 40MHz ABSOLUTE MAXIMUM */
+	};
+#else /* !defined SPI_FLASH, XP71 2-3 */
+	mcp2518@0 {
+		compatible = "microchip,mcp2518fd";
+		reg = <0>;
+		clocks = <&clk_20m_can 0>;
+		interrupts-extended = <&gpio3 2 IRQ_TYPE_LEVEL_LOW>;
+		vdd-supply = <&p3v3>;
+		xceiver-supply = <&p5v>;
+		microchip,int0-gpios = <&gpio3 2 0>;	/* not used, just for info */
+		microchip,rx-int-gpios = <&gpio3 4 0>;	/* GPIO1/INT1 pinout */
+		spi-max-frequency = <10000000>;		/* clocks/2 or less */
+		status = "okay";
+
+		clk_20m_can: can_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+			clock-accuracy = <100>;
+		};
+	};
+#endif /* SPI_FLASH */
+};
+
+/* Bluetooth interface
+ ********************/
+&uart4	{
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
+		compatible = "ti,wl1271-st";
+		enable-gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>; /* XP48 */
+		vio-supply = <&p1v8_bt>;
+		vbat-supply = <&p3v3>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+/* MicroSD card slot
+ ******************/
+&usdhc2	{	status = "okay";	};
+
+/* PCIe M.2 slot
+ **************/
+&pcie0	{	status = "okay";	};
+
+/* PCIe 4x slot
+ *************/
+&pcie1	{	status = "okay";	};
+
+/*
+ * I2C devices
+ */
+&i2c3 {  /* SMB_I2C can be disabled on XP34 jumpers removed */
+
+	i2c-mux@71 {
+		compatible = "nxp,pca9846";
+		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>;
+
+		m2_slot: i2c@0 {
+			status = "disabled";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		pcie_slot: i2c@1 {
+			status = "disabled";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c_camera: i2c@2 {
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		lcd_ddc: i2c@3 {
+			status = "disabled";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+
+	};
+};
+
+&i2c2 {  /* XP67 1-2, 3-4 closed */
+	status = "okay";
+
+	rtc0: ds1342@68 {
+		compatible = "dallas,ds1341";
+		reg = <0x68>;
+		status = "okay";
+	};
+
+	usb-hub@2d { /* can be disabled on XP76 [2-4],[6-8] def. [3-4],[5-6] */
+		compatible = "ignore,no-device-driver-required";
+		status = "disabled";
+		reg = <0x2d>;
+	};
+
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+#ifdef	CODEC_MASTER
+#ifdef	CODECK_CLOCK_SELF
+		clocks = <&codec_mclk 0>;
+#else	/* !CODEC_CLOCK_SELF - use CLKO1 from CPU */
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_clko1>;
+
+		clocks = <&clk IMX8MQ_CLK_CLKO1>;
+#endif	/* CODEC_CLOCK_SELF */
+#else /* !defined CODEC_MASTER */
+#warning Codec clock MUST be 8K or more, so rate in SLAVE mode min 8192K/512=16K
+                clocks = <&clk IMX8MQ_CLK_SAI1_ROOT>;
+                clock-names = "mclk";
+		assigned-clocks = <&clk IMX8MQ_CLK_SAI1>;
+		assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+		assigned-clock-rates = <8192000>;
+#endif
+		VDDA-supply = <&avcc>;
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&avdd>;
+		status = "okay";
+	};
+};
+
+&i2c1 { /* can be diabled on XP68 jumpers removed def [1-2],[3-4] */
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "microchip,24c08", "atmel,24c08";
+		reg = <0x50>;
+		vcc-supply = <&p1v8>;
+		status = "okay";
+	};
+
+	dsi2lvds-bridge@2c {
+		compatible = "ti,sn65dsi83";
+		reg = <0x2c>;
+		enable-gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* XP78 - closed */
+		vcc-supply = <&p1v8>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				bridge_dsi_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&mipi_dsi_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				bridge_lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
+	};
+};
+
+/* MIPI CSI interface
+ *******************/
+&csi1          {       status = "okay";        };
+&mipi_csi1     {       status = "okay";        };
+
+&imx8mq_csi_in {
+	remote-endpoint = <&csi_sensor_out>;
+	clock-lanes = <0>;
+#if defined	(RAVION_ADV7280_CAMERA)
+	data-lanes = <1>;
+#else /* RASPBERRY_CAMERA_V1 & V2 */
+	data-lanes = <1 2>;
+#endif
+};
+
+&i2c_camera
+{
+#if defined	(RAVION_ADV7280_CAMERA)
+	sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
+		compatible = "adi,adv7280-m";
+		status = "okay";
+		reg = <0x20>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1>;
+			};
+		};
+	};
+#elif defined	(RASPBERRY_CAMERA_V2)
+	sensor@10 {	/* Raspberry Camera V2 */
+		compatible = "sony,imx219";
+		reg = <0x10>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&imx219_clk>;
+		clock-names = "xclk";
+		VDIG-supply = <&imx219_1v8_reg>; /* 1.8v */
+		VANA-supply = <&imx219_2v8_reg>; /* 2.8v */
+		VDDL-supply = <&imx219_1v2_reg>; /* 1.2v */
+
+		port {
+			csi_sensor_out: endpoint {
+				link-frequencies = /bits/ 64 <456000000>;
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+#elif defined	(RASPBERRY_CAMERA_V1)
+	camera@36 {	/* Raspberry Camera V1.3 */
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		clocks = <&ov5647_xclk>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&imx8mq_csi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+#endif /* RASPBERRY_CAMERA */
+};

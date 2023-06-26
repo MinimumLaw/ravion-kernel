@@ -493,9 +493,7 @@ static int __tegra_channel_try_format(struct tegra_vi_channel *chan,
 	const struct tegra_video_format *fmtinfo;
 	static struct lock_class_key key;
 	struct v4l2_subdev *subdev;
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_TRY,
-	};
+	struct v4l2_subdev_format fmt;
 	struct v4l2_subdev_state *sd_state;
 	struct v4l2_subdev_frame_size_enum fse = {
 		.which = V4L2_SUBDEV_FORMAT_TRY,
@@ -531,6 +529,7 @@ static int __tegra_channel_try_format(struct tegra_vi_channel *chan,
 	}
 
 	pix->field = V4L2_FIELD_NONE;
+	fmt.which = V4L2_SUBDEV_FORMAT_TRY;
 	fmt.pad = 0;
 	v4l2_fill_mbus_format(&fmt.format, pix, fmtinfo->code);
 
@@ -591,9 +590,7 @@ static int tegra_channel_set_format(struct file *file, void *fh,
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
 	const struct tegra_video_format *fmtinfo;
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
+	struct v4l2_subdev_format fmt;
 	struct v4l2_subdev *subdev;
 	struct v4l2_pix_format *pix = &format->fmt.pix;
 	int ret;
@@ -608,6 +605,7 @@ static int tegra_channel_set_format(struct file *file, void *fh,
 
 	fmtinfo = tegra_get_format_by_fourcc(chan->vi, pix->pixelformat);
 
+	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	fmt.pad = 0;
 	v4l2_fill_mbus_format(&fmt.format, pix, fmtinfo->code);
 	subdev = tegra_channel_get_remote_source_subdev(chan);
@@ -2043,8 +2041,14 @@ rpm_disable:
 static int tegra_vi_remove(struct platform_device *pdev)
 {
 	struct tegra_vi *vi = platform_get_drvdata(pdev);
+	int err;
 
-	host1x_client_unregister(&vi->client);
+	err = host1x_client_unregister(&vi->client);
+	if (err < 0) {
+		dev_err(&pdev->dev,
+			"failed to unregister host1x client: %d\n", err);
+		return err;
+	}
 
 	pm_runtime_disable(&pdev->dev);
 

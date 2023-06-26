@@ -179,7 +179,7 @@ static int __init add_legacy_soc_port(struct device_node *np,
 		return -1;
 
 	/* if rtas uses this device, don't try to use it as well */
-	if (of_property_read_bool(np, "used-by-rtas"))
+	if (of_get_property(np, "used-by-rtas", NULL) != NULL)
 		return -1;
 
 	/* Get the address */

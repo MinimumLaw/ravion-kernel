@@ -46,6 +46,8 @@ static struct bpf_local_storage __rcu **cgroup_storage_ptr(void *owner)
 void bpf_cgrp_storage_free(struct cgroup *cgroup)
 {
 	struct bpf_local_storage *local_storage;
+	bool free_cgroup_storage = false;
+	unsigned long flags;
 
 	rcu_read_lock();
 	local_storage = rcu_dereference(cgroup->bpf_cgrp_storage);
@@ -55,9 +57,14 @@ void bpf_cgrp_storage_free(struct cgroup *cgroup)
 	}
 
 	bpf_cgrp_storage_lock();
-	bpf_local_storage_destroy(local_storage);
+	raw_spin_lock_irqsave(&local_storage->lock, flags);
+	free_cgroup_storage = bpf_local_storage_unlink_nolock(local_storage);
+	raw_spin_unlock_irqrestore(&local_storage->lock, flags);
 	bpf_cgrp_storage_unlock();
 	rcu_read_unlock();
+
+	if (free_cgroup_storage)
+		kfree_rcu(local_storage, rcu);
 }
 
 static struct bpf_local_storage_data *
@@ -121,7 +128,7 @@ static int cgroup_storage_delete(struct cgroup *cgroup, struct bpf_map *map)
 	if (!sdata)
 		return -ENOENT;
 
-	bpf_selem_unlink(SELEM(sdata), false);
+	bpf_selem_unlink(SELEM(sdata), true);
 	return 0;
 }
 
@@ -149,7 +156,7 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key, void *next_key)
 
 static struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
 {
-	return bpf_local_storage_map_alloc(attr, &cgroup_cache, true);
+	return bpf_local_storage_map_alloc(attr, &cgroup_cache);
 }
 
 static void cgroup_storage_map_free(struct bpf_map *map)
@@ -214,7 +221,6 @@ const struct bpf_map_ops cgrp_storage_map_ops = {
 	.map_update_elem = bpf_cgrp_storage_update_elem,
 	.map_delete_elem = bpf_cgrp_storage_delete_elem,
 	.map_check_btf = bpf_local_storage_map_check_btf,
-	.map_mem_usage = bpf_local_storage_map_mem_usage,
 	.map_btf_id = &bpf_local_storage_map_btf_id[0],
 	.map_owner_storage_ptr = cgroup_storage_ptr,
 };
@@ -224,7 +230,7 @@ const struct bpf_func_proto bpf_cgrp_storage_get_proto = {
 	.gpl_only	= false,
 	.ret_type	= RET_PTR_TO_MAP_VALUE_OR_NULL,
 	.arg1_type	= ARG_CONST_MAP_PTR,
-	.arg2_type	= ARG_PTR_TO_BTF_ID_OR_NULL,
+	.arg2_type	= ARG_PTR_TO_BTF_ID,
 	.arg2_btf_id	= &bpf_cgroup_btf_id[0],
 	.arg3_type	= ARG_PTR_TO_MAP_VALUE_OR_NULL,
 	.arg4_type	= ARG_ANYTHING,
@@ -235,6 +241,6 @@ const struct bpf_func_proto bpf_cgrp_storage_delete_proto = {
 	.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_CONST_MAP_PTR,
-	.arg2_type	= ARG_PTR_TO_BTF_ID_OR_NULL,
+	.arg2_type	= ARG_PTR_TO_BTF_ID,
 	.arg2_btf_id	= &bpf_cgroup_btf_id[0],
 };

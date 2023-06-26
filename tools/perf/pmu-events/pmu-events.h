@@ -2,8 +2,6 @@
 #ifndef PMU_EVENTS_H
 #define PMU_EVENTS_H
 
-#include <stdbool.h>
-
 struct perf_pmu;
 
 enum aggr_mode_class {
@@ -11,29 +9,6 @@ enum aggr_mode_class {
 	PerCore
 };
 
-/**
- * enum metric_event_groups - How events within a pmu_metric should be grouped.
- */
-enum metric_event_groups {
-	/**
-	 * @MetricGroupEvents: Default, group events within the metric.
-	 */
-	MetricGroupEvents = 0,
-	/**
-	 * @MetricNoGroupEvents: Don't group events for the metric.
-	 */
-	MetricNoGroupEvents = 1,
-	/**
-	 * @MetricNoGroupEventsNmi: Don't group events for the metric if the NMI
-	 *                          watchdog is enabled.
-	 */
-	MetricNoGroupEventsNmi = 2,
-	/**
-	 * @MetricNoGroupEventsSmt: Don't group events for the metric if SMT is
-	 *                          enabled.
-	 */
-	MetricNoGroupEventsSmt = 3,
-};
 /*
  * Describe each PMU event. Each CPU has a table of PMU events.
  */
@@ -46,22 +21,21 @@ struct pmu_event {
 	const char *long_desc;
 	const char *pmu;
 	const char *unit;
-	bool perpkg;
-	bool deprecated;
+	const char *perpkg;
+	const char *aggr_mode;
+	const char *deprecated;
 };
 
 struct pmu_metric {
 	const char *metric_name;
 	const char *metric_group;
 	const char *metric_expr;
-	const char *metric_threshold;
 	const char *unit;
 	const char *compat;
+	const char *aggr_mode;
+	const char *metric_constraint;
 	const char *desc;
 	const char *long_desc;
-	const char *metricgroup_no_group;
-	enum aggr_mode_class aggr_mode;
-	enum metric_event_groups event_grouping;
 };
 
 struct pmu_events_table;

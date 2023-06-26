@@ -22,8 +22,6 @@ static int udplite_sk_init(struct sock *sk)
 {
 	udp_init_sock(sk);
 	udp_sk(sk)->pcflag = UDPLITE_BIT;
-	pr_warn_once("UDP-Lite is deprecated and scheduled to be removed in 2025, "
-		     "please contact the netdev mailing list\n");
 	return 0;
 }
 

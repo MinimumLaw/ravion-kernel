@@ -174,6 +174,7 @@ struct meson_host {
 
 	int irq;
 
+	bool vqmmc_enabled;
 	bool needs_pre_post_req;
 
 	spinlock_t lock;
@@ -603,18 +604,32 @@ static void meson_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	 */
 	switch (ios->power_mode) {
 	case MMC_POWER_OFF:
-		mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, 0);
-		mmc_regulator_disable_vqmmc(mmc);
+		if (!IS_ERR(mmc->supply.vmmc))
+			mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, 0);
+
+		if (!IS_ERR(mmc->supply.vqmmc) && host->vqmmc_enabled) {
+			regulator_disable(mmc->supply.vqmmc);
+			host->vqmmc_enabled = false;
+		}
 
 		break;
 
 	case MMC_POWER_UP:
-		mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, ios->vdd);
+		if (!IS_ERR(mmc->supply.vmmc))
+			mmc_regulator_set_ocr(mmc, mmc->supply.vmmc, ios->vdd);
 
 		break;
 
 	case MMC_POWER_ON:
-		mmc_regulator_enable_vqmmc(mmc);
+		if (!IS_ERR(mmc->supply.vqmmc) && !host->vqmmc_enabled) {
+			int ret = regulator_enable(mmc->supply.vqmmc);
+
+			if (ret < 0)
+				dev_err(host->dev,
+					"failed to enable vqmmc regulator\n");
+			else
+				host->vqmmc_enabled = true;
+		}
 
 		break;
 	}
@@ -991,8 +1006,11 @@ static irqreturn_t meson_mmc_irq(int irq, void *dev_id)
 
 		if (data && !cmd->error)
 			data->bytes_xfered = data->blksz * data->blocks;
-
-		return IRQ_WAKE_THREAD;
+		if (meson_mmc_bounce_buf_read(data) ||
+		    meson_mmc_get_next_command(cmd))
+			ret = IRQ_WAKE_THREAD;
+		else
+			ret = IRQ_HANDLED;
 	}
 
 out:
@@ -1003,6 +1021,9 @@ out:
 		start &= ~START_DESC_BUSY;
 		writel(start, host->regs + SD_EMMC_START);
 	}
+
+	if (ret == IRQ_HANDLED)
+		meson_mmc_request_done(host->mmc, cmd->mrq);
 
 	return ret;
 }
@@ -1160,6 +1181,7 @@ static int meson_mmc_probe(struct platform_device *pdev)
 					"amlogic,dram-access-quirk");
 
 	/* Get regulators and the supported OCR mask */
+	host->vqmmc_enabled = false;
 	ret = mmc_regulator_get_supply(mmc);
 	if (ret)
 		return ret;
@@ -1186,8 +1208,8 @@ static int meson_mmc_probe(struct platform_device *pdev)
 		return PTR_ERR(host->regs);
 
 	host->irq = platform_get_irq(pdev, 0);
-	if (host->irq < 0)
-		return host->irq;
+	if (host->irq <= 0)
+		return -EINVAL;
 
 	cd_irq = platform_get_irq_optional(pdev, 1);
 	mmc_gpio_set_cd_irq(mmc, cd_irq);

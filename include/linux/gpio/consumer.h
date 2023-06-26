@@ -3,14 +3,13 @@
 #define __LINUX_GPIO_CONSUMER_H
 
 #include <linux/bits.h>
-#include <linux/types.h>
+#include <linux/bug.h>
+#include <linux/compiler_types.h>
+#include <linux/err.h>
 
-struct acpi_device;
 struct device;
-struct fwnode_handle;
-
-struct gpio_array;
 struct gpio_desc;
+struct gpio_array;
 
 /**
  * struct gpio_descs - Struct containing an array of descriptors that can be
@@ -172,6 +171,9 @@ int gpiod_set_consumer_name(struct gpio_desc *desc, const char *name);
 struct gpio_desc *gpio_to_desc(unsigned gpio);
 int desc_to_gpio(const struct gpio_desc *desc);
 
+/* Child properties interface */
+struct fwnode_handle;
+
 struct gpio_desc *fwnode_gpiod_get_index(struct fwnode_handle *fwnode,
 					 const char *con_id, int index,
 					 enum gpiod_flags flags,
@@ -184,10 +186,7 @@ struct gpio_desc *devm_fwnode_gpiod_get_index(struct device *dev,
 
 #else /* CONFIG_GPIOLIB */
 
-#include <linux/err.h>
 #include <linux/kernel.h>
-
-#include <asm/bug.h>
 
 static inline int gpiod_count(struct device *dev, const char *con_id)
 {
@@ -547,6 +546,9 @@ static inline int desc_to_gpio(const struct gpio_desc *desc)
 	return -EINVAL;
 }
 
+/* Child properties interface */
+struct fwnode_handle;
+
 static inline
 struct gpio_desc *fwnode_gpiod_get_index(struct fwnode_handle *fwnode,
 					 const char *con_id, int index,
@@ -605,6 +607,8 @@ struct acpi_gpio_mapping {
 	unsigned int quirks;
 };
 
+struct acpi_device;
+
 #if IS_ENABLED(CONFIG_GPIOLIB) && IS_ENABLED(CONFIG_ACPI)
 
 int acpi_dev_add_driver_gpios(struct acpi_device *adev,
@@ -617,8 +621,6 @@ int devm_acpi_dev_add_driver_gpios(struct device *dev,
 struct gpio_desc *acpi_get_and_request_gpiod(char *path, unsigned int pin, char *label);
 
 #else  /* CONFIG_GPIOLIB && CONFIG_ACPI */
-
-#include <linux/err.h>
 
 static inline int acpi_dev_add_driver_gpios(struct acpi_device *adev,
 			      const struct acpi_gpio_mapping *gpios)
@@ -650,8 +652,6 @@ int gpiod_export_link(struct device *dev, const char *name,
 void gpiod_unexport(struct gpio_desc *desc);
 
 #else  /* CONFIG_GPIOLIB && CONFIG_GPIO_SYSFS */
-
-#include <asm/errno.h>
 
 static inline int gpiod_export(struct gpio_desc *desc,
 			       bool direction_may_change)

@@ -76,6 +76,7 @@ patternProperties:
         maxItems: 1
 
 required:
+  - compatible
   - reg
 
 additionalProperties: true

@@ -1216,9 +1216,7 @@ static int bm_rw(struct drbd_device *device, const unsigned int flags, unsigned 
  * drbd_bm_read() - Read the whole bitmap from its on disk location.
  * @device:	DRBD device.
  */
-int drbd_bm_read(struct drbd_device *device,
-		 struct drbd_peer_device *peer_device) __must_hold(local)
-
+int drbd_bm_read(struct drbd_device *device) __must_hold(local)
 {
 	return bm_rw(device, BM_AIO_READ, 0);
 }
@@ -1229,8 +1227,7 @@ int drbd_bm_read(struct drbd_device *device,
  *
  * Will only write pages that have changed since last IO.
  */
-int drbd_bm_write(struct drbd_device *device,
-		 struct drbd_peer_device *peer_device) __must_hold(local)
+int drbd_bm_write(struct drbd_device *device) __must_hold(local)
 {
 	return bm_rw(device, 0, 0);
 }
@@ -1241,8 +1238,7 @@ int drbd_bm_write(struct drbd_device *device,
  *
  * Will write all pages.
  */
-int drbd_bm_write_all(struct drbd_device *device,
-		struct drbd_peer_device *peer_device) __must_hold(local)
+int drbd_bm_write_all(struct drbd_device *device) __must_hold(local)
 {
 	return bm_rw(device, BM_AIO_WRITE_ALL_PAGES, 0);
 }
@@ -1268,8 +1264,7 @@ int drbd_bm_write_lazy(struct drbd_device *device, unsigned upper_idx) __must_ho
  * verify is aborted due to a failed peer disk, while local IO continues, or
  * pending resync acks are still being processed.
  */
-int drbd_bm_write_copy_pages(struct drbd_device *device,
-		struct drbd_peer_device *peer_device) __must_hold(local)
+int drbd_bm_write_copy_pages(struct drbd_device *device) __must_hold(local)
 {
 	return bm_rw(device, BM_AIO_COPY_PAGES, 0);
 }

@@ -1,0 +1,284 @@
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+#include "imx6qdl-ravion-v2.dtsi"
+
+/delete-node/&audmux;
+/delete-node/&ssi1;
+/delete-node/&sgtl5000;
+/delete-node/&module_sound;
+
+/ {
+	model = "ravion:router";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific regulators
+	 */
+	pwr_src: regulator_power {
+		compatible = "regulator-fixed";
+		regulator-name = "BATT_IN";
+		/* FixMe: 5...8.4V input voltage */
+		regulator-min-microvolt = <8400000>;
+		regulator-max-microvolt = <8400000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p5v_reg: regulator_5v0 {
+		compatible = "regulator-fixed";
+		regulator-name = "P5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p3v3_reg: regulator_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "P3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p12v_reg: regulator_12v {
+		compatible = "regulator-fixed";
+		regulator-name = "P12V";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on; /* XP61: enable/disable reg. */
+	};
+
+	va3v3_reg: regulator_3v3va {
+		compatible = "regulator-fixed";
+		regulator-name = "VA3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	pps {
+		compatible = "pps-gpio";
+		gpios	= <&gpio1  2 GPIO_ACTIVE_LOW>;		/* soDimm 055 */
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		state {
+			label = "State";
+			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm 152 */
+			linux,code = <KEY_F1>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-leds {
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_uart1gpio>;
+		compatible = "gpio-leds";
+
+		pwr_ow {
+			label = "ow:::pwr";
+			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;	/* soDimm 124 */
+			default-state = "on";
+		};
+
+		stby_can {
+			label = "can::stdby";
+			gpios = <&gpio4  8 GPIO_ACTIVE_HIGH>;	/* soDimm 150 */
+			default-state = "off";
+		};
+
+		rele_01 {
+			label = "rele::01";
+			gpios = <&gpio3 24 GPIO_ACTIVE_HIGH>;	/* soDimm 23 */
+			default-state = "off";
+		};
+
+		rele_02 {
+			label = "rele::02";
+			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm 25 */
+			default-state = "off";
+		};
+
+		rele_03 {
+			label = "rele::03";
+			gpios = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 27 */
+			default-state = "off";
+		};
+
+		rele_04 {
+			label = "rele::04";
+			gpios = <&gpio3 25 GPIO_ACTIVE_HIGH>;	/* soDimm 29 */
+			default-state = "off";
+		};
+
+		charge_red {
+			label = "charge::red";
+			gpios = <&gpio1  6 GPIO_ACTIVE_LOW>;	/* soDimm 180 */
+			default-state = "off";
+			};
+
+		charge_green {
+			label = "charge::green";
+			gpios = <&gpio1  0 GPIO_ACTIVE_LOW>;	/* soDimm184 */
+			default-state = "off";
+		};
+
+		charge_blue {
+			label = "charge::blue";
+			gpios = <&gpio7 13 GPIO_ACTIVE_LOW>;	/* soDimm186 */
+			default-state = "off";
+		};
+
+		status_red {
+			label = "status::red";
+			gpios = <&gpio1  4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
+			default-state = "off";
+		};
+
+		status_green {
+			label = "status::green";
+			gpios = <&gpio4  7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
+			default-state = "off";
+		};
+
+		status_blue {
+			label = "status::blue";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
+			default-state = "on";
+		};
+	};
+};
+
+/*
+ * Sound subsystem
+ */
+&ssi2	{	status = "disabled";	};
+
+/*
+ * Video subsystems
+ */
+/* HDMI */
+&hdmi {		status = "okay";	};
+/* TFT */
+&tft_display_bus { status = "disabled"; };
+/* LVDS */
+&ldb {		status = "disabled";	};
+
+/*
+ * Serial ports
+ */
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm 115 */
+		compatible = "ti,wl1271-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+&uart3 {	status = "okay";	};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {		status = "okay";	};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+/* Extended I2C: soDimm 128, 130 */
+&i2c3 {		status = "disabled";	};
+
+&mipi_csi {	status = "disabled";	};
+
+/*
+ * SPI Bus
+ */
+&ecspi1 {	status = "disabled"; };
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	}; /* compatible */
+&usdhc2 {	status = "disabled";	}; /* externed */
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/*
+ * High-speed serial bus
+ */
+&pcie {		status = "disabled";	};
+&sata {		status = "disabled";	};
+
+/* &usbh1 {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{ /* OTG */
+	status = "okay";
+};
+
+&usbh3 { /* HSIC */
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "disabled";	};
+&pwm4	{	status = "disabled";	};
+

@@ -15,6 +15,7 @@ static DEFINE_IDA(pd_ida);
 
 static struct class pd_class = {
 	.name = "usb_power_delivery",
+	.owner = THIS_MODULE,
 };
 
 #define to_pdo(o) container_of(o, struct pdo, dev)

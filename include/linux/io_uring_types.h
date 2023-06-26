@@ -188,10 +188,8 @@ struct io_ev_fd {
 };
 
 struct io_alloc_cache {
-	struct io_wq_work_node	list;
+	struct hlist_head	list;
 	unsigned int		nr_cached;
-	unsigned int		max_cached;
-	size_t			elem_size;
 };
 
 struct io_ring_ctx {
@@ -241,6 +239,7 @@ struct io_ring_ctx {
 		 * uring_lock, and updated through io_uring_register(2)
 		 */
 		struct io_rsrc_node	*rsrc_node;
+		int			rsrc_cached_refs;
 		atomic_t		cancel_seq;
 		struct io_file_table	file_table;
 		unsigned		nr_user_files;
@@ -296,7 +295,7 @@ struct io_ring_ctx {
 		spinlock_t		completion_lock;
 
 		bool			poll_multi_queue;
-		atomic_t		cq_wait_nr;
+		bool			cq_waiting;
 
 		/*
 		 * ->iopoll_list is protected by the ctx->uring_lock for
@@ -326,15 +325,16 @@ struct io_ring_ctx {
 	struct io_restriction		restrictions;
 
 	/* slow path rsrc auxilary data, used by update/register */
+	struct io_rsrc_node		*rsrc_backup_node;
 	struct io_mapped_ubuf		*dummy_ubuf;
 	struct io_rsrc_data		*file_data;
 	struct io_rsrc_data		*buf_data;
 
-	/* protected by ->uring_lock */
+	struct delayed_work		rsrc_put_work;
+	struct callback_head		rsrc_put_tw;
+	struct llist_head		rsrc_put_llist;
 	struct list_head		rsrc_ref_list;
-	struct io_alloc_cache		rsrc_node_cache;
-	struct wait_queue_head		rsrc_quiesce_wq;
-	unsigned			rsrc_quiesce;
+	spinlock_t			rsrc_ref_lock;
 
 	struct list_head		io_buffers_pages;
 
@@ -364,11 +364,6 @@ struct io_ring_ctx {
 	unsigned			sq_thread_idle;
 	/* protected by ->completion_lock */
 	unsigned			evfd_last_cq_tail;
-};
-
-struct io_tw_state {
-	/* ->uring_lock is taken, callbacks can use io_tw_lock to lock it */
-	bool locked;
 };
 
 enum {
@@ -477,7 +472,7 @@ enum {
 	REQ_F_HASH_LOCKED	= BIT(REQ_F_HASH_LOCKED_BIT),
 };
 
-typedef void (*io_req_tw_func_t)(struct io_kiocb *req, struct io_tw_state *ts);
+typedef void (*io_req_tw_func_t)(struct io_kiocb *req, bool *locked);
 
 struct io_task_work {
 	struct llist_node		node;
@@ -567,7 +562,6 @@ struct io_kiocb {
 	atomic_t			refs;
 	atomic_t			poll_refs;
 	struct io_task_work		io_task_work;
-	unsigned			nr_tw;
 	/* for polled requests, i.e. IORING_OP_POLL_ADD and async armed poll */
 	union {
 		struct hlist_node	hash_node;

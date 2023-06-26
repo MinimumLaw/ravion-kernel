@@ -104,7 +104,6 @@
 &port02 {
 	/* 10 Gbit Ethernet */
 	bus-range = <3 3>;
-	status = "okay";
 	ethernet0: ethernet@0,0 {
 		reg = <0x30000 0x0 0x0 0x0 0x0>;
 		/* To be filled by the loader */
@@ -115,14 +114,4 @@
 &port03 {
 	/* USB xHCI */
 	bus-range = <4 4>;
-	status = "okay";
-};
-
-
-&pcie0_dart_2 {
-	status = "okay";
-};
-
-&pcie0_dart_3 {
-	status = "okay";
 };

@@ -32,7 +32,6 @@
 
 enum drm_scaling_filter;
 struct dpll;
-struct drm_atomic_state;
 struct drm_connector;
 struct drm_device;
 struct drm_display_mode;
@@ -164,9 +163,14 @@ enum tc_port {
 	I915_MAX_TC_PORTS
 };
 
-enum aux_ch {
-	AUX_CH_NONE = -1,
+enum tc_port_mode {
+	TC_PORT_DISCONNECTED,
+	TC_PORT_TBT_ALT,
+	TC_PORT_DP_ALT,
+	TC_PORT_LEGACY,
+};
 
+enum aux_ch {
 	AUX_CH_A,
 	AUX_CH_B,
 	AUX_CH_C,
@@ -390,7 +394,6 @@ enum phy_fia {
 			     ((connector) = to_intel_connector((__state)->base.connectors[__i].ptr), \
 			     (new_connector_state) = to_intel_digital_connector_state((__state)->base.connectors[__i].new_state), 1))
 
-int intel_atomic_check(struct drm_device *dev, struct drm_atomic_state *state);
 int intel_atomic_add_affected_planes(struct intel_atomic_state *state,
 				     struct intel_crtc *crtc);
 u8 intel_calc_active_pipes(struct intel_atomic_state *state,
@@ -415,6 +418,7 @@ bool intel_crtc_get_pipe_config(struct intel_crtc_state *crtc_state);
 bool intel_pipe_config_compare(const struct intel_crtc_state *current_config,
 			       const struct intel_crtc_state *pipe_config,
 			       bool fastset);
+void intel_crtc_update_active_timings(const struct intel_crtc_state *crtc_state);
 
 void intel_plane_destroy(struct drm_plane *plane);
 void i9xx_set_pipeconf(const struct intel_crtc_state *crtc_state);
@@ -503,7 +507,7 @@ void intel_crtc_arm_fifo_underrun(struct intel_crtc *crtc,
 				  struct intel_crtc_state *crtc_state);
 void ilk_pfit_disable(const struct intel_crtc_state *old_crtc_state);
 
-int bdw_get_pipe_misc_bpp(struct intel_crtc *crtc);
+int bdw_get_pipemisc_bpp(struct intel_crtc *crtc);
 unsigned int intel_plane_fence_y_offset(const struct intel_plane_state *plane_state);
 
 bool intel_plane_uses_fence(const struct intel_plane_state *plane_state);

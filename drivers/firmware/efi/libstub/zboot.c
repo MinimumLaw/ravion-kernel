@@ -50,7 +50,8 @@ static unsigned long alloc_preferred_address(unsigned long alloc_size)
 }
 
 void __weak efi_cache_sync_image(unsigned long image_base,
-				 unsigned long alloc_size)
+				 unsigned long alloc_size,
+				 unsigned long code_size)
 {
 	// Provided by the arch to perform the cache maintenance necessary for
 	// executable code loaded into memory to be safe for execution.
@@ -65,7 +66,7 @@ asmlinkage efi_status_t __efiapi
 efi_zboot_entry(efi_handle_t handle, efi_system_table_t *systab)
 {
 	unsigned long compressed_size = _gzdata_end - _gzdata_start;
-	unsigned long image_base, alloc_size;
+	unsigned long image_base, alloc_size, code_size;
 	efi_loaded_image_t *image;
 	efi_status_t status;
 	char *cmdline_ptr;
@@ -92,6 +93,10 @@ efi_zboot_entry(efi_handle_t handle, efi_system_table_t *systab)
 	// SizeOfImage from the compressee's PE/COFF header
 	alloc_size = round_up(get_unaligned_le32(_gzdata_end - 4),
 			      EFI_ALLOC_ALIGN);
+
+	// SizeOfHeaders and SizeOfCode from the compressee's PE/COFF header
+	code_size = get_unaligned_le32(_gzdata_end - 8) +
+		    get_unaligned_le32(_gzdata_end - 12);
 
 	 // If the architecture has a preferred address for the image,
 	 // try that first.
@@ -135,7 +140,9 @@ efi_zboot_entry(efi_handle_t handle, efi_system_table_t *systab)
 		goto free_image;
 	}
 
-	efi_cache_sync_image(image_base, alloc_size);
+	efi_cache_sync_image(image_base, alloc_size, code_size);
+
+	efi_remap_image(image_base, alloc_size, code_size);
 
 	status = efi_stub_common(handle, image, image_base, cmdline_ptr);
 

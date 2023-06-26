@@ -475,11 +475,13 @@ err:
 	return ret;
 }
 
-static void tegra20_i2s_platform_remove(struct platform_device *pdev)
+static int tegra20_i2s_platform_remove(struct platform_device *pdev)
 {
 	tegra_pcm_platform_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
+
+	return 0;
 }
 
 static const struct of_device_id tegra20_i2s_of_match[] = {
@@ -501,7 +503,7 @@ static struct platform_driver tegra20_i2s_driver = {
 		.pm = &tegra20_i2s_pm_ops,
 	},
 	.probe = tegra20_i2s_platform_probe,
-	.remove_new = tegra20_i2s_platform_remove,
+	.remove = tegra20_i2s_platform_remove,
 };
 module_platform_driver(tegra20_i2s_driver);
 

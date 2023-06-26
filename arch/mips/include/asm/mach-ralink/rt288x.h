@@ -11,8 +11,7 @@
 #ifndef _RT288X_REGS_H_
 #define _RT288X_REGS_H_
 
-#define IOMEM(x)			((void __iomem *)(KSEG1ADDR(x)))
-#define RT2880_SYSC_BASE		IOMEM(0x00300000)
+#define RT2880_SYSC_BASE		0x00300000
 
 #define SYSC_REG_CHIP_NAME0		0x00
 #define SYSC_REG_CHIP_NAME1		0x04

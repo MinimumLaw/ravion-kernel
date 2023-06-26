@@ -1799,7 +1799,7 @@ void omapfb_register_panel(struct lcd_panel *panel)
 EXPORT_SYMBOL_GPL(omapfb_register_panel);
 
 /* Called when the device is being detached from the driver */
-static void omapfb_remove(struct platform_device *pdev)
+static int omapfb_remove(struct platform_device *pdev)
 {
 	struct omapfb_device *fbdev = platform_get_drvdata(pdev);
 	enum omapfb_state saved_state = fbdev->state;
@@ -1811,6 +1811,8 @@ static void omapfb_remove(struct platform_device *pdev)
 
 	platform_device_unregister(&omapdss_device);
 	fbdev->dssdev = NULL;
+
+	return 0;
 }
 
 /* PM suspend */
@@ -1835,7 +1837,7 @@ static int omapfb_resume(struct platform_device *pdev)
 
 static struct platform_driver omapfb_driver = {
 	.probe		= omapfb_probe,
-	.remove_new	= omapfb_remove,
+	.remove		= omapfb_remove,
 	.suspend	= omapfb_suspend,
 	.resume		= omapfb_resume,
 	.driver		= {

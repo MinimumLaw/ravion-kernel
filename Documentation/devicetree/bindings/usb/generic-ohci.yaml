@@ -148,7 +148,7 @@ allOf:
       properties:
         transceiver: false
 
-unevaluatedProperties: false
+additionalProperties: false
 
 examples:
   - |

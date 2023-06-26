@@ -716,7 +716,6 @@ int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 			goto done;
 
 		msg.msg_controllen = optlen;
-		msg.msg_control_is_user = false;
 		msg.msg_control = (void *)(opt+1);
 		ipc6.opt = opt;
 

@@ -337,8 +337,7 @@ static int axg_card_add_link(struct snd_soc_card *card, struct device_node *np,
 		return ret;
 
 	if (axg_card_cpu_is_codec(dai_link->cpus->of_node)) {
-		dai_link->c2c_params = &codec_params;
-		dai_link->num_c2c_params = 1;
+		dai_link->params = &codec_params;
 	} else {
 		dai_link->no_pcm = 1;
 		snd_soc_dai_link_set_capabilities(dai_link);

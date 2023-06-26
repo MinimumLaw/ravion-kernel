@@ -474,7 +474,7 @@ static int read_symbols(struct elf *elf)
 
 	/* Create parent/child links for any cold subfunctions */
 	list_for_each_entry(sec, &elf->sections, list) {
-		sec_for_each_sym(sec, sym) {
+		list_for_each_entry(sym, &sec->symbol_list, list) {
 			char pname[MAX_NAME_LEN + 1];
 			size_t pnamelen;
 			if (sym->type != STT_FUNC)

@@ -13,6 +13,7 @@
 #define _S390_CHECKSUM_H
 
 #include <linux/kasan-checks.h>
+#include <linux/uaccess.h>
 #include <linux/in6.h>
 
 /*

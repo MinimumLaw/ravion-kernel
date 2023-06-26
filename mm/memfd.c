@@ -243,12 +243,16 @@ static int memfd_get_seals(struct file *file)
 	return seals ? *seals : -EINVAL;
 }
 
-long memfd_fcntl(struct file *file, unsigned int cmd, unsigned int arg)
+long memfd_fcntl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	long error;
 
 	switch (cmd) {
 	case F_ADD_SEALS:
+		/* disallow upper 32bit */
+		if (arg > UINT_MAX)
+			return -EINVAL;
+
 		error = memfd_add_seals(file, arg);
 		break;
 	case F_GET_SEALS:
@@ -371,15 +375,12 @@ SYSCALL_DEFINE2(memfd_create,
 
 		inode->i_mode &= ~0111;
 		file_seals = memfd_file_seals_ptr(file);
-		if (file_seals) {
-			*file_seals &= ~F_SEAL_SEAL;
-			*file_seals |= F_SEAL_EXEC;
-		}
+		*file_seals &= ~F_SEAL_SEAL;
+		*file_seals |= F_SEAL_EXEC;
 	} else if (flags & MFD_ALLOW_SEALING) {
 		/* MFD_EXEC and MFD_ALLOW_SEALING are set */
 		file_seals = memfd_file_seals_ptr(file);
-		if (file_seals)
-			*file_seals &= ~F_SEAL_SEAL;
+		*file_seals &= ~F_SEAL_SEAL;
 	}
 
 	fd_install(fd, file);

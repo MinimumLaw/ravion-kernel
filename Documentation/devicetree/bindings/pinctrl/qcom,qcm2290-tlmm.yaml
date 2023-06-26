@@ -85,7 +85,6 @@ $defs:
       bias-pull-up: true
       bias-disable: true
       drive-strength: true
-      input-enable: true
       output-high: true
       output-low: true
 

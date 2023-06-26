@@ -353,6 +353,7 @@ SEC("tp_btf/task_newtask")
 int BPF_PROG(test_insert_leave, struct task_struct *task, u64 clone_flags)
 {
 	struct bpf_cpumask *cpumask;
+	struct __cpumask_map_value *v;
 
 	cpumask = create_cpumask();
 	if (!cpumask)
@@ -395,34 +396,31 @@ int BPF_PROG(test_insert_remove_release, struct task_struct *task, u64 clone_fla
 }
 
 SEC("tp_btf/task_newtask")
-int BPF_PROG(test_global_mask_rcu, struct task_struct *task, u64 clone_flags)
+int BPF_PROG(test_insert_kptr_get_release, struct task_struct *task, u64 clone_flags)
 {
-	struct bpf_cpumask *local, *prev;
+	struct bpf_cpumask *cpumask;
+	struct __cpumask_map_value *v;
 
-	if (!is_test_task())
+	cpumask = create_cpumask();
+	if (!cpumask)
 		return 0;
 
-	local = create_cpumask();
-	if (!local)
-		return 0;
-
-	prev = bpf_kptr_xchg(&global_mask, local);
-	if (prev) {
-		bpf_cpumask_release(prev);
+	if (cpumask_map_insert(cpumask)) {
 		err = 3;
 		return 0;
 	}
 
-	bpf_rcu_read_lock();
-	local = global_mask;
-	if (!local) {
+	v = cpumask_map_value_lookup();
+	if (!v) {
 		err = 4;
-		bpf_rcu_read_unlock();
 		return 0;
 	}
 
-	bpf_cpumask_test_cpu(0, (const struct cpumask *)local);
-	bpf_rcu_read_unlock();
+	cpumask = bpf_cpumask_kptr_get(&v->cpumask);
+	if (cpumask)
+		bpf_cpumask_release(cpumask);
+	else
+		err = 5;
 
 	return 0;
 }

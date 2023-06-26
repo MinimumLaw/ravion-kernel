@@ -68,15 +68,21 @@ intel_drrs_set_refresh_rate_pipeconf(struct intel_crtc *crtc,
 {
 	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
 	enum transcoder cpu_transcoder = crtc->drrs.cpu_transcoder;
-	u32 bit;
+	u32 val, bit;
 
 	if (IS_VALLEYVIEW(dev_priv) || IS_CHERRYVIEW(dev_priv))
-		bit = TRANSCONF_REFRESH_RATE_ALT_VLV;
+		bit = PIPECONF_REFRESH_RATE_ALT_VLV;
 	else
-		bit = TRANSCONF_REFRESH_RATE_ALT_ILK;
+		bit = PIPECONF_REFRESH_RATE_ALT_ILK;
 
-	intel_de_rmw(dev_priv, TRANSCONF(cpu_transcoder),
-		     bit, refresh_rate == DRRS_REFRESH_RATE_LOW ? bit : 0);
+	val = intel_de_read(dev_priv, PIPECONF(cpu_transcoder));
+
+	if (refresh_rate == DRRS_REFRESH_RATE_LOW)
+		val |= bit;
+	else
+		val &= ~bit;
+
+	intel_de_write(dev_priv, PIPECONF(cpu_transcoder), val);
 }
 
 static void

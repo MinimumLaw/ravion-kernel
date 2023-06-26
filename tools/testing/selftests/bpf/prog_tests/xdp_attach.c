@@ -4,10 +4,11 @@
 #define IFINDEX_LO 1
 #define XDP_FLAGS_REPLACE		(1U << 4)
 
-static void test_xdp_attach(const char *file)
+void serial_test_xdp_attach(void)
 {
 	__u32 duration = 0, id1, id2, id0 = 0, len;
 	struct bpf_object *obj1, *obj2, *obj3;
+	const char *file = "./test_xdp.bpf.o";
 	struct bpf_prog_info info = {};
 	int err, fd1, fd2, fd3;
 	LIBBPF_OPTS(bpf_xdp_attach_opts, opts);
@@ -83,12 +84,4 @@ out_2:
 	bpf_object__close(obj2);
 out_1:
 	bpf_object__close(obj1);
-}
-
-void serial_test_xdp_attach(void)
-{
-	if (test__start_subtest("xdp_attach"))
-		test_xdp_attach("./test_xdp.bpf.o");
-	if (test__start_subtest("xdp_attach_dynptr"))
-		test_xdp_attach("./test_xdp_dynptr.bpf.o");
 }

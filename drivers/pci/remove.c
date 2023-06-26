@@ -5,9 +5,10 @@
 
 static void pci_free_resources(struct pci_dev *dev)
 {
-	struct resource *res;
+	int i;
 
-	pci_dev_for_each_resource(dev, res) {
+	for (i = 0; i < PCI_NUM_RESOURCES; i++) {
+		struct resource *res = dev->resource + i;
 		if (res->parent)
 			release_resource(res);
 	}
@@ -38,7 +39,6 @@ static void pci_destroy_dev(struct pci_dev *dev)
 	list_del(&dev->bus_list);
 	up_write(&pci_bus_sem);
 
-	pci_doe_destroy(dev);
 	pcie_aspm_exit_link_state(dev);
 	pci_bridge_d3_update(dev);
 	pci_free_resources(dev);

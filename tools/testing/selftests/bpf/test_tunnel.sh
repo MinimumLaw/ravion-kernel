@@ -571,13 +571,8 @@ setup_xfrm_tunnel()
 
 test_xfrm_tunnel()
 {
-	if [[ -e /sys/kernel/tracing/trace ]]; then
-		TRACE=/sys/kernel/tracing/trace
-	else
-		TRACE=/sys/kernel/debug/tracing/trace
-	fi
 	config_device
-	> ${TRACE}
+	> /sys/kernel/debug/tracing/trace
 	setup_xfrm_tunnel
 	mkdir -p ${BPF_PIN_TUNNEL_DIR}
 	bpftool prog loadall ${BPF_FILE} ${BPF_PIN_TUNNEL_DIR}
@@ -586,11 +581,11 @@ test_xfrm_tunnel()
 		${BPF_PIN_TUNNEL_DIR}/xfrm_get_state
 	ip netns exec at_ns0 ping $PING_ARG 10.1.1.200
 	sleep 1
-	grep "reqid 1" ${TRACE}
+	grep "reqid 1" /sys/kernel/debug/tracing/trace
 	check_err $?
-	grep "spi 0x1" ${TRACE}
+	grep "spi 0x1" /sys/kernel/debug/tracing/trace
 	check_err $?
-	grep "remote ip 0xac100164" ${TRACE}
+	grep "remote ip 0xac100164" /sys/kernel/debug/tracing/trace
 	check_err $?
 	cleanup
 

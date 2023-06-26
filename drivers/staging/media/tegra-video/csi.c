@@ -778,8 +778,14 @@ rpm_disable:
 static int tegra_csi_remove(struct platform_device *pdev)
 {
 	struct tegra_csi *csi = platform_get_drvdata(pdev);
+	int err;
 
-	host1x_client_unregister(&csi->client);
+	err = host1x_client_unregister(&csi->client);
+	if (err < 0) {
+		dev_err(&pdev->dev,
+			"failed to unregister host1x client: %d\n", err);
+		return err;
+	}
 
 	pm_runtime_disable(&pdev->dev);
 

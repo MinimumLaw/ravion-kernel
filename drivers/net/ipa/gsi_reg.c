@@ -109,9 +109,6 @@ static const struct regs *gsi_regs(struct gsi *gsi)
 	case IPA_VERSION_4_11:
 		return &gsi_regs_v4_11;
 
-	case IPA_VERSION_5_0:
-		return &gsi_regs_v5_0;
-
 	default:
 		return NULL;
 	}

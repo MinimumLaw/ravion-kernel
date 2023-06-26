@@ -107,8 +107,6 @@ static void idio_16_irq_mask(struct irq_data *data)
 
 		raw_spin_unlock_irqrestore(&idio16gpio->lock, flags);
 	}
-
-	gpiochip_disable_irq(chip, irqd_to_hwirq(data));
 }
 
 static void idio_16_irq_unmask(struct irq_data *data)
@@ -118,8 +116,6 @@ static void idio_16_irq_unmask(struct irq_data *data)
 	const unsigned long mask = BIT(irqd_to_hwirq(data));
 	const unsigned long prev_irq_mask = idio16gpio->irq_mask;
 	unsigned long flags;
-
-	gpiochip_enable_irq(chip, irqd_to_hwirq(data));
 
 	idio16gpio->irq_mask |= mask;
 
@@ -142,14 +138,12 @@ static int idio_16_irq_set_type(struct irq_data *data, unsigned int flow_type)
 	return 0;
 }
 
-static const struct irq_chip idio_16_irqchip = {
+static struct irq_chip idio_16_irqchip = {
 	.name = "pci-idio-16",
 	.irq_ack = idio_16_irq_ack,
 	.irq_mask = idio_16_irq_mask,
 	.irq_unmask = idio_16_irq_unmask,
-	.irq_set_type = idio_16_irq_set_type,
-	.flags = IRQCHIP_IMMUTABLE,
-	GPIOCHIP_IRQ_RESOURCE_HELPERS,
+	.irq_set_type = idio_16_irq_set_type
 };
 
 static irqreturn_t idio_16_irq_handler(int irq, void *dev_id)
@@ -248,7 +242,7 @@ static int idio_16_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	idio_16_state_init(&idio16gpio->state);
 
 	girq = &idio16gpio->chip.irq;
-	gpio_irq_chip_set_chip(girq, &idio_16_irqchip);
+	girq->chip = &idio_16_irqchip;
 	/* This will let us handle the parent IRQ in the driver */
 	girq->parent_handler = NULL;
 	girq->num_parents = 0;

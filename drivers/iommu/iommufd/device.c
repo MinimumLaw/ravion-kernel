@@ -15,6 +15,23 @@ MODULE_PARM_DESC(
 	"Allow IOMMUFD to bind to devices even if the platform cannot isolate "
 	"the MSI interrupt window. Enabling this is a security weakness.");
 
+/*
+ * A iommufd_device object represents the binding relationship between a
+ * consuming driver and the iommufd. These objects are created/destroyed by
+ * external drivers, not by userspace.
+ */
+struct iommufd_device {
+	struct iommufd_object obj;
+	struct iommufd_ctx *ictx;
+	struct iommufd_hw_pagetable *hwpt;
+	/* Head at iommufd_hw_pagetable::devices */
+	struct list_head devices_item;
+	/* always the physical device */
+	struct device *dev;
+	struct iommu_group *group;
+	bool enforce_cache_coherency;
+};
+
 void iommufd_device_destroy(struct iommufd_object *obj)
 {
 	struct iommufd_device *idev =
@@ -22,8 +39,7 @@ void iommufd_device_destroy(struct iommufd_object *obj)
 
 	iommu_device_release_dma_owner(idev->dev);
 	iommu_group_put(idev->group);
-	if (!iommufd_selftest_is_mock_dev(idev->dev))
-		iommufd_ctx_put(idev->ictx);
+	iommufd_ctx_put(idev->ictx);
 }
 
 /**
@@ -70,8 +86,7 @@ struct iommufd_device *iommufd_device_bind(struct iommufd_ctx *ictx,
 		goto out_release_owner;
 	}
 	idev->ictx = ictx;
-	if (!iommufd_selftest_is_mock_dev(dev))
-		iommufd_ctx_get(ictx);
+	iommufd_ctx_get(ictx);
 	idev->dev = dev;
 	idev->enforce_cache_coherency =
 		device_iommu_capable(dev, IOMMU_CAP_ENFORCE_CACHE_COHERENCY);
@@ -153,8 +168,7 @@ static int iommufd_device_setup_msi(struct iommufd_device *idev,
 	 * operation from the device (eg a simple DMA) cannot trigger an
 	 * interrupt outside this iommufd context.
 	 */
-	if (!iommufd_selftest_is_mock_dev(idev->dev) &&
-	    !iommu_group_has_isolated_msi(idev->group)) {
+	if (!iommu_group_has_isolated_msi(idev->group)) {
 		if (!allow_unsafe_interrupts)
 			return -EPERM;
 
@@ -172,24 +186,19 @@ static bool iommufd_hw_pagetable_has_group(struct iommufd_hw_pagetable *hwpt,
 {
 	struct iommufd_device *cur_dev;
 
-	lockdep_assert_held(&hwpt->devices_lock);
-
 	list_for_each_entry(cur_dev, &hwpt->devices, devices_item)
 		if (cur_dev->group == group)
 			return true;
 	return false;
 }
 
-int iommufd_hw_pagetable_attach(struct iommufd_hw_pagetable *hwpt,
-				struct iommufd_device *idev)
+static int iommufd_device_do_attach(struct iommufd_device *idev,
+				    struct iommufd_hw_pagetable *hwpt)
 {
 	phys_addr_t sw_msi_start = PHYS_ADDR_MAX;
 	int rc;
 
-	lockdep_assert_held(&hwpt->devices_lock);
-
-	if (WARN_ON(idev->hwpt))
-		return -EINVAL;
+	mutex_lock(&hwpt->devices_lock);
 
 	/*
 	 * Try to upgrade the domain we have, it is an iommu driver bug to
@@ -204,18 +213,19 @@ int iommufd_hw_pagetable_attach(struct iommufd_hw_pagetable *hwpt,
 					hwpt->domain);
 		if (!hwpt->enforce_cache_coherency) {
 			WARN_ON(list_empty(&hwpt->devices));
-			return -EINVAL;
+			rc = -EINVAL;
+			goto out_unlock;
 		}
 	}
 
 	rc = iopt_table_enforce_group_resv_regions(&hwpt->ioas->iopt, idev->dev,
 						   idev->group, &sw_msi_start);
 	if (rc)
-		return rc;
+		goto out_unlock;
 
 	rc = iommufd_device_setup_msi(idev, hwpt, sw_msi_start);
 	if (rc)
-		goto err_unresv;
+		goto out_iova;
 
 	/*
 	 * FIXME: Hack around missing a device-centric iommu api, only attach to
@@ -224,35 +234,26 @@ int iommufd_hw_pagetable_attach(struct iommufd_hw_pagetable *hwpt,
 	if (!iommufd_hw_pagetable_has_group(hwpt, idev->group)) {
 		rc = iommu_attach_group(hwpt->domain, idev->group);
 		if (rc)
-			goto err_unresv;
+			goto out_iova;
+
+		if (list_empty(&hwpt->devices)) {
+			rc = iopt_table_add_domain(&hwpt->ioas->iopt,
+						   hwpt->domain);
+			if (rc)
+				goto out_detach;
+		}
 	}
-	return 0;
-err_unresv:
-	iopt_remove_reserved_iova(&hwpt->ioas->iopt, idev->dev);
-	return rc;
-}
-
-void iommufd_hw_pagetable_detach(struct iommufd_hw_pagetable *hwpt,
-				 struct iommufd_device *idev)
-{
-	if (!iommufd_hw_pagetable_has_group(hwpt, idev->group))
-		iommu_detach_group(hwpt->domain, idev->group);
-	iopt_remove_reserved_iova(&hwpt->ioas->iopt, idev->dev);
-}
-
-static int iommufd_device_do_attach(struct iommufd_device *idev,
-				    struct iommufd_hw_pagetable *hwpt)
-{
-	int rc;
-
-	mutex_lock(&hwpt->devices_lock);
-	rc = iommufd_hw_pagetable_attach(hwpt, idev);
-	if (rc)
-		goto out_unlock;
 
 	idev->hwpt = hwpt;
 	refcount_inc(&hwpt->obj.users);
 	list_add(&idev->devices_item, &hwpt->devices);
+	mutex_unlock(&hwpt->devices_lock);
+	return 0;
+
+out_detach:
+	iommu_detach_group(hwpt->domain, idev->group);
+out_iova:
+	iopt_remove_reserved_iova(&hwpt->ioas->iopt, idev->dev);
 out_unlock:
 	mutex_unlock(&hwpt->devices_lock);
 	return rc;
@@ -279,10 +280,7 @@ static int iommufd_device_auto_get_domain(struct iommufd_device *idev,
 		if (!hwpt->auto_domain)
 			continue;
 
-		if (!iommufd_lock_obj(&hwpt->obj))
-			continue;
 		rc = iommufd_device_do_attach(idev, hwpt);
-		iommufd_put_object(&hwpt->obj);
 
 		/*
 		 * -EINVAL means the domain is incompatible with the device.
@@ -294,16 +292,24 @@ static int iommufd_device_auto_get_domain(struct iommufd_device *idev,
 		goto out_unlock;
 	}
 
-	hwpt = iommufd_hw_pagetable_alloc(idev->ictx, ioas, idev, true);
+	hwpt = iommufd_hw_pagetable_alloc(idev->ictx, ioas, idev->dev);
 	if (IS_ERR(hwpt)) {
 		rc = PTR_ERR(hwpt);
 		goto out_unlock;
 	}
 	hwpt->auto_domain = true;
 
+	rc = iommufd_device_do_attach(idev, hwpt);
+	if (rc)
+		goto out_abort;
+	list_add_tail(&hwpt->hwpt_item, &ioas->hwpt_list);
+
 	mutex_unlock(&ioas->mutex);
 	iommufd_object_finalize(idev->ictx, &hwpt->obj);
 	return 0;
+
+out_abort:
+	iommufd_object_abort_and_destroy(idev->ictx, &hwpt->obj);
 out_unlock:
 	mutex_unlock(&ioas->mutex);
 	return rc;
@@ -375,16 +381,27 @@ void iommufd_device_detach(struct iommufd_device *idev)
 {
 	struct iommufd_hw_pagetable *hwpt = idev->hwpt;
 
+	mutex_lock(&hwpt->ioas->mutex);
 	mutex_lock(&hwpt->devices_lock);
 	list_del(&idev->devices_item);
-	idev->hwpt = NULL;
-	iommufd_hw_pagetable_detach(hwpt, idev);
+	if (!iommufd_hw_pagetable_has_group(hwpt, idev->group)) {
+		if (list_empty(&hwpt->devices)) {
+			iopt_table_remove_domain(&hwpt->ioas->iopt,
+						 hwpt->domain);
+			list_del(&hwpt->hwpt_item);
+		}
+		iommu_detach_group(hwpt->domain, idev->group);
+	}
+	iopt_remove_reserved_iova(&hwpt->ioas->iopt, idev->dev);
 	mutex_unlock(&hwpt->devices_lock);
+	mutex_unlock(&hwpt->ioas->mutex);
 
 	if (hwpt->auto_domain)
 		iommufd_object_destroy_user(idev->ictx, &hwpt->obj);
 	else
 		refcount_dec(&hwpt->obj.users);
+
+	idev->hwpt = NULL;
 
 	refcount_dec(&idev->obj.users);
 }
@@ -395,20 +412,17 @@ void iommufd_access_destroy_object(struct iommufd_object *obj)
 	struct iommufd_access *access =
 		container_of(obj, struct iommufd_access, obj);
 
-	if (access->ioas) {
-		iopt_remove_access(&access->ioas->iopt, access);
-		refcount_dec(&access->ioas->obj.users);
-		access->ioas = NULL;
-	}
+	iopt_remove_access(&access->ioas->iopt, access);
 	iommufd_ctx_put(access->ictx);
+	refcount_dec(&access->ioas->obj.users);
 }
 
 /**
  * iommufd_access_create - Create an iommufd_access
  * @ictx: iommufd file descriptor
+ * @ioas_id: ID for a IOMMUFD_OBJ_IOAS
  * @ops: Driver's ops to associate with the access
  * @data: Opaque data to pass into ops functions
- * @id: Output ID number to return to userspace for this access
  *
  * An iommufd_access allows a driver to read/write to the IOAS without using
  * DMA. The underlying CPU memory can be accessed using the
@@ -417,10 +431,12 @@ void iommufd_access_destroy_object(struct iommufd_object *obj)
  * The provided ops are required to use iommufd_access_pin_pages().
  */
 struct iommufd_access *
-iommufd_access_create(struct iommufd_ctx *ictx,
-		      const struct iommufd_access_ops *ops, void *data, u32 *id)
+iommufd_access_create(struct iommufd_ctx *ictx, u32 ioas_id,
+		      const struct iommufd_access_ops *ops, void *data)
 {
 	struct iommufd_access *access;
+	struct iommufd_object *obj;
+	int rc;
 
 	/*
 	 * There is no uAPI for the access object, but to keep things symmetric
@@ -433,18 +449,33 @@ iommufd_access_create(struct iommufd_ctx *ictx,
 	access->data = data;
 	access->ops = ops;
 
+	obj = iommufd_get_object(ictx, ioas_id, IOMMUFD_OBJ_IOAS);
+	if (IS_ERR(obj)) {
+		rc = PTR_ERR(obj);
+		goto out_abort;
+	}
+	access->ioas = container_of(obj, struct iommufd_ioas, obj);
+	iommufd_ref_to_users(obj);
+
 	if (ops->needs_pin_pages)
 		access->iova_alignment = PAGE_SIZE;
 	else
 		access->iova_alignment = 1;
+	rc = iopt_add_access(&access->ioas->iopt, access);
+	if (rc)
+		goto out_put_ioas;
 
 	/* The calling driver is a user until iommufd_access_destroy() */
 	refcount_inc(&access->obj.users);
 	access->ictx = ictx;
 	iommufd_ctx_get(ictx);
 	iommufd_object_finalize(ictx, &access->obj);
-	*id = access->obj.id;
 	return access;
+out_put_ioas:
+	refcount_dec(&access->ioas->obj.users);
+out_abort:
+	iommufd_object_abort(ictx, &access->obj);
+	return ERR_PTR(rc);
 }
 EXPORT_SYMBOL_NS_GPL(iommufd_access_create, IOMMUFD);
 
@@ -462,30 +493,6 @@ void iommufd_access_destroy(struct iommufd_access *access)
 	WARN_ON(!was_destroyed);
 }
 EXPORT_SYMBOL_NS_GPL(iommufd_access_destroy, IOMMUFD);
-
-int iommufd_access_attach(struct iommufd_access *access, u32 ioas_id)
-{
-	struct iommufd_ioas *new_ioas;
-	int rc = 0;
-
-	if (access->ioas)
-		return -EINVAL;
-
-	new_ioas = iommufd_get_ioas(access->ictx, ioas_id);
-	if (IS_ERR(new_ioas))
-		return PTR_ERR(new_ioas);
-
-	rc = iopt_add_access(&new_ioas->iopt, access);
-	if (rc) {
-		iommufd_put_object(&new_ioas->obj);
-		return rc;
-	}
-	iommufd_ref_to_users(&new_ioas->obj);
-
-	access->ioas = new_ioas;
-	return 0;
-}
-EXPORT_SYMBOL_NS_GPL(iommufd_access_attach, IOMMUFD);
 
 /**
  * iommufd_access_notify_unmap - Notify users of an iopt to stop using it
@@ -719,3 +726,41 @@ err_out:
 	return rc;
 }
 EXPORT_SYMBOL_NS_GPL(iommufd_access_rw, IOMMUFD);
+
+#ifdef CONFIG_IOMMUFD_TEST
+/*
+ * Creating a real iommufd_device is too hard, bypass creating a iommufd_device
+ * and go directly to attaching a domain.
+ */
+struct iommufd_hw_pagetable *
+iommufd_device_selftest_attach(struct iommufd_ctx *ictx,
+			       struct iommufd_ioas *ioas,
+			       struct device *mock_dev)
+{
+	struct iommufd_hw_pagetable *hwpt;
+	int rc;
+
+	hwpt = iommufd_hw_pagetable_alloc(ictx, ioas, mock_dev);
+	if (IS_ERR(hwpt))
+		return hwpt;
+
+	rc = iopt_table_add_domain(&hwpt->ioas->iopt, hwpt->domain);
+	if (rc)
+		goto out_hwpt;
+
+	refcount_inc(&hwpt->obj.users);
+	iommufd_object_finalize(ictx, &hwpt->obj);
+	return hwpt;
+
+out_hwpt:
+	iommufd_object_abort_and_destroy(ictx, &hwpt->obj);
+	return ERR_PTR(rc);
+}
+
+void iommufd_device_selftest_detach(struct iommufd_ctx *ictx,
+				    struct iommufd_hw_pagetable *hwpt)
+{
+	iopt_table_remove_domain(&hwpt->ioas->iopt, hwpt->domain);
+	refcount_dec(&hwpt->obj.users);
+}
+#endif

@@ -390,7 +390,6 @@ static void lan966x_fdma_stop_netdev(struct lan966x *lan966x)
 static void lan966x_fdma_tx_clear_buf(struct lan966x *lan966x, int weight)
 {
 	struct lan966x_tx *tx = &lan966x->tx;
-	struct lan966x_rx *rx = &lan966x->rx;
 	struct lan966x_tx_dcb_buf *dcb_buf;
 	struct xdp_frame_bulk bq;
 	struct lan966x_db *db;
@@ -433,8 +432,7 @@ static void lan966x_fdma_tx_clear_buf(struct lan966x *lan966x, int weight)
 			if (dcb_buf->xdp_ndo)
 				xdp_return_frame_bulk(dcb_buf->data.xdpf, &bq);
 			else
-				page_pool_recycle_direct(rx->page_pool,
-							 dcb_buf->data.page);
+				xdp_return_frame_rx_napi(dcb_buf->data.xdpf);
 		}
 
 		clear = true;
@@ -519,7 +517,7 @@ static struct sk_buff *lan966x_fdma_rx_get_frame(struct lan966x_rx *rx,
 	if (likely(!(skb->dev->features & NETIF_F_RXFCS)))
 		skb_trim(skb, skb->len - ETH_FCS_LEN);
 
-	lan966x_ptp_rxtstamp(lan966x, skb, src_port, timestamp);
+	lan966x_ptp_rxtstamp(lan966x, skb, timestamp);
 	skb->protocol = eth_type_trans(skb, skb->dev);
 
 	if (lan966x->bridge_mask & BIT(src_port)) {
@@ -701,14 +699,15 @@ static void lan966x_fdma_tx_start(struct lan966x_tx *tx, int next_to_use)
 	tx->last_in_use = next_to_use;
 }
 
-int lan966x_fdma_xmit_xdpf(struct lan966x_port *port, void *ptr, u32 len)
+int lan966x_fdma_xmit_xdpf(struct lan966x_port *port,
+			   struct xdp_frame *xdpf,
+			   struct page *page,
+			   bool dma_map)
 {
 	struct lan966x *lan966x = port->lan966x;
 	struct lan966x_tx_dcb_buf *next_dcb_buf;
 	struct lan966x_tx *tx = &lan966x->tx;
-	struct xdp_frame *xdpf;
 	dma_addr_t dma_addr;
-	struct page *page;
 	int next_to_use;
 	__be32 *ifh;
 	int ret = 0;
@@ -723,13 +722,8 @@ int lan966x_fdma_xmit_xdpf(struct lan966x_port *port, void *ptr, u32 len)
 		goto out;
 	}
 
-	/* Get the next buffer */
-	next_dcb_buf = &tx->dcbs_buf[next_to_use];
-
 	/* Generate new IFH */
-	if (!len) {
-		xdpf = ptr;
-
+	if (dma_map) {
 		if (xdpf->headroom < IFH_LEN_BYTES) {
 			ret = NETDEV_TX_OK;
 			goto out;
@@ -749,16 +743,11 @@ int lan966x_fdma_xmit_xdpf(struct lan966x_port *port, void *ptr, u32 len)
 			goto out;
 		}
 
-		next_dcb_buf->data.xdpf = xdpf;
-		next_dcb_buf->len = xdpf->len + IFH_LEN_BYTES;
-
 		/* Setup next dcb */
 		lan966x_fdma_tx_setup_dcb(tx, next_to_use,
 					  xdpf->len + IFH_LEN_BYTES,
 					  dma_addr);
 	} else {
-		page = ptr;
-
 		ifh = page_address(page) + XDP_PACKET_HEADROOM;
 		memset(ifh, 0x0, sizeof(__be32) * IFH_LEN);
 		lan966x_ifh_set_bypass(ifh, 1);
@@ -767,21 +756,21 @@ int lan966x_fdma_xmit_xdpf(struct lan966x_port *port, void *ptr, u32 len)
 		dma_addr = page_pool_get_dma_addr(page);
 		dma_sync_single_for_device(lan966x->dev,
 					   dma_addr + XDP_PACKET_HEADROOM,
-					   len + IFH_LEN_BYTES,
+					   xdpf->len + IFH_LEN_BYTES,
 					   DMA_TO_DEVICE);
-
-		next_dcb_buf->data.page = page;
-		next_dcb_buf->len = len + IFH_LEN_BYTES;
 
 		/* Setup next dcb */
 		lan966x_fdma_tx_setup_dcb(tx, next_to_use,
-					  len + IFH_LEN_BYTES,
+					  xdpf->len + IFH_LEN_BYTES,
 					  dma_addr + XDP_PACKET_HEADROOM);
 	}
 
 	/* Fill up the buffer */
+	next_dcb_buf = &tx->dcbs_buf[next_to_use];
 	next_dcb_buf->use_skb = false;
-	next_dcb_buf->xdp_ndo = !len;
+	next_dcb_buf->data.xdpf = xdpf;
+	next_dcb_buf->xdp_ndo = dma_map;
+	next_dcb_buf->len = xdpf->len + IFH_LEN_BYTES;
 	next_dcb_buf->dma_addr = dma_addr;
 	next_dcb_buf->used = true;
 	next_dcb_buf->ptp = false;

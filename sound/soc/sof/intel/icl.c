@@ -116,8 +116,6 @@ int sof_icl_ops_init(struct snd_sof_dev *sdev)
 
 		/* debug */
 		sof_icl_ops.ipc_dump	= cnl_ipc_dump;
-
-		sof_icl_ops.set_power_state = hda_dsp_set_power_state_ipc3;
 	}
 
 	if (sdev->pdata->ipc_type == SOF_INTEL_IPC4) {
@@ -143,8 +141,6 @@ int sof_icl_ops_init(struct snd_sof_dev *sdev)
 
 		/* debug */
 		sof_icl_ops.ipc_dump	= cnl_ipc4_dump;
-
-		sof_icl_ops.set_power_state = hda_dsp_set_power_state_ipc4;
 	}
 
 	/* debug */

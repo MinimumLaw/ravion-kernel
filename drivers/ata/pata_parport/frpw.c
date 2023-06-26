@@ -13,6 +13,18 @@
 
 */
 
+/* Changes:
+
+        1.01    GRG 1998.05.06 init_proto, release_proto
+			       fix chip detect
+			       added EPP-16 and EPP-32
+	1.02    GRG 1998.09.23 added hard reset to initialisation process
+	1.03    GRG 1998.12.14 made hard reset conditional
+
+*/
+
+#define	FRPW_VERSION	"1.03" 
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -20,7 +32,8 @@
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <asm/io.h>
-#include "pata_parport.h"
+
+#include <linux/pata_parport.h>
 
 #define cec4		w2(0xc);w2(0xe);w2(0xe);w2(0xc);w2(4);w2(4);w2(4);
 #define j44(l,h)	(((l>>4)&0x0f)|(h&0xf0))
@@ -31,7 +44,7 @@
 
 static int  cont_map[2] = { 0x08, 0x10 };
 
-static int frpw_read_regr(struct pi_adapter *pi, int cont, int regr)
+static int frpw_read_regr( PIA *pi, int cont, int regr )
 
 {	int	h,l,r;
 
@@ -47,7 +60,7 @@ static int frpw_read_regr(struct pi_adapter *pi, int cont, int regr)
 
 }
 
-static void frpw_write_regr(struct pi_adapter *pi, int cont, int regr, int val)
+static void frpw_write_regr( PIA *pi, int cont, int regr, int val)
 
 {	int r;
 
@@ -58,7 +71,7 @@ static void frpw_write_regr(struct pi_adapter *pi, int cont, int regr, int val)
 	w2(5);w2(7);w2(5);w2(4);
 }
 
-static void frpw_read_block_int(struct pi_adapter *pi, char *buf, int count, int regr)
+static void frpw_read_block_int( PIA *pi, char * buf, int count, int regr )
 
 {       int     h, l, k, ph;
 
@@ -119,12 +132,12 @@ static void frpw_read_block_int(struct pi_adapter *pi, char *buf, int count, int
         }
 }
 
-static void frpw_read_block(struct pi_adapter *pi, char *buf, int count)
+static void frpw_read_block( PIA *pi, char * buf, int count)
 
 {	frpw_read_block_int(pi,buf,count,0x08);
 }
 
-static void frpw_write_block(struct pi_adapter *pi, char *buf, int count)
+static void frpw_write_block( PIA *pi, char * buf, int count )
  
 {	int	k;
 
@@ -157,14 +170,14 @@ static void frpw_write_block(struct pi_adapter *pi, char *buf, int count)
 	}
 }
 
-static void frpw_connect(struct pi_adapter *pi)
+static void frpw_connect ( PIA *pi  )
 
 {       pi->saved_r0 = r0();
         pi->saved_r2 = r2();
 	w2(4);
 }
 
-static void frpw_disconnect(struct pi_adapter *pi)
+static void frpw_disconnect ( PIA *pi )
 
 {       w2(4); w0(0x20); cec4;
 	w0(pi->saved_r0);
@@ -175,7 +188,7 @@ static void frpw_disconnect(struct pi_adapter *pi)
    between the Xilinx and ASIC implementations of the Freecom adapter.
 */
 
-static int frpw_test_pnp(struct pi_adapter *pi)
+static int frpw_test_pnp ( PIA *pi )
 
 /*  returns chip_type:   0 = Xilinx, 1 = ASIC   */
 
@@ -208,22 +221,25 @@ static int frpw_test_pnp(struct pi_adapter *pi)
    a hack :-(
 */
 
-static int frpw_test_proto(struct pi_adapter *pi)
+static int frpw_test_proto( PIA *pi, char * scratch, int verbose )
 
 {       int     j, k, r;
 	int	e[2] = {0,0};
-	char scratch[512];
 
 	if ((pi->private>>1) != pi->port)
 	   pi->private = frpw_test_pnp(pi) + 2*pi->port;
 
 	if (((pi->private%2) == 0) && (pi->mode > 2)) {
-		dev_dbg(&pi->dev, "frpw: Xilinx does not support mode %d\n", pi->mode);
+	   if (verbose) 
+		printk("%s: frpw: Xilinx does not support mode %d\n",
+			pi->device, pi->mode);
 	   return 1;
 	}
 
 	if (((pi->private%2) == 1) && (pi->mode == 2)) {
-		dev_dbg(&pi->dev, "frpw: ASIC does not support mode 2\n");
+	   if (verbose)
+		printk("%s: frpw: ASIC does not support mode 2\n",
+			pi->device);
 	   return 1;
 	}
 
@@ -244,21 +260,25 @@ static int frpw_test_proto(struct pi_adapter *pi)
         for (k=0;k<128;k++) if (scratch[k] != k) r++;
 	frpw_disconnect(pi);
 
-	dev_dbg(&pi->dev, "frpw: port 0x%x, chip %ld, mode %d, test=(%d,%d,%d)\n",
-	       pi->port, (pi->private%2), pi->mode, e[0], e[1], r);
+        if (verbose)  {
+            printk("%s: frpw: port 0x%x, chip %ld, mode %d, test=(%d,%d,%d)\n",
+                   pi->device,pi->port,(pi->private%2),pi->mode,e[0],e[1],r);
+        }
 
         return (r || (e[0] && e[1]));
 }
 
 
-static void frpw_log_adapter(struct pi_adapter *pi)
+static void frpw_log_adapter( PIA *pi, char * scratch, int verbose )
 
 {       char    *mode_string[6] = {"4-bit","8-bit","EPP",
 				   "EPP-8","EPP-16","EPP-32"};
 
-	dev_info(&pi->dev, "Freecom (%s) adapter at 0x%x, mode %d (%s), delay %d\n",
-		((pi->private % 2) == 0) ? "Xilinx" : "ASIC",
-		pi->port, pi->mode, mode_string[pi->mode], pi->delay);
+        printk("%s: frpw %s, Freecom (%s) adapter at 0x%x, ", pi->device,
+		FRPW_VERSION,((pi->private%2) == 0)?"Xilinx":"ASIC",pi->port);
+        printk("mode %d (%s), delay %d\n",pi->mode,
+		mode_string[pi->mode],pi->delay);
+
 }
 
 static struct pi_protocol frpw = {
@@ -278,5 +298,16 @@ static struct pi_protocol frpw = {
 	.log_adapter	= frpw_log_adapter,
 };
 
+static int __init frpw_init(void)
+{
+	return paride_register(&frpw);
+}
+
+static void __exit frpw_exit(void)
+{
+	paride_unregister(&frpw);
+}
+
 MODULE_LICENSE("GPL");
-module_pata_parport_driver(frpw);
+module_init(frpw_init)
+module_exit(frpw_exit)

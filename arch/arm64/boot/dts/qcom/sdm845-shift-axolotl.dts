@@ -572,11 +572,6 @@
 	status = "okay";
 };
 
-&slpi_pas {
-	firmware-name = "qcom/sdm845/axolotl/slpi.mbn";
-	status = "okay";
-};
-
 &tlmm {
 	gpio-reserved-ranges = <0 4>, <81 4>;
 
@@ -613,6 +608,7 @@
 		function = "gpio";
 		drive-strength = <8>;
 		bias-pull-up;
+		input-enable;
 	};
 
 	ts_int_suspend: ts-int-suspend-state {
@@ -620,6 +616,7 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-pull-down;
+		input-enable;
 	};
 
 	ts_reset_active: ts-reset-active-state {

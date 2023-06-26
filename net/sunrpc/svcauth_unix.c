@@ -17,9 +17,8 @@
 #include <net/ipv6.h>
 #include <linux/kernel.h>
 #include <linux/user_namespace.h>
-#include <trace/events/sunrpc.h>
-
 #define RPCDBG_FACILITY	RPCDBG_AUTH
+
 
 #include "netns.h"
 
@@ -226,9 +225,9 @@ static int ip_map_parse(struct cache_detail *cd,
 		return -EINVAL;
 	}
 
-	err = get_expiry(&mesg, &expiry);
-	if (err)
-		return err;
+	expiry = get_expiry(&mesg);
+	if (expiry ==0)
+		return -EINVAL;
 
 	/* domainname, or empty for NEGATIVE */
 	len = qword_get(&mesg, buf, mlen);
@@ -507,9 +506,9 @@ static int unix_gid_parse(struct cache_detail *cd,
 	uid = make_kuid(current_user_ns(), id);
 	ug.uid = uid;
 
-	err = get_expiry(&mesg, &expiry);
-	if (err)
-		return err;
+	expiry = get_expiry(&mesg);
+	if (expiry == 0)
+		return -EINVAL;
 
 	rv = get_int(&mesg, &gids);
 	if (rv || gids < 0 || gids > 8192)
@@ -833,7 +832,6 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
 {
 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
 	struct svc_cred	*cred = &rqstp->rq_cred;
-	struct svc_xprt *xprt = rqstp->rq_xprt;
 	u32 flavor, len;
 	void *body;
 	__be32 *p;
@@ -867,19 +865,14 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
 	if (cred->cr_group_info == NULL)
 		return SVC_CLOSE;
 
-	if (xprt->xpt_ops->xpo_handshake) {
+	if (rqstp->rq_xprt->xpt_ops->xpo_start_tls) {
 		p = xdr_reserve_space(&rqstp->rq_res_stream, XDR_UNIT * 2 + 8);
 		if (!p)
 			return SVC_CLOSE;
-		trace_svc_tls_start(xprt);
 		*p++ = rpc_auth_null;
 		*p++ = cpu_to_be32(8);
 		memcpy(p, "STARTTLS", 8);
-
-		set_bit(XPT_HANDSHAKE, &xprt->xpt_flags);
-		svc_xprt_enqueue(xprt);
 	} else {
-		trace_svc_tls_unavailable(xprt);
 		if (xdr_stream_encode_opaque_auth(&rqstp->rq_res_stream,
 						  RPC_AUTH_NULL, NULL, 0) < 0)
 			return SVC_CLOSE;

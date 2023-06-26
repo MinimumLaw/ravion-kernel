@@ -32,7 +32,7 @@ struct erdma_eq {
 	atomic64_t event_num;
 	atomic64_t notify_num;
 
-	void __iomem *db;
+	u64 __iomem *db_addr;
 	u64 *db_record;
 };
 

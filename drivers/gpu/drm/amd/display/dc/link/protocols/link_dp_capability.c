@@ -42,8 +42,6 @@
 #include "link_edp_panel_control.h"
 #include "link_dp_irq_handler.h"
 #include "link/accessories/link_dp_trace.h"
-#include "link/link_detection.h"
-#include "link/link_validation.h"
 #include "link_dp_training.h"
 #include "atomfirmware.h"
 #include "resource.h"
@@ -157,7 +155,7 @@ uint8_t dp_parse_lttpr_repeater_count(uint8_t lttpr_repeater_count)
 	return 0; // invalid value
 }
 
-uint32_t link_bw_kbps_from_raw_frl_link_rate_data(uint8_t bw)
+uint32_t dc_link_bw_kbps_from_raw_frl_link_rate_data(uint8_t bw)
 {
 	switch (bw) {
 	case 0b001:
@@ -203,11 +201,8 @@ static enum dc_link_rate linkRateInKHzToLinkRateMultiplier(uint32_t link_rate_in
 	case 5400000:
 		link_rate = LINK_RATE_HIGH2;	// Rate_7 (HBR2)- 5.40 Gbps/Lane
 		break;
-	case 6750000:
-		link_rate = LINK_RATE_RATE_8;	// Rate_8	- 6.75 Gbps/Lane
-		break;
 	case 8100000:
-		link_rate = LINK_RATE_HIGH3;	// Rate_9 (HBR3)- 8.10 Gbps/Lane
+		link_rate = LINK_RATE_HIGH3;	// Rate_8 (HBR3)- 8.10 Gbps/Lane
 		break;
 	default:
 		link_rate = LINK_RATE_UNKNOWN;
@@ -283,7 +278,7 @@ static void dp_wa_power_up_0010FA(struct dc_link *link, uint8_t *dpcd_data,
 
 	if (!link->dpcd_caps.dpcd_rev.raw) {
 		do {
-			dpcd_write_rx_power_ctrl(link, true);
+			dc_link_dp_receiver_power_ctrl(link, true);
 			core_link_read_dpcd(link, DP_DPCD_REV,
 							dpcd_data, length);
 			link->dpcd_caps.dpcd_rev.raw = dpcd_data[
@@ -314,7 +309,7 @@ static void dp_wa_power_up_0010FA(struct dc_link *link, uint8_t *dpcd_data,
 		link->wa_flags.dp_keep_receiver_powered = false;
 }
 
-bool dp_is_fec_supported(const struct dc_link *link)
+bool dc_link_is_fec_supported(const struct dc_link *link)
 {
 	/* TODO - use asic cap instead of link_enc->features
 	 * we no longer know which link enc to use for this link before commit
@@ -330,7 +325,7 @@ bool dp_is_fec_supported(const struct dc_link *link)
 			!IS_FPGA_MAXIMUS_DC(link->ctx->dce_environment));
 }
 
-bool dp_should_enable_fec(const struct dc_link *link)
+bool dc_link_should_enable_fec(const struct dc_link *link)
 {
 	bool force_disable = false;
 
@@ -347,10 +342,10 @@ bool dp_should_enable_fec(const struct dc_link *link)
 				|| !link->dc->caps.edp_dsc_support))
 		force_disable = true;
 
-	return !force_disable && dp_is_fec_supported(link);
+	return !force_disable && dc_link_is_fec_supported(link);
 }
 
-bool dp_is_128b_132b_signal(struct pipe_ctx *pipe_ctx)
+bool link_is_dp_128b_132b_signal(struct pipe_ctx *pipe_ctx)
 {
 	/* If this assert is hit then we have a link encoder dynamic management issue */
 	ASSERT(pipe_ctx->stream_res.hpo_dp_stream_enc ? pipe_ctx->link_res.hpo_dp_link_enc != NULL : true);
@@ -447,12 +442,8 @@ static enum dc_lane_count reduce_lane_count(enum dc_lane_count lane_count)
 	}
 }
 
-static enum dc_link_rate reduce_link_rate(const struct dc_link *link, enum dc_link_rate link_rate)
+static enum dc_link_rate reduce_link_rate(enum dc_link_rate link_rate)
 {
-	// NEEDSWORK: provide some details about why this function never returns some of the
-	// obscure link rates such as 4.32 Gbps or 3.24 Gbps and if such behavior is intended.
-	//
-
 	switch (link_rate) {
 	case LINK_RATE_UHBR20:
 		return LINK_RATE_UHBR13_5;
@@ -461,22 +452,13 @@ static enum dc_link_rate reduce_link_rate(const struct dc_link *link, enum dc_li
 	case LINK_RATE_UHBR10:
 		return LINK_RATE_HIGH3;
 	case LINK_RATE_HIGH3:
-		if (link->connector_signal == SIGNAL_TYPE_EDP && link->dc->debug.support_eDP1_5)
-			return LINK_RATE_RATE_8;
-		return LINK_RATE_HIGH2;
-	case LINK_RATE_RATE_8:
 		return LINK_RATE_HIGH2;
 	case LINK_RATE_HIGH2:
 		return LINK_RATE_HIGH;
-	case LINK_RATE_RATE_6:
-	case LINK_RATE_RBR2:
-		return LINK_RATE_HIGH;
 	case LINK_RATE_HIGH:
 		return LINK_RATE_LOW;
-	case LINK_RATE_RATE_3:
-	case LINK_RATE_RATE_2:
-		return LINK_RATE_LOW;
 	case LINK_RATE_LOW:
+		return LINK_RATE_UNKNOWN;
 	default:
 		return LINK_RATE_UNKNOWN;
 	}
@@ -599,7 +581,7 @@ bool decide_fallback_link_setting(
 	case LINK_TRAINING_LQA_FAIL:
 	{
 		if (!reached_minimum_link_rate(cur->link_rate)) {
-			cur->link_rate = reduce_link_rate(link, cur->link_rate);
+			cur->link_rate = reduce_link_rate(cur->link_rate);
 		} else if (!reached_minimum_lane_count(cur->lane_count)) {
 			cur->link_rate = max->link_rate;
 			if (training_result == LINK_TRAINING_CR_FAIL_LANE0)
@@ -621,7 +603,7 @@ bool decide_fallback_link_setting(
 		if (!reached_minimum_lane_count(cur->lane_count)) {
 			cur->lane_count = reduce_lane_count(cur->lane_count);
 		} else if (!reached_minimum_link_rate(cur->link_rate)) {
-			cur->link_rate = reduce_link_rate(link, cur->link_rate);
+			cur->link_rate = reduce_link_rate(cur->link_rate);
 			/* Reduce max link rate to avoid potential infinite loop.
 			 * Needed so that any subsequent CR_FAIL fallback can't
 			 * re-set the link rate higher than the link rate from
@@ -637,7 +619,7 @@ bool decide_fallback_link_setting(
 	case LINK_TRAINING_EQ_FAIL_CR:
 	{
 		if (!reached_minimum_link_rate(cur->link_rate)) {
-			cur->link_rate = reduce_link_rate(link, cur->link_rate);
+			cur->link_rate = reduce_link_rate(cur->link_rate);
 			/* Reduce max link rate to avoid potential infinite loop.
 			 * Needed so that any subsequent CR_FAIL fallback can't
 			 * re-set the link rate higher than the link rate from
@@ -663,7 +645,7 @@ static bool decide_dp_link_settings(struct dc_link *link, struct dc_link_setting
 			initial_link_setting;
 	uint32_t link_bw;
 
-	if (req_bw > dp_link_bandwidth_kbps(link, &link->verified_link_cap))
+	if (req_bw > dc_link_bandwidth_kbps(link, &link->verified_link_cap))
 		return false;
 
 	/* search for the minimum link setting that:
@@ -672,7 +654,7 @@ static bool decide_dp_link_settings(struct dc_link *link, struct dc_link_setting
 	 */
 	while (current_link_setting.link_rate <=
 			link->verified_link_cap.link_rate) {
-		link_bw = dp_link_bandwidth_kbps(
+		link_bw = dc_link_bandwidth_kbps(
 				link,
 				&current_link_setting);
 		if (req_bw <= link_bw) {
@@ -697,8 +679,7 @@ static bool decide_dp_link_settings(struct dc_link *link, struct dc_link_setting
 	return false;
 }
 
-bool edp_decide_link_settings(struct dc_link *link,
-		struct dc_link_settings *link_setting, uint32_t req_bw)
+bool dc_link_decide_edp_link_settings(struct dc_link *link, struct dc_link_settings *link_setting, uint32_t req_bw)
 {
 	struct dc_link_settings initial_link_setting;
 	struct dc_link_settings current_link_setting;
@@ -728,7 +709,7 @@ bool edp_decide_link_settings(struct dc_link *link,
 	 */
 	while (current_link_setting.link_rate <=
 			link->verified_link_cap.link_rate) {
-		link_bw = dp_link_bandwidth_kbps(
+		link_bw = dc_link_bandwidth_kbps(
 				link,
 				&current_link_setting);
 		if (req_bw <= link_bw) {
@@ -783,7 +764,7 @@ bool decide_edp_link_settings_with_dsc(struct dc_link *link,
 		initial_link_setting.use_link_rate_set = false;
 		initial_link_setting.link_rate_set = 0;
 		current_link_setting = initial_link_setting;
-		if (req_bw > dp_link_bandwidth_kbps(link, &link->verified_link_cap))
+		if (req_bw > dc_link_bandwidth_kbps(link, &link->verified_link_cap))
 			return false;
 
 		/* search for the minimum link setting that:
@@ -792,7 +773,7 @@ bool decide_edp_link_settings_with_dsc(struct dc_link *link,
 		 */
 		while (current_link_setting.link_rate <=
 				max_link_rate) {
-			link_bw = dp_link_bandwidth_kbps(
+			link_bw = dc_link_bandwidth_kbps(
 					link,
 					&current_link_setting);
 			if (req_bw <= link_bw) {
@@ -849,7 +830,7 @@ bool decide_edp_link_settings_with_dsc(struct dc_link *link,
 	 */
 	while (current_link_setting.link_rate <=
 			max_link_rate) {
-		link_bw = dp_link_bandwidth_kbps(
+		link_bw = dc_link_bandwidth_kbps(
 				link,
 				&current_link_setting);
 		if (req_bw <= link_bw) {
@@ -941,12 +922,12 @@ bool link_decide_link_settings(struct dc_stream_state *stream,
 				tmp_link_setting.link_rate = LINK_RATE_UNKNOWN;
 				tmp_timing.flags.DSC = 0;
 				orig_req_bw = dc_bandwidth_in_kbps_from_timing(&tmp_timing);
-				edp_decide_link_settings(link, &tmp_link_setting, orig_req_bw);
+				dc_link_decide_edp_link_settings(link, &tmp_link_setting, orig_req_bw);
 				max_link_rate = tmp_link_setting.link_rate;
 			}
 			decide_edp_link_settings_with_dsc(link, link_setting, req_bw, max_link_rate);
 		} else {
-			edp_decide_link_settings(link, link_setting, req_bw);
+			dc_link_decide_edp_link_settings(link, link_setting, req_bw);
 		}
 	} else {
 		decide_dp_link_settings(link, link_setting, req_bw);
@@ -967,7 +948,7 @@ enum dp_link_encoding link_dp_get_encoding_format(const struct dc_link_settings 
 	return DP_UNKNOWN_ENCODING;
 }
 
-enum dp_link_encoding mst_decide_link_encoding_format(const struct dc_link *link)
+enum dp_link_encoding dc_link_dp_mst_decide_link_encoding_format(const struct dc_link *link)
 {
 	struct dc_link_settings link_settings = {0};
 
@@ -1024,7 +1005,7 @@ static enum dc_status wake_up_aux_channel(struct dc_link *link)
 		 * signal and may need up to 1 ms before being able to reply.
 		 */
 		if (status != DC_OK || dpcd_power_state == DP_SET_POWER_D3) {
-			fsleep(1000);
+			udelay(1000);
 			aux_channel_retry_cnt++;
 		}
 	}
@@ -1043,9 +1024,6 @@ static enum dc_status wake_up_aux_channel(struct dc_link *link)
 				DP_SET_POWER,
 				&dpcd_power_state,
 				sizeof(dpcd_power_state));
-		if (status < 0)
-			DC_LOG_DC("%s: Failed to power up sink: %s\n", __func__,
-				  dpcd_power_state == DP_SET_POWER_D0 ? "D0" : "D3");
 		return DC_ERROR_UNEXPECTED;
 	}
 
@@ -1143,7 +1121,7 @@ static void get_active_converter_info(
 						union hdmi_encoded_link_bw hdmi_encoded_link_bw;
 
 						link->dpcd_caps.dongle_caps.dp_hdmi_frl_max_link_bw_in_kbps =
-								link_bw_kbps_from_raw_frl_link_rate_data(
+								dc_link_bw_kbps_from_raw_frl_link_rate_data(
 										hdmi_color_caps.bits.MAX_ENCODED_LINK_BW_SUPPORT);
 
 						// Intersect reported max link bw support with the supported link rate post FRL link training
@@ -1238,7 +1216,7 @@ static void apply_usbc_combo_phy_reset_wa(struct dc_link *link,
 	dp_disable_link_phy(link, &link_res, link->connector_signal);
 }
 
-bool dp_overwrite_extended_receiver_cap(struct dc_link *link)
+static bool dp_overwrite_extended_receiver_cap(struct dc_link *link)
 {
 	uint8_t dpcd_data[16];
 	uint32_t read_dpcd_retry_cnt = 3;
@@ -1300,10 +1278,16 @@ bool dp_overwrite_extended_receiver_cap(struct dc_link *link)
 	return true;
 }
 
+void dc_link_overwrite_extended_receiver_cap(
+		struct dc_link *link)
+{
+	dp_overwrite_extended_receiver_cap(link);
+}
+
 void dpcd_set_source_specific_data(struct dc_link *link)
 {
 	if (!link->dc->vendor_signature.is_valid) {
-		enum dc_status __maybe_unused result_write_min_hblank = DC_NOT_SUPPORTED;
+		enum dc_status result_write_min_hblank = DC_NOT_SUPPORTED;
 		struct dpcd_amd_signature amd_signature = {0};
 		struct dpcd_amd_device_id amd_device_id = {0};
 
@@ -1988,7 +1972,7 @@ void detect_edp_sink_caps(struct dc_link *link)
 			sizeof(link->dpcd_caps.alpm_caps.raw));
 }
 
-bool dp_get_max_link_enc_cap(const struct dc_link *link, struct dc_link_settings *max_link_enc_cap)
+bool dc_link_dp_get_max_link_enc_cap(const struct dc_link *link, struct dc_link_settings *max_link_enc_cap)
 {
 	struct link_encoder *link_enc = NULL;
 
@@ -2011,7 +1995,7 @@ bool dp_get_max_link_enc_cap(const struct dc_link *link, struct dc_link_settings
 	return false;
 }
 
-const struct dc_link_settings *dp_get_verified_link_cap(
+const struct dc_link_settings *dc_link_get_link_cap(
 		const struct dc_link *link)
 {
 	if (link->preferred_link_setting.lane_count != LANE_COUNT_UNKNOWN &&
@@ -2137,9 +2121,9 @@ static bool dp_verify_link_cap(
 
 		if (status == LINK_TRAINING_SUCCESS) {
 			success = true;
-			fsleep(1000);
-			if (dp_read_hpd_rx_irq_data(link, &irq_data) == DC_OK &&
-					dp_parse_link_loss_status(
+			udelay(1000);
+			if (dc_link_dp_read_hpd_rx_irq_data(link, &irq_data) == DC_OK &&
+					dc_link_check_link_loss_status(
 							link,
 							&irq_data))
 				(*fail_count)++;
@@ -2179,7 +2163,7 @@ bool dp_verify_link_cap_with_retries(
 
 		memset(&link->verified_link_cap, 0,
 				sizeof(struct dc_link_settings));
-		if (!link_detect_connection_type(link, &type) || type == dc_connection_none) {
+		if (!dc_link_detect_connection_type(link, &type) || type == dc_connection_none) {
 			link->verified_link_cap = fail_safe_link_settings;
 			break;
 		} else if (dp_verify_link_cap(link, known_limit_link_setting,
@@ -2187,7 +2171,7 @@ bool dp_verify_link_cap_with_retries(
 			success = true;
 			break;
 		}
-		fsleep(10 * 1000);
+		msleep(10);
 	}
 
 	dp_trace_lt_fail_count_update(link, fail_count, true);
@@ -2196,10 +2180,11 @@ bool dp_verify_link_cap_with_retries(
 	return success;
 }
 
-/*
- * Check if there is a native DP or passive DP-HDMI dongle connected
+/**
+ * dc_link_is_dp_sink_present() - Check if there is a native DP
+ * or passive DP-HDMI dongle connected
  */
-bool dp_is_sink_present(struct dc_link *link)
+bool dc_link_is_dp_sink_present(struct dc_link *link)
 {
 	enum gpio_result gpio_result;
 	uint32_t clock_pin = 0;
@@ -2246,7 +2231,7 @@ bool dp_is_sink_present(struct dc_link *link)
 		gpio_result = dal_gpio_get_value(ddc->pin_clock, &clock_pin);
 		ASSERT(gpio_result == GPIO_RESULT_OK);
 		if (clock_pin)
-			fsleep(1000);
+			udelay(1000);
 		else
 			break;
 	} while (retry++ < 3);

@@ -26,11 +26,11 @@ static void ocelot_xmit_get_vlan_info(struct sk_buff *skb, struct dsa_port *dp,
 		return;
 	}
 
-	hdr = skb_vlan_eth_hdr(skb);
+	hdr = (struct vlan_ethhdr *)skb_mac_header(skb);
 	br_vlan_get_proto(br, &proto);
 
 	if (ntohs(hdr->h_vlan_proto) == proto) {
-		vlan_remove_tag(skb, &tci);
+		__skb_vlan_pop(skb, &tci);
 		*vlan_tci = tci;
 	} else {
 		rcu_read_lock();

@@ -4,35 +4,23 @@
 #
 # Usage: awk -f gen-sysreg.awk sysregs.txt
 
-function block_current() {
-	return __current_block[__current_block_depth];
-}
-
 # Log an error and terminate
 function fatal(msg) {
 	print "Error at " NR ": " msg > "/dev/stderr"
-
-	printf "Current block nesting:"
-
-	for (i = 0; i <= __current_block_depth; i++) {
-		printf " " __current_block[i]
-	}
-	printf "\n"
-
 	exit 1
 }
 
-# Enter a new block, setting the active block to @block
-function block_push(block) {
-	__current_block[++__current_block_depth] = block
-}
+# Sanity check that the start or end of a block makes sense at this point in
+# the file. If not, produce an error and terminate.
+#
+# @this - the $Block or $EndBlock
+# @prev - the only valid block to already be in (value of @block)
+# @new - the new value of @block
+function change_block(this, prev, new) {
+	if (block != prev)
+		fatal("unexpected " this " (inside " block ")")
 
-# Exit a block, setting the active block to the parent block
-function block_pop() {
-	if (__current_block_depth == 0)
-		fatal("error: block_pop() in root block")
-
-	__current_block_depth--;
+	block = new
 }
 
 # Sanity check the number of records for a field makes sense. If not, produce
@@ -96,14 +84,10 @@ BEGIN {
 	print "/* Generated file - do not edit */"
 	print ""
 
-	__current_block_depth = 0
-	__current_block[__current_block_depth] = "Root"
+	block = "None"
 }
 
 END {
-	if (__current_block_depth != 0)
-		fatal("Missing terminator for " block_current() " block")
-
 	print "#endif /* __ASM_SYSREG_DEFS_H */"
 }
 
@@ -111,9 +95,8 @@ END {
 /^$/ { next }
 /^[\t ]*#/ { next }
 
-/^SysregFields/ && block_current() == "Root" {
-	block_push("SysregFields")
-
+/^SysregFields/ {
+	change_block("SysregFields", "None", "SysregFields")
 	expect_fields(2)
 
 	reg = $2
@@ -127,9 +110,11 @@ END {
 	next
 }
 
-/^EndSysregFields/ && block_current() == "SysregFields" {
+/^EndSysregFields/ {
 	if (next_bit > 0)
 		fatal("Unspecified bits in " reg)
+
+	change_block("EndSysregFields", "SysregFields", "None")
 
 	define(reg "_RES0", "(" res0 ")")
 	define(reg "_RES1", "(" res1 ")")
@@ -141,13 +126,11 @@ END {
 	res1 = null
 	unkn = null
 
-	block_pop()
 	next
 }
 
-/^Sysreg/ && block_current() == "Root" {
-	block_push("Sysreg")
-
+/^Sysreg/ {
+	change_block("Sysreg", "None", "Sysreg")
 	expect_fields(7)
 
 	reg = $2
@@ -177,9 +160,11 @@ END {
 	next
 }
 
-/^EndSysreg/ && block_current() == "Sysreg" {
+/^EndSysreg/ {
 	if (next_bit > 0)
 		fatal("Unspecified bits in " reg)
+
+	change_block("EndSysreg", "Sysreg", "None")
 
 	if (res0 != null)
 		define(reg "_RES0", "(" res0 ")")
@@ -200,13 +185,12 @@ END {
 	res1 = null
 	unkn = null
 
-	block_pop()
 	next
 }
 
 # Currently this is effectivey a comment, in future we may want to emit
 # defines for the fields.
-/^Fields/ && block_current() == "Sysreg" {
+/^Fields/ && (block == "Sysreg") {
 	expect_fields(2)
 
 	if (next_bit != 63)
@@ -224,7 +208,7 @@ END {
 }
 
 
-/^Res0/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
+/^Res0/ && (block == "Sysreg" || block == "SysregFields") {
 	expect_fields(2)
 	parse_bitdef(reg, "RES0", $2)
 	field = "RES0_" msb "_" lsb
@@ -234,7 +218,7 @@ END {
 	next
 }
 
-/^Res1/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
+/^Res1/ && (block == "Sysreg" || block == "SysregFields") {
 	expect_fields(2)
 	parse_bitdef(reg, "RES1", $2)
 	field = "RES1_" msb "_" lsb
@@ -244,7 +228,7 @@ END {
 	next
 }
 
-/^Unkn/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
+/^Unkn/ && (block == "Sysreg" || block == "SysregFields") {
 	expect_fields(2)
 	parse_bitdef(reg, "UNKN", $2)
 	field = "UNKN_" msb "_" lsb
@@ -254,7 +238,7 @@ END {
 	next
 }
 
-/^Field/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
+/^Field/ && (block == "Sysreg" || block == "SysregFields") {
 	expect_fields(3)
 	field = $3
 	parse_bitdef(reg, field, $2)
@@ -265,16 +249,15 @@ END {
 	next
 }
 
-/^Raz/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
+/^Raz/ && (block == "Sysreg" || block == "SysregFields") {
 	expect_fields(2)
 	parse_bitdef(reg, field, $2)
 
 	next
 }
 
-/^SignedEnum/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
-	block_push("Enum")
-
+/^SignedEnum/ {
+	change_block("Enum<", "Sysreg", "Enum")
 	expect_fields(3)
 	field = $3
 	parse_bitdef(reg, field, $2)
@@ -285,9 +268,8 @@ END {
 	next
 }
 
-/^UnsignedEnum/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
-	block_push("Enum")
-
+/^UnsignedEnum/ {
+	change_block("Enum<", "Sysreg", "Enum")
 	expect_fields(3)
 	field = $3
 	parse_bitdef(reg, field, $2)
@@ -298,9 +280,8 @@ END {
 	next
 }
 
-/^Enum/ && (block_current() == "Sysreg" || block_current() == "SysregFields") {
-	block_push("Enum")
-
+/^Enum/ {
+	change_block("Enum", "Sysreg", "Enum")
 	expect_fields(3)
 	field = $3
 	parse_bitdef(reg, field, $2)
@@ -310,18 +291,16 @@ END {
 	next
 }
 
-/^EndEnum/ && block_current() == "Enum" {
-
+/^EndEnum/ {
+	change_block("EndEnum", "Enum", "Sysreg")
 	field = null
 	msb = null
 	lsb = null
 	print ""
-
-	block_pop()
 	next
 }
 
-/0b[01]+/ && block_current() == "Enum" {
+/0b[01]+/ && block == "Enum" {
 	expect_fields(2)
 	val = $1
 	name = $2

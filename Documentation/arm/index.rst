@@ -58,7 +58,6 @@ SoC-specific documents
    stm32/stm32f769-overview
    stm32/stm32f429-overview
    stm32/stm32mp13-overview
-   stm32/stm32mp151-overview
    stm32/stm32mp157-overview
    stm32/stm32-dma-mdma-chaining
 
@@ -70,9 +69,11 @@ SoC-specific documents
 
    spear/overview
 
+   sti/stih416-overview
    sti/stih407-overview
    sti/stih418-overview
    sti/overview
+   sti/stih415-overview
 
    vfp/release-notes
 

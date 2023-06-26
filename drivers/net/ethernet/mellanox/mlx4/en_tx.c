@@ -228,9 +228,7 @@ void mlx4_en_deactivate_tx_ring(struct mlx4_en_priv *priv,
 
 static inline bool mlx4_en_is_tx_ring_full(struct mlx4_en_tx_ring *ring)
 {
-	u32 used = READ_ONCE(ring->prod) - READ_ONCE(ring->cons);
-
-	return used > ring->full_size;
+	return ring->prod - ring->cons > ring->full_size;
 }
 
 static void mlx4_en_stamp_wqe(struct mlx4_en_priv *priv,
@@ -1085,7 +1083,7 @@ netdev_tx_t mlx4_en_xmit(struct sk_buff *skb, struct net_device *dev)
 			op_own |= cpu_to_be32(MLX4_WQE_CTRL_IIP);
 	}
 
-	WRITE_ONCE(ring->prod, ring->prod + nr_txbb);
+	ring->prod += nr_txbb;
 
 	/* If we used a bounce buffer then copy descriptor back into place */
 	if (unlikely(bounce))
@@ -1216,7 +1214,7 @@ netdev_tx_t mlx4_en_xmit_frame(struct mlx4_en_rx_ring *rx_ring,
 
 	rx_ring->xdp_tx++;
 
-	WRITE_ONCE(ring->prod, ring->prod + MLX4_EN_XDP_TX_NRTXBB);
+	ring->prod += MLX4_EN_XDP_TX_NRTXBB;
 
 	/* Ensure new descriptor hits memory
 	 * before setting ownership of this descriptor to HW

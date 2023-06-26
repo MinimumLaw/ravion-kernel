@@ -28,10 +28,6 @@ properties:
     items:
       - const: mclk
 
-  port:
-    $ref: audio-graph-port.yaml#
-    unevaluatedProperties: false
-
   "#sound-dai-cells":
     const: 0
 
@@ -44,7 +40,7 @@ unevaluatedProperties: false
 
 examples:
   - |
-    i2c {
+    i2c0 {
       #address-cells = <1>;
       #size-cells = <0>;
       es8316: codec@11 {

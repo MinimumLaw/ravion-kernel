@@ -105,14 +105,13 @@ int meson_codec_glue_output_startup(struct snd_pcm_substream *substream,
 	if (!in_data)
 		return -ENODEV;
 
-	if (WARN_ON(!rtd->dai_link->c2c_params)) {
+	if (WARN_ON(!rtd->dai_link->params)) {
 		dev_warn(dai->dev, "codec2codec link expected\n");
 		return -EINVAL;
 	}
 
 	/* Replace link params with the input params */
-	rtd->dai_link->c2c_params = &in_data->params;
-	rtd->dai_link->num_c2c_params = 1;
+	rtd->dai_link->params = &in_data->params;
 
 	return snd_soc_runtime_set_dai_fmt(rtd, in_data->fmt);
 }

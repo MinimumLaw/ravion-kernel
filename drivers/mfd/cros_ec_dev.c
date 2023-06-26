@@ -20,6 +20,7 @@
 #define DRV_NAME "cros-ec-dev"
 
 static struct class cros_class = {
+	.owner          = THIS_MODULE,
 	.name           = "chromeos",
 };
 

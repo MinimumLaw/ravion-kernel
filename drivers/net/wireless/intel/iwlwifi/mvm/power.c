@@ -150,7 +150,7 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 #endif
 
 	for (ac = IEEE80211_AC_VO; ac <= IEEE80211_AC_BK; ac++) {
-		if (!mvmvif->deflink.queue_params[ac].uapsd)
+		if (!mvmvif->queue_params[ac].uapsd)
 			continue;
 
 		if (!test_bit(IWL_MVM_STATUS_IN_D3, &mvm->status))
@@ -160,7 +160,7 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 		cmd->uapsd_ac_flags |= BIT(ac);
 
 		/* QNDP TID - the highest TID with no admission control */
-		if (!tid_found && !mvmvif->deflink.queue_params[ac].acm) {
+		if (!tid_found && !mvmvif->queue_params[ac].acm) {
 			tid_found = true;
 			switch (ac) {
 			case IEEE80211_AC_VO:
@@ -279,25 +279,18 @@ static bool iwl_mvm_power_allow_uapsd(struct iwl_mvm *mvm,
 static bool iwl_mvm_power_is_radar(struct ieee80211_vif *vif)
 {
 	struct ieee80211_chanctx_conf *chanctx_conf;
-	struct ieee80211_bss_conf *link_conf;
+	struct ieee80211_channel *chan;
 	bool radar_detect = false;
-	unsigned int link_id;
 
 	rcu_read_lock();
-	for_each_vif_active_link(vif, link_conf, link_id) {
-		chanctx_conf = rcu_dereference(link_conf->chanctx_conf);
-		/* this happens on link switching, just ignore inactive ones */
-		if (!chanctx_conf)
-			continue;
-
-		radar_detect = !!(chanctx_conf->def.chan->flags &
-				  IEEE80211_CHAN_RADAR);
-		if (radar_detect)
-			goto out;
+	chanctx_conf = rcu_dereference(vif->bss_conf.chanctx_conf);
+	WARN_ON(!chanctx_conf);
+	if (chanctx_conf) {
+		chan = chanctx_conf->def.chan;
+		radar_detect = chan->flags & IEEE80211_CHAN_RADAR;
 	}
-
-out:
 	rcu_read_unlock();
+
 	return radar_detect;
 }
 
@@ -516,9 +509,8 @@ static void iwl_mvm_power_uapsd_misbehav_ap_iterator(void *_data, u8 *mac,
 	/* The ap_sta_id is not expected to change during current association
 	 * so no explicit protection is needed
 	 */
-	if (mvmvif->deflink.ap_sta_id == *ap_sta_id)
-		memcpy(mvmvif->uapsd_misbehaving_bssid,
-		       vif->bss_conf.bssid,
+	if (mvmvif->ap_sta_id == *ap_sta_id)
+		memcpy(mvmvif->uapsd_misbehaving_bssid, vif->bss_conf.bssid,
 		       ETH_ALEN);
 }
 
@@ -560,7 +552,7 @@ static void iwl_mvm_power_ps_disabled_iterator(void *_data, u8* mac,
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	bool *disable_ps = _data;
 
-	if (iwl_mvm_vif_is_active(mvmvif))
+	if (mvmvif->phy_ctxt && mvmvif->phy_ctxt->id < NUM_PHY_CTX)
 		*disable_ps |= mvmvif->ps_disabled;
 }
 
@@ -569,12 +561,10 @@ static void iwl_mvm_power_get_vifs_iterator(void *_data, u8 *mac,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_power_vifs *power_iterator = _data;
-	bool active;
+	bool active = mvmvif->phy_ctxt && mvmvif->phy_ctxt->id < NUM_PHY_CTX;
 
 	if (!mvmvif->uploaded)
 		return;
-
-	active = iwl_mvm_vif_is_active(mvmvif);
 
 	switch (ieee80211_vif_type_p2p(vif)) {
 	case NL80211_IFTYPE_P2P_DEVICE:
@@ -659,12 +649,11 @@ static void iwl_mvm_power_set_pm(struct iwl_mvm *mvm,
 	}
 
 	if (vifs->bss_active && vifs->p2p_active)
-		client_same_channel =
-			iwl_mvm_have_links_same_channel(bss_mvmvif, p2p_mvmvif);
-
+		client_same_channel = (bss_mvmvif->phy_ctxt->id ==
+				       p2p_mvmvif->phy_ctxt->id);
 	if (vifs->bss_active && vifs->ap_active)
-		ap_same_channel =
-			iwl_mvm_have_links_same_channel(bss_mvmvif, ap_mvmvif);
+		ap_same_channel = (bss_mvmvif->phy_ctxt->id ==
+				   ap_mvmvif->phy_ctxt->id);
 
 	/* clients are not stand alone: enable PM if DCM */
 	if (!(client_same_channel || ap_same_channel)) {

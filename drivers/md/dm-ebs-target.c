@@ -452,7 +452,24 @@ static struct target_type ebs_target = {
 	.prepare_ioctl	 = ebs_prepare_ioctl,
 	.iterate_devices = ebs_iterate_devices,
 };
-module_dm(ebs);
+
+static int __init dm_ebs_init(void)
+{
+	int r = dm_register_target(&ebs_target);
+
+	if (r < 0)
+		DMERR("register failed %d", r);
+
+	return r;
+}
+
+static void dm_ebs_exit(void)
+{
+	dm_unregister_target(&ebs_target);
+}
+
+module_init(dm_ebs_init);
+module_exit(dm_ebs_exit);
 
 MODULE_AUTHOR("Heinz Mauelshagen <dm-devel@redhat.com>");
 MODULE_DESCRIPTION(DM_NAME " emulated block size target");

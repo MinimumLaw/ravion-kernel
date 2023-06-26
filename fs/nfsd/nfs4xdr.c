@@ -3446,7 +3446,8 @@ out_acl:
 		p = xdr_reserve_space(xdr, 4);
 		if (!p)
 			goto out_resource;
-		err = xattr_supports_user_prefix(d_inode(dentry));
+		err = xattr_supported_namespace(d_inode(dentry),
+						XATTR_USER_PREFIX);
 		*p++ = cpu_to_be32(err == 0);
 	}
 

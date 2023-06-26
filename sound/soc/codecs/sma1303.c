@@ -1591,7 +1591,7 @@ static const struct snd_soc_component_driver sma1303_component = {
 	.num_dapm_routes = ARRAY_SIZE(sma1303_audio_map),
 };
 
-static const struct regmap_config sma_i2c_regmap = {
+const struct regmap_config sma_i2c_regmap = {
 	.reg_bits = 8,
 	.val_bits = 8,
 

@@ -43,49 +43,23 @@
  * status of that page is hard.  See end_buffer_async_read() for the details.
  * There is no point in duplicating all that complexity.
  */
-static void mpage_read_end_io(struct bio *bio)
+static void mpage_end_io(struct bio *bio)
 {
-	struct folio_iter fi;
-	int err = blk_status_to_errno(bio->bi_status);
+	struct bio_vec *bv;
+	struct bvec_iter_all iter_all;
 
-	bio_for_each_folio_all(fi, bio) {
-		if (err)
-			folio_set_error(fi.folio);
-		else
-			folio_mark_uptodate(fi.folio);
-		folio_unlock(fi.folio);
+	bio_for_each_segment_all(bv, bio, iter_all) {
+		struct page *page = bv->bv_page;
+		page_endio(page, bio_op(bio),
+			   blk_status_to_errno(bio->bi_status));
 	}
 
 	bio_put(bio);
 }
 
-static void mpage_write_end_io(struct bio *bio)
+static struct bio *mpage_bio_submit(struct bio *bio)
 {
-	struct folio_iter fi;
-	int err = blk_status_to_errno(bio->bi_status);
-
-	bio_for_each_folio_all(fi, bio) {
-		if (err) {
-			folio_set_error(fi.folio);
-			mapping_set_error(fi.folio->mapping, err);
-		}
-		folio_end_writeback(fi.folio);
-	}
-
-	bio_put(bio);
-}
-
-static struct bio *mpage_bio_submit_read(struct bio *bio)
-{
-	bio->bi_end_io = mpage_read_end_io;
-	guard_bio_eod(bio);
-	submit_bio(bio);
-	return NULL;
-}
-
-static struct bio *mpage_bio_submit_write(struct bio *bio)
-{
-	bio->bi_end_io = mpage_write_end_io;
+	bio->bi_end_io = mpage_end_io;
 	guard_bio_eod(bio);
 	submit_bio(bio);
 	return NULL;
@@ -291,7 +265,7 @@ static struct bio *do_mpage_readpage(struct mpage_readpage_args *args)
 	 * This folio will go to BIO.  Do we need to send this BIO off first?
 	 */
 	if (args->bio && (args->last_block_in_bio != blocks[0] - 1))
-		args->bio = mpage_bio_submit_read(args->bio);
+		args->bio = mpage_bio_submit(args->bio);
 
 alloc_new:
 	if (args->bio == NULL) {
@@ -304,7 +278,7 @@ alloc_new:
 
 	length = first_hole << blkbits;
 	if (!bio_add_folio(args->bio, folio, length, 0)) {
-		args->bio = mpage_bio_submit_read(args->bio);
+		args->bio = mpage_bio_submit(args->bio);
 		goto alloc_new;
 	}
 
@@ -312,7 +286,7 @@ alloc_new:
 	nblocks = map_bh->b_size >> blkbits;
 	if ((buffer_boundary(map_bh) && relative_block == nblocks) ||
 	    (first_hole != blocks_per_page))
-		args->bio = mpage_bio_submit_read(args->bio);
+		args->bio = mpage_bio_submit(args->bio);
 	else
 		args->last_block_in_bio = blocks[blocks_per_page - 1];
 out:
@@ -320,7 +294,7 @@ out:
 
 confused:
 	if (args->bio)
-		args->bio = mpage_bio_submit_read(args->bio);
+		args->bio = mpage_bio_submit(args->bio);
 	if (!folio_test_uptodate(folio))
 		block_read_full_folio(folio, args->get_block);
 	else
@@ -382,7 +356,7 @@ void mpage_readahead(struct readahead_control *rac, get_block_t get_block)
 		args.bio = do_mpage_readpage(&args);
 	}
 	if (args.bio)
-		mpage_bio_submit_read(args.bio);
+		mpage_bio_submit(args.bio);
 }
 EXPORT_SYMBOL(mpage_readahead);
 
@@ -399,7 +373,7 @@ int mpage_read_folio(struct folio *folio, get_block_t get_block)
 
 	args.bio = do_mpage_readpage(&args);
 	if (args.bio)
-		mpage_bio_submit_read(args.bio);
+		mpage_bio_submit(args.bio);
 	return 0;
 }
 EXPORT_SYMBOL(mpage_read_folio);
@@ -603,7 +577,7 @@ page_is_mapped:
 	 * This page will go to BIO.  Do we need to send this BIO off first?
 	 */
 	if (bio && mpd->last_block_in_bio != blocks[0] - 1)
-		bio = mpage_bio_submit_write(bio);
+		bio = mpage_bio_submit(bio);
 
 alloc_new:
 	if (bio == NULL) {
@@ -622,7 +596,7 @@ alloc_new:
 	wbc_account_cgroup_owner(wbc, &folio->page, folio_size(folio));
 	length = first_unmapped << blkbits;
 	if (!bio_add_folio(bio, folio, length, 0)) {
-		bio = mpage_bio_submit_write(bio);
+		bio = mpage_bio_submit(bio);
 		goto alloc_new;
 	}
 
@@ -632,7 +606,7 @@ alloc_new:
 	folio_start_writeback(folio);
 	folio_unlock(folio);
 	if (boundary || (first_unmapped != blocks_per_page)) {
-		bio = mpage_bio_submit_write(bio);
+		bio = mpage_bio_submit(bio);
 		if (boundary_block) {
 			write_boundary_block(boundary_bdev,
 					boundary_block, 1 << blkbits);
@@ -644,7 +618,7 @@ alloc_new:
 
 confused:
 	if (bio)
-		bio = mpage_bio_submit_write(bio);
+		bio = mpage_bio_submit(bio);
 
 	/*
 	 * The caller has a ref on the inode, so *mapping is stable
@@ -678,7 +652,7 @@ mpage_writepages(struct address_space *mapping,
 	blk_start_plug(&plug);
 	ret = write_cache_pages(mapping, wbc, __mpage_writepage, &mpd);
 	if (mpd.bio)
-		mpage_bio_submit_write(mpd.bio);
+		mpage_bio_submit(mpd.bio);
 	blk_finish_plug(&plug);
 	return ret;
 }

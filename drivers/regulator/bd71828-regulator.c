@@ -771,8 +771,7 @@ static int bd71828_probe(struct platform_device *pdev)
 
 static struct platform_driver bd71828_regulator = {
 	.driver = {
-		.name = "bd71828-pmic",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+		.name = "bd71828-pmic"
 	},
 	.probe = bd71828_probe,
 };

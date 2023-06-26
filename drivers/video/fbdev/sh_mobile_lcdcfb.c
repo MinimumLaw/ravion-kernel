@@ -2249,7 +2249,7 @@ static const struct fb_videomode default_720p = {
 	.sync = FB_SYNC_VERT_HIGH_ACT | FB_SYNC_HOR_HIGH_ACT,
 };
 
-static void sh_mobile_lcdc_remove(struct platform_device *pdev)
+static int sh_mobile_lcdc_remove(struct platform_device *pdev)
 {
 	struct sh_mobile_lcdc_priv *priv = platform_get_drvdata(pdev);
 	unsigned int i;
@@ -2305,6 +2305,7 @@ static void sh_mobile_lcdc_remove(struct platform_device *pdev)
 	if (priv->irq)
 		free_irq(priv->irq, priv);
 	kfree(priv);
+	return 0;
 }
 
 static int sh_mobile_lcdc_check_interface(struct sh_mobile_lcdc_chan *ch)
@@ -2655,7 +2656,7 @@ static struct platform_driver sh_mobile_lcdc_driver = {
 		.pm		= &sh_mobile_lcdc_dev_pm_ops,
 	},
 	.probe		= sh_mobile_lcdc_probe,
-	.remove_new	= sh_mobile_lcdc_remove,
+	.remove		= sh_mobile_lcdc_remove,
 };
 
 module_platform_driver(sh_mobile_lcdc_driver);

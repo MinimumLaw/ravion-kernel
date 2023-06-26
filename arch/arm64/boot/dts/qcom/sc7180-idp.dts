@@ -312,9 +312,14 @@
 
 		reset-gpios = <&pm6150l_gpios 3 GPIO_ACTIVE_HIGH>;
 
-		port {
-			panel0_in: endpoint {
-				remote-endpoint = <&dsi0_out>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				panel0_in: endpoint {
+					remote-endpoint = <&dsi0_out>;
+				};
 			};
 		};
 	};
@@ -349,7 +354,7 @@
 &qspi {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&qspi_clk>, <&qspi_cs0>, <&qspi_data0>, <&qspi_data1>;
+	pinctrl-0 = <&qspi_clk &qspi_cs0 &qspi_data01>;
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -391,11 +396,6 @@
 
 	qcom,halt-regs = <&tcsr_regs_1 0x3000 0x5000 0x4000>;
 	qcom,spare-regs = <&tcsr_regs_2 0xb3e4>;
-};
-
-&scm {
-	/* TF-A firmware maps memory cached so mark dma-coherent to match. */
-	dma-coherent;
 };
 
 &sdhc_1 {
@@ -512,11 +512,8 @@
 	bias-disable;
 };
 
-&qspi_data0 {
-	bias-pull-up;
-};
-
-&qspi_data1 {
+&qspi_data01 {
+	/* High-Z when no transfers; nice to park the lines */
 	bias-pull-up;
 };
 

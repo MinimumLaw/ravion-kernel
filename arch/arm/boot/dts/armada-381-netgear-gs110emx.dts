@@ -148,7 +148,7 @@
 
 			port@0 {
 				ethernet = <&eth0>;
-				phy-mode = "rgmii";
+				label = "cpu";
 				reg = <0>;
 
 				fixed-link {

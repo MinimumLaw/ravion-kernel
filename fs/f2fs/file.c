@@ -3969,7 +3969,7 @@ static int f2fs_ioc_set_compress_option(struct file *filp, unsigned long arg)
 
 	F2FS_I(inode)->i_compress_algorithm = option.algorithm;
 	F2FS_I(inode)->i_log_cluster_size = option.log_cluster_size;
-	F2FS_I(inode)->i_cluster_size = BIT(option.log_cluster_size);
+	F2FS_I(inode)->i_cluster_size = 1 << option.log_cluster_size;
 	f2fs_mark_inode_dirty_sync(inode, true);
 
 	if (!f2fs_is_compress_backend_ready(inode))
@@ -4067,11 +4067,8 @@ static int f2fs_ioc_decompress_file(struct file *filp)
 		if (ret < 0)
 			break;
 
-		if (get_dirty_pages(inode) >= blk_per_seg) {
-			ret = filemap_fdatawrite(inode->i_mapping);
-			if (ret < 0)
-				break;
-		}
+		if (get_dirty_pages(inode) >= blk_per_seg)
+			filemap_fdatawrite(inode->i_mapping);
 
 		count -= len;
 		page_idx += len;
@@ -4141,11 +4138,8 @@ static int f2fs_ioc_compress_file(struct file *filp)
 		if (ret < 0)
 			break;
 
-		if (get_dirty_pages(inode) >= blk_per_seg) {
-			ret = filemap_fdatawrite(inode->i_mapping);
-			if (ret < 0)
-				break;
-		}
+		if (get_dirty_pages(inode) >= blk_per_seg)
+			filemap_fdatawrite(inode->i_mapping);
 
 		count -= len;
 		page_idx += len;
@@ -4372,7 +4366,7 @@ static void f2fs_trace_rw_file_path(struct kiocb *iocb, size_t count, int rw)
 	struct inode *inode = file_inode(iocb->ki_filp);
 	char *buf, *path;
 
-	buf = f2fs_getname(F2FS_I_SB(inode));
+	buf = f2fs_kmalloc(F2FS_I_SB(inode), PATH_MAX, GFP_KERNEL);
 	if (!buf)
 		return;
 	path = dentry_path_raw(file_dentry(iocb->ki_filp), buf, PATH_MAX);
@@ -4385,7 +4379,7 @@ static void f2fs_trace_rw_file_path(struct kiocb *iocb, size_t count, int rw)
 		trace_f2fs_dataread_start(inode, iocb->ki_pos, count,
 				current->pid, path, current->comm);
 free_buf:
-	f2fs_putname(buf);
+	kfree(buf);
 }
 
 static ssize_t f2fs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
@@ -4545,19 +4539,6 @@ static const struct iomap_dio_ops f2fs_iomap_dio_write_ops = {
 	.end_io = f2fs_dio_write_end_io,
 };
 
-static void f2fs_flush_buffered_write(struct address_space *mapping,
-				      loff_t start_pos, loff_t end_pos)
-{
-	int ret;
-
-	ret = filemap_write_and_wait_range(mapping, start_pos, end_pos);
-	if (ret < 0)
-		return;
-	invalidate_mapping_pages(mapping,
-				 start_pos >> PAGE_SHIFT,
-				 end_pos >> PAGE_SHIFT);
-}
-
 static ssize_t f2fs_dio_write_iter(struct kiocb *iocb, struct iov_iter *from,
 				   bool *may_need_sync)
 {
@@ -4657,9 +4638,14 @@ static ssize_t f2fs_dio_write_iter(struct kiocb *iocb, struct iov_iter *from,
 
 			ret += ret2;
 
-			f2fs_flush_buffered_write(file->f_mapping,
-						  bufio_start_pos,
-						  bufio_end_pos);
+			ret2 = filemap_write_and_wait_range(file->f_mapping,
+							    bufio_start_pos,
+							    bufio_end_pos);
+			if (ret2 < 0)
+				goto out;
+			invalidate_mapping_pages(file->f_mapping,
+						 bufio_start_pos >> PAGE_SHIFT,
+						 bufio_end_pos >> PAGE_SHIFT);
 		}
 	} else {
 		/* iomap_dio_rw() already handled the generic_write_sync(). */
@@ -4742,18 +4728,8 @@ out_unlock:
 	inode_unlock(inode);
 out:
 	trace_f2fs_file_write_iter(inode, orig_pos, orig_count, ret);
-
 	if (ret > 0 && may_need_sync)
 		ret = generic_write_sync(iocb, ret);
-
-	/* If buffered IO was forced, flush and drop the data from
-	 * the page cache to preserve O_DIRECT semantics
-	 */
-	if (ret > 0 && !dio && (iocb->ki_flags & IOCB_DIRECT))
-		f2fs_flush_buffered_write(iocb->ki_filp->f_mapping,
-					  orig_pos,
-					  orig_pos + ret - 1);
-
 	return ret;
 }
 
@@ -4908,7 +4884,6 @@ const struct file_operations f2fs_file_operations = {
 	.llseek		= f2fs_llseek,
 	.read_iter	= f2fs_file_read_iter,
 	.write_iter	= f2fs_file_write_iter,
-	.iopoll		= iocb_bio_iopoll,
 	.open		= f2fs_file_open,
 	.release	= f2fs_release_file,
 	.mmap		= f2fs_file_mmap,

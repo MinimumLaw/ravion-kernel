@@ -923,7 +923,8 @@ void virtio_gpu_cmd_context_create(struct virtio_gpu_device *vgdev, uint32_t id,
 	cmd_p->hdr.ctx_id = cpu_to_le32(id);
 	cmd_p->nlen = cpu_to_le32(nlen);
 	cmd_p->context_init = cpu_to_le32(context_init);
-	strscpy(cmd_p->debug_name, name, sizeof(cmd_p->debug_name));
+	strncpy(cmd_p->debug_name, name, sizeof(cmd_p->debug_name) - 1);
+	cmd_p->debug_name[sizeof(cmd_p->debug_name) - 1] = 0;
 	virtio_gpu_queue_ctrl_buffer(vgdev, vbuf);
 }
 

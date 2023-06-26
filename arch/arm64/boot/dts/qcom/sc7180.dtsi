@@ -76,7 +76,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x0>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -92,12 +91,10 @@
 			L2_0: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 				L3_0: l3-cache {
 					compatible = "cache";
 					cache-level = <3>;
-					cache-unified;
 				};
 			};
 		};
@@ -106,7 +103,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x100>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -122,7 +118,6 @@
 			L2_100: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -131,7 +126,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x200>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -147,7 +141,6 @@
 			L2_200: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -156,7 +149,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x300>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -172,7 +164,6 @@
 			L2_300: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -181,7 +172,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x400>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -197,7 +187,6 @@
 			L2_400: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -206,7 +195,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x500>;
-			clocks = <&cpufreq_hw 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&LITTLE_CPU_SLEEP_0
 					   &LITTLE_CPU_SLEEP_1
@@ -222,7 +210,6 @@
 			L2_500: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -231,7 +218,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x600>;
-			clocks = <&cpufreq_hw 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&BIG_CPU_SLEEP_0
 					   &BIG_CPU_SLEEP_1
@@ -247,7 +233,6 @@
 			L2_600: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -256,7 +241,6 @@
 			device_type = "cpu";
 			compatible = "qcom,kryo468";
 			reg = <0x0 0x700>;
-			clocks = <&cpufreq_hw 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&BIG_CPU_SLEEP_0
 					   &BIG_CPU_SLEEP_1
@@ -272,7 +256,6 @@
 			L2_700: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
-				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -369,7 +352,7 @@
 	};
 
 	firmware {
-		scm: scm {
+		scm {
 			compatible = "qcom,scm-sc7180", "qcom,scm";
 		};
 	};
@@ -1552,13 +1535,8 @@
 				function = "qspi_cs";
 			};
 
-			qspi_data0: qspi-data0-state {
-				pins = "gpio64";
-				function = "qspi_data";
-			};
-
-			qspi_data1: qspi-data1-state {
-				pins = "gpio65";
+			qspi_data01: qspi-data01-state {
+				pins = "gpio64", "gpio65";
 				function = "qspi_data";
 			};
 
@@ -2782,7 +2760,7 @@
 		system-cache-controller@9200000 {
 			compatible = "qcom,sc7180-llcc";
 			reg = <0 0x09200000 0 0x50000>, <0 0x09600000 0 0x50000>;
-			reg-names = "llcc0_base", "llcc_broadcast_base";
+			reg-names = "llcc_base", "llcc_broadcast_base";
 			interrupts = <GIC_SPI 582 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
@@ -3041,6 +3019,7 @@
 						required-opps = <&rpmhpd_opp_nom>;
 					};
 				};
+
 			};
 
 			dsi0: dsi@ae94000 {
@@ -3301,6 +3280,7 @@
 			#size-cells = <0>;
 			interrupt-controller;
 			#interrupt-cells = <4>;
+			cell-index = <0>;
 		};
 
 		sram@146aa000 {
@@ -3427,8 +3407,7 @@
 		};
 
 		apss_shared: mailbox@17c00000 {
-			compatible = "qcom,sc7180-apss-shared",
-				     "qcom,sdm845-apss-shared";
+			compatible = "qcom,sc7180-apss-shared";
 			reg = <0 0x17c00000 0 0x10000>;
 			#mbox-cells = <1>;
 		};
@@ -3591,7 +3570,7 @@
 		};
 
 		cpufreq_hw: cpufreq@18323000 {
-			compatible = "qcom,sc7180-cpufreq-hw", "qcom,cpufreq-hw";
+			compatible = "qcom,cpufreq-hw";
 			reg = <0 0x18323000 0 0x1400>, <0 0x18325800 0 0x1400>;
 			reg-names = "freq-domain0", "freq-domain1";
 
@@ -3599,7 +3578,6 @@
 			clock-names = "xo", "alternate";
 
 			#freq-domain-cells = <1>;
-			#clock-cells = <1>;
 		};
 
 		wifi: wifi@18800000 {

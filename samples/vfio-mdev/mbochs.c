@@ -1374,9 +1374,6 @@ static const struct vfio_device_ops mbochs_dev_ops = {
 	.write = mbochs_write,
 	.ioctl = mbochs_ioctl,
 	.mmap = mbochs_mmap,
-	.bind_iommufd	= vfio_iommufd_emulated_bind,
-	.unbind_iommufd	= vfio_iommufd_emulated_unbind,
-	.attach_ioas	= vfio_iommufd_emulated_attach_ioas,
 };
 
 static struct mdev_driver mbochs_driver = {
@@ -1421,7 +1418,7 @@ static int __init mbochs_dev_init(void)
 	if (ret)
 		goto err_cdev;
 
-	mbochs_class = class_create(MBOCHS_CLASS_NAME);
+	mbochs_class = class_create(THIS_MODULE, MBOCHS_CLASS_NAME);
 	if (IS_ERR(mbochs_class)) {
 		pr_err("Error: failed to register mbochs_dev class\n");
 		ret = PTR_ERR(mbochs_class);

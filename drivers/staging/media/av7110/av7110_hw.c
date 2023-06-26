@@ -1007,8 +1007,7 @@ static int OSDSetBlock(struct av7110 *av7110, int x0, int y0,
 
 	if (av7110->bmp_state == BMP_LOADING) {
 		/* possible if syscall is repeated by -ERESTARTSYS and if firmware cannot abort */
-		if (WARN_ON(FW_VERSION(av7110->arm_app) >= 0x261e))
-			return -EIO;
+		BUG_ON (FW_VERSION(av7110->arm_app) >= 0x261e);
 		rc = WaitUntilBmpLoaded(av7110);
 		if (rc)
 			return rc;

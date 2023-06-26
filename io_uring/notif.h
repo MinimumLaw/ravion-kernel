@@ -7,7 +7,6 @@
 
 #include "rsrc.h"
 
-#define IO_NOTIF_UBUF_FLAGS	(SKBFL_ZEROCOPY_FRAG | SKBFL_DONT_ORPHAN)
 #define IO_NOTIF_SPLICE_BATCH	32
 
 struct io_notif_data {
@@ -34,7 +33,7 @@ static inline void io_notif_flush(struct io_kiocb *notif)
 
 	/* drop slot's master ref */
 	if (refcount_dec_and_test(&nd->uarg.refcnt))
-		__io_req_task_work_add(notif, IOU_F_TWQ_LAZY_WAKE);
+		io_req_task_work_add(notif);
 }
 
 static inline int io_notif_account_mem(struct io_kiocb *notif, unsigned len)

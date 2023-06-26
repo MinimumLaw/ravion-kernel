@@ -19,6 +19,7 @@ static int sof_ipc3_pcm_hw_free(struct snd_soc_component *component,
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct sof_ipc_stream stream;
+	struct sof_ipc_reply reply;
 	struct snd_sof_pcm *spcm;
 
 	spcm = snd_sof_find_spcm_dai(component, rtd);
@@ -33,7 +34,7 @@ static int sof_ipc3_pcm_hw_free(struct snd_soc_component *component,
 	stream.comp_id = spcm->stream[substream->stream].comp_id;
 
 	/* send IPC to the DSP */
-	return sof_ipc_tx_message_no_reply(sdev->ipc, &stream, sizeof(stream));
+	return sof_ipc_tx_message(sdev->ipc, &stream, sizeof(stream), &reply, sizeof(reply));
 }
 
 static int sof_ipc3_pcm_hw_params(struct snd_soc_component *component,
@@ -145,6 +146,7 @@ static int sof_ipc3_pcm_trigger(struct snd_soc_component *component,
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
 	struct sof_ipc_stream stream;
+	struct sof_ipc_reply reply;
 	struct snd_sof_pcm *spcm;
 
 	spcm = snd_sof_find_spcm_dai(component, rtd);
@@ -176,7 +178,7 @@ static int sof_ipc3_pcm_trigger(struct snd_soc_component *component,
 	}
 
 	/* send IPC to the DSP */
-	return sof_ipc_tx_message_no_reply(sdev->ipc, &stream, sizeof(stream));
+	return sof_ipc_tx_message(sdev->ipc, &stream, sizeof(stream), &reply, sizeof(reply));
 }
 
 static void ssp_dai_config_pcm_params_match(struct snd_sof_dev *sdev, const char *link_name,
@@ -380,5 +382,4 @@ const struct sof_ipc_pcm_ops ipc3_pcm_ops = {
 	.hw_free = sof_ipc3_pcm_hw_free,
 	.trigger = sof_ipc3_pcm_trigger,
 	.dai_link_fixup = sof_ipc3_pcm_dai_link_fixup,
-	.reset_hw_params_during_stop = true,
 };

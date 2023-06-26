@@ -6,6 +6,7 @@
 
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/aer.h>
 #include <linux/netdevice.h>
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>

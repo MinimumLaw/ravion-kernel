@@ -1301,10 +1301,9 @@ static int xsk_mmap(struct file *file, struct socket *sock,
 	loff_t offset = (loff_t)vma->vm_pgoff << PAGE_SHIFT;
 	unsigned long size = vma->vm_end - vma->vm_start;
 	struct xdp_sock *xs = xdp_sk(sock->sk);
-	int state = READ_ONCE(xs->state);
 	struct xsk_queue *q = NULL;
 
-	if (state != XSK_READY && state != XSK_BOUND)
+	if (READ_ONCE(xs->state) != XSK_READY)
 		return -EBUSY;
 
 	if (offset == XDP_PGOFF_RX_RING) {
@@ -1315,11 +1314,9 @@ static int xsk_mmap(struct file *file, struct socket *sock,
 		/* Matches the smp_wmb() in XDP_UMEM_REG */
 		smp_rmb();
 		if (offset == XDP_UMEM_PGOFF_FILL_RING)
-			q = state == XSK_READY ? READ_ONCE(xs->fq_tmp) :
-						 READ_ONCE(xs->pool->fq);
+			q = READ_ONCE(xs->fq_tmp);
 		else if (offset == XDP_UMEM_PGOFF_COMPLETION_RING)
-			q = state == XSK_READY ? READ_ONCE(xs->cq_tmp) :
-						 READ_ONCE(xs->pool->cq);
+			q = READ_ONCE(xs->cq_tmp);
 	}
 
 	if (!q)

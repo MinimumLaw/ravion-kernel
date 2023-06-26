@@ -551,6 +551,7 @@ These are the steps:
    * IOMMU_SUPPORT
    * S390
    * ZCRYPT
+   * S390_AP_IOMMU
    * VFIO
    * KVM
 

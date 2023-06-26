@@ -20,31 +20,6 @@
 
 #define NVMET_TCP_DEF_INLINE_DATA_SIZE	(4 * PAGE_SIZE)
 
-static int param_store_val(const char *str, int *val, int min, int max)
-{
-	int ret, new_val;
-
-	ret = kstrtoint(str, 10, &new_val);
-	if (ret)
-		return -EINVAL;
-
-	if (new_val < min || new_val > max)
-		return -EINVAL;
-
-	*val = new_val;
-	return 0;
-}
-
-static int set_params(const char *str, const struct kernel_param *kp)
-{
-	return param_store_val(str, kp->arg, 0, INT_MAX);
-}
-
-static const struct kernel_param_ops set_param_ops = {
-	.set	= set_params,
-	.get	= param_get_int,
-};
-
 /* Define the socket priority to use for connections were it is desirable
  * that the NIC consider performing optimized packet processing or filtering.
  * A non-zero value being sufficient to indicate general consideration of any
@@ -52,8 +27,8 @@ static const struct kernel_param_ops set_param_ops = {
  * values that may be unique for some NIC implementations.
  */
 static int so_priority;
-device_param_cb(so_priority, &set_param_ops, &so_priority, 0644);
-MODULE_PARM_DESC(so_priority, "nvmet tcp socket optimize priority: Default 0");
+module_param(so_priority, int, 0644);
+MODULE_PARM_DESC(so_priority, "nvmet tcp socket optimize priority");
 
 /* Define a time period (in usecs) that io_work() shall sample an activated
  * queue before determining it to be idle.  This optional module behavior
@@ -61,10 +36,9 @@ MODULE_PARM_DESC(so_priority, "nvmet tcp socket optimize priority: Default 0");
  * using advanced interrupt moderation techniques.
  */
 static int idle_poll_period_usecs;
-device_param_cb(idle_poll_period_usecs, &set_param_ops,
-		&idle_poll_period_usecs, 0644);
+module_param(idle_poll_period_usecs, int, 0644);
 MODULE_PARM_DESC(idle_poll_period_usecs,
-		"nvmet tcp io_work poll till idle time period in usecs: Default 0");
+		"nvmet tcp io_work poll till idle time period in usecs");
 
 #define NVMET_TCP_RECV_BUDGET		8
 #define NVMET_TCP_SEND_BUDGET		8

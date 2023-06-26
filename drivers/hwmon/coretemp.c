@@ -282,8 +282,14 @@ static int get_tjmax(struct temp_data *tdata, struct device *dev)
 			dev_warn(dev, "Unable to read TjMax from CPU %u\n", tdata->cpu);
 	} else {
 		val = (eax >> 16) & 0xff;
-		if (val)
+		/*
+		 * If the TjMax is not plausible, an assumption
+		 * will be used
+		 */
+		if (val) {
+			dev_dbg(dev, "TjMax is %d degrees C\n", val);
 			return val * 1000;
+		}
 	}
 
 	if (force_tjmax) {

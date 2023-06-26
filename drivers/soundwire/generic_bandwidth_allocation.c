@@ -6,7 +6,6 @@
  *
  */
 
-#include <linux/bitops.h>
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
@@ -29,8 +28,15 @@ struct sdw_group {
 	unsigned int *rates;
 };
 
-void sdw_compute_slave_ports(struct sdw_master_runtime *m_rt,
-			     struct sdw_transport_data *t_data)
+struct sdw_transport_data {
+	int hstart;
+	int hstop;
+	int block_offset;
+	int sub_block_offset;
+};
+
+static void sdw_compute_slave_ports(struct sdw_master_runtime *m_rt,
+				    struct sdw_transport_data *t_data)
 {
 	struct sdw_slave_runtime *s_rt = NULL;
 	struct sdw_port_runtime *p_rt;
@@ -48,7 +54,7 @@ void sdw_compute_slave_ports(struct sdw_master_runtime *m_rt,
 		slave_total_ch = 0;
 
 		list_for_each_entry(p_rt, &s_rt->port_list, port_node) {
-			ch = hweight32(p_rt->ch_mask);
+			ch = sdw_ch_mask_to_ch(p_rt->ch_mask);
 
 			sdw_fill_xport_params(&p_rt->transport_params,
 					      p_rt->num, false,
@@ -79,7 +85,6 @@ void sdw_compute_slave_ports(struct sdw_master_runtime *m_rt,
 		}
 	}
 }
-EXPORT_SYMBOL(sdw_compute_slave_ports);
 
 static void sdw_compute_master_ports(struct sdw_master_runtime *m_rt,
 				     struct sdw_group_params *params,

@@ -3287,7 +3287,7 @@ static void sony_nc_remove(struct acpi_device *device)
 	dprintk(SONY_NC_DRIVER_NAME " removed.\n");
 }
 
-static const struct acpi_device_id sony_device_ids[] __maybe_unused = {
+static const struct acpi_device_id sony_device_ids[] = {
 	{SONY_NC_HID, 0},
 	{SONY_PIC_HID, 0},
 	{"", 0},

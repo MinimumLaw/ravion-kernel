@@ -74,7 +74,7 @@ int lock_contention_prepare(struct lock_contention *con)
 				continue;
 			}
 
-			addrs[con->filters->nr_addrs++] = map__unmap_ip(kmap, sym->start);
+			addrs[con->filters->nr_addrs++] = kmap->unmap_ip(kmap, sym->start);
 			con->filters->addrs = addrs;
 		}
 		naddrs = con->filters->nr_addrs;
@@ -151,8 +151,6 @@ int lock_contention_prepare(struct lock_contention *con)
 	skel->bss->needs_callstack = con->save_callstack;
 	skel->bss->lock_owner = con->owner;
 
-	bpf_program__set_autoload(skel->progs.collect_lock_syms, false);
-
 	lock_contention_bpf__attach(skel);
 	return 0;
 }
@@ -171,7 +169,7 @@ int lock_contention_stop(void)
 
 static const char *lock_contention_get_name(struct lock_contention *con,
 					    struct contention_key *key,
-					    u64 *stack_trace, u32 flags)
+					    u64 *stack_trace)
 {
 	int idx = 0;
 	u64 addr;
@@ -200,26 +198,10 @@ static const char *lock_contention_get_name(struct lock_contention *con,
 	}
 
 	if (con->aggr_mode == LOCK_AGGR_ADDR) {
-		int lock_fd = bpf_map__fd(skel->maps.lock_syms);
-
-		/* per-process locks set upper bits of the flags */
-		if (flags & LCD_F_MMAP_LOCK)
-			return "mmap_lock";
-		if (flags & LCD_F_SIGHAND_LOCK)
-			return "siglock";
-
-		/* global locks with symbols */
 		sym = machine__find_kernel_symbol(machine, key->lock_addr, &kmap);
 		if (sym)
-			return sym->name;
-
-		/* try semi-global locks collected separately */
-		if (!bpf_map_lookup_elem(lock_fd, &key->lock_addr, &flags)) {
-			if (flags == LOCK_CLASS_RQLOCK)
-				return "rq_lock";
-		}
-
-		return "";
+			name = sym->name;
+		return name;
 	}
 
 	/* LOCK_AGGR_CALLER: skip lock internal functions */
@@ -233,7 +215,7 @@ static const char *lock_contention_get_name(struct lock_contention *con,
 	if (sym) {
 		unsigned long offset;
 
-		offset = map__map_ip(kmap, addr) - sym->start;
+		offset = kmap->map_ip(kmap, addr) - sym->start;
 
 		if (offset == 0)
 			return sym->name;
@@ -249,7 +231,7 @@ static const char *lock_contention_get_name(struct lock_contention *con,
 int lock_contention_read(struct lock_contention *con)
 {
 	int fd, stack, err = 0;
-	struct contention_key *prev_key, key = {};
+	struct contention_key *prev_key, key;
 	struct contention_data data = {};
 	struct lock_stat *st = NULL;
 	struct machine *machine = con->machine;
@@ -259,10 +241,7 @@ int lock_contention_read(struct lock_contention *con)
 	fd = bpf_map__fd(skel->maps.lock_stat);
 	stack = bpf_map__fd(skel->maps.stacks);
 
-	con->fails.task = skel->bss->task_fail;
-	con->fails.stack = skel->bss->stack_fail;
-	con->fails.time = skel->bss->time_fail;
-	con->fails.data = skel->bss->data_fail;
+	con->lost = skel->bss->lost;
 
 	stack_trace = zalloc(stack_size);
 	if (stack_trace == NULL)
@@ -275,17 +254,8 @@ int lock_contention_read(struct lock_contention *con)
 		thread__set_comm(idle, "swapper", /*timestamp=*/0);
 	}
 
-	if (con->aggr_mode == LOCK_AGGR_ADDR) {
-		DECLARE_LIBBPF_OPTS(bpf_test_run_opts, opts,
-			.flags = BPF_F_TEST_RUN_ON_CPU,
-		);
-		int prog_fd = bpf_program__fd(skel->progs.collect_lock_syms);
-
-		bpf_prog_test_run_opts(prog_fd, &opts);
-	}
-
 	/* make sure it loads the kernel map */
-	map__load(maps__first(machine->kmaps)->map);
+	map__load(maps__first(machine->kmaps));
 
 	prev_key = NULL;
 	while (!bpf_map_get_next_key(fd, prev_key, &key)) {
@@ -299,10 +269,8 @@ int lock_contention_read(struct lock_contention *con)
 		if (con->save_callstack) {
 			bpf_map_lookup_elem(stack, &key.stack_id, stack_trace);
 
-			if (!match_callstack_filter(machine, stack_trace)) {
-				con->nr_filtered += data.count;
+			if (!match_callstack_filter(machine, stack_trace))
 				goto next;
-			}
 		}
 
 		switch (con->aggr_mode) {
@@ -333,7 +301,7 @@ int lock_contention_read(struct lock_contention *con)
 			goto next;
 		}
 
-		name = lock_contention_get_name(con, &key, stack_trace, data.flags);
+		name = lock_contention_get_name(con, &key, stack_trace);
 		st = lock_stat_findnew(ls_key, name, data.flags);
 		if (st == NULL)
 			break;
@@ -346,7 +314,7 @@ int lock_contention_read(struct lock_contention *con)
 		if (data.count)
 			st->avg_wait_time = data.total_time / data.count;
 
-		if (con->aggr_mode == LOCK_AGGR_CALLER && verbose > 0) {
+		if (con->save_callstack) {
 			st->callstack = memdup(stack_trace, stack_size);
 			if (st->callstack == NULL)
 				break;

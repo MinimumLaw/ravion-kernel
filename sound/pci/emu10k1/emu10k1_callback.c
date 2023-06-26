@@ -120,9 +120,9 @@ release_voice(struct snd_emux_voice *vp)
 	struct snd_emu10k1 *hw;
 	
 	hw = vp->hw;
-	dcysusv = (unsigned char)vp->reg.parm.modrelease | DCYSUSM_PHASE1_MASK;
+	dcysusv = 0x8000 | (unsigned char)vp->reg.parm.modrelease;
 	snd_emu10k1_ptr_write(hw, DCYSUSM, vp->ch, dcysusv);
-	dcysusv = (unsigned char)vp->reg.parm.volrelease | DCYSUSV_PHASE1_MASK | DCYSUSV_CHANNELENABLE_MASK;
+	dcysusv = 0x8000 | (unsigned char)vp->reg.parm.volrelease | DCYSUSV_CHANNELENABLE_MASK;
 	snd_emu10k1_ptr_write(hw, DCYSUSV, vp->ch, dcysusv);
 }
 
@@ -138,8 +138,7 @@ terminate_voice(struct snd_emux_voice *vp)
 	if (snd_BUG_ON(!vp))
 		return;
 	hw = vp->hw;
-	snd_emu10k1_ptr_write(hw, DCYSUSV, vp->ch,
-		DCYSUSV_PHASE1_MASK | DCYSUSV_DECAYTIME_MASK | DCYSUSV_CHANNELENABLE_MASK);
+	snd_emu10k1_ptr_write(hw, DCYSUSV, vp->ch, 0x807f | DCYSUSV_CHANNELENABLE_MASK);
 	if (vp->block) {
 		struct snd_emu10k1_memblk *emem;
 		emem = (struct snd_emu10k1_memblk *)vp->block;
@@ -348,9 +347,9 @@ start_voice(struct snd_emux_voice *vp)
 	}
 
 	/* channel to be silent and idle */
-	snd_emu10k1_ptr_write(hw, DCYSUSV, ch, 0);
-	snd_emu10k1_ptr_write(hw, VTFT, ch, VTFT_FILTERTARGET_MASK);
-	snd_emu10k1_ptr_write(hw, CVCF, ch, CVCF_CURRENTFILTER_MASK);
+	snd_emu10k1_ptr_write(hw, DCYSUSV, ch, 0x0000);
+	snd_emu10k1_ptr_write(hw, VTFT, ch, 0x0000FFFF);
+	snd_emu10k1_ptr_write(hw, CVCF, ch, 0x0000FFFF);
 	snd_emu10k1_ptr_write(hw, PTRX, ch, 0);
 	snd_emu10k1_ptr_write(hw, CPF, ch, 0);
 
@@ -454,7 +453,7 @@ start_voice(struct snd_emux_voice *vp)
 	/* reset volume */
 	temp = (unsigned int)vp->vtarget << 16;
 	snd_emu10k1_ptr_write(hw, VTFT, ch, temp | vp->ftarget);
-	snd_emu10k1_ptr_write(hw, CVCF, ch, temp | CVCF_CURRENTFILTER_MASK);
+	snd_emu10k1_ptr_write(hw, CVCF, ch, temp | 0xff00);
 	return 0;
 }
 
@@ -532,5 +531,8 @@ set_fm2frq2(struct snd_emu10k1 *hw, struct snd_emux_voice *vp)
 static void
 set_filterQ(struct snd_emu10k1 *hw, struct snd_emux_voice *vp)
 {
-	snd_emu10k1_ptr_write(hw, CCCA_RESONANCE, vp->ch, vp->reg.parm.filterQ);
+	unsigned int val;
+	val = snd_emu10k1_ptr_read(hw, CCCA, vp->ch) & ~CCCA_RESONANCE;
+	val |= (vp->reg.parm.filterQ << 28);
+	snd_emu10k1_ptr_write(hw, CCCA, vp->ch, val);
 }

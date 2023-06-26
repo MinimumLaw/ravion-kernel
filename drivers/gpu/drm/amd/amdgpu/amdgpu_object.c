@@ -601,7 +601,7 @@ int amdgpu_bo_create(struct amdgpu_device *adev,
 
 	if (!amdgpu_gmc_vram_full_visible(&adev->gmc) &&
 	    bo->tbo.resource->mem_type == TTM_PL_VRAM &&
-	    amdgpu_bo_in_cpu_visible_vram(bo))
+	    bo->tbo.resource->start < adev->gmc.visible_vram_size >> PAGE_SHIFT)
 		amdgpu_cs_report_moved_bytes(adev, ctx.bytes_moved,
 					     ctx.bytes_moved);
 	else
@@ -1263,40 +1263,23 @@ void amdgpu_bo_move_notify(struct ttm_buffer_object *bo,
 	trace_amdgpu_bo_move(abo, new_mem->mem_type, old_mem->mem_type);
 }
 
-void amdgpu_bo_get_memory(struct amdgpu_bo *bo,
-			  struct amdgpu_mem_stats *stats)
+void amdgpu_bo_get_memory(struct amdgpu_bo *bo, uint64_t *vram_mem,
+				uint64_t *gtt_mem, uint64_t *cpu_mem)
 {
 	unsigned int domain;
-	uint64_t size = amdgpu_bo_size(bo);
 
 	domain = amdgpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 	switch (domain) {
 	case AMDGPU_GEM_DOMAIN_VRAM:
-		stats->vram += size;
-		if (amdgpu_bo_in_cpu_visible_vram(bo))
-			stats->visible_vram += size;
+		*vram_mem += amdgpu_bo_size(bo);
 		break;
 	case AMDGPU_GEM_DOMAIN_GTT:
-		stats->gtt += size;
+		*gtt_mem += amdgpu_bo_size(bo);
 		break;
 	case AMDGPU_GEM_DOMAIN_CPU:
 	default:
-		stats->cpu += size;
+		*cpu_mem += amdgpu_bo_size(bo);
 		break;
-	}
-
-	if (bo->preferred_domains & AMDGPU_GEM_DOMAIN_VRAM) {
-		stats->requested_vram += size;
-		if (bo->flags & AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED)
-			stats->requested_visible_vram += size;
-
-		if (domain != AMDGPU_GEM_DOMAIN_VRAM) {
-			stats->evicted_vram += size;
-			if (bo->flags & AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED)
-				stats->evicted_visible_vram += size;
-		}
-	} else if (bo->preferred_domains & AMDGPU_GEM_DOMAIN_GTT) {
-		stats->requested_gtt += size;
 	}
 }
 
@@ -1361,6 +1344,7 @@ vm_fault_t amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->bdev);
 	struct ttm_operation_ctx ctx = { false, false };
 	struct amdgpu_bo *abo = ttm_to_amdgpu_bo(bo);
+	unsigned long offset;
 	int r;
 
 	/* Remember that this BO was accessed by the CPU */
@@ -1369,7 +1353,8 @@ vm_fault_t amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 	if (bo->resource->mem_type != TTM_PL_VRAM)
 		return 0;
 
-	if (amdgpu_bo_in_cpu_visible_vram(abo))
+	offset = bo->resource->start << PAGE_SHIFT;
+	if ((offset + bo->base.size) <= adev->gmc.visible_vram_size)
 		return 0;
 
 	/* Can't move a pinned BO to visible VRAM */
@@ -1391,9 +1376,10 @@ vm_fault_t amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 	else if (unlikely(r))
 		return VM_FAULT_SIGBUS;
 
+	offset = bo->resource->start << PAGE_SHIFT;
 	/* this should never happen */
 	if (bo->resource->mem_type == TTM_PL_VRAM &&
-	    !amdgpu_bo_in_cpu_visible_vram(abo))
+	    (offset + bo->base.size) > adev->gmc.visible_vram_size)
 		return VM_FAULT_SIGBUS;
 
 	ttm_bo_move_to_lru_tail_unlocked(bo);

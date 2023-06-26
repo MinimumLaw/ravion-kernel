@@ -3534,8 +3534,7 @@ static struct gdsc usb30_prim_gdsc = {
 	.pd = {
 		.name = "usb30_prim_gdsc",
 	},
-	/* TODO: Change to OFF_ON when USB drivers get proper suspend support */
-	.pwrsts = PWRSTS_RET_ON,
+	.pwrsts = PWRSTS_OFF_ON,
 };
 
 static struct gdsc ufs_phy_gdsc = {

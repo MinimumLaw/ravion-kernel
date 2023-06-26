@@ -662,7 +662,8 @@ static void ses_match_to_enclosure(struct enclosure_device *edev,
 	}
 }
 
-static int ses_intf_add(struct device *cdev)
+static int ses_intf_add(struct device *cdev,
+			struct class_interface *intf)
 {
 	struct scsi_device *sdev = to_scsi_device(cdev->parent);
 	struct scsi_device *tmp_sdev;
@@ -864,7 +865,8 @@ static void ses_intf_remove_enclosure(struct scsi_device *sdev)
 	enclosure_unregister(edev);
 }
 
-static void ses_intf_remove(struct device *cdev)
+static void ses_intf_remove(struct device *cdev,
+			    struct class_interface *intf)
 {
 	struct scsi_device *sdev = to_scsi_device(cdev->parent);
 

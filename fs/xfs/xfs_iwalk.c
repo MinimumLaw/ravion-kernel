@@ -667,10 +667,11 @@ xfs_iwalk_threaded(
 		iwag->mp = mp;
 
 		/*
-		 * perag is being handed off to async work, so take a passive
+		 * perag is being handed off to async work, so take another
 		 * reference for the async work to release.
 		 */
-		iwag->pag = xfs_perag_hold(pag);
+		atomic_inc(&pag->pag_ref);
+		iwag->pag = pag;
 		iwag->iwalk_fn = iwalk_fn;
 		iwag->data = data;
 		iwag->startino = startino;

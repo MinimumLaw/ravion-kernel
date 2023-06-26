@@ -66,8 +66,7 @@
 
 		L2_0: l2-cache {
 			compatible = "cache";
-			cache-level = <2>;
-			cache-unified;
+			cache-level = <0x2>;
 		};
 	};
 
@@ -398,6 +397,7 @@
 			#size-cells = <0>;
 			interrupt-controller;
 			#interrupt-cells = <4>;
+			cell-index = <0>;
 		};
 
 		sdhc_1: mmc@7824900 {
@@ -687,8 +687,7 @@
 		};
 
 		apcs_glb: mailbox@b111000 {
-			compatible = "qcom,ipq8074-apcs-apps-global",
-				     "qcom,ipq6018-apcs-apps-global";
+			compatible = "qcom,ipq8074-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			clocks = <&a53pll>, <&xo>;
 			clock-names = "pll", "xo";

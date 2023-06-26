@@ -36,7 +36,6 @@
 		L2: l2-cache {
 			compatible = "cache";
 			cache-level = <2>;
-			cache-unified;
 		};
 	};
 
@@ -474,7 +473,7 @@
 		};
 
 		l2cc: clock-controller@2082000 {
-			compatible = "qcom,kpss-gcc-msm8660", "qcom,kpss-gcc", "syscon";
+			compatible = "qcom,kpss-gcc", "syscon";
 			reg = <0x02082000 0x1000>;
 		};
 

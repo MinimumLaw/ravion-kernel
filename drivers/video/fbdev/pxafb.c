@@ -2396,13 +2396,13 @@ failed:
 	return ret;
 }
 
-static void pxafb_remove(struct platform_device *dev)
+static int pxafb_remove(struct platform_device *dev)
 {
 	struct pxafb_info *fbi = platform_get_drvdata(dev);
 	struct fb_info *info;
 
 	if (!fbi)
-		return;
+		return 0;
 
 	info = &fbi->fb;
 
@@ -2418,6 +2418,8 @@ static void pxafb_remove(struct platform_device *dev)
 
 	dma_free_coherent(&dev->dev, fbi->dma_buff_size, fbi->dma_buff,
 			  fbi->dma_buff_phys);
+
+	return 0;
 }
 
 static const struct of_device_id pxafb_of_dev_id[] = {
@@ -2430,7 +2432,7 @@ MODULE_DEVICE_TABLE(of, pxafb_of_dev_id);
 
 static struct platform_driver pxafb_driver = {
 	.probe		= pxafb_probe,
-	.remove_new 	= pxafb_remove,
+	.remove 	= pxafb_remove,
 	.driver		= {
 		.name	= "pxa2xx-fb",
 		.of_match_table = pxafb_of_dev_id,

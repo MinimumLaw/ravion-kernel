@@ -426,4 +426,3 @@ struct cpumask *group_cpus_evenly(unsigned int numgrps)
 	return masks;
 }
 #endif /* CONFIG_SMP */
-EXPORT_SYMBOL_GPL(group_cpus_evenly);

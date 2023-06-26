@@ -1106,11 +1106,9 @@ static int dvb_get_stc(struct dmx_demux *demux, unsigned int num,
 	struct av7110 *av7110;
 
 	/* pointer casting paranoia... */
-	if (WARN_ON(!demux))
-		return -EIO;
+	BUG_ON(!demux);
 	dvbdemux = demux->priv;
-	if (WARN_ON(!dvbdemux))
-		return -EIO;
+	BUG_ON(!dvbdemux);
 	av7110 = dvbdemux->priv;
 
 	dprintk(4, "%p\n", av7110);

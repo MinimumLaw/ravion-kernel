@@ -128,7 +128,7 @@ static int qcom_llcc_core_setup(struct llcc_drv_data *drv, struct regmap *llcc_b
 static int
 qcom_llcc_clear_error_status(int err_type, struct llcc_drv_data *drv)
 {
-	int ret;
+	int ret = 0;
 
 	switch (err_type) {
 	case LLCC_DRAM_CE:

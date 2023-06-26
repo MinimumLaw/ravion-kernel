@@ -10,7 +10,6 @@
 #include <linux/fault-inject.h>
 
 #include <drm/drm_debugfs.h>
-#include <drm/drm_fb_helper.h>
 #include <drm/drm_file.h>
 #include <drm/drm_framebuffer.h>
 
@@ -242,11 +241,12 @@ static int msm_fb_show(struct seq_file *m, void *arg)
 {
 	struct drm_info_node *node = (struct drm_info_node *) m->private;
 	struct drm_device *dev = node->minor->dev;
+	struct msm_drm_private *priv = dev->dev_private;
 	struct drm_framebuffer *fb, *fbdev_fb = NULL;
 
-	if (dev->fb_helper && dev->fb_helper->fb) {
+	if (priv->fbdev) {
 		seq_printf(m, "fbcon ");
-		fbdev_fb = dev->fb_helper->fb;
+		fbdev_fb = priv->fbdev->fb;
 		msm_framebuffer_describe(fbdev_fb, m);
 	}
 

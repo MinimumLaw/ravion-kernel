@@ -466,12 +466,13 @@ out_put_gpio:
 	return ret;
 }
 
-static void snd_byt_wm5102_mc_remove(struct platform_device *pdev)
+static int snd_byt_wm5102_mc_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct byt_wm5102_private *priv = snd_soc_card_get_drvdata(card);
 
 	gpiod_put(priv->spkvdd_en_gpio);
+	return 0;
 }
 
 static struct platform_driver snd_byt_wm5102_mc_driver = {
@@ -479,7 +480,7 @@ static struct platform_driver snd_byt_wm5102_mc_driver = {
 		.name = "bytcr_wm5102",
 	},
 	.probe = snd_byt_wm5102_mc_probe,
-	.remove_new = snd_byt_wm5102_mc_remove,
+	.remove = snd_byt_wm5102_mc_remove,
 };
 
 module_platform_driver(snd_byt_wm5102_mc_driver);

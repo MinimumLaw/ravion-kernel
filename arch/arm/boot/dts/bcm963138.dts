@@ -25,7 +25,3 @@
 &serial0 {
 	status = "okay";
 };
-
-&hsspi {
-	status = "okay";
-};

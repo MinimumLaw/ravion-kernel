@@ -828,7 +828,7 @@ out_err:
 	return err;
 }
 
-static void cg6_remove(struct platform_device *op)
+static int cg6_remove(struct platform_device *op)
 {
 	struct fb_info *info = dev_get_drvdata(&op->dev);
 	struct cg6_par *par = info->par;
@@ -839,6 +839,8 @@ static void cg6_remove(struct platform_device *op)
 	cg6_unmap_regs(op, info, par);
 
 	framebuffer_release(info);
+
+	return 0;
 }
 
 static const struct of_device_id cg6_match[] = {
@@ -858,7 +860,7 @@ static struct platform_driver cg6_driver = {
 		.of_match_table = cg6_match,
 	},
 	.probe		= cg6_probe,
-	.remove_new	= cg6_remove,
+	.remove		= cg6_remove,
 };
 
 static int __init cg6_init(void)

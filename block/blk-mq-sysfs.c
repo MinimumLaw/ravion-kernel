@@ -10,8 +10,10 @@
 #include <linux/workqueue.h>
 #include <linux/smp.h>
 
+#include <linux/blk-mq.h>
 #include "blk.h"
 #include "blk-mq.h"
+#include "blk-mq-tag.h"
 
 static void blk_mq_sysfs_release(struct kobject *kobj)
 {

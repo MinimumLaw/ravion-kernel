@@ -86,13 +86,6 @@ properties:
         - tx-m
         - rx-m
 
-  port:
-    $ref: audio-graph-port.yaml#
-    unevaluatedProperties: false
-
-  power-domains:
-    maxItems: 1
-
   rockchip,grf:
     $ref: /schemas/types.yaml#/definitions/phandle
     description:

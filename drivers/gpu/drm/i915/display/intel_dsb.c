@@ -11,7 +11,6 @@
 #include "intel_de.h"
 #include "intel_display_types.h"
 #include "intel_dsb.h"
-#include "intel_dsb_regs.h"
 
 struct i915_vma;
 
@@ -89,8 +88,7 @@ static bool assert_dsb_has_room(struct intel_dsb *dsb)
 
 	/* each instruction is 2 dwords */
 	return !drm_WARN(&i915->drm, dsb->free_pos > dsb->size - 2,
-			 "[CRTC:%d:%s] DSB %d buffer overflow\n",
-			 crtc->base.base.id, crtc->base.name, dsb->id);
+			 "DSB buffer overflow\n");
 }
 
 static bool is_dsb_busy(struct drm_i915_private *i915, enum pipe pipe,
@@ -200,7 +198,7 @@ void intel_dsb_reg_write(struct intel_dsb *dsb,
 	}
 }
 
-static void intel_dsb_align_tail(struct intel_dsb *dsb)
+static u32 intel_dsb_align_tail(struct intel_dsb *dsb)
 {
 	u32 aligned_tail, tail;
 
@@ -212,58 +210,49 @@ static void intel_dsb_align_tail(struct intel_dsb *dsb)
 		       aligned_tail - tail);
 
 	dsb->free_pos = aligned_tail / 4;
-}
 
-void intel_dsb_finish(struct intel_dsb *dsb)
-{
-	intel_dsb_align_tail(dsb);
+	return aligned_tail;
 }
 
 /**
  * intel_dsb_commit() - Trigger workload execution of DSB.
  * @dsb: DSB context
- * @wait_for_vblank: wait for vblank before executing
  *
  * This function is used to do actual write to hardware using DSB.
  */
-void intel_dsb_commit(struct intel_dsb *dsb, bool wait_for_vblank)
+void intel_dsb_commit(struct intel_dsb *dsb)
 {
 	struct intel_crtc *crtc = dsb->crtc;
 	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
 	enum pipe pipe = crtc->pipe;
 	u32 tail;
 
-	tail = dsb->free_pos * 4;
-	if (drm_WARN_ON(&dev_priv->drm, !IS_ALIGNED(tail, CACHELINE_BYTES)))
+	tail = intel_dsb_align_tail(dsb);
+	if (tail == 0)
 		return;
 
 	if (is_dsb_busy(dev_priv, pipe, dsb->id)) {
-		drm_err(&dev_priv->drm, "[CRTC:%d:%s] DSB %d is busy\n",
-			crtc->base.base.id, crtc->base.name, dsb->id);
-		return;
+		drm_err(&dev_priv->drm, "DSB engine is busy.\n");
+		goto reset;
 	}
 
 	intel_de_write(dev_priv, DSB_CTRL(pipe, dsb->id),
-		       (wait_for_vblank ? DSB_WAIT_FOR_VBLANK : 0) |
 		       DSB_ENABLE);
 	intel_de_write(dev_priv, DSB_HEAD(pipe, dsb->id),
 		       i915_ggtt_offset(dsb->vma));
 	intel_de_write(dev_priv, DSB_TAIL(pipe, dsb->id),
 		       i915_ggtt_offset(dsb->vma) + tail);
-}
 
-void intel_dsb_wait(struct intel_dsb *dsb)
-{
-	struct intel_crtc *crtc = dsb->crtc;
-	struct drm_i915_private *dev_priv = to_i915(crtc->base.dev);
-	enum pipe pipe = crtc->pipe;
+	drm_dbg_kms(&dev_priv->drm,
+		    "DSB execution started - head 0x%x, tail 0x%x\n",
+		    i915_ggtt_offset(dsb->vma),
+		    i915_ggtt_offset(dsb->vma) + tail);
 
 	if (wait_for(!is_dsb_busy(dev_priv, pipe, dsb->id), 1))
 		drm_err(&dev_priv->drm,
-			"[CRTC:%d:%s] DSB %d timed out waiting for idle\n",
-			crtc->base.base.id, crtc->base.name, dsb->id);
+			"Timed out waiting for DSB workload completion.\n");
 
-	/* Attempt to reset it */
+reset:
 	dsb->free_pos = 0;
 	dsb->ins_start_offset = 0;
 	intel_de_write(dev_priv, DSB_CTRL(pipe, dsb->id), 0);
@@ -336,8 +325,7 @@ out_put_rpm:
 	kfree(dsb);
 out:
 	drm_info_once(&i915->drm,
-		      "[CRTC:%d:%s] DSB %d queue setup failed, will fallback to MMIO for display HW programming\n",
-		      crtc->base.base.id, crtc->base.name, DSB1);
+		      "DSB queue setup failed, will fallback to MMIO for display HW programming\n");
 
 	return NULL;
 }

@@ -290,6 +290,8 @@ static ssize_t monitor_enable_write_data(struct file *filp, const char __user *u
 	if (retval)
 		return retval;
 
+	retval = count;
+
 	mutex_lock(&rv_interface_lock);
 
 	if (val)

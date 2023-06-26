@@ -269,8 +269,6 @@ static inline bool dev_is_dma_coherent(struct device *dev)
 	return dev->dma_coherent;
 }
 #else
-#define dma_default_coherent true
-
 static inline bool dev_is_dma_coherent(struct device *dev)
 {
 	return true;

@@ -38,7 +38,6 @@ static int init_test_info(struct test_info *ti)
 static void exit_test_info(struct test_info *ti)
 {
 	thread__put(ti->thread);
-	machine__delete_threads(ti->machine);
 	machine__delete(ti->machine);
 }
 
@@ -102,7 +101,6 @@ static int test_file(struct test_info *ti, char *filename)
 {
 	struct map *map = NULL;
 	int ret, nr;
-	struct dso *dso;
 
 	pr_debug("Testing %s\n", filename);
 
@@ -110,8 +108,7 @@ static int test_file(struct test_info *ti, char *filename)
 	if (ret != TEST_OK)
 		return ret;
 
-	dso = map__dso(map);
-	nr = dso__load(dso, map);
+	nr = dso__load(map->dso, map);
 	if (nr < 0) {
 		pr_debug("dso__load() failed!\n");
 		ret = TEST_FAIL;
@@ -124,7 +121,7 @@ static int test_file(struct test_info *ti, char *filename)
 		goto out_put;
 	}
 
-	ret = test_dso(dso);
+	ret = test_dso(map->dso);
 out_put:
 	map__put(map);
 

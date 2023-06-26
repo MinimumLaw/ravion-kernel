@@ -378,6 +378,7 @@ static int microchip_xisc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct isc_device *isc;
+	struct resource *res;
 	void __iomem *io_base;
 	struct isc_subdev_entity *subdev_entity;
 	int irq;
@@ -391,7 +392,8 @@ static int microchip_xisc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, isc);
 	isc->dev = dev;
 
-	io_base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	io_base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(io_base))
 		return PTR_ERR(io_base);
 
@@ -547,7 +549,7 @@ unprepare_hclk:
 	return ret;
 }
 
-static void microchip_xisc_remove(struct platform_device *pdev)
+static int microchip_xisc_remove(struct platform_device *pdev)
 {
 	struct isc_device *isc = platform_get_drvdata(pdev);
 
@@ -560,6 +562,8 @@ static void microchip_xisc_remove(struct platform_device *pdev)
 	clk_disable_unprepare(isc->hclock);
 
 	atmel_isc_clk_cleanup(isc);
+
+	return 0;
 }
 
 static int __maybe_unused xisc_runtime_suspend(struct device *dev)
@@ -597,7 +601,7 @@ MODULE_DEVICE_TABLE(of, microchip_xisc_of_match);
 
 static struct platform_driver microchip_xisc_driver = {
 	.probe	= microchip_xisc_probe,
-	.remove_new = microchip_xisc_remove,
+	.remove	= microchip_xisc_remove,
 	.driver	= {
 		.name		= "microchip-sama7g5-xisc",
 		.pm		= &microchip_xisc_dev_pm_ops,

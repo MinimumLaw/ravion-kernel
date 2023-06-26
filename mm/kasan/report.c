@@ -72,48 +72,16 @@ static int __init kasan_set_multi_shot(char *str)
 __setup("kasan_multi_shot", kasan_set_multi_shot);
 
 /*
- * This function is used to check whether KASAN reports are suppressed for
- * software KASAN modes via kasan_disable/enable_current() critical sections.
- *
- * This is done to avoid:
- * 1. False-positive reports when accessing slab metadata,
- * 2. Deadlocking when poisoned memory is accessed by the reporting code.
- *
- * Hardware Tag-Based KASAN instead relies on:
- * For #1: Resetting tags via kasan_reset_tag().
- * For #2: Suppression of tag checks via CPU, see report_suppress_start/end().
+ * Used to suppress reports within kasan_disable/enable_current() critical
+ * sections, which are used for marking accesses to slab metadata.
  */
-static bool report_suppressed_sw(void)
+static bool report_suppressed(void)
 {
 #if defined(CONFIG_KASAN_GENERIC) || defined(CONFIG_KASAN_SW_TAGS)
 	if (current->kasan_depth)
 		return true;
 #endif
 	return false;
-}
-
-static void report_suppress_start(void)
-{
-#ifdef CONFIG_KASAN_HW_TAGS
-	/*
-	 * Disable preemption for the duration of printing a KASAN report, as
-	 * hw_suppress_tag_checks_start() disables checks on the current CPU.
-	 */
-	preempt_disable();
-	hw_suppress_tag_checks_start();
-#else
-	kasan_disable_current();
-#endif
-}
-
-static void report_suppress_stop(void)
-{
-#ifdef CONFIG_KASAN_HW_TAGS
-	hw_suppress_tag_checks_stop();
-	preempt_enable();
-#else
-	kasan_enable_current();
-#endif
 }
 
 /*
@@ -206,7 +174,7 @@ static void start_report(unsigned long *flags, bool sync)
 	/* Do not allow LOCKDEP mangling KASAN reports. */
 	lockdep_off();
 	/* Make sure we don't end up in loop. */
-	report_suppress_start();
+	kasan_disable_current();
 	spin_lock_irqsave(&report_lock, *flags);
 	pr_err("==================================================================\n");
 }
@@ -224,7 +192,7 @@ static void end_report(unsigned long *flags, void *addr)
 		panic("kasan.fault=panic set ...\n");
 	add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE);
 	lockdep_on();
-	report_suppress_stop();
+	kasan_enable_current();
 }
 
 static void print_error_description(struct kasan_report_info *info)
@@ -512,13 +480,9 @@ void kasan_report_invalid_free(void *ptr, unsigned long ip, enum kasan_report_ty
 	struct kasan_report_info info;
 
 	/*
-	 * Do not check report_suppressed_sw(), as an invalid-free cannot be
-	 * caused by accessing poisoned memory and thus should not be suppressed
-	 * by kasan_disable/enable_current() critical sections.
-	 *
-	 * Note that for Hardware Tag-Based KASAN, kasan_report_invalid_free()
-	 * is triggered by explicit tag checks and not by the ones performed by
-	 * the CPU. Thus, reporting invalid-free is not suppressed as well.
+	 * Do not check report_suppressed(), as an invalid-free cannot be
+	 * caused by accessing slab metadata and thus should not be
+	 * suppressed by kasan_disable/enable_current() critical sections.
 	 */
 	if (unlikely(!report_enabled()))
 		return;
@@ -553,7 +517,7 @@ bool kasan_report(unsigned long addr, size_t size, bool is_write,
 	unsigned long irq_flags;
 	struct kasan_report_info info;
 
-	if (unlikely(report_suppressed_sw()) || unlikely(!report_enabled())) {
+	if (unlikely(report_suppressed()) || unlikely(!report_enabled())) {
 		ret = false;
 		goto out;
 	}
@@ -585,9 +549,8 @@ void kasan_report_async(void)
 	unsigned long flags;
 
 	/*
-	 * Do not check report_suppressed_sw(), as
-	 * kasan_disable/enable_current() critical sections do not affect
-	 * Hardware Tag-Based KASAN.
+	 * Do not check report_suppressed(), as kasan_disable/enable_current()
+	 * critical sections do not affect Hardware Tag-Based KASAN.
 	 */
 	if (unlikely(!report_enabled()))
 		return;

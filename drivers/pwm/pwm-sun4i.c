@@ -477,7 +477,7 @@ err_bus:
 	return ret;
 }
 
-static void sun4i_pwm_remove(struct platform_device *pdev)
+static int sun4i_pwm_remove(struct platform_device *pdev)
 {
 	struct sun4i_pwm_chip *sun4ichip = platform_get_drvdata(pdev);
 
@@ -485,6 +485,8 @@ static void sun4i_pwm_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(sun4ichip->bus_clk);
 	reset_control_assert(sun4ichip->rst);
+
+	return 0;
 }
 
 static struct platform_driver sun4i_pwm_driver = {
@@ -493,7 +495,7 @@ static struct platform_driver sun4i_pwm_driver = {
 		.of_match_table = sun4i_pwm_dt_ids,
 	},
 	.probe = sun4i_pwm_probe,
-	.remove_new = sun4i_pwm_remove,
+	.remove = sun4i_pwm_remove,
 };
 module_platform_driver(sun4i_pwm_driver);
 

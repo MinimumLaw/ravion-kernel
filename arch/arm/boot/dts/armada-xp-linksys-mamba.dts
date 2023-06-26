@@ -302,7 +302,7 @@
 
 			port@5 {
 				reg = <5>;
-				phy-mode = "rgmii-id";
+				label = "cpu";
 				ethernet = <&eth0>;
 				fixed-link {
 					speed = <1000>;

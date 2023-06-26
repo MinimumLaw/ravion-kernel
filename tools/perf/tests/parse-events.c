@@ -53,7 +53,7 @@ static int test__checkevent_tracepoint(struct evlist *evlist)
 	struct evsel *evsel = evlist__first(evlist);
 
 	TEST_ASSERT_VAL("wrong number of entries", 1 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 0 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 0 == evlist->core.nr_groups);
 	TEST_ASSERT_VAL("wrong type", PERF_TYPE_TRACEPOINT == evsel->core.attr.type);
 	TEST_ASSERT_VAL("wrong sample_type",
 		PERF_TP_SAMPLE_TYPE == evsel->core.attr.sample_type);
@@ -66,7 +66,7 @@ static int test__checkevent_tracepoint_multi(struct evlist *evlist)
 	struct evsel *evsel;
 
 	TEST_ASSERT_VAL("wrong number of entries", evlist->core.nr_entries > 1);
-	TEST_ASSERT_VAL("wrong number of groups", 0 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 0 == evlist->core.nr_groups);
 
 	evlist__for_each_entry(evlist, evsel) {
 		TEST_ASSERT_VAL("wrong type",
@@ -449,7 +449,6 @@ static int test__checkevent_pmu(struct evlist *evlist)
 	TEST_ASSERT_VAL("wrong config",    10 == evsel->core.attr.config);
 	TEST_ASSERT_VAL("wrong config1",    1 == evsel->core.attr.config1);
 	TEST_ASSERT_VAL("wrong config2",    3 == evsel->core.attr.config2);
-	TEST_ASSERT_VAL("wrong config3",    0 == evsel->core.attr.config3);
 	/*
 	 * The period value gets configured within evlist__config,
 	 * while this test executes only parse events method.
@@ -471,7 +470,6 @@ static int test__checkevent_list(struct evlist *evlist)
 	TEST_ASSERT_VAL("wrong config", 1 == evsel->core.attr.config);
 	TEST_ASSERT_VAL("wrong config1", 0 == evsel->core.attr.config1);
 	TEST_ASSERT_VAL("wrong config2", 0 == evsel->core.attr.config2);
-	TEST_ASSERT_VAL("wrong config3", 0 == evsel->core.attr.config3);
 	TEST_ASSERT_VAL("wrong exclude_user", !evsel->core.attr.exclude_user);
 	TEST_ASSERT_VAL("wrong exclude_kernel", !evsel->core.attr.exclude_kernel);
 	TEST_ASSERT_VAL("wrong exclude_hv", !evsel->core.attr.exclude_hv);
@@ -634,15 +632,6 @@ static int test__checkterms_simple(struct list_head *terms)
 	TEST_ASSERT_VAL("wrong val", term->val.num == 3);
 	TEST_ASSERT_VAL("wrong config", !strcmp(term->config, "config2"));
 
-	/* config3=4 */
-	term = list_entry(term->list.next, struct parse_events_term, list);
-	TEST_ASSERT_VAL("wrong type term",
-			term->type_term == PARSE_EVENTS__TERM_TYPE_CONFIG3);
-	TEST_ASSERT_VAL("wrong type val",
-			term->type_val == PARSE_EVENTS__TERM_TYPE_NUM);
-	TEST_ASSERT_VAL("wrong val", term->val.num == 4);
-	TEST_ASSERT_VAL("wrong config", !strcmp(term->config, "config3"));
-
 	/* umask=1*/
 	term = list_entry(term->list.next, struct parse_events_term, list);
 	TEST_ASSERT_VAL("wrong type term",
@@ -688,7 +677,7 @@ static int test__group1(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* instructions:k */
 	evsel = leader = evlist__first(evlist);
@@ -730,7 +719,7 @@ static int test__group2(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 3 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* faults + :ku modifier */
 	evsel = leader = evlist__first(evlist);
@@ -786,7 +775,7 @@ static int test__group3(struct evlist *evlist __maybe_unused)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 5 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 2 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 2 == evlist->core.nr_groups);
 
 	/* group1 syscalls:sys_enter_openat:H */
 	evsel = leader = evlist__first(evlist);
@@ -879,7 +868,7 @@ static int test__group4(struct evlist *evlist __maybe_unused)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* cycles:u + p */
 	evsel = leader = evlist__first(evlist);
@@ -923,7 +912,7 @@ static int test__group5(struct evlist *evlist __maybe_unused)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 5 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 2 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 2 == evlist->core.nr_groups);
 
 	/* cycles + G */
 	evsel = leader = evlist__first(evlist);
@@ -1009,7 +998,7 @@ static int test__group_gh1(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* cycles + :H group modifier */
 	evsel = leader = evlist__first(evlist);
@@ -1049,7 +1038,7 @@ static int test__group_gh2(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* cycles + :G group modifier */
 	evsel = leader = evlist__first(evlist);
@@ -1089,7 +1078,7 @@ static int test__group_gh3(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* cycles:G + :u group modifier */
 	evsel = leader = evlist__first(evlist);
@@ -1129,7 +1118,7 @@ static int test__group_gh4(struct evlist *evlist)
 	struct evsel *evsel, *leader;
 
 	TEST_ASSERT_VAL("wrong number of entries", 2 == evlist->core.nr_entries);
-	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist__nr_groups(evlist));
+	TEST_ASSERT_VAL("wrong number of groups", 1 == evlist->core.nr_groups);
 
 	/* cycles:G + :uG group modifier */
 	evsel = leader = evlist__first(evlist);
@@ -1401,7 +1390,7 @@ static int test__checkevent_config_symbol(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong name setting", evsel__name_is(evsel, "insn"));
+	TEST_ASSERT_VAL("wrong name setting", strcmp(evsel->name, "insn") == 0);
 	return TEST_OK;
 }
 
@@ -1409,7 +1398,7 @@ static int test__checkevent_config_raw(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong name setting", evsel__name_is(evsel, "rawpmu"));
+	TEST_ASSERT_VAL("wrong name setting", strcmp(evsel->name, "rawpmu") == 0);
 	return TEST_OK;
 }
 
@@ -1417,7 +1406,7 @@ static int test__checkevent_config_num(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong name setting", evsel__name_is(evsel, "numpmu"));
+	TEST_ASSERT_VAL("wrong name setting", strcmp(evsel->name, "numpmu") == 0);
 	return TEST_OK;
 }
 
@@ -1425,7 +1414,7 @@ static int test__checkevent_config_cache(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong name setting", evsel__name_is(evsel, "cachepmu"));
+	TEST_ASSERT_VAL("wrong name setting", strcmp(evsel->name, "cachepmu") == 0);
 	return TEST_OK;
 }
 
@@ -1438,7 +1427,7 @@ static int test__intel_pt(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong name setting", evsel__name_is(evsel, "intel_pt//u"));
+	TEST_ASSERT_VAL("wrong name setting", strcmp(evsel->name, "intel_pt//u") == 0);
 	return TEST_OK;
 }
 
@@ -1446,7 +1435,7 @@ static int test__checkevent_complex_name(struct evlist *evlist)
 {
 	struct evsel *evsel = evlist__first(evlist);
 
-	TEST_ASSERT_VAL("wrong complex name parsing", evsel__name_is(evsel, "COMPLEX_CYCLES_NAME:orig=cycles,desc=chip-clock-ticks"));
+	TEST_ASSERT_VAL("wrong complex name parsing", strcmp(evsel->name, "COMPLEX_CYCLES_NAME:orig=cycles,desc=chip-clock-ticks") == 0);
 	return TEST_OK;
 }
 
@@ -2015,7 +2004,7 @@ struct terms_test {
 
 static const struct terms_test test__terms[] = {
 	[0] = {
-		.str   = "config=10,config1,config2=3,config3=4,umask=1,read,r0xead",
+		.str   = "config=10,config1,config2=3,umask=1,read,r0xead",
 		.check = test__checkterms_simple,
 	},
 };
@@ -2114,7 +2103,7 @@ static int test_event_fake_pmu(const char *str)
 
 	parse_events_error__init(&err);
 	perf_pmu__test_parse_init();
-	ret = __parse_events(evlist, str, &err, &perf_pmu__fake, /*warn_if_reordered=*/true);
+	ret = __parse_events(evlist, str, &err, &perf_pmu__fake);
 	if (ret) {
 		pr_debug("failed to parse event '%s', err %d, str '%s'\n",
 			 str, ret, err.str);

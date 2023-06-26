@@ -114,21 +114,19 @@ static bool dsa_port_can_configure_learning(struct dsa_port *dp)
 	return !err;
 }
 
-bool dsa_port_supports_hwtstamp(struct dsa_port *dp)
+bool dsa_port_supports_hwtstamp(struct dsa_port *dp, struct ifreq *ifr)
 {
 	struct dsa_switch *ds = dp->ds;
-	struct ifreq ifr = {};
 	int err;
 
 	if (!ds->ops->port_hwtstamp_get || !ds->ops->port_hwtstamp_set)
 		return false;
 
 	/* "See through" shim implementations of the "get" method.
-	 * Since we can't cook up a complete ioctl request structure, this will
-	 * fail in copy_to_user() with -EFAULT, which hopefully is enough to
-	 * detect a valid implementation.
+	 * This will clobber the ifreq structure, but we will either return an
+	 * error, or the master will overwrite it with proper values.
 	 */
-	err = ds->ops->port_hwtstamp_get(ds, dp->index, &ifr);
+	err = ds->ops->port_hwtstamp_get(ds, dp->index, ifr);
 	return err != -EOPNOTSUPP;
 }
 
@@ -1030,6 +1028,9 @@ static int dsa_port_host_fdb_add(struct dsa_port *dp,
 		.db = db,
 	};
 
+	if (!dp->ds->fdb_isolation)
+		info.db.bridge.num = 0;
+
 	return dsa_port_notify(dp, DSA_NOTIFIER_HOST_FDB_ADD, &info);
 }
 
@@ -1053,9 +1054,6 @@ int dsa_port_bridge_host_fdb_add(struct dsa_port *dp,
 		.bridge = *dp->bridge,
 	};
 	int err;
-
-	if (!dp->ds->fdb_isolation)
-		db.bridge.num = 0;
 
 	/* Avoid a call to __dev_set_promiscuity() on the master, which
 	 * requires rtnl_lock(), since we can't guarantee that is held here,
@@ -1081,6 +1079,9 @@ static int dsa_port_host_fdb_del(struct dsa_port *dp,
 		.db = db,
 	};
 
+	if (!dp->ds->fdb_isolation)
+		info.db.bridge.num = 0;
+
 	return dsa_port_notify(dp, DSA_NOTIFIER_HOST_FDB_DEL, &info);
 }
 
@@ -1104,9 +1105,6 @@ int dsa_port_bridge_host_fdb_del(struct dsa_port *dp,
 		.bridge = *dp->bridge,
 	};
 	int err;
-
-	if (!dp->ds->fdb_isolation)
-		db.bridge.num = 0;
 
 	if (master->priv_flags & IFF_UNICAST_FLT) {
 		err = dev_uc_del(master, addr);
@@ -1212,6 +1210,9 @@ static int dsa_port_host_mdb_add(const struct dsa_port *dp,
 		.db = db,
 	};
 
+	if (!dp->ds->fdb_isolation)
+		info.db.bridge.num = 0;
+
 	return dsa_port_notify(dp, DSA_NOTIFIER_HOST_MDB_ADD, &info);
 }
 
@@ -1236,9 +1237,6 @@ int dsa_port_bridge_host_mdb_add(const struct dsa_port *dp,
 	};
 	int err;
 
-	if (!dp->ds->fdb_isolation)
-		db.bridge.num = 0;
-
 	err = dev_mc_add(master, mdb->addr);
 	if (err)
 		return err;
@@ -1255,6 +1253,9 @@ static int dsa_port_host_mdb_del(const struct dsa_port *dp,
 		.mdb = mdb,
 		.db = db,
 	};
+
+	if (!dp->ds->fdb_isolation)
+		info.db.bridge.num = 0;
 
 	return dsa_port_notify(dp, DSA_NOTIFIER_HOST_MDB_DEL, &info);
 }
@@ -1279,9 +1280,6 @@ int dsa_port_bridge_host_mdb_del(const struct dsa_port *dp,
 		.bridge = *dp->bridge,
 	};
 	int err;
-
-	if (!dp->ds->fdb_isolation)
-		db.bridge.num = 0;
 
 	err = dev_mc_del(master, mdb->addr);
 	if (err)

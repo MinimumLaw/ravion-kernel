@@ -543,7 +543,7 @@ err_v4l2:
 	return ret;
 }
 
-static void cedrus_remove(struct platform_device *pdev)
+static int cedrus_remove(struct platform_device *pdev)
 {
 	struct cedrus_dev *dev = platform_get_drvdata(pdev);
 
@@ -559,6 +559,8 @@ static void cedrus_remove(struct platform_device *pdev)
 	v4l2_device_unregister(&dev->v4l2_dev);
 
 	cedrus_hw_remove(dev);
+
+	return 0;
 }
 
 static const struct cedrus_variant sun4i_a10_cedrus_variant = {
@@ -705,7 +707,7 @@ static const struct dev_pm_ops cedrus_dev_pm_ops = {
 
 static struct platform_driver cedrus_driver = {
 	.probe		= cedrus_probe,
-	.remove_new	= cedrus_remove,
+	.remove		= cedrus_remove,
 	.driver		= {
 		.name		= CEDRUS_NAME,
 		.of_match_table	= of_match_ptr(cedrus_dt_match),

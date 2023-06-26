@@ -1914,6 +1914,7 @@ static void kvaser_pciefd_remove(struct pci_dev *pdev)
 
 	free_irq(pcie->pci->irq, pcie);
 
+	pci_clear_master(pdev);
 	pci_iounmap(pdev, pcie->reg_base);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);

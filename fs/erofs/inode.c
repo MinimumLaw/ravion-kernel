@@ -23,8 +23,11 @@ static void *erofs_read_inode(struct erofs_buf *buf,
 	unsigned int ifmt;
 	int err;
 
-	blkaddr = erofs_blknr(sb, inode_loc);
-	*ofs = erofs_blkoff(sb, inode_loc);
+	blkaddr = erofs_blknr(inode_loc);
+	*ofs = erofs_blkoff(inode_loc);
+
+	erofs_dbg("%s, reading inode nid %llu at %u of blkaddr %u",
+		  __func__, vi->nid, *ofs, blkaddr);
 
 	kaddr = erofs_read_metabuf(buf, sb, blkaddr, EROFS_KMAP);
 	if (IS_ERR(kaddr)) {
@@ -55,11 +58,11 @@ static void *erofs_read_inode(struct erofs_buf *buf,
 	case EROFS_INODE_LAYOUT_EXTENDED:
 		vi->inode_isize = sizeof(struct erofs_inode_extended);
 		/* check if the extended inode acrosses block boundary */
-		if (*ofs + vi->inode_isize <= sb->s_blocksize) {
+		if (*ofs + vi->inode_isize <= EROFS_BLKSIZ) {
 			*ofs += vi->inode_isize;
 			die = (struct erofs_inode_extended *)dic;
 		} else {
-			const unsigned int gotten = sb->s_blocksize - *ofs;
+			const unsigned int gotten = EROFS_BLKSIZ - *ofs;
 
 			copied = kmalloc(vi->inode_isize, GFP_NOFS);
 			if (!copied) {
@@ -173,7 +176,7 @@ static void *erofs_read_inode(struct erofs_buf *buf,
 			err = -EOPNOTSUPP;
 			goto err_out;
 		}
-		vi->chunkbits = sb->s_blocksize_bits +
+		vi->chunkbits = LOG_BLOCK_SIZE +
 			(vi->chunkformat & EROFS_CHUNK_FORMAT_BLKBITS_MASK);
 	}
 	inode->i_mtime.tv_sec = inode->i_ctime.tv_sec;
@@ -185,12 +188,11 @@ static void *erofs_read_inode(struct erofs_buf *buf,
 	if (test_opt(&sbi->opt, DAX_ALWAYS) && S_ISREG(inode->i_mode) &&
 	    vi->datalayout == EROFS_INODE_FLAT_PLAIN)
 		inode->i_flags |= S_DAX;
-
 	if (!nblks)
 		/* measure inode.i_blocks as generic filesystems */
-		inode->i_blocks = round_up(inode->i_size, sb->s_blocksize) >> 9;
+		inode->i_blocks = roundup(inode->i_size, EROFS_BLKSIZ) >> 9;
 	else
-		inode->i_blocks = nblks << (sb->s_blocksize_bits - 9);
+		inode->i_blocks = nblks << LOG_SECTORS_PER_BLOCK;
 	return kaddr;
 
 bogusimode:
@@ -208,12 +210,11 @@ static int erofs_fill_symlink(struct inode *inode, void *kaddr,
 			      unsigned int m_pofs)
 {
 	struct erofs_inode *vi = EROFS_I(inode);
-	unsigned int bsz = i_blocksize(inode);
 	char *lnk;
 
 	/* if it cannot be handled with fast symlink scheme */
 	if (vi->datalayout != EROFS_INODE_FLAT_INLINE ||
-	    inode->i_size >= bsz || inode->i_size < 0) {
+	    inode->i_size >= EROFS_BLKSIZ || inode->i_size < 0) {
 		inode->i_op = &erofs_symlink_iops;
 		return 0;
 	}
@@ -224,7 +225,7 @@ static int erofs_fill_symlink(struct inode *inode, void *kaddr,
 
 	m_pofs += vi->xattr_isize;
 	/* inline symlink data shouldn't cross block boundary */
-	if (m_pofs + inode->i_size > bsz) {
+	if (m_pofs + inode->i_size > EROFS_BLKSIZ) {
 		kfree(lnk);
 		erofs_err(inode->i_sb,
 			  "inline data cross block boundary @ nid %llu",
@@ -288,15 +289,10 @@ static int erofs_fill_inode(struct inode *inode)
 	}
 
 	if (erofs_inode_is_data_compressed(vi->datalayout)) {
-#ifdef CONFIG_EROFS_FS_ZIP
-		if (!erofs_is_fscache_mode(inode->i_sb) &&
-		    inode->i_sb->s_blocksize_bits == PAGE_SHIFT) {
-			inode->i_mapping->a_ops = &z_erofs_aops;
-			err = 0;
-			goto out_unlock;
-		}
-#endif
-		err = -EOPNOTSUPP;
+		if (!erofs_is_fscache_mode(inode->i_sb))
+			err = z_erofs_fill_inode(inode);
+		else
+			err = -EOPNOTSUPP;
 		goto out_unlock;
 	}
 	inode->i_mapping->a_ops = &erofs_raw_access_aops;

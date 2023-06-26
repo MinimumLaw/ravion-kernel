@@ -89,7 +89,6 @@ void dc_fpu_begin(const char *function_name, const int line)
 
 	if (*pcpu == 1) {
 #if defined(CONFIG_X86)
-		migrate_disable();
 		kernel_fpu_begin();
 #elif defined(CONFIG_PPC64)
 		if (cpu_has_feature(CPU_FTR_VSX_COMP)) {
@@ -130,7 +129,6 @@ void dc_fpu_end(const char *function_name, const int line)
 	if (*pcpu <= 0) {
 #if defined(CONFIG_X86)
 		kernel_fpu_end();
-		migrate_enable();
 #elif defined(CONFIG_PPC64)
 		if (cpu_has_feature(CPU_FTR_VSX_COMP)) {
 			disable_kernel_vsx();

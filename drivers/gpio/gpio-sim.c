@@ -696,9 +696,6 @@ static char **gpio_sim_make_line_names(struct gpio_sim_bank *bank,
 	char **line_names;
 
 	list_for_each_entry(line, &bank->line_list, siblings) {
-		if (line->offset >= bank->num_lines)
-			continue;
-
 		if (line->name) {
 			if (line->offset > max_offset)
 				max_offset = line->offset;
@@ -725,9 +722,6 @@ static char **gpio_sim_make_line_names(struct gpio_sim_bank *bank,
 		return ERR_PTR(-ENOMEM);
 
 	list_for_each_entry(line, &bank->line_list, siblings) {
-		if (line->offset >= bank->num_lines)
-			continue;
-
 		if (line->name && (line->offset <= max_offset))
 			line_names[line->offset] = line->name;
 	}
@@ -762,9 +756,6 @@ static int gpio_sim_add_hogs(struct gpio_sim_device *dev)
 
 	list_for_each_entry(bank, &dev->bank_list, siblings) {
 		list_for_each_entry(line, &bank->line_list, siblings) {
-			if (line->offset >= bank->num_lines)
-				continue;
-
 			if (line->hog)
 				num_hogs++;
 		}
@@ -780,9 +771,6 @@ static int gpio_sim_add_hogs(struct gpio_sim_device *dev)
 
 	list_for_each_entry(bank, &dev->bank_list, siblings) {
 		list_for_each_entry(line, &bank->line_list, siblings) {
-			if (line->offset >= bank->num_lines)
-				continue;
-
 			if (!line->hog)
 				continue;
 
@@ -967,9 +955,9 @@ static void gpio_sim_device_deactivate_unlocked(struct gpio_sim_device *dev)
 
 	swnode = dev_fwnode(&dev->pdev->dev);
 	platform_device_unregister(dev->pdev);
-	gpio_sim_remove_hogs(dev);
 	gpio_sim_remove_swnode_recursive(swnode);
 	dev->pdev = NULL;
+	gpio_sim_remove_hogs(dev);
 }
 
 static ssize_t

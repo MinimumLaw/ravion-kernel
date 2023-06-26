@@ -1354,8 +1354,7 @@ static int rk808_regulator_probe(struct platform_device *pdev)
 static struct platform_driver rk808_regulator_driver = {
 	.probe = rk808_regulator_probe,
 	.driver = {
-		.name = "rk808-regulator",
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+		.name = "rk808-regulator"
 	},
 };
 

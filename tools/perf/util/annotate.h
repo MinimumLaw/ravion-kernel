@@ -94,8 +94,8 @@ struct annotation_options {
 	int  min_pcnt;
 	int  max_lines;
 	int  context;
-	char *objdump_path;
-	char *disassembler_style;
+	const char *objdump_path;
+	const char *disassembler_style;
 	const char *prefix;
 	const char *prefix_strip;
 	unsigned int percent_type;
@@ -108,6 +108,8 @@ enum {
 };
 
 #define ANNOTATION__MIN_OFFSET_LEVEL ANNOTATION__OFFSET_JUMP_TARGETS
+
+extern struct annotation_options annotation__default_options;
 
 struct annotation;
 
@@ -415,9 +417,6 @@ static inline int symbol__tui_annotate(struct map_symbol *ms __maybe_unused,
 	return 0;
 }
 #endif
-
-void annotation_options__init(struct annotation_options *opt);
-void annotation_options__exit(struct annotation_options *opt);
 
 void annotation_config__init(struct annotation_options *opt);
 

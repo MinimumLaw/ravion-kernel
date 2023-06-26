@@ -74,6 +74,11 @@
 #define MB_DEFAULT_GROUP_PREALLOC	512
 
 /*
+ * maximum length of inode prealloc list
+ */
+#define MB_DEFAULT_MAX_INODE_PREALLOC	512
+
+/*
  * Number of groups to search linearly before performing group scanning
  * optimization.
  */
@@ -109,10 +114,7 @@ struct ext4_free_data {
 };
 
 struct ext4_prealloc_space {
-	union {
-		struct rb_node	inode_node;		/* for inode PA rbtree */
-		struct list_head	lg_list;	/* for lg PAs */
-	} pa_node;
+	struct list_head	pa_inode_list;
 	struct list_head	pa_group_list;
 	union {
 		struct list_head pa_tmp_list;
@@ -126,11 +128,8 @@ struct ext4_prealloc_space {
 	ext4_grpblk_t		pa_len;		/* len of preallocated chunk */
 	ext4_grpblk_t		pa_free;	/* how many blocks are free */
 	unsigned short		pa_type;	/* pa type. inode or group */
-	union {
-		rwlock_t		*inode_lock;	/* locks the rbtree holding this PA */
-		spinlock_t		*lg_lock;	/* locks the lg list holding this PA */
-	} pa_node_lock;
-	struct inode		*pa_inode;	/* used to get the inode during group discard */
+	spinlock_t		*pa_obj_lock;
+	struct inode		*pa_inode;	/* hack, for history only */
 };
 
 enum {

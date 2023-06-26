@@ -817,10 +817,10 @@ NOTE:
 
 NAPI
 ----
-
 This driver supports NAPI (Rx polling mode).
+For more information on NAPI, see
+https://wiki.linuxfoundation.org/networking/napi
 
-See :ref:`Documentation/networking/napi.rst <napi>` for more information.
 
 MACVLAN
 -------
@@ -1026,9 +1026,12 @@ Support
 For general information, go to the Intel support website at:
 https://www.intel.com/support/
 
+or the Intel Wired Networking project hosted by Sourceforge at:
+https://sourceforge.net/projects/e1000
+
 If an issue is identified with the released source code on a supported kernel
 with a supported adapter, email the specific information related to the issue
-to intel-wired-lan@lists.osuosl.org.
+to e1000-devel@lists.sf.net.
 
 
 Trademarks

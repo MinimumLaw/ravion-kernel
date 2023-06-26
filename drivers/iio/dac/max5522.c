@@ -52,7 +52,7 @@ struct max5522_state {
 	} \
 }
 
-static const struct iio_chan_spec max5522_channels[] = {
+const struct iio_chan_spec max5522_channels[] = {
 	MAX5522_CHANNEL(0),
 	MAX5522_CHANNEL(1),
 };

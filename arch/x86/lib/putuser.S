@@ -33,20 +33,20 @@
  * as they get called from within inline assembly.
  */
 
-.macro check_range size:req
-.if IS_ENABLED(CONFIG_X86_64)
-	mov %rcx, %rbx
-	sar $63, %rbx
-	or %rbx, %rcx
-.else
-	cmp $TASK_SIZE_MAX-\size+1, %ecx
-	jae .Lbad_put_user
-.endif
-.endm
+#ifdef CONFIG_X86_5LEVEL
+#define LOAD_TASK_SIZE_MINUS_N(n) \
+	ALTERNATIVE __stringify(mov $((1 << 47) - 4096 - (n)),%rbx), \
+		    __stringify(mov $((1 << 56) - 4096 - (n)),%rbx), X86_FEATURE_LA57
+#else
+#define LOAD_TASK_SIZE_MINUS_N(n) \
+	mov $(TASK_SIZE_MAX - (n)),%_ASM_BX
+#endif
 
 .text
 SYM_FUNC_START(__put_user_1)
-	check_range size=1
+	LOAD_TASK_SIZE_MINUS_N(0)
+	cmp %_ASM_BX,%_ASM_CX
+	jae .Lbad_put_user
 	ASM_STAC
 1:	movb %al,(%_ASM_CX)
 	xor %ecx,%ecx
@@ -66,7 +66,9 @@ SYM_FUNC_END(__put_user_nocheck_1)
 EXPORT_SYMBOL(__put_user_nocheck_1)
 
 SYM_FUNC_START(__put_user_2)
-	check_range size=2
+	LOAD_TASK_SIZE_MINUS_N(1)
+	cmp %_ASM_BX,%_ASM_CX
+	jae .Lbad_put_user
 	ASM_STAC
 3:	movw %ax,(%_ASM_CX)
 	xor %ecx,%ecx
@@ -86,7 +88,9 @@ SYM_FUNC_END(__put_user_nocheck_2)
 EXPORT_SYMBOL(__put_user_nocheck_2)
 
 SYM_FUNC_START(__put_user_4)
-	check_range size=4
+	LOAD_TASK_SIZE_MINUS_N(3)
+	cmp %_ASM_BX,%_ASM_CX
+	jae .Lbad_put_user
 	ASM_STAC
 5:	movl %eax,(%_ASM_CX)
 	xor %ecx,%ecx
@@ -106,7 +110,9 @@ SYM_FUNC_END(__put_user_nocheck_4)
 EXPORT_SYMBOL(__put_user_nocheck_4)
 
 SYM_FUNC_START(__put_user_8)
-	check_range size=8
+	LOAD_TASK_SIZE_MINUS_N(7)
+	cmp %_ASM_BX,%_ASM_CX
+	jae .Lbad_put_user
 	ASM_STAC
 7:	mov %_ASM_AX,(%_ASM_CX)
 #ifdef CONFIG_X86_32
@@ -138,15 +144,15 @@ SYM_CODE_START_LOCAL(.Lbad_put_user_clac)
 	RET
 SYM_CODE_END(.Lbad_put_user_clac)
 
-	_ASM_EXTABLE(1b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(2b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(3b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(4b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(5b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(6b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(7b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(9b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(1b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(2b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(3b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(4b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(5b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(6b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(7b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(9b, .Lbad_put_user_clac)
 #ifdef CONFIG_X86_32
-	_ASM_EXTABLE(8b, .Lbad_put_user_clac)
-	_ASM_EXTABLE(10b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(8b, .Lbad_put_user_clac)
+	_ASM_EXTABLE_UA(10b, .Lbad_put_user_clac)
 #endif

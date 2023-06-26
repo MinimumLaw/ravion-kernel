@@ -63,7 +63,7 @@
 			gpios = <&pm8150_gpios 1 GPIO_ACTIVE_LOW>;
 			debounce-interval = <15>;
 			linux,can-disable;
-			wakeup-source;
+			gpio-key,wakeup;
 		};
 	};
 
@@ -625,6 +625,7 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
+		input-enable;
 	};
 
 	ap2mdm_default: ap2mdm-default-state {

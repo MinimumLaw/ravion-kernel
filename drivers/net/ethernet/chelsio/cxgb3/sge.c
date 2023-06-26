@@ -166,6 +166,11 @@ static u8 flit_desc_map[] = {
 #endif
 };
 
+static inline struct sge_qset *fl_to_qset(const struct sge_fl *q, int qidx)
+{
+	return container_of(q, struct sge_qset, fl[qidx]);
+}
+
 static inline struct sge_qset *rspq_to_qset(const struct sge_rspq *q)
 {
 	return container_of(q, struct sge_qset, rspq);

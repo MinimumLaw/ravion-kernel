@@ -1291,7 +1291,7 @@ static struct i2c_driver maven_driver={
 	.driver = {
 		.name	= "maven",
 	},
-	.probe		= maven_probe,
+	.probe_new	= maven_probe,
 	.remove		= maven_remove,
 	.id_table	= maven_id,
 };

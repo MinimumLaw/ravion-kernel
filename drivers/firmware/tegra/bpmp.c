@@ -764,19 +764,19 @@ static int tegra_bpmp_probe(struct platform_device *pdev)
 	if (err < 0)
 		goto free_mrq;
 
-	if (of_property_present(pdev->dev.of_node, "#clock-cells")) {
+	if (of_find_property(pdev->dev.of_node, "#clock-cells", NULL)) {
 		err = tegra_bpmp_init_clocks(bpmp);
 		if (err < 0)
 			goto free_mrq;
 	}
 
-	if (of_property_present(pdev->dev.of_node, "#reset-cells")) {
+	if (of_find_property(pdev->dev.of_node, "#reset-cells", NULL)) {
 		err = tegra_bpmp_init_resets(bpmp);
 		if (err < 0)
 			goto free_mrq;
 	}
 
-	if (of_property_present(pdev->dev.of_node, "#power-domain-cells")) {
+	if (of_find_property(pdev->dev.of_node, "#power-domain-cells", NULL)) {
 		err = tegra_bpmp_init_powergates(bpmp);
 		if (err < 0)
 			goto free_mrq;

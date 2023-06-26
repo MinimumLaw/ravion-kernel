@@ -44,7 +44,7 @@ required:
   - clock-names
   - clocks
 
-unevaluatedProperties: false
+additionalProperties: true
 
 examples:
   - |

@@ -114,6 +114,7 @@ struct ov2680_device {
 	struct mutex input_lock;
 	struct i2c_client *client;
 	struct gpio_desc *powerdown;
+	struct gpio_desc *powerdown_alt;
 	bool is_streaming;
 
 	struct ov2680_mode {

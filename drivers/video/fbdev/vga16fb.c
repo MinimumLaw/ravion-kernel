@@ -1401,12 +1401,14 @@ static int vga16fb_probe(struct platform_device *dev)
 	return ret;
 }
 
-static void vga16fb_remove(struct platform_device *dev)
+static int vga16fb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 
 	if (info)
 		unregister_framebuffer(info);
+
+	return 0;
 }
 
 static const struct platform_device_id vga16fb_driver_id_table[] = {
@@ -1418,7 +1420,7 @@ MODULE_DEVICE_TABLE(platform, vga16fb_driver_id_table);
 
 static struct platform_driver vga16fb_driver = {
 	.probe = vga16fb_probe,
-	.remove_new = vga16fb_remove,
+	.remove = vga16fb_remove,
 	.driver = {
 		.name = "vga16fb",
 	},

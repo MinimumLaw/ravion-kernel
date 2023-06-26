@@ -55,20 +55,16 @@ __chk_nr()
 {
 	local command="$1"
 	local expected=$2
-	local msg="$3"
-	local skip="${4:-SKIP}"
-	local nr
+	local msg nr
 
+	shift 2
+	msg=$*
 	nr=$(eval $command)
 
 	printf "%-50s" "$msg"
 	if [ $nr != $expected ]; then
-		if [ $nr = "$skip" ] && ! mptcp_lib_expect_all_features; then
-			echo "[ skip ] Feature probably not supported"
-		else
-			echo "[ fail ] expected $expected found $nr"
-			ret=$test_cnt
-		fi
+		echo "[ fail ] expected $expected found $nr"
+		ret=$test_cnt
 	else
 		echo "[  ok  ]"
 	fi
@@ -80,12 +76,12 @@ __chk_msk_nr()
 	local condition=$1
 	shift 1
 
-	__chk_nr "ss -inmHMN $ns | $condition" "$@"
+	__chk_nr "ss -inmHMN $ns | $condition" $*
 }
 
 chk_msk_nr()
 {
-	__chk_msk_nr "grep -c token:" "$@"
+	__chk_msk_nr "grep -c token:" $*
 }
 
 wait_msk_nr()
@@ -123,26 +119,37 @@ wait_msk_nr()
 
 chk_msk_fallback_nr()
 {
-	__chk_msk_nr "grep -c fallback" "$@"
+		__chk_msk_nr "grep -c fallback" $*
 }
 
 chk_msk_remote_key_nr()
 {
-	__chk_msk_nr "grep -c remote_key" "$@"
+		__chk_msk_nr "grep -c remote_key" $*
 }
 
 __chk_listen()
 {
 	local filter="$1"
 	local expected=$2
-	local msg="$3"
 
-	__chk_nr "ss -N $ns -Ml '$filter' | grep -c LISTEN" "$expected" "$msg" 0
+	shift 2
+	msg=$*
+
+	nr=$(ss -N $ns -Ml "$filter" | grep -c LISTEN)
+	printf "%-50s" "$msg"
+
+	if [ $nr != $expected ]; then
+		echo "[ fail ] expected $expected found $nr"
+		ret=$test_cnt
+	else
+		echo "[  ok  ]"
+	fi
 }
 
 chk_msk_listen()
 {
 	lport=$1
+	local msg="check for listen socket"
 
 	# destination port search should always return empty list
 	__chk_listen "dport $lport" 0 "listen match for dport $lport"
@@ -160,8 +167,9 @@ chk_msk_listen()
 chk_msk_inuse()
 {
 	local expected=$1
-	local msg="$2"
 	local listen_nr
+
+	shift 1
 
 	listen_nr=$(ss -N "${ns}" -Ml | grep -c LISTEN)
 	expected=$((expected + listen_nr))
@@ -173,7 +181,7 @@ chk_msk_inuse()
 		sleep 0.1
 	done
 
-	__chk_nr get_msk_inuse $expected "$msg" 0
+	__chk_nr get_msk_inuse $expected $*
 }
 
 # $1: ns, $2: port

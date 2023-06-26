@@ -577,7 +577,7 @@ unprepare_hclk:
 	return ret;
 }
 
-static void microchip_xisc_remove(struct platform_device *pdev)
+static int microchip_xisc_remove(struct platform_device *pdev)
 {
 	struct isc_device *isc = platform_get_drvdata(pdev);
 
@@ -592,6 +592,8 @@ static void microchip_xisc_remove(struct platform_device *pdev)
 	clk_disable_unprepare(isc->hclock);
 
 	microchip_isc_clk_cleanup(isc);
+
+	return 0;
 }
 
 static int __maybe_unused xisc_runtime_suspend(struct device *dev)
@@ -629,7 +631,7 @@ MODULE_DEVICE_TABLE(of, microchip_xisc_of_match);
 
 static struct platform_driver microchip_xisc_driver = {
 	.probe	= microchip_xisc_probe,
-	.remove_new = microchip_xisc_remove,
+	.remove	= microchip_xisc_remove,
 	.driver	= {
 		.name		= "microchip-sama7g5-xisc",
 		.pm		= &microchip_xisc_dev_pm_ops,

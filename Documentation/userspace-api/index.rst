@@ -23,7 +23,6 @@ place where this information is gathered.
    spec_ctrl
    accelerators/ocxl
    ebpf/index
-   ELF
    ioctl/index
    iommu
    iommufd

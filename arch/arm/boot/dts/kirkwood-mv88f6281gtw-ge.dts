@@ -149,7 +149,7 @@
 
 			port@5 {
 				reg = <5>;
-				phy-mode = "rgmii-id";
+				label = "cpu";
 				ethernet = <&eth0port>;
 				fixed-link {
 					speed = <1000>;
@@ -166,7 +166,6 @@
 	ethernet0-port@0 {
 		speed = <1000>;
 		duplex = <1>;
-		phy-mode = "rgmii";
 	};
 };
 

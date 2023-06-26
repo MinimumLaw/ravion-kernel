@@ -743,12 +743,14 @@ fail:
 	return ret;
 }
 
-static void imx_rpmsg_pcm_remove(struct platform_device *pdev)
+static int imx_rpmsg_pcm_remove(struct platform_device *pdev)
 {
 	struct rpmsg_info *info = platform_get_drvdata(pdev);
 
 	if (info->rpmsg_wq)
 		destroy_workqueue(info->rpmsg_wq);
+
+	return 0;
 }
 
 #ifdef CONFIG_PM
@@ -819,7 +821,7 @@ static const struct dev_pm_ops imx_rpmsg_pcm_pm_ops = {
 
 static struct platform_driver imx_pcm_rpmsg_driver = {
 	.probe  = imx_rpmsg_pcm_probe,
-	.remove_new = imx_rpmsg_pcm_remove,
+	.remove	= imx_rpmsg_pcm_remove,
 	.driver = {
 		.name = IMX_PCM_DRV_NAME,
 		.pm = &imx_rpmsg_pcm_pm_ops,

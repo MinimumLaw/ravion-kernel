@@ -4,7 +4,6 @@
  *
  *  Copyright (C) 2002 - 2009  Paul Mundt
  */
-#include <linux/cpu.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/mm.h>
@@ -30,7 +29,7 @@ void default_idle(void)
 	clear_bl_bit();
 }
 
-void __noreturn arch_cpu_idle_dead(void)
+void arch_cpu_idle_dead(void)
 {
 	play_dead();
 }

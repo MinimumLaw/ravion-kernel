@@ -497,14 +497,10 @@ int hl_sysfs_init(struct hl_device *hdev)
 	if (rc) {
 		dev_err(hdev->dev,
 			"Failed to add groups to device, error %d\n", rc);
-		goto remove_groups;
+		return rc;
 	}
 
 	return 0;
-
-remove_groups:
-	device_remove_groups(hdev->dev, hl_dev_attr_groups);
-	return rc;
 }
 
 void hl_sysfs_fini(struct hl_device *hdev)

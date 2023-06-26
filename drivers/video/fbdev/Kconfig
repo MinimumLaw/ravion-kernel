@@ -3,13 +3,16 @@
 # fbdev configuration
 #
 
+config FB_CMDLINE
+	bool
+
 config FB_NOTIFY
 	bool
 
 menuconfig FB
 	tristate "Support for frame buffer devices"
+	select FB_CMDLINE
 	select FB_NOTIFY
-	select VIDEO_CMDLINE
 	help
 	  The frame buffer device provides an abstraction for the graphics
 	  hardware. It represents the frame buffer of some video hardware and
@@ -124,7 +127,7 @@ config FB_PROVIDE_GET_FB_UNMAPPED_AREA
 	depends on FB
 	help
 	  Allow generic frame-buffer to provide get_fb_unmapped_area
-	  function to provide shareable character device support on nommu.
+	  function.
 
 menuconfig FB_FOREIGN_ENDIAN
 	bool "Framebuffer foreign endianness support"

@@ -322,16 +322,16 @@ expand:
 		struct folio *folio;
 
 		folio = filemap_get_folio(mapping, i);
-		if (IS_ERR(folio)) {
+		if (!folio) {
 			if (test_and_clear_bit(AFS_VNODE_DIR_VALID, &dvnode->flags))
 				afs_stat_v(dvnode, n_inval);
+
+			ret = -ENOMEM;
 			folio = __filemap_get_folio(mapping,
 						    i, FGP_LOCK | FGP_CREAT,
 						    mapping->gfp_mask);
-			if (IS_ERR(folio)) {
-				ret = PTR_ERR(folio);
+			if (!folio)
 				goto error;
-			}
 			folio_attach_private(folio, (void *)1);
 			folio_unlock(folio);
 		}
@@ -528,7 +528,7 @@ static int afs_dir_iterate(struct inode *dir, struct dir_context *ctx,
 		 */
 		folio = __filemap_get_folio(dir->i_mapping, ctx->pos / PAGE_SIZE,
 					    FGP_ACCESSED, 0);
-		if (IS_ERR(folio)) {
+		if (!folio) {
 			ret = afs_bad(dvnode, afs_file_error_dir_missing_page);
 			break;
 		}

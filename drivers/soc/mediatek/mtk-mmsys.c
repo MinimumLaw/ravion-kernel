@@ -15,7 +15,6 @@
 
 #include "mtk-mmsys.h"
 #include "mt8167-mmsys.h"
-#include "mt8173-mmsys.h"
 #include "mt8183-mmsys.h"
 #include "mt8186-mmsys.h"
 #include "mt8188-mmsys.h"
@@ -41,14 +40,6 @@ static const struct mtk_mmsys_driver_data mt6779_mmsys_driver_data = {
 	.clk_driver = "clk-mt6779-mm",
 };
 
-static const struct mtk_mmsys_driver_data mt6795_mmsys_driver_data = {
-	.clk_driver = "clk-mt6795-mm",
-	.routes = mt8173_mmsys_routing_table,
-	.num_routes = ARRAY_SIZE(mt8173_mmsys_routing_table),
-	.sw0_rst_offset = MT8183_MMSYS_SW0_RST_B,
-	.num_resets = 64,
-};
-
 static const struct mtk_mmsys_driver_data mt6797_mmsys_driver_data = {
 	.clk_driver = "clk-mt6797-mm",
 };
@@ -61,10 +52,10 @@ static const struct mtk_mmsys_driver_data mt8167_mmsys_driver_data = {
 
 static const struct mtk_mmsys_driver_data mt8173_mmsys_driver_data = {
 	.clk_driver = "clk-mt8173-mm",
-	.routes = mt8173_mmsys_routing_table,
-	.num_routes = ARRAY_SIZE(mt8173_mmsys_routing_table),
+	.routes = mmsys_default_routing_table,
+	.num_routes = ARRAY_SIZE(mmsys_default_routing_table),
 	.sw0_rst_offset = MT8183_MMSYS_SW0_RST_B,
-	.num_resets = 64,
+	.num_resets = 32,
 };
 
 static const struct mtk_mmsys_driver_data mt8183_mmsys_driver_data = {
@@ -130,8 +121,6 @@ static const struct mtk_mmsys_driver_data mt8365_mmsys_driver_data = {
 struct mtk_mmsys {
 	void __iomem *regs;
 	const struct mtk_mmsys_driver_data *data;
-	struct platform_device *clks_pdev;
-	struct platform_device *drm_pdev;
 	spinlock_t lock; /* protects mmsys_sw_rst_b reg */
 	struct reset_controller_dev rcdev;
 	struct cmdq_client_reg cmdq_base;
@@ -140,18 +129,21 @@ struct mtk_mmsys {
 static void mtk_mmsys_update_bits(struct mtk_mmsys *mmsys, u32 offset, u32 mask, u32 val,
 				  struct cmdq_pkt *cmdq_pkt)
 {
-	int ret;
 	u32 tmp;
 
-	if (mmsys->cmdq_base.size && cmdq_pkt) {
-		ret = cmdq_pkt_write_mask(cmdq_pkt, mmsys->cmdq_base.subsys,
-					  mmsys->cmdq_base.offset + offset, val,
-					  mask);
-		if (ret)
-			pr_debug("CMDQ unavailable: using CPU write\n");
-		else
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
+	if (cmdq_pkt) {
+		if (mmsys->cmdq_base.size == 0) {
+			pr_err("mmsys lose gce property, failed to update mmsys bits with cmdq");
 			return;
+		}
+		cmdq_pkt_write_mask(cmdq_pkt, mmsys->cmdq_base.subsys,
+				    mmsys->cmdq_base.offset + offset, val,
+				    mask);
+		return;
 	}
+#endif
+
 	tmp = readl_relaxed(mmsys->regs + offset);
 	tmp = (tmp & ~mask) | (val & mask);
 	writel_relaxed(tmp, mmsys->regs + offset);
@@ -250,50 +242,6 @@ void mtk_mmsys_ddp_dpi_fmt_config(struct device *dev, u32 val)
 }
 EXPORT_SYMBOL_GPL(mtk_mmsys_ddp_dpi_fmt_config);
 
-void mtk_mmsys_vpp_rsz_merge_config(struct device *dev, u32 id, bool enable,
-				    struct cmdq_pkt *cmdq_pkt)
-{
-	u32 reg;
-
-	switch (id) {
-	case 2:
-		reg = MT8195_SVPP2_BUF_BF_RSZ_SWITCH;
-		break;
-	case 3:
-		reg = MT8195_SVPP3_BUF_BF_RSZ_SWITCH;
-		break;
-	default:
-		dev_err(dev, "Invalid id %d\n", id);
-		return;
-	}
-
-	mtk_mmsys_update_bits(dev_get_drvdata(dev), reg, ~0, enable, cmdq_pkt);
-}
-EXPORT_SYMBOL_GPL(mtk_mmsys_vpp_rsz_merge_config);
-
-void mtk_mmsys_vpp_rsz_dcm_config(struct device *dev, bool enable,
-				  struct cmdq_pkt *cmdq_pkt)
-{
-	u32 client;
-
-	client = MT8195_SVPP1_MDP_RSZ;
-	mtk_mmsys_update_bits(dev_get_drvdata(dev),
-			      MT8195_VPP1_HW_DCM_1ST_DIS0, client,
-			      ((enable) ? client : 0), cmdq_pkt);
-	mtk_mmsys_update_bits(dev_get_drvdata(dev),
-			      MT8195_VPP1_HW_DCM_2ND_DIS0, client,
-			      ((enable) ? client : 0), cmdq_pkt);
-
-	client = MT8195_SVPP2_MDP_RSZ | MT8195_SVPP3_MDP_RSZ;
-	mtk_mmsys_update_bits(dev_get_drvdata(dev),
-			      MT8195_VPP1_HW_DCM_1ST_DIS1, client,
-			      ((enable) ? client : 0), cmdq_pkt);
-	mtk_mmsys_update_bits(dev_get_drvdata(dev),
-			      MT8195_VPP1_HW_DCM_2ND_DIS1, client,
-			      ((enable) ? client : 0), cmdq_pkt);
-}
-EXPORT_SYMBOL_GPL(mtk_mmsys_vpp_rsz_dcm_config);
-
 static int mtk_mmsys_reset_update(struct reset_controller_dev *rcdev, unsigned long id,
 				  bool assert)
 {
@@ -382,10 +330,11 @@ static int mtk_mmsys_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* CMDQ is optional */
+#if IS_REACHABLE(CONFIG_MTK_CMDQ)
 	ret = cmdq_dev_get_client_reg(dev, &mmsys->cmdq_base, 0);
 	if (ret)
 		dev_dbg(dev, "No mediatek,gce-client-reg!\n");
+#endif
 
 	platform_set_drvdata(pdev, mmsys);
 
@@ -393,7 +342,6 @@ static int mtk_mmsys_probe(struct platform_device *pdev)
 					     PLATFORM_DEVID_AUTO, NULL, 0);
 	if (IS_ERR(clks))
 		return PTR_ERR(clks);
-	mmsys->clks_pdev = clks;
 
 	if (mmsys->data->is_vppsys)
 		goto out_probe_done;
@@ -404,44 +352,78 @@ static int mtk_mmsys_probe(struct platform_device *pdev)
 		platform_device_unregister(clks);
 		return PTR_ERR(drm);
 	}
-	mmsys->drm_pdev = drm;
 
 out_probe_done:
 	return 0;
 }
 
-static int mtk_mmsys_remove(struct platform_device *pdev)
-{
-	struct mtk_mmsys *mmsys = platform_get_drvdata(pdev);
-
-	platform_device_unregister(mmsys->drm_pdev);
-	platform_device_unregister(mmsys->clks_pdev);
-
-	return 0;
-}
-
 static const struct of_device_id of_match_mtk_mmsys[] = {
-	{ .compatible = "mediatek,mt2701-mmsys", .data = &mt2701_mmsys_driver_data },
-	{ .compatible = "mediatek,mt2712-mmsys", .data = &mt2712_mmsys_driver_data },
-	{ .compatible = "mediatek,mt6779-mmsys", .data = &mt6779_mmsys_driver_data },
-	{ .compatible = "mediatek,mt6795-mmsys", .data = &mt6795_mmsys_driver_data },
-	{ .compatible = "mediatek,mt6797-mmsys", .data = &mt6797_mmsys_driver_data },
-	{ .compatible = "mediatek,mt8167-mmsys", .data = &mt8167_mmsys_driver_data },
-	{ .compatible = "mediatek,mt8173-mmsys", .data = &mt8173_mmsys_driver_data },
-	{ .compatible = "mediatek,mt8183-mmsys", .data = &mt8183_mmsys_driver_data },
-	{ .compatible = "mediatek,mt8186-mmsys", .data = &mt8186_mmsys_driver_data },
-	{ .compatible = "mediatek,mt8188-vdosys0", .data = &mt8188_vdosys0_driver_data },
-	{ .compatible = "mediatek,mt8192-mmsys", .data = &mt8192_mmsys_driver_data },
-	/* "mediatek,mt8195-mmsys" compatible is deprecated */
-	{ .compatible = "mediatek,mt8195-mmsys", .data = &mt8195_vdosys0_driver_data },
-	{ .compatible = "mediatek,mt8195-vdosys0", .data = &mt8195_vdosys0_driver_data },
-	{ .compatible = "mediatek,mt8195-vdosys1", .data = &mt8195_vdosys1_driver_data },
-	{ .compatible = "mediatek,mt8195-vppsys0", .data = &mt8195_vppsys0_driver_data },
-	{ .compatible = "mediatek,mt8195-vppsys1", .data = &mt8195_vppsys1_driver_data },
-	{ .compatible = "mediatek,mt8365-mmsys", .data = &mt8365_mmsys_driver_data },
-	{ /* sentinel */ }
+	{
+		.compatible = "mediatek,mt2701-mmsys",
+		.data = &mt2701_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt2712-mmsys",
+		.data = &mt2712_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt6779-mmsys",
+		.data = &mt6779_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt6797-mmsys",
+		.data = &mt6797_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8167-mmsys",
+		.data = &mt8167_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8173-mmsys",
+		.data = &mt8173_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8183-mmsys",
+		.data = &mt8183_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8186-mmsys",
+		.data = &mt8186_mmsys_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8188-vdosys0",
+		.data = &mt8188_vdosys0_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8192-mmsys",
+		.data = &mt8192_mmsys_driver_data,
+	},
+	{	/* deprecated compatible */
+		.compatible = "mediatek,mt8195-mmsys",
+		.data = &mt8195_vdosys0_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8195-vdosys0",
+		.data = &mt8195_vdosys0_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8195-vdosys1",
+		.data = &mt8195_vdosys1_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8195-vppsys0",
+		.data = &mt8195_vppsys0_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8195-vppsys1",
+		.data = &mt8195_vppsys1_driver_data,
+	},
+	{
+		.compatible = "mediatek,mt8365-mmsys",
+		.data = &mt8365_mmsys_driver_data,
+	},
+	{ }
 };
-MODULE_DEVICE_TABLE(of, of_match_mtk_mmsys);
 
 static struct platform_driver mtk_mmsys_drv = {
 	.driver = {
@@ -449,9 +431,20 @@ static struct platform_driver mtk_mmsys_drv = {
 		.of_match_table = of_match_mtk_mmsys,
 	},
 	.probe = mtk_mmsys_probe,
-	.remove = mtk_mmsys_remove,
 };
-module_platform_driver(mtk_mmsys_drv);
+
+static int __init mtk_mmsys_init(void)
+{
+	return platform_driver_register(&mtk_mmsys_drv);
+}
+
+static void __exit mtk_mmsys_exit(void)
+{
+	platform_driver_unregister(&mtk_mmsys_drv);
+}
+
+module_init(mtk_mmsys_init);
+module_exit(mtk_mmsys_exit);
 
 MODULE_AUTHOR("Yongqiang Niu <yongqiang.niu@mediatek.com>");
 MODULE_DESCRIPTION("MediaTek SoC MMSYS driver");

@@ -173,13 +173,15 @@ out_disable_rpm:
 	return error;
 }
 
-static void rpcif_spi_remove(struct platform_device *pdev)
+static int rpcif_spi_remove(struct platform_device *pdev)
 {
 	struct spi_controller *ctlr = platform_get_drvdata(pdev);
 	struct rpcif *rpc = spi_controller_get_devdata(ctlr);
 
 	spi_unregister_controller(ctlr);
 	pm_runtime_disable(rpc->dev);
+
+	return 0;
 }
 
 static int __maybe_unused rpcif_spi_suspend(struct device *dev)
@@ -200,7 +202,7 @@ static SIMPLE_DEV_PM_OPS(rpcif_spi_pm_ops, rpcif_spi_suspend, rpcif_spi_resume);
 
 static struct platform_driver rpcif_spi_driver = {
 	.probe	= rpcif_spi_probe,
-	.remove_new = rpcif_spi_remove,
+	.remove	= rpcif_spi_remove,
 	.driver = {
 		.name	= "rpc-if-spi",
 #ifdef CONFIG_PM_SLEEP

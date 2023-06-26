@@ -1575,7 +1575,7 @@ err:
 	return ret;
 }
 
-static void va_macro_remove(struct platform_device *pdev)
+static int va_macro_remove(struct platform_device *pdev)
 {
 	struct va_macro *va = dev_get_drvdata(&pdev->dev);
 
@@ -1584,6 +1584,8 @@ static void va_macro_remove(struct platform_device *pdev)
 	clk_disable_unprepare(va->macro);
 
 	lpass_macro_pds_exit(va->pds);
+
+	return 0;
 }
 
 static int __maybe_unused va_macro_runtime_suspend(struct device *dev)
@@ -1637,7 +1639,7 @@ static struct platform_driver va_macro_driver = {
 		.pm = &va_macro_pm_ops,
 	},
 	.probe = va_macro_probe,
-	.remove_new = va_macro_remove,
+	.remove = va_macro_remove,
 };
 
 module_platform_driver(va_macro_driver);

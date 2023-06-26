@@ -643,7 +643,7 @@ static int mtk_pcie_setup_irq(struct mtk_pcie_port *port,
 		return err;
 	}
 
-	if (of_property_present(dev->of_node, "interrupt-names"))
+	if (of_find_property(dev->of_node, "interrupt-names", NULL))
 		port->irq = platform_get_irq_byname(pdev, "pcie_irq");
 	else
 		port->irq = platform_get_irq(pdev, port->slot);

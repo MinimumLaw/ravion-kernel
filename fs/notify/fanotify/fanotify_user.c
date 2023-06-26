@@ -663,7 +663,7 @@ static ssize_t copy_event_to_user(struct fsnotify_group *group,
 	struct fanotify_info *info = fanotify_event_info(event);
 	unsigned int info_mode = FAN_GROUP_FLAG(group, FANOTIFY_INFO_MODES);
 	unsigned int pidfd_mode = info_mode & FAN_REPORT_PIDFD;
-	struct file *f = NULL, *pidfd_file = NULL;
+	struct file *f = NULL;
 	int ret, pidfd = FAN_NOPIDFD, fd = FAN_NOFD;
 
 	pr_debug("%s: group=%p event=%p\n", __func__, group, event);
@@ -718,7 +718,7 @@ static ssize_t copy_event_to_user(struct fsnotify_group *group,
 		    !pid_has_task(event->pid, PIDTYPE_TGID)) {
 			pidfd = FAN_NOPIDFD;
 		} else {
-			pidfd = pidfd_prepare(event->pid, 0, &pidfd_file);
+			pidfd = pidfd_create(event->pid, 0);
 			if (pidfd < 0)
 				pidfd = FAN_EPIDFD;
 		}
@@ -751,9 +751,6 @@ static ssize_t copy_event_to_user(struct fsnotify_group *group,
 	if (f)
 		fd_install(fd, f);
 
-	if (pidfd_file)
-		fd_install(pidfd, pidfd_file);
-
 	return metadata.event_len;
 
 out_close_fd:
@@ -762,10 +759,8 @@ out_close_fd:
 		fput(f);
 	}
 
-	if (pidfd >= 0) {
-		put_unused_fd(pidfd);
-		fput(pidfd_file);
-	}
+	if (pidfd >= 0)
+		close_fd(pidfd);
 
 	return ret;
 }

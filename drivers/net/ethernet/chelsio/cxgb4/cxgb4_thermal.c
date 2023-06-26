@@ -12,7 +12,7 @@
 static int cxgb4_thermal_get_temp(struct thermal_zone_device *tzdev,
 				  int *temp)
 {
-	struct adapter *adap = thermal_zone_device_priv(tzdev);
+	struct adapter *adap = tzdev->devdata;
 	u32 param, val;
 	int ret;
 

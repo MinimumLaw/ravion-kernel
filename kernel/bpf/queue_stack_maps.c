@@ -246,14 +246,6 @@ static int queue_stack_map_get_next_key(struct bpf_map *map, void *key,
 	return -EINVAL;
 }
 
-static u64 queue_stack_map_mem_usage(const struct bpf_map *map)
-{
-	u64 usage = sizeof(struct bpf_queue_stack);
-
-	usage += ((u64)map->max_entries + 1) * map->value_size;
-	return usage;
-}
-
 BTF_ID_LIST_SINGLE(queue_map_btf_ids, struct, bpf_queue_stack)
 const struct bpf_map_ops queue_map_ops = {
 	.map_meta_equal = bpf_map_meta_equal,
@@ -267,7 +259,6 @@ const struct bpf_map_ops queue_map_ops = {
 	.map_pop_elem = queue_map_pop_elem,
 	.map_peek_elem = queue_map_peek_elem,
 	.map_get_next_key = queue_stack_map_get_next_key,
-	.map_mem_usage = queue_stack_map_mem_usage,
 	.map_btf_id = &queue_map_btf_ids[0],
 };
 
@@ -283,6 +274,5 @@ const struct bpf_map_ops stack_map_ops = {
 	.map_pop_elem = stack_map_pop_elem,
 	.map_peek_elem = stack_map_peek_elem,
 	.map_get_next_key = queue_stack_map_get_next_key,
-	.map_mem_usage = queue_stack_map_mem_usage,
 	.map_btf_id = &queue_map_btf_ids[0],
 };

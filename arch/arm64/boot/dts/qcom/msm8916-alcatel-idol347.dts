@@ -160,6 +160,10 @@
 	status = "okay";
 };
 
+&pronto {
+	status = "okay";
+};
+
 &sdhc_1 {
 	status = "okay";
 
@@ -185,14 +189,6 @@
 
 &usb_hs_phy {
 	extcon = <&usb_id>;
-};
-
-&wcnss {
-	status = "okay";
-};
-
-&wcnss_iris {
-	compatible = "qcom,wcn3620";
 };
 
 &smd_rpm_regulators {

@@ -108,10 +108,7 @@ struct dim2_platform_data {
 	u8 fcnt;
 };
 
-static inline struct dim2_hdm *iface_to_hdm(struct most_interface *iface)
-{
-	return container_of(iface, struct dim2_hdm, most_iface);
-}
+#define iface_to_hdm(iface) container_of(iface, struct dim2_hdm, most_iface)
 
 /* Macro to identify a network status message */
 #define PACKET_IS_NET_INFO(p)  \
@@ -778,7 +775,8 @@ static int dim2_probe(struct platform_device *pdev)
 		goto err_free_dev;
 	}
 
-	dev->io_base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	dev->io_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(dev->io_base)) {
 		ret = PTR_ERR(dev->io_base);
 		goto err_free_dev;
@@ -908,11 +906,13 @@ err_free_dev:
  *
  * Unregister the interface from mostcore
  */
-static void dim2_remove(struct platform_device *pdev)
+static int dim2_remove(struct platform_device *pdev)
 {
 	struct dim2_hdm *dev = platform_get_drvdata(pdev);
 
 	most_deregister_interface(&dev->most_iface);
+
+	return 0;
 }
 
 /* platform specific functions [[ */
@@ -986,6 +986,7 @@ static int rcar_gen2_enable(struct platform_device *pdev)
 		/* PLL */
 		writel(0x04, dev->io_base + 0x600);
 	}
+
 
 	/* BBCR = 0b11 */
 	writel(0x03, dev->io_base + 0x500);
@@ -1090,7 +1091,7 @@ MODULE_DEVICE_TABLE(of, dim2_of_match);
 
 static struct platform_driver dim2_driver = {
 	.probe = dim2_probe,
-	.remove_new = dim2_remove,
+	.remove = dim2_remove,
 	.driver = {
 		.name = "hdm_dim2",
 		.of_match_table = dim2_of_match,

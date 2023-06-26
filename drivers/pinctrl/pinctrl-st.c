@@ -1313,8 +1313,7 @@ static void st_gpio_irq_mask(struct irq_data *d)
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct st_gpio_bank *bank = gpiochip_get_data(gc);
 
-	writel(BIT(irqd_to_hwirq(d)), bank->base + REG_PIO_CLR_PMASK);
-	gpiochip_disable_irq(gc, irqd_to_hwirq(d));
+	writel(BIT(d->hwirq), bank->base + REG_PIO_CLR_PMASK);
 }
 
 static void st_gpio_irq_unmask(struct irq_data *d)
@@ -1322,8 +1321,7 @@ static void st_gpio_irq_unmask(struct irq_data *d)
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 	struct st_gpio_bank *bank = gpiochip_get_data(gc);
 
-	gpiochip_enable_irq(gc, irqd_to_hwirq(d));
-	writel(BIT(irqd_to_hwirq(d)), bank->base + REG_PIO_SET_PMASK);
+	writel(BIT(d->hwirq), bank->base + REG_PIO_SET_PMASK);
 }
 
 static int st_gpio_irq_request_resources(struct irq_data *d)
@@ -1332,14 +1330,14 @@ static int st_gpio_irq_request_resources(struct irq_data *d)
 
 	st_gpio_direction_input(gc, d->hwirq);
 
-	return gpiochip_reqres_irq(gc, d->hwirq);
+	return gpiochip_lock_as_irq(gc, d->hwirq);
 }
 
 static void st_gpio_irq_release_resources(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 
-	gpiochip_relres_irq(gc, d->hwirq);
+	gpiochip_unlock_as_irq(gc, d->hwirq);
 }
 
 static int st_gpio_irq_set_type(struct irq_data *d, unsigned type)
@@ -1494,7 +1492,7 @@ static const struct gpio_chip st_gpio_template = {
 	.ngpio			= ST_GPIO_PINS_PER_BANK,
 };
 
-static const struct irq_chip st_gpio_irqchip = {
+static struct irq_chip st_gpio_irqchip = {
 	.name			= "GPIO",
 	.irq_request_resources	= st_gpio_irq_request_resources,
 	.irq_release_resources	= st_gpio_irq_release_resources,
@@ -1502,7 +1500,7 @@ static const struct irq_chip st_gpio_irqchip = {
 	.irq_mask		= st_gpio_irq_mask,
 	.irq_unmask		= st_gpio_irq_unmask,
 	.irq_set_type		= st_gpio_irq_set_type,
-	.flags			= IRQCHIP_SKIP_SET_WAKE | IRQCHIP_IMMUTABLE,
+	.flags			= IRQCHIP_SKIP_SET_WAKE,
 };
 
 static int st_gpiolib_register_bank(struct st_pinctrl *info,
@@ -1572,7 +1570,7 @@ static int st_gpiolib_register_bank(struct st_pinctrl *info,
 		}
 
 		girq = &bank->gpio_chip.irq;
-		gpio_irq_chip_set_chip(girq, &st_gpio_irqchip);
+		girq->chip = &st_gpio_irqchip;
 		girq->parent_handler = st_gpio_irq_handler;
 		girq->num_parents = 1;
 		girq->parents = devm_kcalloc(dev, 1, sizeof(*girq->parents),

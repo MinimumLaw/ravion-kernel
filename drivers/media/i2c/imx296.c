@@ -685,6 +685,15 @@ static int imx296_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int imx296_get_format(struct v4l2_subdev *sd,
+			     struct v4l2_subdev_state *state,
+			     struct v4l2_subdev_format *fmt)
+{
+	fmt->format = *v4l2_subdev_get_pad_format(sd, state, fmt->pad);
+
+	return 0;
+}
+
 static int imx296_set_format(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state,
 			     struct v4l2_subdev_format *fmt)
@@ -836,7 +845,7 @@ static const struct v4l2_subdev_video_ops imx296_subdev_video_ops = {
 static const struct v4l2_subdev_pad_ops imx296_subdev_pad_ops = {
 	.enum_mbus_code = imx296_enum_mbus_code,
 	.enum_frame_size = imx296_enum_frame_size,
-	.get_fmt = v4l2_subdev_get_fmt,
+	.get_fmt = imx296_get_format,
 	.set_fmt = imx296_set_format,
 	.get_selection = imx296_get_selection,
 	.set_selection = imx296_set_selection,

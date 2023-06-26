@@ -10,21 +10,16 @@
 #include <ctype.h>
 #include <limits.h>
 
-void perf_cpu_map__set_nr(struct perf_cpu_map *map, int nr_cpus)
+static struct perf_cpu_map *perf_cpu_map__alloc(int nr_cpus)
 {
-	RC_CHK_ACCESS(map)->nr = nr_cpus;
-}
+	struct perf_cpu_map *cpus = malloc(sizeof(*cpus) + sizeof(struct perf_cpu) * nr_cpus);
 
-struct perf_cpu_map *perf_cpu_map__alloc(int nr_cpus)
-{
-	RC_STRUCT(perf_cpu_map) *cpus = malloc(sizeof(*cpus) + sizeof(struct perf_cpu) * nr_cpus);
-	struct perf_cpu_map *result;
-
-	if (ADD_RC_CHK(result, cpus)) {
+	if (cpus != NULL) {
 		cpus->nr = nr_cpus;
 		refcount_set(&cpus->refcnt, 1);
+
 	}
-	return result;
+	return cpus;
 }
 
 struct perf_cpu_map *perf_cpu_map__dummy_new(void)
@@ -32,7 +27,7 @@ struct perf_cpu_map *perf_cpu_map__dummy_new(void)
 	struct perf_cpu_map *cpus = perf_cpu_map__alloc(1);
 
 	if (cpus)
-		RC_CHK_ACCESS(cpus)->map[0].cpu = -1;
+		cpus->map[0].cpu = -1;
 
 	return cpus;
 }
@@ -40,30 +35,23 @@ struct perf_cpu_map *perf_cpu_map__dummy_new(void)
 static void cpu_map__delete(struct perf_cpu_map *map)
 {
 	if (map) {
-		WARN_ONCE(refcount_read(perf_cpu_map__refcnt(map)) != 0,
+		WARN_ONCE(refcount_read(&map->refcnt) != 0,
 			  "cpu_map refcnt unbalanced\n");
-		RC_CHK_FREE(map);
+		free(map);
 	}
 }
 
 struct perf_cpu_map *perf_cpu_map__get(struct perf_cpu_map *map)
 {
-	struct perf_cpu_map *result;
-
-	if (RC_CHK_GET(result, map))
-		refcount_inc(perf_cpu_map__refcnt(map));
-
-	return result;
+	if (map)
+		refcount_inc(&map->refcnt);
+	return map;
 }
 
 void perf_cpu_map__put(struct perf_cpu_map *map)
 {
-	if (map) {
-		if (refcount_dec_and_test(perf_cpu_map__refcnt(map)))
-			cpu_map__delete(map);
-		else
-			RC_CHK_PUT(map);
-	}
+	if (map && refcount_dec_and_test(&map->refcnt))
+		cpu_map__delete(map);
 }
 
 static struct perf_cpu_map *cpu_map__default_new(void)
@@ -80,7 +68,7 @@ static struct perf_cpu_map *cpu_map__default_new(void)
 		int i;
 
 		for (i = 0; i < nr_cpus; ++i)
-			RC_CHK_ACCESS(cpus)->map[i].cpu = i;
+			cpus->map[i].cpu = i;
 	}
 
 	return cpus;
@@ -106,15 +94,15 @@ static struct perf_cpu_map *cpu_map__trim_new(int nr_cpus, const struct perf_cpu
 	int i, j;
 
 	if (cpus != NULL) {
-		memcpy(RC_CHK_ACCESS(cpus)->map, tmp_cpus, payload_size);
-		qsort(RC_CHK_ACCESS(cpus)->map, nr_cpus, sizeof(struct perf_cpu), cmp_cpu);
+		memcpy(cpus->map, tmp_cpus, payload_size);
+		qsort(cpus->map, nr_cpus, sizeof(struct perf_cpu), cmp_cpu);
 		/* Remove dups */
 		j = 0;
 		for (i = 0; i < nr_cpus; i++) {
-			if (i == 0 || RC_CHK_ACCESS(cpus)->map[i].cpu != RC_CHK_ACCESS(cpus)->map[i - 1].cpu)
-				RC_CHK_ACCESS(cpus)->map[j++].cpu = RC_CHK_ACCESS(cpus)->map[i].cpu;
+			if (i == 0 || cpus->map[i].cpu != cpus->map[i - 1].cpu)
+				cpus->map[j++].cpu = cpus->map[i].cpu;
 		}
-		perf_cpu_map__set_nr(cpus, j);
+		cpus->nr = j;
 		assert(j <= nr_cpus);
 	}
 	return cpus;
@@ -275,20 +263,20 @@ struct perf_cpu perf_cpu_map__cpu(const struct perf_cpu_map *cpus, int idx)
 		.cpu = -1
 	};
 
-	if (cpus && idx < RC_CHK_ACCESS(cpus)->nr)
-		return RC_CHK_ACCESS(cpus)->map[idx];
+	if (cpus && idx < cpus->nr)
+		return cpus->map[idx];
 
 	return result;
 }
 
 int perf_cpu_map__nr(const struct perf_cpu_map *cpus)
 {
-	return cpus ? RC_CHK_ACCESS(cpus)->nr : 1;
+	return cpus ? cpus->nr : 1;
 }
 
 bool perf_cpu_map__empty(const struct perf_cpu_map *map)
 {
-	return map ? RC_CHK_ACCESS(map)->map[0].cpu == -1 : true;
+	return map ? map->map[0].cpu == -1 : true;
 }
 
 int perf_cpu_map__idx(const struct perf_cpu_map *cpus, struct perf_cpu cpu)
@@ -299,10 +287,10 @@ int perf_cpu_map__idx(const struct perf_cpu_map *cpus, struct perf_cpu cpu)
 		return -1;
 
 	low = 0;
-	high = RC_CHK_ACCESS(cpus)->nr;
+	high = cpus->nr;
 	while (low < high) {
 		int idx = (low + high) / 2;
-		struct perf_cpu cpu_at_idx = RC_CHK_ACCESS(cpus)->map[idx];
+		struct perf_cpu cpu_at_idx = cpus->map[idx];
 
 		if (cpu_at_idx.cpu == cpu.cpu)
 			return idx;
@@ -328,7 +316,7 @@ struct perf_cpu perf_cpu_map__max(const struct perf_cpu_map *map)
 	};
 
 	// cpu_map__trim_new() qsort()s it, cpu_map__default_new() sorts it as well.
-	return RC_CHK_ACCESS(map)->nr > 0 ? RC_CHK_ACCESS(map)->map[RC_CHK_ACCESS(map)->nr - 1] : result;
+	return map->nr > 0 ? map->map[map->nr - 1] : result;
 }
 
 /** Is 'b' a subset of 'a'. */
@@ -336,15 +324,15 @@ bool perf_cpu_map__is_subset(const struct perf_cpu_map *a, const struct perf_cpu
 {
 	if (a == b || !b)
 		return true;
-	if (!a || RC_CHK_ACCESS(b)->nr > RC_CHK_ACCESS(a)->nr)
+	if (!a || b->nr > a->nr)
 		return false;
 
-	for (int i = 0, j = 0; i < RC_CHK_ACCESS(a)->nr; i++) {
-		if (RC_CHK_ACCESS(a)->map[i].cpu > RC_CHK_ACCESS(b)->map[j].cpu)
+	for (int i = 0, j = 0; i < a->nr; i++) {
+		if (a->map[i].cpu > b->map[j].cpu)
 			return false;
-		if (RC_CHK_ACCESS(a)->map[i].cpu == RC_CHK_ACCESS(b)->map[j].cpu) {
+		if (a->map[i].cpu == b->map[j].cpu) {
 			j++;
-			if (j == RC_CHK_ACCESS(b)->nr)
+			if (j == b->nr)
 				return true;
 		}
 	}
@@ -374,27 +362,27 @@ struct perf_cpu_map *perf_cpu_map__merge(struct perf_cpu_map *orig,
 		return perf_cpu_map__get(other);
 	}
 
-	tmp_len = RC_CHK_ACCESS(orig)->nr + RC_CHK_ACCESS(other)->nr;
+	tmp_len = orig->nr + other->nr;
 	tmp_cpus = malloc(tmp_len * sizeof(struct perf_cpu));
 	if (!tmp_cpus)
 		return NULL;
 
 	/* Standard merge algorithm from wikipedia */
 	i = j = k = 0;
-	while (i < RC_CHK_ACCESS(orig)->nr && j < RC_CHK_ACCESS(other)->nr) {
-		if (RC_CHK_ACCESS(orig)->map[i].cpu <= RC_CHK_ACCESS(other)->map[j].cpu) {
-			if (RC_CHK_ACCESS(orig)->map[i].cpu == RC_CHK_ACCESS(other)->map[j].cpu)
+	while (i < orig->nr && j < other->nr) {
+		if (orig->map[i].cpu <= other->map[j].cpu) {
+			if (orig->map[i].cpu == other->map[j].cpu)
 				j++;
-			tmp_cpus[k++] = RC_CHK_ACCESS(orig)->map[i++];
+			tmp_cpus[k++] = orig->map[i++];
 		} else
-			tmp_cpus[k++] = RC_CHK_ACCESS(other)->map[j++];
+			tmp_cpus[k++] = other->map[j++];
 	}
 
-	while (i < RC_CHK_ACCESS(orig)->nr)
-		tmp_cpus[k++] = RC_CHK_ACCESS(orig)->map[i++];
+	while (i < orig->nr)
+		tmp_cpus[k++] = orig->map[i++];
 
-	while (j < RC_CHK_ACCESS(other)->nr)
-		tmp_cpus[k++] = RC_CHK_ACCESS(other)->map[j++];
+	while (j < other->nr)
+		tmp_cpus[k++] = other->map[j++];
 	assert(k <= tmp_len);
 
 	merged = cpu_map__trim_new(k, tmp_cpus);

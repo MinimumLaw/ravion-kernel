@@ -27,7 +27,7 @@
 };
 
 &apps_rsc {
-	regulators-2 {
+	pmg1110-regulators {
 		compatible = "qcom,pmg1110-rpmh-regulators";
 		qcom,pmic-id = "k";
 

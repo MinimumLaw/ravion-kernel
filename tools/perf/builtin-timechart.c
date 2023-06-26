@@ -24,6 +24,7 @@
 #include "util/thread.h"
 #include "util/callchain.h"
 
+#include "perf.h"
 #include "util/header.h"
 #include <subcmd/pager.h>
 #include <subcmd/parse-options.h>
@@ -36,7 +37,6 @@
 #include "util/debug.h"
 #include "util/string2.h"
 #include "util/tracepoint.h"
-#include "util/util.h"
 #include <linux/err.h>
 #include <traceevent/event-parse.h>
 

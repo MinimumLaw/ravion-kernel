@@ -887,11 +887,7 @@ void __init time_init(void)
 	unsigned shift;
 
 	/* Normal PowerPC with timebase register */
-	if (ppc_md.calibrate_decr)
-		ppc_md.calibrate_decr();
-	else
-		generic_calibrate_decr();
-
+	ppc_md.calibrate_decr();
 	printk(KERN_DEBUG "time_init: decrementer frequency = %lu.%.6lu MHz\n",
 	       ppc_tb_freq / 1000000, ppc_tb_freq % 1000000);
 	printk(KERN_DEBUG "time_init: processor frequency   = %lu.%.6lu MHz\n",

@@ -152,12 +152,12 @@ static struct imx_usbmisc_data *usbmisc_get_init_data(struct device *dev)
 	 * Check the various over current related properties. If over current
 	 * detection is disabled we're not interested in the polarity.
 	 */
-	if (of_property_read_bool(np, "disable-over-current")) {
+	if (of_find_property(np, "disable-over-current", NULL)) {
 		data->disable_oc = 1;
-	} else if (of_property_read_bool(np, "over-current-active-high")) {
+	} else if (of_find_property(np, "over-current-active-high", NULL)) {
 		data->oc_pol_active_low = 0;
 		data->oc_pol_configured = 1;
-	} else if (of_property_read_bool(np, "over-current-active-low")) {
+	} else if (of_find_property(np, "over-current-active-low", NULL)) {
 		data->oc_pol_active_low = 1;
 		data->oc_pol_configured = 1;
 	} else {

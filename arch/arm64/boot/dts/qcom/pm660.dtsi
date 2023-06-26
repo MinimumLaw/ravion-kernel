@@ -11,7 +11,7 @@
 
 / {
 	thermal-zones {
-		pm660-thermal {
+		pm660 {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 

@@ -271,9 +271,12 @@ static int display_connector_probe(struct platform_device *pdev)
 	    type == DRM_MODE_CONNECTOR_DisplayPort) {
 		conn->hpd_gpio = devm_gpiod_get_optional(&pdev->dev, "hpd",
 							 GPIOD_IN);
-		if (IS_ERR(conn->hpd_gpio))
-			return dev_err_probe(&pdev->dev, PTR_ERR(conn->hpd_gpio),
-					     "Unable to retrieve HPD GPIO\n");
+		if (IS_ERR(conn->hpd_gpio)) {
+			if (PTR_ERR(conn->hpd_gpio) != -EPROBE_DEFER)
+				dev_err(&pdev->dev,
+					"Unable to retrieve HPD GPIO\n");
+			return PTR_ERR(conn->hpd_gpio);
+		}
 
 		conn->hpd_irq = gpiod_to_irq(conn->hpd_gpio);
 	} else {
@@ -379,7 +382,7 @@ static int display_connector_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void display_connector_remove(struct platform_device *pdev)
+static int display_connector_remove(struct platform_device *pdev)
 {
 	struct display_connector *conn = platform_get_drvdata(pdev);
 
@@ -393,6 +396,8 @@ static void display_connector_remove(struct platform_device *pdev)
 
 	if (!IS_ERR(conn->bridge.ddc))
 		i2c_put_adapter(conn->bridge.ddc);
+
+	return 0;
 }
 
 static const struct of_device_id display_connector_match[] = {
@@ -421,7 +426,7 @@ MODULE_DEVICE_TABLE(of, display_connector_match);
 
 static struct platform_driver display_connector_driver = {
 	.probe	= display_connector_probe,
-	.remove_new = display_connector_remove,
+	.remove	= display_connector_remove,
 	.driver		= {
 		.name		= "display-connector",
 		.of_match_table	= display_connector_match,

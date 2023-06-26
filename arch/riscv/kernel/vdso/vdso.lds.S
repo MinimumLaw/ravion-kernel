@@ -82,9 +82,6 @@ VERSION
 #endif
 		__vdso_getcpu;
 		__vdso_flush_icache;
-#ifndef COMPAT_VDSO
-		__vdso_riscv_hwprobe;
-#endif
 	local: *;
 	};
 }

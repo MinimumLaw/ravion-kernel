@@ -1627,6 +1627,7 @@ static void sof_ipc3_widget_free_comp_dai(struct snd_sof_widget *swidget)
 static int sof_ipc3_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
 {
 	struct sof_ipc_pipe_comp_connect connect;
+	struct sof_ipc_reply reply;
 	int ret;
 
 	connect.hdr.size = sizeof(connect);
@@ -1639,7 +1640,7 @@ static int sof_ipc3_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *
 		sroute->sink_widget->widget->name);
 
 	/* send ipc */
-	ret = sof_ipc_tx_message_no_reply(sdev->ipc, &connect, sizeof(connect));
+	ret = sof_ipc_tx_message(sdev->ipc, &connect, sizeof(connect), &reply, sizeof(reply));
 	if (ret < 0)
 		dev_err(sdev->dev, "%s: route %s -> %s failed\n", __func__,
 			sroute->src_widget->widget->name, sroute->sink_widget->widget->name);
@@ -1788,7 +1789,7 @@ static int sof_ipc3_control_free(struct snd_sof_dev *sdev, struct snd_sof_contro
 	fcomp.id = scontrol->comp_id;
 
 	/* send IPC to the DSP */
-	return sof_ipc_tx_message_no_reply(sdev->ipc, &fcomp, sizeof(fcomp));
+	return sof_ipc_tx_message(sdev->ipc, &fcomp, sizeof(fcomp), NULL, 0);
 }
 
 /* send pcm params ipc */
@@ -1796,6 +1797,7 @@ static int sof_ipc3_keyword_detect_pcm_params(struct snd_sof_widget *swidget, in
 {
 	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct sof_ipc_pcm_params_reply ipc_params_reply;
 	struct snd_pcm_hw_params *params;
 	struct sof_ipc_pcm_params pcm;
 	struct snd_sof_pcm *spcm;
@@ -1839,7 +1841,8 @@ static int sof_ipc3_keyword_detect_pcm_params(struct snd_sof_widget *swidget, in
 	}
 
 	/* send IPC to the DSP */
-	ret = sof_ipc_tx_message_no_reply(sdev->ipc, &pcm, sizeof(pcm));
+	ret = sof_ipc_tx_message(sdev->ipc, &pcm, sizeof(pcm),
+				 &ipc_params_reply, sizeof(ipc_params_reply));
 	if (ret < 0)
 		dev_err(scomp->dev, "%s: PCM params failed for %s\n", __func__,
 			swidget->widget->name);
@@ -1853,6 +1856,7 @@ static int sof_ipc3_keyword_detect_trigger(struct snd_sof_widget *swidget, int c
 	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct sof_ipc_stream stream;
+	struct sof_ipc_reply reply;
 	int ret;
 
 	/* set IPC stream params */
@@ -1861,7 +1865,7 @@ static int sof_ipc3_keyword_detect_trigger(struct snd_sof_widget *swidget, int c
 	stream.comp_id = swidget->comp_id;
 
 	/* send IPC to the DSP */
-	ret = sof_ipc_tx_message_no_reply(sdev->ipc, &stream, sizeof(stream));
+	ret = sof_ipc_tx_message(sdev->ipc, &stream, sizeof(stream), &reply, sizeof(reply));
 	if (ret < 0)
 		dev_err(scomp->dev, "%s: Failed to trigger %s\n", __func__, swidget->widget->name);
 
@@ -1978,6 +1982,7 @@ static int sof_ipc3_widget_bind_event(struct snd_soc_component *scomp,
 static int sof_ipc3_complete_pipeline(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 {
 	struct sof_ipc_pipe_ready ready;
+	struct sof_ipc_reply reply;
 	int ret;
 
 	dev_dbg(sdev->dev, "tplg: complete pipeline %s id %d\n",
@@ -1988,7 +1993,7 @@ static int sof_ipc3_complete_pipeline(struct snd_sof_dev *sdev, struct snd_sof_w
 	ready.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_PIPE_COMPLETE;
 	ready.comp_id = swidget->comp_id;
 
-	ret = sof_ipc_tx_message_no_reply(sdev->ipc, &ready, sizeof(ready));
+	ret = sof_ipc_tx_message(sdev->ipc, &ready, sizeof(ready), &reply, sizeof(reply));
 	if (ret < 0)
 		return ret;
 
@@ -2004,6 +2009,7 @@ static int sof_ipc3_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget 
 		},
 		.id = swidget->comp_id,
 	};
+	struct sof_ipc_reply reply;
 	int ret;
 
 	if (!swidget->private)
@@ -2023,7 +2029,8 @@ static int sof_ipc3_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget 
 		break;
 	}
 
-	ret = sof_ipc_tx_message_no_reply(sdev->ipc, &ipc_free, sizeof(ipc_free));
+	ret = sof_ipc_tx_message(sdev->ipc, &ipc_free, sizeof(ipc_free),
+				 &reply, sizeof(reply));
 	if (ret < 0)
 		dev_err(sdev->dev, "failed to free widget %s\n", swidget->widget->name);
 
@@ -2037,6 +2044,7 @@ static int sof_ipc3_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	struct snd_sof_dai *dai = swidget->private;
 	struct sof_dai_private_data *private;
 	struct sof_ipc_dai_config *config;
+	struct sof_ipc_reply reply;
 	int ret = 0;
 
 	if (!dai || !dai->private) {
@@ -2113,7 +2121,8 @@ static int sof_ipc3_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 
 	/* only send the IPC if the widget is set up in the DSP */
 	if (swidget->use_count > 0) {
-		ret = sof_ipc_tx_message_no_reply(sdev->ipc, config, config->hdr.size);
+		ret = sof_ipc_tx_message(sdev->ipc, config, config->hdr.size,
+					 &reply, sizeof(reply));
 		if (ret < 0)
 			dev_err(sdev->dev, "Failed to set dai config for %s\n", dai->name);
 
@@ -2126,6 +2135,7 @@ static int sof_ipc3_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 
 static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 {
+	struct sof_ipc_comp_reply reply;
 	int ret;
 
 	if (!swidget->private)
@@ -2139,7 +2149,8 @@ static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 		struct sof_dai_private_data *dai_data = dai->private;
 		struct sof_ipc_comp *comp = &dai_data->comp_dai->comp;
 
-		ret = sof_ipc_tx_message_no_reply(sdev->ipc, dai_data->comp_dai, comp->hdr.size);
+		ret = sof_ipc_tx_message(sdev->ipc, dai_data->comp_dai,
+					 comp->hdr.size, &reply, sizeof(reply));
 		break;
 	}
 	case snd_soc_dapm_scheduler:
@@ -2147,7 +2158,8 @@ static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 		struct sof_ipc_pipe_new *pipeline;
 
 		pipeline = swidget->private;
-		ret = sof_ipc_tx_message_no_reply(sdev->ipc, pipeline, sizeof(*pipeline));
+		ret = sof_ipc_tx_message(sdev->ipc, pipeline, sizeof(*pipeline),
+					 &reply, sizeof(reply));
 		break;
 	}
 	default:
@@ -2155,7 +2167,8 @@ static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 		struct sof_ipc_cmd_hdr *hdr;
 
 		hdr = swidget->private;
-		ret = sof_ipc_tx_message_no_reply(sdev->ipc, swidget->private, hdr->size);
+		ret = sof_ipc_tx_message(sdev->ipc, swidget->private, hdr->size,
+					 &reply, sizeof(reply));
 		break;
 	}
 	}

@@ -23,14 +23,12 @@ config I2C_HID_ACPI
 
 config I2C_HID_OF
 	tristate "HID over I2C transport layer Open Firmware driver"
-	# No "depends on OF" because this can also be used for manually
-	# (board-file) instantiated "hid-over-i2c" type i2c-clients.
+	depends on OF
 	select I2C_HID_CORE
 	help
 	  Say Y here if you use a keyboard, a touchpad, a touchscreen, or any
 	  other HID based devices which is connected to your computer via I2C.
-	  This driver supports Open Firmware (Device Tree)-based systems as
-	  well as binding to manually (board-file) instantiated i2c-hid-clients.
+	  This driver supports Open Firmware (Device Tree)-based systems.
 
 	  If unsure, say N.
 

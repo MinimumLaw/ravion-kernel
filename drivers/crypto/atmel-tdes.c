@@ -565,12 +565,17 @@ atmel_tdes_set_iv_as_last_ciphertext_block(struct atmel_tdes_dev *dd)
 	if (req->cryptlen < ivsize)
 		return;
 
-	if (rctx->mode & TDES_FLAGS_ENCRYPT)
+	if (rctx->mode & TDES_FLAGS_ENCRYPT) {
 		scatterwalk_map_and_copy(req->iv, req->dst,
 					 req->cryptlen - ivsize, ivsize, 0);
-	else
-		memcpy(req->iv, rctx->lastc, ivsize);
-
+	} else {
+		if (req->src == req->dst)
+			memcpy(req->iv, rctx->lastc, ivsize);
+		else
+			scatterwalk_map_and_copy(req->iv, req->src,
+						 req->cryptlen - ivsize,
+						 ivsize, 0);
+	}
 }
 
 static void atmel_tdes_finish_req(struct atmel_tdes_dev *dd, int err)
@@ -717,7 +722,7 @@ static int atmel_tdes_crypt(struct skcipher_request *req, unsigned long mode)
 	rctx->mode = mode;
 
 	if ((mode & TDES_FLAGS_OPMODE_MASK) != TDES_FLAGS_ECB &&
-	    !(mode & TDES_FLAGS_ENCRYPT)) {
+	    !(mode & TDES_FLAGS_ENCRYPT) && req->src == req->dst) {
 		unsigned int ivsize = crypto_skcipher_ivsize(skcipher);
 
 		if (req->cryptlen >= ivsize)

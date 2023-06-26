@@ -220,29 +220,11 @@ relay interface
 Module Support
 ==============
 
-Kernel module auto-loading
---------------------------
+Module Loading
+--------------
 
-.. kernel-doc:: kernel/module/kmod.c
+.. kernel-doc:: kernel/kmod.c
    :export:
-
-Module debugging
-----------------
-
-.. kernel-doc:: kernel/module/stats.c
-   :doc: module debugging statistics overview
-
-dup_failed_modules - tracks duplicate failed modules
-****************************************************
-
-.. kernel-doc:: kernel/module/stats.c
-   :doc: dup_failed_modules - tracks duplicate failed modules
-
-module statistics debugfs counters
-**********************************
-
-.. kernel-doc:: kernel/module/stats.c
-   :doc: module statistics debugfs counters
 
 Inter Module support
 --------------------

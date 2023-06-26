@@ -37,5 +37,7 @@ enum dc_status dpcd_get_tunneling_device_data(struct dc_link *link);
 /* Query hot plug status of USB4 DP tunnel.
  * Returns true if HPD high.
  */
-bool dpia_query_hpd_status(struct dc_link *link);
+bool dc_link_dpia_query_hpd_status(struct dc_link *link);
+
+
 #endif /* __DC_LINK_DPIA_H__ */

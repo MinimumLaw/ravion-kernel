@@ -99,7 +99,7 @@
 		};
 
 		pci@c0000000 {
-			status = "okay";
+			status = "ok";
 
 			/*
 			 * Taken from IXDP425 PCI boardfile.

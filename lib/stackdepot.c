@@ -17,7 +17,6 @@
 #include <linux/gfp.h>
 #include <linux/jhash.h>
 #include <linux/kernel.h>
-#include <linux/kmsan.h>
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/percpu.h>
@@ -307,11 +306,6 @@ depot_alloc_stack(unsigned long *entries, int size, u32 hash, void **prealloc)
 	stack->handle.extra = 0;
 	memcpy(stack->entries, entries, flex_array_size(stack, entries, size));
 	pool_offset += required_size;
-	/*
-	 * Let KMSAN know the stored stack record is initialized. This shall
-	 * prevent false positive reports if instrumented code accesses it.
-	 */
-	kmsan_unpoison_memory(stack, required_size);
 
 	return stack;
 }
@@ -471,12 +465,6 @@ unsigned int stack_depot_fetch(depot_stack_handle_t handle,
 	struct stack_record *stack;
 
 	*entries = NULL;
-	/*
-	 * Let KMSAN know *entries is initialized. This shall prevent false
-	 * positive reports if instrumented code accesses it.
-	 */
-	kmsan_unpoison_memory(entries, sizeof(*entries));
-
 	if (!handle)
 		return 0;
 

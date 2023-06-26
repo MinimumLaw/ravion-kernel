@@ -579,10 +579,11 @@ void ionic_lif_alloc_phc(struct ionic_lif *lif)
 	diff |= diff >> 16;
 	diff |= diff >> 32;
 
-	/* constrain to the hardware bitmask */
+	/* constrain to the hardware bitmask, and use this as the bitmask */
 	diff &= phc->cc.mask;
+	phc->cc.mask = diff;
 
-	/* the wrap period is now defined by diff
+	/* the wrap period is now defined by diff (or phc->cc.mask)
 	 *
 	 * we will update the time basis at about 1/4 the wrap period, so
 	 * should not see a difference of more than +/- diff/4.

@@ -1431,7 +1431,7 @@ err_dma:
 }
 
 /* Remove the driver */
-static void s5p_mfc_remove(struct platform_device *pdev)
+static int s5p_mfc_remove(struct platform_device *pdev)
 {
 	struct s5p_mfc_dev *dev = platform_get_drvdata(pdev);
 	struct s5p_mfc_ctx *ctx;
@@ -1463,6 +1463,7 @@ static void s5p_mfc_remove(struct platform_device *pdev)
 	s5p_mfc_unconfigure_dma_memory(dev);
 
 	s5p_mfc_final_pm(dev);
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -1689,7 +1690,7 @@ MODULE_DEVICE_TABLE(of, exynos_mfc_match);
 
 static struct platform_driver s5p_mfc_driver = {
 	.probe		= s5p_mfc_probe,
-	.remove_new	= s5p_mfc_remove,
+	.remove		= s5p_mfc_remove,
 	.driver	= {
 		.name	= S5P_MFC_NAME,
 		.pm	= &s5p_mfc_pm_ops,

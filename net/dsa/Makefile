@@ -1,10 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0
-
-# the stubs are built-in whenever DSA is built-in or module
-ifdef CONFIG_NET_DSA
-obj-y := stubs.o
-endif
-
 # the core
 obj-$(CONFIG_NET_DSA) += dsa_core.o
 dsa_core-y += \
@@ -16,8 +10,7 @@ dsa_core-y += \
 	slave.o \
 	switch.o \
 	tag.o \
-	tag_8021q.o \
-	trace.o
+	tag_8021q.o
 
 # tagging formats
 obj-$(CONFIG_NET_DSA_TAG_AR9331) += tag_ar9331.o
@@ -38,6 +31,3 @@ obj-$(CONFIG_NET_DSA_TAG_RZN1_A5PSW) += tag_rzn1_a5psw.o
 obj-$(CONFIG_NET_DSA_TAG_SJA1105) += tag_sja1105.o
 obj-$(CONFIG_NET_DSA_TAG_TRAILER) += tag_trailer.o
 obj-$(CONFIG_NET_DSA_TAG_XRS700X) += tag_xrs700x.o
-
-# for tracing framework to find trace.h
-CFLAGS_trace.o := -I$(src)

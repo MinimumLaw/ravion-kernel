@@ -127,9 +127,11 @@ static int bcm_iproc_probe(struct platform_device *pdev)
 	return bcm_qspi_probe(pdev, soc_intc);
 }
 
-static void bcm_iproc_remove(struct platform_device *pdev)
+static int bcm_iproc_remove(struct platform_device *pdev)
 {
 	bcm_qspi_remove(pdev);
+
+	return 0;
 }
 
 static const struct of_device_id bcm_iproc_of_match[] = {
@@ -141,7 +143,7 @@ MODULE_DEVICE_TABLE(of, bcm_iproc_of_match);
 
 static struct platform_driver bcm_iproc_driver = {
 	.probe			= bcm_iproc_probe,
-	.remove_new		= bcm_iproc_remove,
+	.remove			= bcm_iproc_remove,
 	.driver = {
 		.name		= "bcm_iproc",
 		.pm		= &bcm_qspi_pm_ops,

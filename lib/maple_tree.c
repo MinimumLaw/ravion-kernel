@@ -2312,7 +2312,9 @@ static inline struct maple_enode *mte_node_or_none(struct maple_enode *enode)
 static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 {
 	struct ma_state *mas = wr_mas->mas;
-	unsigned char count, offset;
+	unsigned char count;
+	unsigned char offset;
+	unsigned long index, min, max;
 
 	if (unlikely(ma_is_dense(wr_mas->type))) {
 		wr_mas->r_max = wr_mas->r_min = mas->index;
@@ -2325,12 +2327,34 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 	count = wr_mas->node_end = ma_data_end(wr_mas->node, wr_mas->type,
 					       wr_mas->pivots, mas->max);
 	offset = mas->offset;
+	min = mas_safe_min(mas, wr_mas->pivots, offset);
+	if (unlikely(offset == count))
+		goto max;
 
-	while (offset < count && mas->index > wr_mas->pivots[offset])
-		offset++;
+	max = wr_mas->pivots[offset];
+	index = mas->index;
+	if (unlikely(index <= max))
+		goto done;
 
-	wr_mas->r_max = offset < count ? wr_mas->pivots[offset] : mas->max;
-	wr_mas->r_min = mas_safe_min(mas, wr_mas->pivots, offset);
+	if (unlikely(!max && offset))
+		goto max;
+
+	min = max + 1;
+	while (++offset < count) {
+		max = wr_mas->pivots[offset];
+		if (index <= max)
+			goto done;
+		else if (unlikely(!max))
+			break;
+
+		min = max + 1;
+	}
+
+max:
+	max = mas->max;
+done:
+	wr_mas->r_max = max;
+	wr_mas->r_min = min;
 	wr_mas->offset_end = mas->offset = offset;
 }
 
@@ -3258,7 +3282,7 @@ static inline void mas_destroy_rebalance(struct ma_state *mas, unsigned char end
 
 		if (tmp < max_p)
 			memset(pivs + tmp, 0,
-			       sizeof(unsigned long) * (max_p - tmp));
+			       sizeof(unsigned long *) * (max_p - tmp));
 
 		if (tmp < mt_slots[mt])
 			memset(slots + tmp, 0, sizeof(void *) * (max_s - tmp));
@@ -5250,28 +5274,25 @@ static inline void mas_fill_gap(struct ma_state *mas, void *entry,
  * @size: The size of the gap
  * @fwd: Searching forward or back
  */
-static inline int mas_sparse_area(struct ma_state *mas, unsigned long min,
+static inline void mas_sparse_area(struct ma_state *mas, unsigned long min,
 				unsigned long max, unsigned long size, bool fwd)
 {
-	if (!unlikely(mas_is_none(mas)) && min == 0) {
-		min++;
-		/*
-		 * At this time, min is increased, we need to recheck whether
-		 * the size is satisfied.
-		 */
-		if (min > max || max - min + 1 < size)
-			return -EBUSY;
-	}
+	unsigned long start = 0;
+
+	if (!unlikely(mas_is_none(mas)))
+		start++;
 	/* mas_is_ptr */
 
+	if (start < min)
+		start = min;
+
 	if (fwd) {
-		mas->index = min;
-		mas->last = min + size - 1;
-	} else {
-		mas->last = max;
-		mas->index = max - size + 1;
+		mas->index = start;
+		mas->last = start + size - 1;
+		return;
 	}
-	return 0;
+
+	mas->index = max;
 }
 
 /*
@@ -5300,8 +5321,10 @@ int mas_empty_area(struct ma_state *mas, unsigned long min,
 		return -EBUSY;
 
 	/* Empty set */
-	if (mas_is_none(mas) || mas_is_ptr(mas))
-		return mas_sparse_area(mas, min, max, size, true);
+	if (mas_is_none(mas) || mas_is_ptr(mas)) {
+		mas_sparse_area(mas, min, max, size, true);
+		return 0;
+	}
 
 	/* The start of the window can only be within these values */
 	mas->index = min;
@@ -5351,8 +5374,10 @@ int mas_empty_area_rev(struct ma_state *mas, unsigned long min,
 	}
 
 	/* Empty set. */
-	if (mas_is_none(mas) || mas_is_ptr(mas))
-		return mas_sparse_area(mas, min, max, size, false);
+	if (mas_is_none(mas) || mas_is_ptr(mas)) {
+		mas_sparse_area(mas, min, max, size, false);
+		return 0;
+	}
 
 	/* The start of the window can only be within these values. */
 	mas->index = min;
@@ -5784,7 +5809,6 @@ int mas_preallocate(struct ma_state *mas, gfp_t gfp)
 	mas_reset(mas);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(mas_preallocate);
 
 /*
  * mas_destroy() - destroy a maple state.

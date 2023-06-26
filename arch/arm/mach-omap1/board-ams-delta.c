@@ -822,6 +822,8 @@ static int __init modem_nreset_init(void)
  */
 static int __init ams_delta_modem_init(void)
 {
+	int err;
+
 	if (!machine_is_ams_delta())
 		return -ENODEV;
 
@@ -830,7 +832,9 @@ static int __init ams_delta_modem_init(void)
 	/* Initialize the modem_nreset regulator consumer before use */
 	modem_priv.regulator = ERR_PTR(-ENODEV);
 
-	return platform_device_register(&ams_delta_modem_device);
+	err = platform_device_register(&ams_delta_modem_device);
+
+	return err;
 }
 arch_initcall_sync(ams_delta_modem_init);
 

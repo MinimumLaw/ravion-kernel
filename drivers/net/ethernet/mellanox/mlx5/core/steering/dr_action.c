@@ -819,34 +819,14 @@ int mlx5dr_actions_build_ste_arr(struct mlx5dr_matcher *matcher,
 		case DR_ACTION_TYP_TNL_L2_TO_L2:
 			break;
 		case DR_ACTION_TYP_TNL_L3_TO_L2:
-			if (action->rewrite->ptrn && action->rewrite->arg) {
-				attr.decap_index = mlx5dr_arg_get_obj_id(action->rewrite->arg);
-				attr.decap_actions = action->rewrite->ptrn->num_of_actions;
-				attr.decap_pat_idx = action->rewrite->ptrn->index;
-			} else {
-				attr.decap_index = action->rewrite->index;
-				attr.decap_actions = action->rewrite->num_of_actions;
-				attr.decap_with_vlan =
-					attr.decap_actions == WITH_VLAN_NUM_HW_ACTIONS;
-				attr.decap_pat_idx = MLX5DR_INVALID_PATTERN_INDEX;
-			}
+			attr.decap_index = action->rewrite->index;
+			attr.decap_actions = action->rewrite->num_of_actions;
+			attr.decap_with_vlan =
+				attr.decap_actions == WITH_VLAN_NUM_HW_ACTIONS;
 			break;
 		case DR_ACTION_TYP_MODIFY_HDR:
-			if (action->rewrite->single_action_opt) {
-				attr.modify_actions = action->rewrite->num_of_actions;
-				attr.single_modify_action = action->rewrite->data;
-			} else {
-				if (action->rewrite->ptrn && action->rewrite->arg) {
-					attr.modify_index =
-						mlx5dr_arg_get_obj_id(action->rewrite->arg);
-					attr.modify_actions = action->rewrite->ptrn->num_of_actions;
-					attr.modify_pat_idx = action->rewrite->ptrn->index;
-				} else {
-					attr.modify_index = action->rewrite->index;
-					attr.modify_actions = action->rewrite->num_of_actions;
-					attr.modify_pat_idx = MLX5DR_INVALID_PATTERN_INDEX;
-				}
-			}
+			attr.modify_index = action->rewrite->index;
+			attr.modify_actions = action->rewrite->num_of_actions;
 			if (action->rewrite->modify_ttl)
 				dr_action_modify_ttl_adjust(dmn, &attr, rx_rule,
 							    &recalc_cs_required);
@@ -1385,6 +1365,8 @@ out_err:
 	return -EINVAL;
 }
 
+#define ACTION_CACHE_LINE_SIZE 64
+
 static int
 dr_action_create_reformat_action(struct mlx5dr_domain *dmn,
 				 u8 reformat_param_0, u8 reformat_param_1,
@@ -1421,31 +1403,36 @@ dr_action_create_reformat_action(struct mlx5dr_domain *dmn,
 	}
 	case DR_ACTION_TYP_TNL_L3_TO_L2:
 	{
-		u8 *hw_actions;
+		u8 hw_actions[ACTION_CACHE_LINE_SIZE] = {};
 		int ret;
-
-		hw_actions = kzalloc(DR_ACTION_CACHE_LINE_SIZE, GFP_KERNEL);
-		if (!hw_actions)
-			return -ENOMEM;
 
 		ret = mlx5dr_ste_set_action_decap_l3_list(dmn->ste_ctx,
 							  data, data_sz,
 							  hw_actions,
-							  DR_ACTION_CACHE_LINE_SIZE,
+							  ACTION_CACHE_LINE_SIZE,
 							  &action->rewrite->num_of_actions);
 		if (ret) {
 			mlx5dr_dbg(dmn, "Failed creating decap l3 action list\n");
-			kfree(hw_actions);
 			return ret;
 		}
 
-		action->rewrite->data = hw_actions;
-		action->rewrite->dmn = dmn;
+		action->rewrite->chunk = mlx5dr_icm_alloc_chunk(dmn->action_icm_pool,
+								DR_CHUNK_SIZE_8);
+		if (!action->rewrite->chunk) {
+			mlx5dr_dbg(dmn, "Failed allocating modify header chunk\n");
+			return -ENOMEM;
+		}
 
-		ret = mlx5dr_ste_alloc_modify_hdr(action);
+		action->rewrite->data = (void *)hw_actions;
+		action->rewrite->index = (mlx5dr_icm_pool_get_chunk_icm_addr
+					  (action->rewrite->chunk) -
+					 dmn->info.caps.hdr_modify_icm_addr) /
+					 ACTION_CACHE_LINE_SIZE;
+
+		ret = mlx5dr_send_postsend_action(dmn, action);
 		if (ret) {
-			mlx5dr_dbg(dmn, "Failed preparing reformat data\n");
-			kfree(hw_actions);
+			mlx5dr_dbg(dmn, "Writing decap l3 actions to ICM failed\n");
+			mlx5dr_icm_free_chunk(action->rewrite->chunk);
 			return ret;
 		}
 		return 0;
@@ -1976,6 +1963,7 @@ static int dr_action_create_modify_action(struct mlx5dr_domain *dmn,
 					  __be64 actions[],
 					  struct mlx5dr_action *action)
 {
+	struct mlx5dr_icm_chunk *chunk;
 	u32 max_hw_actions;
 	u32 num_hw_actions;
 	u32 num_sw_actions;
@@ -1992,9 +1980,15 @@ static int dr_action_create_modify_action(struct mlx5dr_domain *dmn,
 		return -EINVAL;
 	}
 
-	hw_actions = kcalloc(1, max_hw_actions * DR_MODIFY_ACTION_SIZE, GFP_KERNEL);
-	if (!hw_actions)
+	chunk = mlx5dr_icm_alloc_chunk(dmn->action_icm_pool, DR_CHUNK_SIZE_16);
+	if (!chunk)
 		return -ENOMEM;
+
+	hw_actions = kcalloc(1, max_hw_actions * DR_MODIFY_ACTION_SIZE, GFP_KERNEL);
+	if (!hw_actions) {
+		ret = -ENOMEM;
+		goto free_chunk;
+	}
 
 	ret = dr_actions_convert_modify_header(action,
 					       max_hw_actions,
@@ -2006,24 +2000,24 @@ static int dr_action_create_modify_action(struct mlx5dr_domain *dmn,
 	if (ret)
 		goto free_hw_actions;
 
+	action->rewrite->chunk = chunk;
 	action->rewrite->modify_ttl = modify_ttl;
 	action->rewrite->data = (u8 *)hw_actions;
 	action->rewrite->num_of_actions = num_hw_actions;
+	action->rewrite->index = (mlx5dr_icm_pool_get_chunk_icm_addr(chunk) -
+				  dmn->info.caps.hdr_modify_icm_addr) /
+				  ACTION_CACHE_LINE_SIZE;
 
-	if (num_hw_actions == 1 &&
-	    dmn->info.caps.sw_format_ver >= MLX5_STEERING_FORMAT_CONNECTX_6DX) {
-		action->rewrite->single_action_opt = true;
-	} else {
-		action->rewrite->single_action_opt = false;
-		ret = mlx5dr_ste_alloc_modify_hdr(action);
-		if (ret)
-			goto free_hw_actions;
-	}
+	ret = mlx5dr_send_postsend_action(dmn, action);
+	if (ret)
+		goto free_hw_actions;
 
 	return 0;
 
 free_hw_actions:
 	kfree(hw_actions);
+free_chunk:
+	mlx5dr_icm_free_chunk(chunk);
 	return ret;
 }
 
@@ -2135,11 +2129,6 @@ mlx5dr_action_create_aso(struct mlx5dr_domain *dmn, u32 obj_id,
 	return action;
 }
 
-u32 mlx5dr_action_get_pkt_reformat_id(struct mlx5dr_action *action)
-{
-	return action->reformat->id;
-}
-
 int mlx5dr_action_destroy(struct mlx5dr_action *action)
 {
 	if (WARN_ON_ONCE(refcount_read(&action->refcount) > 1))
@@ -2173,8 +2162,7 @@ int mlx5dr_action_destroy(struct mlx5dr_action *action)
 		refcount_dec(&action->reformat->dmn->refcount);
 		break;
 	case DR_ACTION_TYP_TNL_L3_TO_L2:
-		mlx5dr_ste_free_modify_hdr(action);
-		kfree(action->rewrite->data);
+		mlx5dr_icm_free_chunk(action->rewrite->chunk);
 		refcount_dec(&action->rewrite->dmn->refcount);
 		break;
 	case DR_ACTION_TYP_L2_TO_TNL_L2:
@@ -2185,8 +2173,7 @@ int mlx5dr_action_destroy(struct mlx5dr_action *action)
 		refcount_dec(&action->reformat->dmn->refcount);
 		break;
 	case DR_ACTION_TYP_MODIFY_HDR:
-		if (!action->rewrite->single_action_opt)
-			mlx5dr_ste_free_modify_hdr(action);
+		mlx5dr_icm_free_chunk(action->rewrite->chunk);
 		kfree(action->rewrite->data);
 		refcount_dec(&action->rewrite->dmn->refcount);
 		break;

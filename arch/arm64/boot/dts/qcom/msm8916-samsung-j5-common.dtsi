@@ -93,6 +93,10 @@
 	linux,code = <KEY_VOLUMEDOWN>;
 };
 
+&pronto {
+	status = "okay";
+};
+
 &sdhc_1 {
 	status = "okay";
 
@@ -118,14 +122,6 @@
 
 &usb_hs_phy {
 	extcon = <&muic>;
-};
-
-&wcnss {
-	status = "okay";
-};
-
-&wcnss_iris {
-	compatible = "qcom,wcn3620";
 };
 
 &smd_rpm_regulators {

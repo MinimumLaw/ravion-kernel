@@ -13,7 +13,6 @@
 #include <linux/dma-buf.h>
 #include <linux/iommu.h>
 #include <linux/module.h>
-#include <linux/vmalloc.h>
 
 #include <drm/drm_drv.h>
 #include <drm/drm_prime.h>

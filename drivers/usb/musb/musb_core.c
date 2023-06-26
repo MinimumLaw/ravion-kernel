@@ -2621,7 +2621,7 @@ static int musb_probe(struct platform_device *pdev)
 	return musb_init_controller(dev, irq, base);
 }
 
-static void musb_remove(struct platform_device *pdev)
+static int musb_remove(struct platform_device *pdev)
 {
 	struct device	*dev = &pdev->dev;
 	struct musb	*musb = dev_to_musb(dev);
@@ -2657,6 +2657,7 @@ static void musb_remove(struct platform_device *pdev)
 	usb_phy_shutdown(musb->xceiv);
 	musb_free(musb);
 	device_init_wakeup(dev, 0);
+	return 0;
 }
 
 #ifdef	CONFIG_PM
@@ -2954,7 +2955,7 @@ static struct platform_driver musb_driver = {
 		.dev_groups	= musb_groups,
 	},
 	.probe		= musb_probe,
-	.remove_new	= musb_remove,
+	.remove		= musb_remove,
 };
 
 module_platform_driver(musb_driver);

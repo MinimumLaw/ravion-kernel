@@ -534,7 +534,7 @@
 &dss {
 	pinctrl-names = "default";
 	pinctrl-0 = <&vout_pins>;
-	status = "okay";
+	status = "ok";
 
 	port {
 		dpi_out: endpoint {

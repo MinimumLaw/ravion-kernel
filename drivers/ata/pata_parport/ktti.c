@@ -9,6 +9,8 @@
 
 */
 
+#define KTTI_VERSION      "1.0"
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -16,7 +18,8 @@
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <asm/io.h>
-#include "pata_parport.h"
+
+#include <linux/pata_parport.h>
 
 #define j44(a,b)                (((a>>4)&0x0f)|(b&0xf0))
 
@@ -26,7 +29,7 @@
 
 static int  cont_map[2] = { 0x10, 0x08 };
 
-static void ktti_write_regr(struct pi_adapter *pi, int cont, int regr, int val)
+static void  ktti_write_regr( PIA *pi, int cont, int regr, int val)
 
 {	int r;
 
@@ -36,7 +39,7 @@ static void ktti_write_regr(struct pi_adapter *pi, int cont, int regr, int val)
 	w0(val); w2(3); w0(0); w2(6); w2(0xb);
 }
 
-static int ktti_read_regr(struct pi_adapter *pi, int cont, int regr)
+static int ktti_read_regr( PIA *pi, int cont, int regr )
 
 {	int  a, b, r;
 
@@ -48,7 +51,7 @@ static int ktti_read_regr(struct pi_adapter *pi, int cont, int regr)
 
 }
 
-static void ktti_read_block(struct pi_adapter *pi, char *buf, int count)
+static void ktti_read_block( PIA *pi, char * buf, int count )
 
 {	int  k, a, b;
 
@@ -61,7 +64,7 @@ static void ktti_read_block(struct pi_adapter *pi, char *buf, int count)
 	}
 }
 
-static void ktti_write_block(struct pi_adapter *pi, char *buf, int count)
+static void ktti_write_block( PIA *pi, char * buf, int count )
 
 {	int k;
 
@@ -73,25 +76,25 @@ static void ktti_write_block(struct pi_adapter *pi, char *buf, int count)
 	}
 }
 
-static void ktti_connect(struct pi_adapter *pi)
+static void ktti_connect ( PIA *pi  )
 
 {       pi->saved_r0 = r0();
         pi->saved_r2 = r2();
 	w2(0xb); w2(0xa); w0(0); w2(3); w2(6);	
 }
 
-static void ktti_disconnect(struct pi_adapter *pi)
+static void ktti_disconnect ( PIA *pi )
 
 {       w2(0xb); w2(0xa); w0(0xa0); w2(3); w2(4);
 	w0(pi->saved_r0);
         w2(pi->saved_r2);
 } 
 
-static void ktti_log_adapter(struct pi_adapter *pi)
+static void ktti_log_adapter( PIA *pi, char * scratch, int verbose )
 
-{
-	dev_info(&pi->dev, "KT adapter at 0x%x, delay %d\n",
-		pi->port, pi->delay);
+{       printk("%s: ktti %s, KT adapter at 0x%x, delay %d\n",
+                pi->device,KTTI_VERSION,pi->port,pi->delay);
+
 }
 
 static struct pi_protocol ktti = {
@@ -110,5 +113,16 @@ static struct pi_protocol ktti = {
 	.log_adapter	= ktti_log_adapter,
 };
 
+static int __init ktti_init(void)
+{
+	return paride_register(&ktti);
+}
+
+static void __exit ktti_exit(void)
+{
+	paride_unregister(&ktti);
+}
+
 MODULE_LICENSE("GPL");
-module_pata_parport_driver(ktti);
+module_init(ktti_init)
+module_exit(ktti_exit)

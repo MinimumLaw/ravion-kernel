@@ -17,7 +17,6 @@
 #include "compression.h"
 #include "ctree.h"
 #include "super.h"
-#include "btrfs_inode.h"
 
 #define LZO_LEN	4
 
@@ -330,7 +329,7 @@ static void copy_compressed_segment(struct compressed_bio *cb,
 int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 {
 	struct workspace *workspace = list_entry(ws, struct workspace, list);
-	const struct btrfs_fs_info *fs_info = cb->bbio.inode->root->fs_info;
+	const struct btrfs_fs_info *fs_info = btrfs_sb(cb->inode->i_sb);
 	const u32 sectorsize = fs_info->sectorsize;
 	char *kaddr;
 	int ret;
@@ -389,7 +388,8 @@ int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 			 */
 			btrfs_err(fs_info, "unexpectedly large lzo segment len %u",
 					seg_len);
-			return -EIO;
+			ret = -EIO;
+			goto out;
 		}
 
 		/* Copy the compressed segment payload into workspace */
@@ -400,7 +400,8 @@ int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 					    workspace->buf, &out_len);
 		if (ret != LZO_E_OK) {
 			btrfs_err(fs_info, "failed to decompress");
-			return -EIO;
+			ret = -EIO;
+			goto out;
 		}
 
 		/* Copy the data into inode pages */
@@ -409,7 +410,7 @@ int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 
 		/* All data read, exit */
 		if (ret == 0)
-			return 0;
+			goto out;
 		ret = 0;
 
 		/* Check if the sector has enough space for a segment header */
@@ -420,8 +421,10 @@ int lzo_decompress_bio(struct list_head *ws, struct compressed_bio *cb)
 		/* Skip the padding zeros */
 		cur_in += sector_bytes_left;
 	}
-
-	return 0;
+out:
+	if (!ret)
+		zero_fill_bio(cb->orig_bio);
+	return ret;
 }
 
 int lzo_decompress(struct list_head *ws, const u8 *data_in,

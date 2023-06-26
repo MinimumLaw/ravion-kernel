@@ -1976,7 +1976,7 @@ cleanup_mmal:
 	return ret;
 }
 
-static void bcm2835_mmal_remove(struct platform_device *pdev)
+static int bcm2835_mmal_remove(struct platform_device *pdev)
 {
 	int camera;
 	struct vchiq_mmal_instance *instance = gdev[0]->instance;
@@ -1986,11 +1986,13 @@ static void bcm2835_mmal_remove(struct platform_device *pdev)
 		gdev[camera] = NULL;
 	}
 	vchiq_mmal_finalise(instance);
+
+	return 0;
 }
 
 static struct platform_driver bcm2835_camera_driver = {
 	.probe		= bcm2835_mmal_probe,
-	.remove_new	= bcm2835_mmal_remove,
+	.remove		= bcm2835_mmal_remove,
 	.driver		= {
 		.name	= "bcm2835-camera",
 	},

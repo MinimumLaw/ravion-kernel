@@ -181,15 +181,6 @@
 #ifdef __KERNEL__
 
 /*
- * Used to name C functions called from asm
- */
-#ifdef CONFIG_PPC_KERNEL_PCREL
-#define CFUNC(name) name@notoc
-#else
-#define CFUNC(name) name
-#endif
-
-/*
  * We use __powerpc64__ here because we want the compat VDSO to use the 32-bit
  * version below in the else case of the ifdef.
  */
@@ -216,9 +207,6 @@
 	.globl name; \
 name:
 
-#ifdef CONFIG_PPC_KERNEL_PCREL
-#define _GLOBAL_TOC _GLOBAL
-#else
 #define _GLOBAL_TOC(name) \
 	.align 2 ; \
 	.type name,@function; \
@@ -227,7 +215,6 @@ name: \
 0:	addis r2,r12,(.TOC.-0b)@ha; \
 	addi r2,r2,(.TOC.-0b)@l; \
 	.localentry name,.-name
-#endif
 
 #define DOTSYM(a)	a
 
@@ -359,13 +346,8 @@ n:
 
 #ifdef __powerpc64__
 
-#ifdef CONFIG_PPC_KERNEL_PCREL
-#define __LOAD_PACA_TOC(reg)			\
-	li	reg,-1
-#else
 #define __LOAD_PACA_TOC(reg)			\
 	ld	reg,PACATOC(r13)
-#endif
 
 #define LOAD_PACA_TOC()				\
 	__LOAD_PACA_TOC(r2)
@@ -379,15 +361,9 @@ n:
 	ori	reg, reg, (expr)@l;		\
 	rldimi	reg, tmp, 32, 0
 
-#ifdef CONFIG_PPC_KERNEL_PCREL
-#define LOAD_REG_ADDR(reg,name)			\
-	pla	reg,name@pcrel
-
-#else
 #define LOAD_REG_ADDR(reg,name)			\
 	addis	reg,r2,name@toc@ha;		\
 	addi	reg,reg,name@toc@l
-#endif
 
 #ifdef CONFIG_PPC_BOOK3E_64
 /*
@@ -860,13 +836,5 @@ END_FTR_SECTION_NESTED(CPU_FTR_CELL_TB_BUG, CPU_FTR_CELL_TB_BUG, 96)
 #else
 #define BTB_FLUSH(reg)
 #endif /* CONFIG_PPC_E500 */
-
-#if defined(CONFIG_PPC64_ELF_ABI_V1)
-#define STACK_FRAME_PARAMS 48
-#elif defined(CONFIG_PPC64_ELF_ABI_V2)
-#define STACK_FRAME_PARAMS 32
-#elif defined(CONFIG_PPC32)
-#define STACK_FRAME_PARAMS 8
-#endif
 
 #endif /* _ASM_POWERPC_PPC_ASM_H */

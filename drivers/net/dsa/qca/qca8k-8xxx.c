@@ -22,7 +22,6 @@
 #include <linux/dsa/tag_qca.h>
 
 #include "qca8k.h"
-#include "qca8k_leds.h"
 
 static void
 qca8k_split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page)
@@ -771,6 +770,21 @@ err_clear_skb:
 	kfree_skb(write_skb);
 
 	return ret;
+}
+
+static u32
+qca8k_port_to_phy(int port)
+{
+	/* From Andrew Lunn:
+	 * Port 0 has no internal phy.
+	 * Port 1 has an internal PHY at MDIO address 0.
+	 * Port 2 has an internal PHY at MDIO address 1.
+	 * ...
+	 * Port 5 has an internal PHY at MDIO address 4.
+	 * Port 6 has no internal PHY.
+	 */
+
+	return port - 1;
 }
 
 static int
@@ -1780,10 +1794,6 @@ qca8k_setup(struct dsa_switch *ds)
 		return ret;
 
 	ret = qca8k_setup_mac_pwr_sel(priv);
-	if (ret)
-		return ret;
-
-	ret = qca8k_setup_led_ctrl(priv);
 	if (ret)
 		return ret;
 

@@ -368,7 +368,7 @@ static void lpss_ssp_select_cs(struct spi_device *spi,
 
 	value = __lpss_ssp_read_priv(drv_data, config->reg_cs_ctrl);
 
-	cs = spi_get_chipselect(spi, 0);
+	cs = spi->chip_select;
 	cs <<= config->cs_sel_shift;
 	if (cs != (value & config->cs_sel_mask)) {
 		/*
@@ -429,7 +429,7 @@ static void cs_assert(struct spi_device *spi)
 		spi_controller_get_devdata(spi->controller);
 
 	if (drv_data->ssp_type == CE4100_SSP) {
-		pxa2xx_spi_write(drv_data, SSSR, spi_get_chipselect(spi, 0));
+		pxa2xx_spi_write(drv_data, SSSR, spi->chip_select);
 		return;
 	}
 
@@ -1217,7 +1217,7 @@ static int setup(struct spi_device *spi)
 			return -ENOMEM;
 
 		if (drv_data->ssp_type == CE4100_SSP) {
-			if (spi_get_chipselect(spi, 0) > 4) {
+			if (spi->chip_select > 4) {
 				dev_err(&spi->dev,
 					"failed setup: cs number must not be > 4.\n");
 				kfree(chip);
@@ -1659,7 +1659,7 @@ out_error_controller_alloc:
 	return status;
 }
 
-static void pxa2xx_spi_remove(struct platform_device *pdev)
+static int pxa2xx_spi_remove(struct platform_device *pdev)
 {
 	struct driver_data *drv_data = platform_get_drvdata(pdev);
 	struct ssp_device *ssp = drv_data->ssp;
@@ -1684,6 +1684,8 @@ static void pxa2xx_spi_remove(struct platform_device *pdev)
 
 	/* Release SSP */
 	pxa_ssp_free(ssp);
+
+	return 0;
 }
 
 static int pxa2xx_spi_suspend(struct device *dev)
@@ -1754,7 +1756,7 @@ static const struct acpi_device_id pxa2xx_spi_acpi_match[] = {
 MODULE_DEVICE_TABLE(acpi, pxa2xx_spi_acpi_match);
 #endif
 
-static const struct of_device_id pxa2xx_spi_of_match[] __maybe_unused = {
+static const struct of_device_id pxa2xx_spi_of_match[] = {
 	{ .compatible = "marvell,mmp2-ssp", .data = (void *)MMP2_SSP },
 	{}
 };
@@ -1768,7 +1770,7 @@ static struct platform_driver driver = {
 		.of_match_table = of_match_ptr(pxa2xx_spi_of_match),
 	},
 	.probe = pxa2xx_spi_probe,
-	.remove_new = pxa2xx_spi_remove,
+	.remove = pxa2xx_spi_remove,
 };
 
 static int __init pxa2xx_spi_init(void)

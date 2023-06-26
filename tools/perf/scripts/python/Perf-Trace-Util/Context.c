@@ -100,11 +100,10 @@ static PyObject *perf_sample_insn(PyObject *obj, PyObject *args)
 	if (!c)
 		return NULL;
 
-	if (c->sample->ip && !c->sample->insn_len && c->al->thread->maps) {
-		struct machine *machine =  maps__machine(c->al->thread->maps);
+	if (c->sample->ip && !c->sample->insn_len &&
+	    c->al->thread->maps && c->al->thread->maps->machine)
+		script_fetch_insn(c->sample, c->al->thread, c->al->thread->maps->machine);
 
-		script_fetch_insn(c->sample, c->al->thread, machine);
-	}
 	if (!c->sample->insn_len)
 		Py_RETURN_NONE; /* N.B. This is a return statement */
 
@@ -145,7 +144,6 @@ static PyObject *perf_sample_src(PyObject *obj, PyObject *args, bool get_srccode
 	char *srccode = NULL;
 	PyObject *result;
 	struct map *map;
-	struct dso *dso;
 	int len = 0;
 	u64 addr;
 
@@ -154,10 +152,9 @@ static PyObject *perf_sample_src(PyObject *obj, PyObject *args, bool get_srccode
 
 	map = c->al->map;
 	addr = c->al->addr;
-	dso = map ? map__dso(map) : NULL;
 
-	if (dso)
-		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line);
+	if (map && map->dso)
+		srcfile = get_srcline_split(map->dso, map__rip_2objdump(map, addr), &line);
 
 	if (get_srccode) {
 		if (srcfile)

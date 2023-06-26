@@ -166,7 +166,7 @@
         "EventCode": "0x9",
         "EventName": "UNC_M_ECC_CORRECTABLE_ERRORS",
         "PerPkg": "1",
-        "PublicDescription": "Counts the number of ECC errors detected and corrected by the iMC on this channel.  This counter is only useful with ECC DRAM devices.  This count will increment one time for each correction regardless of the number of bits corrected.  The iMC can correct up to 4 bit errors in independent channel mode and 8 bit errors in lockstep mode.",
+        "PublicDescription": "Counts the number of ECC errors detected and corrected by the iMC on this channel.  This counter is only useful with ECC DRAM devices.  This count will increment one time for each correction regardless of the number of bits corrected.  The iMC can correct up to 4 bit errors in independent channel mode and 8 bit erros in lockstep mode.",
         "Unit": "iMC"
     },
     {
@@ -302,7 +302,6 @@
         "Unit": "iMC"
     },
     {
-        "BriefDescription": "UNC_M_POWER_PCU_THROTTLING",
         "EventCode": "0x42",
         "EventName": "UNC_M_POWER_PCU_THROTTLING",
         "PerPkg": "1",
@@ -488,7 +487,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -497,7 +495,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -505,7 +502,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -514,7 +510,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -523,7 +518,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -532,7 +526,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -541,7 +534,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -550,7 +542,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -559,7 +550,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -568,7 +558,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -577,7 +566,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -586,7 +574,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -595,7 +582,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -604,7 +590,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -613,7 +598,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -622,7 +606,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -631,7 +614,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -640,7 +622,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -649,7 +630,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -658,7 +638,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -667,7 +646,6 @@
         "EventCode": "0xB0",
         "EventName": "UNC_M_RD_CAS_RANK0.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -676,7 +654,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -685,7 +662,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -693,7 +669,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -702,7 +677,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -711,7 +685,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -720,7 +693,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -729,7 +701,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -738,7 +709,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -747,7 +717,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -756,7 +725,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -765,7 +733,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -774,7 +741,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -783,7 +749,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -792,7 +757,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -801,7 +765,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -810,7 +773,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -819,7 +781,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -828,7 +789,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -837,7 +797,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -846,7 +805,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -855,7 +813,6 @@
         "EventCode": "0xB1",
         "EventName": "UNC_M_RD_CAS_RANK1.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -864,7 +821,6 @@
         "EventCode": "0xB2",
         "EventName": "UNC_M_RD_CAS_RANK2.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -872,7 +828,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -881,7 +836,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -889,7 +843,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -898,7 +851,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -907,7 +859,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -916,7 +867,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -925,7 +875,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -934,7 +883,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -943,7 +891,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -952,7 +899,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -961,7 +907,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -970,7 +915,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -979,7 +923,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -988,7 +931,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -997,7 +939,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -1006,7 +947,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -1015,7 +955,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -1024,7 +963,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -1033,7 +971,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -1042,7 +979,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -1051,7 +987,6 @@
         "EventCode": "0xB4",
         "EventName": "UNC_M_RD_CAS_RANK4.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -1060,7 +995,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -1069,7 +1003,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -1077,7 +1010,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -1086,7 +1018,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -1095,7 +1026,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -1104,7 +1034,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -1113,7 +1042,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -1122,7 +1050,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -1131,7 +1058,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -1140,7 +1066,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -1149,7 +1074,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -1158,7 +1082,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -1167,7 +1090,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -1176,7 +1098,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -1185,7 +1106,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -1194,7 +1114,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -1203,7 +1122,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -1212,7 +1130,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -1221,7 +1138,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -1230,7 +1146,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -1239,7 +1154,6 @@
         "EventCode": "0xB5",
         "EventName": "UNC_M_RD_CAS_RANK5.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -1248,7 +1162,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -1257,7 +1170,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -1265,7 +1177,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -1274,7 +1185,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -1283,7 +1193,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -1292,7 +1201,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -1301,7 +1209,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -1310,7 +1217,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -1319,7 +1225,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -1328,7 +1233,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -1337,7 +1241,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -1346,7 +1249,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -1355,7 +1257,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -1364,7 +1265,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -1373,7 +1273,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -1382,7 +1281,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -1391,7 +1289,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -1400,7 +1297,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -1409,7 +1305,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -1418,7 +1313,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -1427,7 +1321,6 @@
         "EventCode": "0xB6",
         "EventName": "UNC_M_RD_CAS_RANK6.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -1436,7 +1329,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -1445,7 +1337,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -1453,7 +1344,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -1462,7 +1352,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -1471,7 +1360,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -1480,7 +1368,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -1489,7 +1376,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -1498,7 +1384,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -1507,7 +1392,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -1516,7 +1400,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -1525,7 +1408,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -1534,7 +1416,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -1543,7 +1424,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -1552,7 +1432,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -1561,7 +1440,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -1570,7 +1448,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -1579,7 +1456,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -1588,7 +1464,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -1597,7 +1472,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -1606,7 +1480,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -1615,7 +1488,6 @@
         "EventCode": "0xB7",
         "EventName": "UNC_M_RD_CAS_RANK7.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "RD_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -1726,7 +1598,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -1735,7 +1606,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -1743,7 +1613,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -1752,7 +1621,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -1761,7 +1629,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -1770,7 +1637,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -1779,7 +1645,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -1788,7 +1653,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -1797,7 +1661,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -1806,7 +1669,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -1815,7 +1677,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -1824,7 +1685,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -1833,7 +1693,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -1842,7 +1701,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -1851,7 +1709,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -1860,7 +1717,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -1869,7 +1725,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -1878,7 +1733,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -1887,7 +1741,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -1896,7 +1749,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -1905,7 +1757,6 @@
         "EventCode": "0xB8",
         "EventName": "UNC_M_WR_CAS_RANK0.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -1914,7 +1765,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -1923,7 +1773,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -1931,7 +1780,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -1940,7 +1788,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -1949,7 +1796,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -1958,7 +1804,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -1967,7 +1812,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -1976,7 +1820,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -1985,7 +1828,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -1994,7 +1836,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -2003,7 +1844,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -2012,7 +1852,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -2021,7 +1860,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -2030,7 +1868,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -2039,7 +1876,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -2048,7 +1884,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -2057,7 +1892,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -2066,7 +1900,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -2075,7 +1908,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -2084,7 +1916,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -2093,7 +1924,6 @@
         "EventCode": "0xB9",
         "EventName": "UNC_M_WR_CAS_RANK1.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -2102,7 +1932,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -2111,7 +1940,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -2119,7 +1947,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -2128,7 +1955,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -2137,7 +1963,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -2146,7 +1971,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -2155,7 +1979,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -2164,7 +1987,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -2173,7 +1995,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -2182,7 +2003,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -2191,7 +2011,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -2200,7 +2019,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -2209,7 +2027,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -2218,7 +2035,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -2227,7 +2043,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -2236,7 +2051,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -2245,7 +2059,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -2254,7 +2067,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -2263,7 +2075,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -2272,7 +2083,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -2281,7 +2091,6 @@
         "EventCode": "0xBC",
         "EventName": "UNC_M_WR_CAS_RANK4.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -2290,7 +2099,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -2299,7 +2107,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -2307,7 +2114,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -2316,7 +2122,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -2325,7 +2130,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -2334,7 +2138,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -2343,7 +2146,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -2352,7 +2154,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -2361,7 +2162,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -2370,7 +2170,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -2379,7 +2178,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -2388,7 +2186,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -2397,7 +2194,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -2406,7 +2202,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -2415,7 +2210,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -2424,7 +2218,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -2433,7 +2226,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -2442,7 +2234,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -2451,7 +2242,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -2460,7 +2250,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -2469,7 +2258,6 @@
         "EventCode": "0xBD",
         "EventName": "UNC_M_WR_CAS_RANK5.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -2478,7 +2266,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -2487,7 +2274,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -2495,7 +2281,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -2504,7 +2289,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -2513,7 +2297,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -2522,7 +2305,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -2531,7 +2313,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -2540,7 +2321,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -2549,7 +2329,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -2558,7 +2337,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -2567,7 +2345,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -2576,7 +2353,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -2585,7 +2361,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -2594,7 +2369,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -2603,7 +2377,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -2612,7 +2385,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -2621,7 +2393,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -2630,7 +2401,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -2639,7 +2409,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -2648,7 +2417,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -2657,7 +2425,6 @@
         "EventCode": "0xBE",
         "EventName": "UNC_M_WR_CAS_RANK6.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     },
@@ -2666,7 +2433,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.ALLBANKS",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : All Banks",
         "UMask": "0x10",
         "Unit": "iMC"
     },
@@ -2675,7 +2441,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 0",
         "Unit": "iMC"
     },
     {
@@ -2683,7 +2448,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 1",
         "UMask": "0x1",
         "Unit": "iMC"
     },
@@ -2692,7 +2456,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK10",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 10",
         "UMask": "0xa",
         "Unit": "iMC"
     },
@@ -2701,7 +2464,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK11",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 11",
         "UMask": "0xb",
         "Unit": "iMC"
     },
@@ -2710,7 +2472,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK12",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 12",
         "UMask": "0xc",
         "Unit": "iMC"
     },
@@ -2719,7 +2480,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK13",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 13",
         "UMask": "0xd",
         "Unit": "iMC"
     },
@@ -2728,7 +2488,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK14",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 14",
         "UMask": "0xe",
         "Unit": "iMC"
     },
@@ -2737,7 +2496,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK15",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 15",
         "UMask": "0xf",
         "Unit": "iMC"
     },
@@ -2746,7 +2504,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 2",
         "UMask": "0x2",
         "Unit": "iMC"
     },
@@ -2755,7 +2512,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 3",
         "UMask": "0x3",
         "Unit": "iMC"
     },
@@ -2764,7 +2520,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK4",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 4",
         "UMask": "0x4",
         "Unit": "iMC"
     },
@@ -2773,7 +2528,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK5",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 5",
         "UMask": "0x5",
         "Unit": "iMC"
     },
@@ -2782,7 +2536,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK6",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 6",
         "UMask": "0x6",
         "Unit": "iMC"
     },
@@ -2791,7 +2544,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK7",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 7",
         "UMask": "0x7",
         "Unit": "iMC"
     },
@@ -2800,7 +2552,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK8",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 8",
         "UMask": "0x8",
         "Unit": "iMC"
     },
@@ -2809,7 +2560,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANK9",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank 9",
         "UMask": "0x9",
         "Unit": "iMC"
     },
@@ -2818,7 +2568,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANKG0",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 0 (Banks 0-3)",
         "UMask": "0x11",
         "Unit": "iMC"
     },
@@ -2827,7 +2576,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANKG1",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 1 (Banks 4-7)",
         "UMask": "0x12",
         "Unit": "iMC"
     },
@@ -2836,7 +2584,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANKG2",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 2 (Banks 8-11)",
         "UMask": "0x13",
         "Unit": "iMC"
     },
@@ -2845,7 +2592,6 @@
         "EventCode": "0xBF",
         "EventName": "UNC_M_WR_CAS_RANK7.BANKG3",
         "PerPkg": "1",
-        "PublicDescription": "WR_CAS Access to Rank 0 : Bank Group 3 (Banks 12-15)",
         "UMask": "0x14",
         "Unit": "iMC"
     }

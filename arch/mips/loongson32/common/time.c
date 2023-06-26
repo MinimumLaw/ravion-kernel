@@ -4,7 +4,6 @@
  */
 
 #include <linux/clk.h>
-#include <linux/of_clk.h>
 #include <linux/interrupt.h>
 #include <linux/sizes.h>
 #include <asm/time.h>
@@ -212,7 +211,7 @@ void __init plat_time_init(void)
 	struct clk *clk = NULL;
 
 	/* initialize LS1X clocks */
-	of_clk_init(NULL);
+	ls1x_clk_init();
 
 #ifdef CONFIG_CEVT_CSRC_LS1X
 	/* setup LS1X PWM timer */

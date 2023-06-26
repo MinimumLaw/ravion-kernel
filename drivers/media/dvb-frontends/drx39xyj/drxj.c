@@ -11070,7 +11070,7 @@ ctrl_power_mode(struct drx_demod_instance *demod, enum drx_power_mode *mode)
 		sio_cc_pwd_mode = SIO_CC_PWD_MODE_LEVEL_OSC;
 		break;
 	default:
-		/* Unknown sleep mode */
+		/* Unknow sleep mode */
 		return -EINVAL;
 	}
 

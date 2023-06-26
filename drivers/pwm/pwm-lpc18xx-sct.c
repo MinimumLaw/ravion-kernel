@@ -449,7 +449,7 @@ disable_pwmclk:
 	return ret;
 }
 
-static void lpc18xx_pwm_remove(struct platform_device *pdev)
+static int lpc18xx_pwm_remove(struct platform_device *pdev)
 {
 	struct lpc18xx_pwm_chip *lpc18xx_pwm = platform_get_drvdata(pdev);
 	u32 val;
@@ -461,6 +461,8 @@ static void lpc18xx_pwm_remove(struct platform_device *pdev)
 			   val | LPC18XX_PWM_CTRL_HALT);
 
 	clk_disable_unprepare(lpc18xx_pwm->pwm_clk);
+
+	return 0;
 }
 
 static struct platform_driver lpc18xx_pwm_driver = {
@@ -469,7 +471,7 @@ static struct platform_driver lpc18xx_pwm_driver = {
 		.of_match_table = lpc18xx_pwm_of_match,
 	},
 	.probe = lpc18xx_pwm_probe,
-	.remove_new = lpc18xx_pwm_remove,
+	.remove = lpc18xx_pwm_remove,
 };
 module_platform_driver(lpc18xx_pwm_driver);
 

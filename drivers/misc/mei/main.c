@@ -18,6 +18,7 @@
 #include <linux/ioctl.h>
 #include <linux/cdev.h>
 #include <linux/sched/signal.h>
+#include <linux/uuid.h>
 #include <linux/compat.h>
 #include <linux/jiffies.h>
 #include <linux/interrupt.h>
@@ -1274,7 +1275,7 @@ static int __init mei_init(void)
 {
 	int ret;
 
-	mei_class = class_create("mei");
+	mei_class = class_create(THIS_MODULE, "mei");
 	if (IS_ERR(mei_class)) {
 		pr_err("couldn't create class\n");
 		ret = PTR_ERR(mei_class);

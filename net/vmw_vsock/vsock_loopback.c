@@ -31,7 +31,8 @@ static int vsock_loopback_send_pkt(struct sk_buff *skb)
 	struct vsock_loopback *vsock = &the_vsock_loopback;
 	int len = skb->len;
 
-	virtio_vsock_skb_queue_tail(&vsock->pkt_queue, skb);
+	skb_queue_tail(&vsock->pkt_queue, skb);
+
 	queue_work(vsock->workqueue, &vsock->pkt_work);
 
 	return len;
@@ -90,8 +91,6 @@ static struct virtio_transport loopback_transport = {
 		.notify_send_pre_enqueue  = virtio_transport_notify_send_pre_enqueue,
 		.notify_send_post_enqueue = virtio_transport_notify_send_post_enqueue,
 		.notify_buffer_size       = virtio_transport_notify_buffer_size,
-
-		.read_skb = virtio_transport_read_skb,
 	},
 
 	.send_pkt = vsock_loopback_send_pkt,

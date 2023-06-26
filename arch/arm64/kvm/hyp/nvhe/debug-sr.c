@@ -37,6 +37,7 @@ static void __debug_save_spe(u64 *pmscr_el1)
 
 	/* Now drain all buffered data to memory */
 	psb_csync();
+	dsb(nsh);
 }
 
 static void __debug_restore_spe(u64 pmscr_el1)
@@ -68,6 +69,7 @@ static void __debug_save_trace(u64 *trfcr_el1)
 	isb();
 	/* Drain the trace buffer to memory */
 	tsb_csync();
+	dsb(nsh);
 }
 
 static void __debug_restore_trace(u64 trfcr_el1)

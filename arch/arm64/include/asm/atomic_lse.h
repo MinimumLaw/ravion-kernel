@@ -251,15 +251,22 @@ __lse__cmpxchg_case_##name##sz(volatile void *ptr,			\
 					      u##sz old,		\
 					      u##sz new)		\
 {									\
+	register unsigned long x0 asm ("x0") = (unsigned long)ptr;	\
+	register u##sz x1 asm ("x1") = old;				\
+	register u##sz x2 asm ("x2") = new;				\
+	unsigned long tmp;						\
+									\
 	asm volatile(							\
 	__LSE_PREAMBLE							\
-	"	cas" #mb #sfx "	%" #w "[old], %" #w "[new], %[v]\n"	\
-	: [v] "+Q" (*(u##sz *)ptr),					\
-	  [old] "+r" (old)						\
-	: [new] "rZ" (new)						\
+	"	mov	%" #w "[tmp], %" #w "[old]\n"			\
+	"	cas" #mb #sfx "\t%" #w "[tmp], %" #w "[new], %[v]\n"	\
+	"	mov	%" #w "[ret], %" #w "[tmp]"			\
+	: [ret] "+r" (x0), [v] "+Q" (*(u##sz *)ptr),			\
+	  [tmp] "=&r" (tmp)						\
+	: [old] "r" (x1), [new] "r" (x2)				\
 	: cl);								\
 									\
-	return old;							\
+	return x0;							\
 }
 
 __CMPXCHG_CASE(w, b,     ,  8,   )

@@ -56,6 +56,19 @@ static void probe_console(void *ignore, const char *buf, size_t len)
 		WRITE_ONCE(test_status.async_fault, true);
 }
 
+static void register_tracepoints(struct tracepoint *tp, void *ignore)
+{
+	check_trace_callback_type_console(probe_console);
+	if (!strcmp(tp->name, "console"))
+		WARN_ON(tracepoint_probe_register(tp, probe_console, NULL));
+}
+
+static void unregister_tracepoints(struct tracepoint *tp, void *ignore)
+{
+	if (!strcmp(tp->name, "console"))
+		tracepoint_probe_unregister(tp, probe_console, NULL);
+}
+
 static int kasan_suite_init(struct kunit_suite *suite)
 {
 	if (!kasan_enabled()) {
@@ -73,7 +86,12 @@ static int kasan_suite_init(struct kunit_suite *suite)
 	 */
 	multishot = kasan_save_enable_multi_shot();
 
-	register_trace_console(probe_console, NULL);
+	/*
+	 * Because we want to be able to build the test as a module, we need to
+	 * iterate through all known tracepoints, since the static registration
+	 * won't work here.
+	 */
+	for_each_kernel_tracepoint(register_tracepoints, NULL);
 	return 0;
 }
 
@@ -81,7 +99,7 @@ static void kasan_suite_exit(struct kunit_suite *suite)
 {
 	kasan_kunit_test_suite_end();
 	kasan_restore_multi_shot(multishot);
-	unregister_trace_console(probe_console, NULL);
+	for_each_kernel_tracepoint(unregister_tracepoints, NULL);
 	tracepoint_synchronize_unregister();
 }
 
@@ -130,7 +148,7 @@ static void kasan_test_exit(struct kunit *test)
 	    kasan_sync_fault_possible()) {				\
 		if (READ_ONCE(test_status.report_found) &&		\
 		    !READ_ONCE(test_status.async_fault))		\
-			kasan_enable_hw_tags();				\
+			kasan_enable_tagging();				\
 		migrate_enable();					\
 	}								\
 	WRITE_ONCE(test_status.report_found, false);			\

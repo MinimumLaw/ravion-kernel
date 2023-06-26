@@ -111,7 +111,6 @@ struct hist_entry {
 	u64			p_stage_cyc;
 	u8			cpumode;
 	u8			depth;
-	struct simd_flags	simd_flags;
 
 	/* We are added by hists__add_dummy_entry. */
 	bool			dummy;
@@ -145,7 +144,6 @@ struct hist_entry {
 	struct hists		*hists;
 	struct mem_info		*mem_info;
 	struct block_info	*block_info;
-	struct kvm_info		*kvm_info;
 	void			*raw_data;
 	u32			raw_size;
 	int			num_res;
@@ -242,7 +240,6 @@ enum sort_type {
 	SORT_ADDR,
 	SORT_LOCAL_RETIRE_LAT,
 	SORT_GLOBAL_RETIRE_LAT,
-	SORT_SIMD,
 
 	/* branch stack specific sort keys */
 	__SORT_BRANCH_STACK,

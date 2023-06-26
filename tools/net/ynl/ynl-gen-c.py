@@ -254,8 +254,7 @@ class TypeScalar(Type):
     def _attr_policy(self, policy):
         if 'flags-mask' in self.checks or self.is_bitfield:
             if self.is_bitfield:
-                enum = self.family.consts[self.attr['enum']]
-                mask = enum.get_mask(as_flags=True)
+                mask = self.family.consts[self.attr['enum']].get_mask()
             else:
                 flags = self.family.consts[self.checks['flags-mask']]
                 flag_cnt = len(flags['entries'])
@@ -1697,9 +1696,7 @@ def print_kernel_op_table_fwd(family, cw, terminate):
                          'split': 'genl_split_ops'}
         struct_type = pol_to_struct[family.kernel_policy]
 
-        if not exported:
-            cnt = ""
-        elif family.kernel_policy == 'split':
+        if family.kernel_policy == 'split':
             cnt = 0
             for op in family.ops.values():
                 if 'do' in op:

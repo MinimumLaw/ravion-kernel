@@ -162,45 +162,45 @@ DECLARE_EVENT_CLASS(
 
 	TP_PROTO(struct i40e_ring *ring,
 		 union i40e_16byte_rx_desc *desc,
-		 struct xdp_buff *xdp),
+		 struct sk_buff *skb),
 
-	TP_ARGS(ring, desc, xdp),
+	TP_ARGS(ring, desc, skb),
 
 	TP_STRUCT__entry(
 		__field(void*, ring)
 		__field(void*, desc)
-		__field(void*, xdp)
+		__field(void*, skb)
 		__string(devname, ring->netdev->name)
 	),
 
 	TP_fast_assign(
 		__entry->ring = ring;
 		__entry->desc = desc;
-		__entry->xdp = xdp;
+		__entry->skb = skb;
 		__assign_str(devname, ring->netdev->name);
 	),
 
 	TP_printk(
-		"netdev: %s ring: %p desc: %p xdp %p",
+		"netdev: %s ring: %p desc: %p skb %p",
 		__get_str(devname), __entry->ring,
-		__entry->desc, __entry->xdp)
+		__entry->desc, __entry->skb)
 );
 
 DEFINE_EVENT(
 	i40e_rx_template, i40e_clean_rx_irq,
 	TP_PROTO(struct i40e_ring *ring,
 		 union i40e_16byte_rx_desc *desc,
-		 struct xdp_buff *xdp),
+		 struct sk_buff *skb),
 
-	TP_ARGS(ring, desc, xdp));
+	TP_ARGS(ring, desc, skb));
 
 DEFINE_EVENT(
 	i40e_rx_template, i40e_clean_rx_irq_rx,
 	TP_PROTO(struct i40e_ring *ring,
 		 union i40e_16byte_rx_desc *desc,
-		 struct xdp_buff *xdp),
+		 struct sk_buff *skb),
 
-	TP_ARGS(ring, desc, xdp));
+	TP_ARGS(ring, desc, skb));
 
 DECLARE_EVENT_CLASS(
 	i40e_xmit_template,

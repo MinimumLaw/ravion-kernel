@@ -20,6 +20,7 @@
 #include <linux/pci.h>
 #include <linux/workqueue.h>
 #include <linux/wait.h>
+#include <linux/aer.h>
 #include <linux/interrupt.h>
 #include <linux/ethtool.h>
 #include <linux/timer.h>

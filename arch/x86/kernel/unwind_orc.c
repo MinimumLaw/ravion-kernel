@@ -7,9 +7,6 @@
 #include <asm/unwind.h>
 #include <asm/orc_types.h>
 #include <asm/orc_lookup.h>
-#include <asm/orc_header.h>
-
-ORC_HEADER;
 
 #define orc_warn(fmt, ...) \
 	printk_deferred_once(KERN_WARNING "WARNING: " fmt, ##__VA_ARGS__)
@@ -136,7 +133,7 @@ static struct orc_entry null_orc_entry = {
 	.sp_offset = sizeof(long),
 	.sp_reg = ORC_REG_SP,
 	.bp_reg = ORC_REG_UNDEFINED,
-	.type = ORC_TYPE_CALL
+	.type = UNWIND_HINT_TYPE_CALL
 };
 
 #ifdef CONFIG_CALL_THUNKS
@@ -156,11 +153,12 @@ static struct orc_entry *orc_callthunk_find(unsigned long ip)
 
 /* Fake frame pointer entry -- used as a fallback for generated code */
 static struct orc_entry orc_fp_entry = {
-	.type		= ORC_TYPE_CALL,
+	.type		= UNWIND_HINT_TYPE_CALL,
 	.sp_reg		= ORC_REG_BP,
 	.sp_offset	= 16,
 	.bp_reg		= ORC_REG_PREV_SP,
 	.bp_offset	= -16,
+	.end		= 0,
 };
 
 static struct orc_entry *orc_find(unsigned long ip)
@@ -252,13 +250,13 @@ static int orc_sort_cmp(const void *_a, const void *_b)
 		return -1;
 
 	/*
-	 * The "weak" section terminator entries need to always be first
+	 * The "weak" section terminator entries need to always be on the left
 	 * to ensure the lookup code skips them in favor of real entries.
 	 * These terminator entries exist to handle any gaps created by
 	 * whitelisted .o files which didn't get objtool generation.
 	 */
 	orc_a = cur_orc_table + (a - cur_orc_ip_table);
-	return orc_a->type == ORC_TYPE_UNDEFINED ? -1 : 1;
+	return orc_a->sp_reg == ORC_REG_UNDEFINED && !orc_a->end ? -1 : 1;
 }
 
 void unwind_module_init(struct module *mod, void *_orc_ip, size_t orc_ip_size,
@@ -476,12 +474,14 @@ bool unwind_next_frame(struct unwind_state *state)
 		 */
 		orc = &orc_fp_entry;
 		state->error = true;
-	} else {
-		if (orc->type == ORC_TYPE_UNDEFINED)
+	}
+
+	/* End-of-stack check for kernel threads: */
+	if (orc->sp_reg == ORC_REG_UNDEFINED) {
+		if (!orc->end)
 			goto err;
 
-		if (orc->type == ORC_TYPE_END_OF_STACK)
-			goto the_end;
+		goto the_end;
 	}
 
 	state->signal = orc->signal;
@@ -554,7 +554,7 @@ bool unwind_next_frame(struct unwind_state *state)
 
 	/* Find IP, SP and possibly regs: */
 	switch (orc->type) {
-	case ORC_TYPE_CALL:
+	case UNWIND_HINT_TYPE_CALL:
 		ip_p = sp - sizeof(long);
 
 		if (!deref_stack_reg(state, ip_p, &state->ip))
@@ -567,7 +567,7 @@ bool unwind_next_frame(struct unwind_state *state)
 		state->prev_regs = NULL;
 		break;
 
-	case ORC_TYPE_REGS:
+	case UNWIND_HINT_TYPE_REGS:
 		if (!deref_stack_regs(state, sp, &state->ip, &state->sp)) {
 			orc_warn_current("can't access registers at %pB\n",
 					 (void *)orig_ip);
@@ -590,13 +590,13 @@ bool unwind_next_frame(struct unwind_state *state)
 		state->full_regs = true;
 		break;
 
-	case ORC_TYPE_REGS_PARTIAL:
+	case UNWIND_HINT_TYPE_REGS_PARTIAL:
 		if (!deref_stack_iret_regs(state, sp, &state->ip, &state->sp)) {
 			orc_warn_current("can't access iret registers at %pB\n",
 					 (void *)orig_ip);
 			goto err;
 		}
-		/* See ORC_TYPE_REGS case comment. */
+		/* See UNWIND_HINT_TYPE_REGS case comment. */
 		state->ip = unwind_recover_rethook(state, state->ip,
 				(unsigned long *)(state->sp - sizeof(long)));
 

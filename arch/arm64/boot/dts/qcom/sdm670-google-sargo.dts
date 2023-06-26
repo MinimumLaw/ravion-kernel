@@ -395,6 +395,7 @@
 			regulator-enable-ramp-delay = <500>;
 		};
 	};
+
 };
 
 &gcc {

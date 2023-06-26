@@ -2043,16 +2043,7 @@ static void __init __free_pages_memory(unsigned long start, unsigned long end)
 	int order;
 
 	while (start < end) {
-		/*
-		 * Free the pages in the largest chunks alignment allows.
-		 *
-		 * __ffs() behaviour is undefined for 0. start == 0 is
-		 * MAX_ORDER-aligned, set order to MAX_ORDER for the case.
-		 */
-		if (start)
-			order = min_t(int, MAX_ORDER, __ffs(start));
-		else
-			order = MAX_ORDER;
+		order = min(MAX_ORDER - 1UL, __ffs(start));
 
 		while (start + (1UL << order) > end)
 			order--;

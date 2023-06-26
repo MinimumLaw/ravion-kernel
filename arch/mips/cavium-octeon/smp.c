@@ -20,7 +20,6 @@
 #include <asm/mmu_context.h>
 #include <asm/time.h>
 #include <asm/setup.h>
-#include <asm/smp.h>
 
 #include <asm/octeon/octeon.h>
 

@@ -81,7 +81,8 @@ struct rtc_device *alarmtimer_get_rtcdev(void)
 }
 EXPORT_SYMBOL_GPL(alarmtimer_get_rtcdev);
 
-static int alarmtimer_rtc_add_device(struct device *dev)
+static int alarmtimer_rtc_add_device(struct device *dev,
+				struct class_interface *class_intf)
 {
 	unsigned long flags;
 	struct rtc_device *rtc = to_rtc_device(dev);

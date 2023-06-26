@@ -439,11 +439,11 @@ static int __maybe_unused imx2_wdt_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(imx2_wdt_pm_ops, imx2_wdt_suspend,
 			 imx2_wdt_resume);
 
-static struct imx2_wdt_data imx_wdt = {
+struct imx2_wdt_data imx_wdt = {
 	.wdw_supported = true,
 };
 
-static struct imx2_wdt_data imx_wdt_legacy = {
+struct imx2_wdt_data imx_wdt_legacy = {
 	.wdw_supported = false,
 };
 

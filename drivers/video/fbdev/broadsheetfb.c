@@ -1193,7 +1193,7 @@ err:
 
 }
 
-static void broadsheetfb_remove(struct platform_device *dev)
+static int broadsheetfb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 
@@ -1209,11 +1209,12 @@ static void broadsheetfb_remove(struct platform_device *dev)
 		module_put(par->board->owner);
 		framebuffer_release(info);
 	}
+	return 0;
 }
 
 static struct platform_driver broadsheetfb_driver = {
 	.probe	= broadsheetfb_probe,
-	.remove_new = broadsheetfb_remove,
+	.remove = broadsheetfb_remove,
 	.driver	= {
 		.name	= "broadsheetfb",
 	},

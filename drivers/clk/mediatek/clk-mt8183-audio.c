@@ -97,7 +97,6 @@ static const struct of_device_id of_match_clk_mt8183_audio[] = {
 	{ .compatible = "mediatek,mt8183-audiosys", .data = &audio_desc },
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, of_match_clk_mt8183_audio);
 
 static struct platform_driver clk_mt8183_audio_drv = {
 	.probe = clk_mt8183_audio_probe,
@@ -107,5 +106,5 @@ static struct platform_driver clk_mt8183_audio_drv = {
 		.of_match_table = of_match_clk_mt8183_audio,
 	},
 };
-module_platform_driver(clk_mt8183_audio_drv);
-MODULE_LICENSE("GPL");
+
+builtin_platform_driver(clk_mt8183_audio_drv);

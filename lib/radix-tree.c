@@ -27,8 +27,6 @@
 #include <linux/string.h>
 #include <linux/xarray.h>
 
-#include "radix-tree.h"
-
 /*
  * Radix tree node cache.
  */

@@ -125,7 +125,7 @@ static int ar934x_spi_transfer_one_message(struct spi_controller *ctlr,
 				iowrite32(reg, sp->base + AR934X_SPI_DATAOUT);
 			}
 
-			reg = AR934X_SPI_SHIFT_VAL(spi_get_chipselect(spi, 0), term,
+			reg = AR934X_SPI_SHIFT_VAL(spi->chip_select, term,
 						   trx_cur * 8);
 			iowrite32(reg, sp->base + AR934X_SPI_REG_SHIFT_CTRL);
 			stat = readl_poll_timeout(
@@ -220,7 +220,7 @@ err_clk_disable:
 	return ret;
 }
 
-static void ar934x_spi_remove(struct platform_device *pdev)
+static int ar934x_spi_remove(struct platform_device *pdev)
 {
 	struct spi_controller *ctlr;
 	struct ar934x_spi *sp;
@@ -230,6 +230,8 @@ static void ar934x_spi_remove(struct platform_device *pdev)
 
 	spi_unregister_controller(ctlr);
 	clk_disable_unprepare(sp->clk);
+
+	return 0;
 }
 
 static struct platform_driver ar934x_spi_driver = {
@@ -238,7 +240,7 @@ static struct platform_driver ar934x_spi_driver = {
 		.of_match_table = ar934x_spi_match,
 	},
 	.probe = ar934x_spi_probe,
-	.remove_new = ar934x_spi_remove,
+	.remove = ar934x_spi_remove,
 };
 
 module_platform_driver(ar934x_spi_driver);

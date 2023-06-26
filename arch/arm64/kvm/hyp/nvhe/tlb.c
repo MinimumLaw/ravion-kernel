@@ -15,31 +15,8 @@ struct tlb_inv_context {
 };
 
 static void __tlb_switch_to_guest(struct kvm_s2_mmu *mmu,
-				  struct tlb_inv_context *cxt,
-				  bool nsh)
+				  struct tlb_inv_context *cxt)
 {
-	/*
-	 * We have two requirements:
-	 *
-	 * - ensure that the page table updates are visible to all
-	 *   CPUs, for which a dsb(DOMAIN-st) is what we need, DOMAIN
-	 *   being either ish or nsh, depending on the invalidation
-	 *   type.
-	 *
-	 * - complete any speculative page table walk started before
-	 *   we trapped to EL2 so that we can mess with the MM
-	 *   registers out of context, for which dsb(nsh) is enough
-	 *
-	 * The composition of these two barriers is a dsb(DOMAIN), and
-	 * the 'nsh' parameter tracks the distinction between
-	 * Inner-Shareable and Non-Shareable, as specified by the
-	 * callers.
-	 */
-	if (nsh)
-		dsb(nsh);
-	else
-		dsb(ish);
-
 	if (cpus_have_final_cap(ARM64_WORKAROUND_SPECULATIVE_AT)) {
 		u64 val;
 
@@ -83,8 +60,10 @@ void __kvm_tlb_flush_vmid_ipa(struct kvm_s2_mmu *mmu,
 {
 	struct tlb_inv_context cxt;
 
+	dsb(ishst);
+
 	/* Switch to requested VMID */
-	__tlb_switch_to_guest(mmu, &cxt, false);
+	__tlb_switch_to_guest(mmu, &cxt);
 
 	/*
 	 * We could do so much better if we had the VA as well.
@@ -134,8 +113,10 @@ void __kvm_tlb_flush_vmid(struct kvm_s2_mmu *mmu)
 {
 	struct tlb_inv_context cxt;
 
+	dsb(ishst);
+
 	/* Switch to requested VMID */
-	__tlb_switch_to_guest(mmu, &cxt, false);
+	__tlb_switch_to_guest(mmu, &cxt);
 
 	__tlbi(vmalls12e1is);
 	dsb(ish);
@@ -149,7 +130,7 @@ void __kvm_flush_cpu_context(struct kvm_s2_mmu *mmu)
 	struct tlb_inv_context cxt;
 
 	/* Switch to requested VMID */
-	__tlb_switch_to_guest(mmu, &cxt, false);
+	__tlb_switch_to_guest(mmu, &cxt);
 
 	__tlbi(vmalle1);
 	asm volatile("ic iallu");
@@ -161,8 +142,7 @@ void __kvm_flush_cpu_context(struct kvm_s2_mmu *mmu)
 
 void __kvm_flush_vm_context(void)
 {
-	/* Same remark as in __tlb_switch_to_guest() */
-	dsb(ish);
+	dsb(ishst);
 	__tlbi(alle1is);
 
 	/*

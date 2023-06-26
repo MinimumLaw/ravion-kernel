@@ -206,11 +206,7 @@ static __always_inline void call_do_softirq(const void *sp)
 	asm volatile (
 		 PPC_STLU "	%%r1, %[offset](%[sp])	;"
 		"mr		%%r1, %[sp]		;"
-#ifdef CONFIG_PPC_KERNEL_PCREL
-		"bl		%[callee]@notoc		;"
-#else
 		"bl		%[callee]		;"
-#endif
 		 PPC_LL "	%%r1, 0(%%r1)		;"
 		 : // Outputs
 		 : // Inputs
@@ -263,11 +259,7 @@ static __always_inline void call_do_irq(struct pt_regs *regs, void *sp)
 		 PPC_STLU "	%%r1, %[offset](%[sp])	;"
 		"mr		%%r4, %%r1		;"
 		"mr		%%r1, %[sp]		;"
-#ifdef CONFIG_PPC_KERNEL_PCREL
-		"bl		%[callee]@notoc		;"
-#else
 		"bl		%[callee]		;"
-#endif
 		 PPC_LL "	%%r1, 0(%%r1)		;"
 		 : // Outputs
 		   "+r" (r3)

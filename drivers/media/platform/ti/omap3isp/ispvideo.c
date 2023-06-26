@@ -268,9 +268,7 @@ static int isp_video_get_graph_data(struct isp_video *video,
 static int
 __isp_video_get_format(struct isp_video *video, struct v4l2_format *format)
 {
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
+	struct v4l2_subdev_format fmt;
 	struct v4l2_subdev *subdev;
 	u32 pad;
 	int ret;
@@ -280,6 +278,7 @@ __isp_video_get_format(struct isp_video *video, struct v4l2_format *format)
 		return -EINVAL;
 
 	fmt.pad = pad;
+	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
 	mutex_lock(&video->mutex);
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, &fmt);
@@ -732,9 +731,7 @@ static int
 isp_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
 {
 	struct isp_video *video = video_drvdata(file);
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
+	struct v4l2_subdev_format fmt;
 	struct v4l2_subdev *subdev;
 	u32 pad;
 	int ret;
@@ -749,6 +746,7 @@ isp_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
 	isp_video_pix_to_mbus(&format->fmt.pix, &fmt.format);
 
 	fmt.pad = pad;
+	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, &fmt);
 	if (ret)
 		return ret == -ENOIOCTLCMD ? -ENOTTY : ret;
@@ -761,9 +759,7 @@ static int
 isp_video_get_selection(struct file *file, void *fh, struct v4l2_selection *sel)
 {
 	struct isp_video *video = video_drvdata(file);
-	struct v4l2_subdev_format format = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
+	struct v4l2_subdev_format format;
 	struct v4l2_subdev *subdev;
 	struct v4l2_subdev_selection sdsel = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
@@ -803,6 +799,7 @@ isp_video_get_selection(struct file *file, void *fh, struct v4l2_selection *sel)
 		return ret;
 
 	format.pad = pad;
+	format.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(subdev, pad, get_fmt, NULL, &format);
 	if (ret < 0)
 		return ret == -ENOIOCTLCMD ? -ENOTTY : ret;
@@ -960,9 +957,7 @@ static int isp_video_check_external_subdevs(struct isp_video *video,
 	struct media_pad *source_pad;
 	struct media_entity *source = NULL;
 	struct media_entity *sink;
-	struct v4l2_subdev_format fmt = {
-		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-	};
+	struct v4l2_subdev_format fmt;
 	struct v4l2_ext_controls ctrls;
 	struct v4l2_ext_control ctrl;
 	unsigned int i;
@@ -998,6 +993,7 @@ static int isp_video_check_external_subdevs(struct isp_video *video,
 	pipe->external = media_entity_to_v4l2_subdev(source);
 
 	fmt.pad = source_pad->index;
+	fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(media_entity_to_v4l2_subdev(sink),
 			       pad, get_fmt, NULL, &fmt);
 	if (unlikely(ret < 0)) {

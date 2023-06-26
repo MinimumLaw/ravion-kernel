@@ -54,21 +54,6 @@
 
 #define AMD_ZEN_BR_RETIRED EVENT(0xc2, 0)
 
-
-/*
- * "Retired instructions", from Processor Programming Reference
- * (PPR) for AMD Family 17h Model 01h, Revision B1 Processors,
- * Preliminary Processor Programming Reference (PPR) for AMD Family
- * 17h Model 31h, Revision B0 Processors, and Preliminary Processor
- * Programming Reference (PPR) for AMD Family 19h Model 01h, Revision
- * B1 Processors Volume 1 of 2.
- *                      --- and ---
- * "Instructions retired", from the Intel SDM, volume 3,
- * "Pre-defined Architectural Performance Events."
- */
-
-#define INST_RETIRED EVENT(0xc0, 0)
-
 /*
  * This event list comprises Intel's eight architectural events plus
  * AMD's "retired branch instructions" for Zen[123] (and possibly
@@ -76,7 +61,7 @@
  */
 static const uint64_t event_list[] = {
 	EVENT(0x3c, 0),
-	INST_RETIRED,
+	EVENT(0xc0, 0),
 	EVENT(0x3c, 1),
 	EVENT(0x2e, 0x4f),
 	EVENT(0x2e, 0x41),
@@ -86,21 +71,13 @@ static const uint64_t event_list[] = {
 	AMD_ZEN_BR_RETIRED,
 };
 
-struct {
-	uint64_t loads;
-	uint64_t stores;
-	uint64_t loads_stores;
-	uint64_t branches_retired;
-	uint64_t instructions_retired;
-} pmc_results;
-
 /*
  * If we encounter a #GP during the guest PMU sanity check, then the guest
  * PMU is not functional. Inform the hypervisor via GUEST_SYNC(0).
  */
 static void guest_gp_handler(struct ex_regs *regs)
 {
-	GUEST_SYNC(-EFAULT);
+	GUEST_SYNC(0);
 }
 
 /*
@@ -115,23 +92,12 @@ static void check_msr(uint32_t msr, uint64_t bits_to_flip)
 
 	wrmsr(msr, v);
 	if (rdmsr(msr) != v)
-		GUEST_SYNC(-EIO);
+		GUEST_SYNC(0);
 
 	v ^= bits_to_flip;
 	wrmsr(msr, v);
 	if (rdmsr(msr) != v)
-		GUEST_SYNC(-EIO);
-}
-
-static void run_and_measure_loop(uint32_t msr_base)
-{
-	const uint64_t branches_retired = rdmsr(msr_base + 0);
-	const uint64_t insn_retired = rdmsr(msr_base + 1);
-
-	__asm__ __volatile__("loop ." : "+c"((int){NUM_BRANCHES}));
-
-	pmc_results.branches_retired = rdmsr(msr_base + 0) - branches_retired;
-	pmc_results.instructions_retired = rdmsr(msr_base + 1) - insn_retired;
+		GUEST_SYNC(0);
 }
 
 static void intel_guest_code(void)
@@ -139,18 +105,19 @@ static void intel_guest_code(void)
 	check_msr(MSR_CORE_PERF_GLOBAL_CTRL, 1);
 	check_msr(MSR_P6_EVNTSEL0, 0xffff);
 	check_msr(MSR_IA32_PMC0, 0xffff);
-	GUEST_SYNC(0);
+	GUEST_SYNC(1);
 
 	for (;;) {
+		uint64_t br0, br1;
+
 		wrmsr(MSR_CORE_PERF_GLOBAL_CTRL, 0);
 		wrmsr(MSR_P6_EVNTSEL0, ARCH_PERFMON_EVENTSEL_ENABLE |
 		      ARCH_PERFMON_EVENTSEL_OS | INTEL_BR_RETIRED);
-		wrmsr(MSR_P6_EVNTSEL1, ARCH_PERFMON_EVENTSEL_ENABLE |
-		      ARCH_PERFMON_EVENTSEL_OS | INST_RETIRED);
-		wrmsr(MSR_CORE_PERF_GLOBAL_CTRL, 0x3);
-
-		run_and_measure_loop(MSR_IA32_PMC0);
-		GUEST_SYNC(0);
+		wrmsr(MSR_CORE_PERF_GLOBAL_CTRL, 1);
+		br0 = rdmsr(MSR_IA32_PMC0);
+		__asm__ __volatile__("loop ." : "+c"((int){NUM_BRANCHES}));
+		br1 = rdmsr(MSR_IA32_PMC0);
+		GUEST_SYNC(br1 - br0);
 	}
 }
 
@@ -163,17 +130,18 @@ static void amd_guest_code(void)
 {
 	check_msr(MSR_K7_EVNTSEL0, 0xffff);
 	check_msr(MSR_K7_PERFCTR0, 0xffff);
-	GUEST_SYNC(0);
+	GUEST_SYNC(1);
 
 	for (;;) {
+		uint64_t br0, br1;
+
 		wrmsr(MSR_K7_EVNTSEL0, 0);
 		wrmsr(MSR_K7_EVNTSEL0, ARCH_PERFMON_EVENTSEL_ENABLE |
 		      ARCH_PERFMON_EVENTSEL_OS | AMD_ZEN_BR_RETIRED);
-		wrmsr(MSR_K7_EVNTSEL1, ARCH_PERFMON_EVENTSEL_ENABLE |
-		      ARCH_PERFMON_EVENTSEL_OS | INST_RETIRED);
-
-		run_and_measure_loop(MSR_K7_PERFCTR0);
-		GUEST_SYNC(0);
+		br0 = rdmsr(MSR_K7_PERFCTR0);
+		__asm__ __volatile__("loop ." : "+c"((int){NUM_BRANCHES}));
+		br1 = rdmsr(MSR_K7_PERFCTR0);
+		GUEST_SYNC(br1 - br0);
 	}
 }
 
@@ -193,19 +161,6 @@ static uint64_t run_vcpu_to_sync(struct kvm_vcpu *vcpu)
 	return uc.args[1];
 }
 
-static void run_vcpu_and_sync_pmc_results(struct kvm_vcpu *vcpu)
-{
-	uint64_t r;
-
-	memset(&pmc_results, 0, sizeof(pmc_results));
-	sync_global_to_guest(vcpu->vm, pmc_results);
-
-	r = run_vcpu_to_sync(vcpu);
-	TEST_ASSERT(!r, "Unexpected sync value: 0x%lx", r);
-
-	sync_global_from_guest(vcpu->vm, pmc_results);
-}
-
 /*
  * In a nested environment or if the vPMU is disabled, the guest PMU
  * might not work as architected (accessing the PMU MSRs may raise
@@ -216,13 +171,13 @@ static void run_vcpu_and_sync_pmc_results(struct kvm_vcpu *vcpu)
  */
 static bool sanity_check_pmu(struct kvm_vcpu *vcpu)
 {
-	uint64_t r;
+	bool success;
 
 	vm_install_exception_handler(vcpu->vm, GP_VECTOR, guest_gp_handler);
-	r = run_vcpu_to_sync(vcpu);
+	success = run_vcpu_to_sync(vcpu);
 	vm_install_exception_handler(vcpu->vm, GP_VECTOR, NULL);
 
-	return !r;
+	return success;
 }
 
 static struct kvm_pmu_event_filter *alloc_pmu_event_filter(uint32_t nevents)
@@ -282,101 +237,91 @@ static struct kvm_pmu_event_filter *remove_event(struct kvm_pmu_event_filter *f,
 	return f;
 }
 
-#define ASSERT_PMC_COUNTING_INSTRUCTIONS()						\
-do {											\
-	uint64_t br = pmc_results.branches_retired;					\
-	uint64_t ir = pmc_results.instructions_retired;					\
-											\
-	if (br && br != NUM_BRANCHES)							\
-		pr_info("%s: Branch instructions retired = %lu (expected %u)\n",	\
-			__func__, br, NUM_BRANCHES);					\
-	TEST_ASSERT(br, "%s: Branch instructions retired = %lu (expected > 0)",		\
-		    __func__, br);							\
-	TEST_ASSERT(ir,	"%s: Instructions retired = %lu (expected > 0)",		\
-		    __func__, ir);							\
-} while (0)
-
-#define ASSERT_PMC_NOT_COUNTING_INSTRUCTIONS()						\
-do {											\
-	uint64_t br = pmc_results.branches_retired;					\
-	uint64_t ir = pmc_results.instructions_retired;					\
-											\
-	TEST_ASSERT(!br, "%s: Branch instructions retired = %lu (expected 0)",		\
-		    __func__, br);							\
-	TEST_ASSERT(!ir, "%s: Instructions retired = %lu (expected 0)",			\
-		    __func__, ir);							\
-} while (0)
-
 static void test_without_filter(struct kvm_vcpu *vcpu)
 {
-	run_vcpu_and_sync_pmc_results(vcpu);
+	uint64_t count = run_vcpu_to_sync(vcpu);
 
-	ASSERT_PMC_COUNTING_INSTRUCTIONS();
+	if (count != NUM_BRANCHES)
+		pr_info("%s: Branch instructions retired = %lu (expected %u)\n",
+			__func__, count, NUM_BRANCHES);
+	TEST_ASSERT(count, "Allowed PMU event is not counting");
 }
 
-static void test_with_filter(struct kvm_vcpu *vcpu,
-			     struct kvm_pmu_event_filter *f)
+static uint64_t test_with_filter(struct kvm_vcpu *vcpu,
+				 struct kvm_pmu_event_filter *f)
 {
 	vm_ioctl(vcpu->vm, KVM_SET_PMU_EVENT_FILTER, f);
-	run_vcpu_and_sync_pmc_results(vcpu);
+	return run_vcpu_to_sync(vcpu);
 }
 
 static void test_amd_deny_list(struct kvm_vcpu *vcpu)
 {
 	uint64_t event = EVENT(0x1C2, 0);
 	struct kvm_pmu_event_filter *f;
+	uint64_t count;
 
 	f = create_pmu_event_filter(&event, 1, KVM_PMU_EVENT_DENY, 0);
-	test_with_filter(vcpu, f);
-	free(f);
+	count = test_with_filter(vcpu, f);
 
-	ASSERT_PMC_COUNTING_INSTRUCTIONS();
+	free(f);
+	if (count != NUM_BRANCHES)
+		pr_info("%s: Branch instructions retired = %lu (expected %u)\n",
+			__func__, count, NUM_BRANCHES);
+	TEST_ASSERT(count, "Allowed PMU event is not counting");
 }
 
 static void test_member_deny_list(struct kvm_vcpu *vcpu)
 {
 	struct kvm_pmu_event_filter *f = event_filter(KVM_PMU_EVENT_DENY);
+	uint64_t count = test_with_filter(vcpu, f);
 
-	test_with_filter(vcpu, f);
 	free(f);
-
-	ASSERT_PMC_NOT_COUNTING_INSTRUCTIONS();
+	if (count)
+		pr_info("%s: Branch instructions retired = %lu (expected 0)\n",
+			__func__, count);
+	TEST_ASSERT(!count, "Disallowed PMU Event is counting");
 }
 
 static void test_member_allow_list(struct kvm_vcpu *vcpu)
 {
 	struct kvm_pmu_event_filter *f = event_filter(KVM_PMU_EVENT_ALLOW);
+	uint64_t count = test_with_filter(vcpu, f);
 
-	test_with_filter(vcpu, f);
 	free(f);
-
-	ASSERT_PMC_COUNTING_INSTRUCTIONS();
+	if (count != NUM_BRANCHES)
+		pr_info("%s: Branch instructions retired = %lu (expected %u)\n",
+			__func__, count, NUM_BRANCHES);
+	TEST_ASSERT(count, "Allowed PMU event is not counting");
 }
 
 static void test_not_member_deny_list(struct kvm_vcpu *vcpu)
 {
 	struct kvm_pmu_event_filter *f = event_filter(KVM_PMU_EVENT_DENY);
+	uint64_t count;
 
-	remove_event(f, INST_RETIRED);
 	remove_event(f, INTEL_BR_RETIRED);
 	remove_event(f, AMD_ZEN_BR_RETIRED);
-	test_with_filter(vcpu, f);
+	count = test_with_filter(vcpu, f);
 	free(f);
-
-	ASSERT_PMC_COUNTING_INSTRUCTIONS();
+	if (count != NUM_BRANCHES)
+		pr_info("%s: Branch instructions retired = %lu (expected %u)\n",
+			__func__, count, NUM_BRANCHES);
+	TEST_ASSERT(count, "Allowed PMU event is not counting");
 }
 
 static void test_not_member_allow_list(struct kvm_vcpu *vcpu)
 {
 	struct kvm_pmu_event_filter *f = event_filter(KVM_PMU_EVENT_ALLOW);
+	uint64_t count;
 
-	remove_event(f, INST_RETIRED);
 	remove_event(f, INTEL_BR_RETIRED);
 	remove_event(f, AMD_ZEN_BR_RETIRED);
-	test_with_filter(vcpu, f);
+	count = test_with_filter(vcpu, f);
 	free(f);
-
-	ASSERT_PMC_NOT_COUNTING_INSTRUCTIONS();
+	if (count)
+		pr_info("%s: Branch instructions retired = %lu (expected 0)\n",
+			__func__, count);
+	TEST_ASSERT(!count, "Disallowed PMU Event is counting");
 }
 
 /*
@@ -505,30 +450,51 @@ static bool supports_event_mem_inst_retired(void)
 #define EXCLUDE_MASKED_ENTRY(event_select, mask, match) \
 	KVM_PMU_ENCODE_MASKED_ENTRY(event_select, mask, match, true)
 
-static void masked_events_guest_test(uint32_t msr_base)
+struct perf_counter {
+	union {
+		uint64_t raw;
+		struct {
+			uint64_t loads:22;
+			uint64_t stores:22;
+			uint64_t loads_stores:20;
+		};
+	};
+};
+
+static uint64_t masked_events_guest_test(uint32_t msr_base)
 {
-	/*
-	 * The actual value of the counters don't determine the outcome of
-	 * the test.  Only that they are zero or non-zero.
-	 */
-	const uint64_t loads = rdmsr(msr_base + 0);
-	const uint64_t stores = rdmsr(msr_base + 1);
-	const uint64_t loads_stores = rdmsr(msr_base + 2);
+	uint64_t ld0, ld1, st0, st1, ls0, ls1;
+	struct perf_counter c;
 	int val;
 
+	/*
+	 * The acutal value of the counters don't determine the outcome of
+	 * the test.  Only that they are zero or non-zero.
+	 */
+	ld0 = rdmsr(msr_base + 0);
+	st0 = rdmsr(msr_base + 1);
+	ls0 = rdmsr(msr_base + 2);
 
 	__asm__ __volatile__("movl $0, %[v];"
 			     "movl %[v], %%eax;"
 			     "incl %[v];"
 			     : [v]"+m"(val) :: "eax");
 
-	pmc_results.loads = rdmsr(msr_base + 0) - loads;
-	pmc_results.stores = rdmsr(msr_base + 1) - stores;
-	pmc_results.loads_stores = rdmsr(msr_base + 2) - loads_stores;
+	ld1 = rdmsr(msr_base + 0);
+	st1 = rdmsr(msr_base + 1);
+	ls1 = rdmsr(msr_base + 2);
+
+	c.loads = ld1 - ld0;
+	c.stores = st1 - st0;
+	c.loads_stores = ls1 - ls0;
+
+	return c.raw;
 }
 
 static void intel_masked_events_guest_code(void)
 {
+	uint64_t r;
+
 	for (;;) {
 		wrmsr(MSR_CORE_PERF_GLOBAL_CTRL, 0);
 
@@ -541,13 +507,16 @@ static void intel_masked_events_guest_code(void)
 
 		wrmsr(MSR_CORE_PERF_GLOBAL_CTRL, 0x7);
 
-		masked_events_guest_test(MSR_IA32_PMC0);
-		GUEST_SYNC(0);
+		r = masked_events_guest_test(MSR_IA32_PMC0);
+
+		GUEST_SYNC(r);
 	}
 }
 
 static void amd_masked_events_guest_code(void)
 {
+	uint64_t r;
+
 	for (;;) {
 		wrmsr(MSR_K7_EVNTSEL0, 0);
 		wrmsr(MSR_K7_EVNTSEL1, 0);
@@ -560,22 +529,26 @@ static void amd_masked_events_guest_code(void)
 		wrmsr(MSR_K7_EVNTSEL2, ARCH_PERFMON_EVENTSEL_ENABLE |
 		      ARCH_PERFMON_EVENTSEL_OS | LS_DISPATCH_LOAD_STORE);
 
-		masked_events_guest_test(MSR_K7_PERFCTR0);
-		GUEST_SYNC(0);
+		r = masked_events_guest_test(MSR_K7_PERFCTR0);
+
+		GUEST_SYNC(r);
 	}
 }
 
-static void run_masked_events_test(struct kvm_vcpu *vcpu,
-				   const uint64_t masked_events[],
-				   const int nmasked_events)
+static struct perf_counter run_masked_events_test(struct kvm_vcpu *vcpu,
+						 const uint64_t masked_events[],
+						 const int nmasked_events)
 {
 	struct kvm_pmu_event_filter *f;
+	struct perf_counter r;
 
 	f = create_pmu_event_filter(masked_events, nmasked_events,
 				    KVM_PMU_EVENT_ALLOW,
 				    KVM_PMU_EVENT_FLAG_MASKED_EVENTS);
-	test_with_filter(vcpu, f);
+	r.raw = test_with_filter(vcpu, f);
 	free(f);
+
+	return r;
 }
 
 /* Matches KVM_PMU_EVENT_FILTER_MAX_EVENTS in pmu.c */
@@ -700,6 +673,7 @@ static void run_masked_events_tests(struct kvm_vcpu *vcpu, uint64_t *events,
 				    int nevents)
 {
 	int ntests = ARRAY_SIZE(test_cases);
+	struct perf_counter c;
 	int i, n;
 
 	for (i = 0; i < ntests; i++) {
@@ -711,15 +685,13 @@ static void run_masked_events_tests(struct kvm_vcpu *vcpu, uint64_t *events,
 
 		n = append_test_events(test, events, nevents);
 
-		run_masked_events_test(vcpu, events, n);
-
-		TEST_ASSERT(bool_eq(pmc_results.loads, test->flags & ALLOW_LOADS) &&
-			    bool_eq(pmc_results.stores, test->flags & ALLOW_STORES) &&
-			    bool_eq(pmc_results.loads_stores,
+		c = run_masked_events_test(vcpu, events, n);
+		TEST_ASSERT(bool_eq(c.loads, test->flags & ALLOW_LOADS) &&
+			    bool_eq(c.stores, test->flags & ALLOW_STORES) &&
+			    bool_eq(c.loads_stores,
 				    test->flags & ALLOW_LOADS_STORES),
-			    "%s  loads: %lu, stores: %lu, loads + stores: %lu",
-			    test->msg, pmc_results.loads, pmc_results.stores,
-			    pmc_results.loads_stores);
+			    "%s  loads: %u, stores: %u, loads + stores: %u",
+			    test->msg, c.loads, c.stores, c.loads_stores);
 	}
 }
 
@@ -792,7 +764,6 @@ int main(int argc, char *argv[])
 	struct kvm_vcpu *vcpu, *vcpu2 = NULL;
 	struct kvm_vm *vm;
 
-	TEST_REQUIRE(get_kvm_param_bool("enable_pmu"));
 	TEST_REQUIRE(kvm_has_cap(KVM_CAP_PMU_EVENT_FILTER));
 	TEST_REQUIRE(kvm_has_cap(KVM_CAP_PMU_EVENT_MASKED_EVENTS));
 

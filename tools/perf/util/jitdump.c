@@ -235,11 +235,9 @@ jit_open(struct jit_buf_desc *jd, const char *name)
 	 */
 	strcpy(jd->dir, name);
 	dirname(jd->dir);
-	free(buf);
 
 	return 0;
 error:
-	free(buf);
 	funlockfile(jd->in);
 	fclose(jd->in);
 	return retval;
@@ -525,7 +523,7 @@ static int jit_repipe_code_load(struct jit_buf_desc *jd, union jr_entry *jr)
 
 	ret = perf_event__process_mmap2(tool, event, &sample, jd->machine);
 	if (ret)
-		goto out;
+		return ret;
 
 	ret = jit_inject_event(jd, event);
 	/*
@@ -534,8 +532,6 @@ static int jit_repipe_code_load(struct jit_buf_desc *jd, union jr_entry *jr)
 	if (!ret)
 		build_id__mark_dso_hit(tool, event, &sample, NULL, jd->machine);
 
-out:
-	free(event);
 	return ret;
 }
 
@@ -878,7 +874,6 @@ jit_process(struct perf_session *session,
 	}
 
 	nsinfo__put(jd.nsi);
-	free(jd.buf);
 
 	return ret;
 }

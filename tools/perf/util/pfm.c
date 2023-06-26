@@ -112,6 +112,7 @@ int parse_libpfm_events_option(const struct option *opt, const char *str,
 				   "cannot close a non-existing event group\n");
 				goto error;
 			}
+			evlist->core.nr_groups++;
 			grp_leader = NULL;
 			grp_evt = -1;
 		}

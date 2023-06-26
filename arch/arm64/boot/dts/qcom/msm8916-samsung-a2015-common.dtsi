@@ -252,6 +252,10 @@
 	linux,code = <KEY_VOLUMEDOWN>;
 };
 
+&pronto {
+	status = "okay";
+};
+
 &sdhc_1 {
 	status = "okay";
 

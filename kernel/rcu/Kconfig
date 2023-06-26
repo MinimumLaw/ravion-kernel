@@ -53,6 +53,9 @@ config RCU_EXPERT
 
 	  Say N if you are unsure.
 
+config SRCU
+	def_bool y
+
 config TINY_SRCU
 	bool
 	default y if TINY_RCU

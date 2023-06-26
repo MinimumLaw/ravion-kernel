@@ -993,9 +993,9 @@ void kvm_arch_flush_remote_tlbs_memslot(struct kvm *kvm,
 	kvm_flush_remote_tlbs(kvm);
 }
 
-int kvm_arch_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long arg)
+long kvm_arch_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long arg)
 {
-	int r;
+	long r;
 
 	switch (ioctl) {
 	default:

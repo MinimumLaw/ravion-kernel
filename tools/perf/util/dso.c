@@ -491,11 +491,6 @@ static int do_open(char *name)
 	return -1;
 }
 
-char *dso__filename_with_chroot(const struct dso *dso, const char *filename)
-{
-	return filename_with_chroot(nsinfo__pid(dso->nsinfo), filename);
-}
-
 static int __open_dso(struct dso *dso, struct machine *machine)
 {
 	int fd = -EINVAL;
@@ -520,7 +515,7 @@ static int __open_dso(struct dso *dso, struct machine *machine)
 		if (errno != ENOENT || dso->nsinfo == NULL)
 			goto out;
 
-		new_name = dso__filename_with_chroot(dso, name);
+		new_name = filename_with_chroot(dso->nsinfo->pid, name);
 		if (!new_name)
 			goto out;
 
@@ -1127,8 +1122,7 @@ ssize_t dso__data_read_addr(struct dso *dso, struct map *map,
 			    struct machine *machine, u64 addr,
 			    u8 *data, ssize_t size)
 {
-	u64 offset = map__map_ip(map, addr);
-
+	u64 offset = map->map_ip(map, addr);
 	return dso__data_read_offset(dso, machine, offset, data, size);
 }
 
@@ -1168,8 +1162,7 @@ ssize_t dso__data_write_cache_addr(struct dso *dso, struct map *map,
 				   struct machine *machine, u64 addr,
 				   const u8 *data, ssize_t size)
 {
-	u64 offset = map__map_ip(map, addr);
-
+	u64 offset = map->map_ip(map, addr);
 	return dso__data_write_cache_offs(dso, machine, offset, data, size);
 }
 

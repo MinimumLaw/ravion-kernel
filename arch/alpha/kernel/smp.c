@@ -562,7 +562,7 @@ handle_ipi(struct pt_regs *regs)
 }
 
 void
-arch_smp_send_reschedule(int cpu)
+smp_send_reschedule(int cpu)
 {
 #ifdef DEBUG_IPI_MSG
 	if (cpu == hard_smp_processor_id())

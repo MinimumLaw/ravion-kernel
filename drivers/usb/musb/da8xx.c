@@ -576,12 +576,14 @@ static int da8xx_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static void da8xx_remove(struct platform_device *pdev)
+static int da8xx_remove(struct platform_device *pdev)
 {
 	struct da8xx_glue		*glue = platform_get_drvdata(pdev);
 
 	platform_device_unregister(glue->musb);
 	usb_phy_generic_unregister(glue->usb_phy);
+
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -624,7 +626,7 @@ MODULE_DEVICE_TABLE(of, da8xx_id_table);
 
 static struct platform_driver da8xx_driver = {
 	.probe		= da8xx_probe,
-	.remove_new	= da8xx_remove,
+	.remove		= da8xx_remove,
 	.driver		= {
 		.name	= "musb-da8xx",
 		.pm = &da8xx_pm_ops,

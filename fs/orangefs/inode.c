@@ -244,7 +244,7 @@ static void orangefs_readahead(struct readahead_control *rac)
 	struct iov_iter iter;
 	struct inode *inode = rac->mapping->host;
 	struct xarray *i_pages;
-	struct folio *folio;
+	struct page *page;
 	loff_t new_start = readahead_pos(rac);
 	int ret;
 	size_t new_len = 0;
@@ -275,10 +275,9 @@ static void orangefs_readahead(struct readahead_control *rac)
 		ret = 0;
 
 	/* clean up. */
-	while ((folio = readahead_folio(rac))) {
-		if (!ret)
-			folio_mark_uptodate(folio);
-		folio_unlock(folio);
+	while ((page = readahead_page(rac))) {
+		page_endio(page, false, ret);
+		put_page(page);
 	}
 }
 

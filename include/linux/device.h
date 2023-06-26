@@ -243,26 +243,21 @@ void __iomem *devm_of_iomap(struct device *dev,
 			    resource_size_t *size);
 
 /* allows to add/remove a custom action to devres stack */
+int devm_add_action(struct device *dev, void (*action)(void *), void *data);
 void devm_remove_action(struct device *dev, void (*action)(void *), void *data);
 void devm_release_action(struct device *dev, void (*action)(void *), void *data);
 
-int __devm_add_action(struct device *dev, void (*action)(void *), void *data, const char *name);
-#define devm_add_action(release, action, data) \
-	__devm_add_action(release, action, data, #action)
-
-static inline int __devm_add_action_or_reset(struct device *dev, void (*action)(void *),
-					     void *data, const char *name)
+static inline int devm_add_action_or_reset(struct device *dev,
+					   void (*action)(void *), void *data)
 {
 	int ret;
 
-	ret = __devm_add_action(dev, action, data, name);
+	ret = devm_add_action(dev, action, data);
 	if (ret)
 		action(data);
 
 	return ret;
 }
-#define devm_add_action_or_reset(release, action, data) \
-	__devm_add_action_or_reset(release, action, data, #action)
 
 /**
  * devm_alloc_percpu - Resource-managed alloc_percpu
@@ -566,7 +561,7 @@ struct device {
 	const char		*init_name; /* initial name of the device */
 	const struct device_type *type;
 
-	const struct bus_type	*bus;	/* type of bus device is on */
+	struct bus_type	*bus;		/* type of bus device is on */
 	struct device_driver *driver;	/* which driver has allocated this
 					   device */
 	void		*platform_data;	/* Platform specific data, device
@@ -631,7 +626,7 @@ struct device {
 	spinlock_t		devres_lock;
 	struct list_head	devres_head;
 
-	const struct class	*class;
+	struct class		*class;
 	const struct attribute_group **groups;	/* optional groups */
 
 	void	(*release)(struct device *dev);
@@ -1015,13 +1010,13 @@ bool device_is_bound(struct device *dev);
  * Easy functions for dynamically creating devices on the fly
  */
 __printf(5, 6) struct device *
-device_create(const struct class *cls, struct device *parent, dev_t devt,
+device_create(struct class *cls, struct device *parent, dev_t devt,
 	      void *drvdata, const char *fmt, ...);
 __printf(6, 7) struct device *
-device_create_with_groups(const struct class *cls, struct device *parent, dev_t devt,
+device_create_with_groups(struct class *cls, struct device *parent, dev_t devt,
 			  void *drvdata, const struct attribute_group **groups,
 			  const char *fmt, ...);
-void device_destroy(const struct class *cls, dev_t devt);
+void device_destroy(struct class *cls, dev_t devt);
 
 int __must_check device_add_groups(struct device *dev,
 				   const struct attribute_group **groups);
@@ -1088,12 +1083,19 @@ void device_link_remove(void *consumer, struct device *supplier);
 void device_links_supplier_sync_state_pause(void);
 void device_links_supplier_sync_state_resume(void);
 
-__printf(3, 4) int dev_err_probe(const struct device *dev, int err, const char *fmt, ...);
+extern __printf(3, 4)
+int dev_err_probe(const struct device *dev, int err, const char *fmt, ...);
 
 /* Create alias, so I can be autoloaded. */
 #define MODULE_ALIAS_CHARDEV(major,minor) \
 	MODULE_ALIAS("char-major-" __stringify(major) "-" __stringify(minor))
 #define MODULE_ALIAS_CHARDEV_MAJOR(major) \
 	MODULE_ALIAS("char-major-" __stringify(major) "-*")
+
+#ifdef CONFIG_SYSFS_DEPRECATED
+extern long sysfs_deprecated;
+#else
+#define sysfs_deprecated 0
+#endif
 
 #endif /* _DEVICE_H_ */

@@ -45,12 +45,12 @@
 #endif
 
 #ifdef CONFIG_CPU_HAS_DIEI
-	.macro	local_irq_enable
+	.macro	local_irq_enable reg=t0
 	ei
 	irq_enable_hazard
 	.endm
 
-	.macro	local_irq_disable
+	.macro	local_irq_disable reg=t0
 	di
 	irq_disable_hazard
 	.endm

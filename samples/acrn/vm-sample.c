@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
@@ -53,8 +54,8 @@ int main(int argc, char **argv)
 	argc = argc;
 	argv = argv;
 
-	ret = posix_memalign(&guest_memory, 4096, GUEST_MEMORY_SIZE);
-	if (ret < 0) {
+	guest_memory = memalign(4096, GUEST_MEMORY_SIZE);
+	if (!guest_memory) {
 		printf("No enough memory!\n");
 		return -1;
 	}

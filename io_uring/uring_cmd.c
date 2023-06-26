@@ -12,10 +12,10 @@
 #include "rsrc.h"
 #include "uring_cmd.h"
 
-static void io_uring_cmd_work(struct io_kiocb *req, struct io_tw_state *ts)
+static void io_uring_cmd_work(struct io_kiocb *req, bool *locked)
 {
 	struct io_uring_cmd *ioucmd = io_kiocb_to_cmd(req, struct io_uring_cmd);
-	unsigned issue_flags = ts->locked ? 0 : IO_URING_F_UNLOCKED;
+	unsigned issue_flags = *locked ? 0 : IO_URING_F_UNLOCKED;
 
 	ioucmd->task_work_cb(ioucmd, issue_flags);
 }
@@ -54,24 +54,25 @@ void io_uring_cmd_done(struct io_uring_cmd *ioucmd, ssize_t ret, ssize_t res2,
 	io_req_set_res(req, ret, 0);
 	if (req->ctx->flags & IORING_SETUP_CQE32)
 		io_req_set_cqe32_extra(req, res2, 0);
-	if (req->ctx->flags & IORING_SETUP_IOPOLL) {
+	if (req->ctx->flags & IORING_SETUP_IOPOLL)
 		/* order with io_iopoll_req_issued() checking ->iopoll_complete */
 		smp_store_release(&req->iopoll_completed, 1);
-	} else {
-		struct io_tw_state ts = {
-			.locked = !(issue_flags & IO_URING_F_UNLOCKED),
-		};
-		io_req_task_complete(req, &ts);
-	}
+	else
+		io_req_complete_post(req, issue_flags);
 }
 EXPORT_SYMBOL_GPL(io_uring_cmd_done);
 
 int io_uring_cmd_prep_async(struct io_kiocb *req)
 {
 	struct io_uring_cmd *ioucmd = io_kiocb_to_cmd(req, struct io_uring_cmd);
+	size_t cmd_size;
 
-	memcpy(req->async_data, ioucmd->sqe, uring_sqe_size(req->ctx));
-	ioucmd->sqe = req->async_data;
+	BUILD_BUG_ON(uring_cmd_pdu_size(0) != 16);
+	BUILD_BUG_ON(uring_cmd_pdu_size(1) != 80);
+
+	cmd_size = uring_cmd_pdu_size(req->ctx->flags & IORING_SETUP_SQE128);
+
+	memcpy(req->async_data, ioucmd->cmd, cmd_size);
 	return 0;
 }
 
@@ -97,7 +98,7 @@ int io_uring_cmd_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 		req->imu = ctx->user_bufs[index];
 		io_req_set_rsrc_node(req, ctx, 0);
 	}
-	ioucmd->sqe = sqe;
+	ioucmd->cmd = sqe->cmd;
 	ioucmd->cmd_op = READ_ONCE(sqe->cmd_op);
 	return 0;
 }
@@ -127,6 +128,9 @@ int io_uring_cmd(struct io_kiocb *req, unsigned int issue_flags)
 		req->iopoll_completed = 0;
 		WRITE_ONCE(ioucmd->cookie, NULL);
 	}
+
+	if (req_has_async_data(req))
+		ioucmd->cmd = req->async_data;
 
 	ret = file->f_op->uring_cmd(ioucmd, issue_flags);
 	if (ret == -EAGAIN) {

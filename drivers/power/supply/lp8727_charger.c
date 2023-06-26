@@ -598,7 +598,7 @@ static void lp8727_remove(struct i2c_client *cl)
 	lp8727_unregister_psy(pchg);
 }
 
-static const struct of_device_id lp8727_dt_ids[] __maybe_unused = {
+static const struct of_device_id lp8727_dt_ids[] = {
 	{ .compatible = "ti,lp8727", },
 	{ }
 };

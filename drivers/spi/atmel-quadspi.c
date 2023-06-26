@@ -700,7 +700,7 @@ disable_pclk:
 	return err;
 }
 
-static void atmel_qspi_remove(struct platform_device *pdev)
+static int atmel_qspi_remove(struct platform_device *pdev)
 {
 	struct spi_controller *ctrl = platform_get_drvdata(pdev);
 	struct atmel_qspi *aq = spi_controller_get_devdata(ctrl);
@@ -727,6 +727,8 @@ static void atmel_qspi_remove(struct platform_device *pdev)
 
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
+
+	return 0;
 }
 
 static int __maybe_unused atmel_qspi_suspend(struct device *dev)
@@ -835,7 +837,7 @@ static struct platform_driver atmel_qspi_driver = {
 		.pm	= pm_ptr(&atmel_qspi_pm_ops),
 	},
 	.probe		= atmel_qspi_probe,
-	.remove_new	= atmel_qspi_remove,
+	.remove		= atmel_qspi_remove,
 };
 module_platform_driver(atmel_qspi_driver);
 

@@ -72,7 +72,7 @@ struct ttm_pool {
 	bool use_dma32;
 
 	struct {
-		struct ttm_pool_type orders[MAX_ORDER + 1];
+		struct ttm_pool_type orders[MAX_ORDER];
 	} caching[TTM_NUM_CACHING_TYPES];
 };
 

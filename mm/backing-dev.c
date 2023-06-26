@@ -263,7 +263,7 @@ static ssize_t min_bytes_store(struct device *dev,
 
 	return ret;
 }
-static DEVICE_ATTR_RW(min_bytes);
+DEVICE_ATTR_RW(min_bytes);
 
 static ssize_t max_bytes_show(struct device *dev,
 			      struct device_attribute *attr,
@@ -291,7 +291,7 @@ static ssize_t max_bytes_store(struct device *dev,
 
 	return ret;
 }
-static DEVICE_ATTR_RW(max_bytes);
+DEVICE_ATTR_RW(max_bytes);
 
 static ssize_t stable_pages_required_show(struct device *dev,
 					  struct device_attribute *attr,
@@ -347,7 +347,7 @@ ATTRIBUTE_GROUPS(bdi_dev);
 
 static __init int bdi_class_init(void)
 {
-	bdi_class = class_create("bdi");
+	bdi_class = class_create(THIS_MODULE, "bdi");
 	if (IS_ERR(bdi_class))
 		return PTR_ERR(bdi_class);
 

@@ -46,6 +46,7 @@ enum mt7996_eeprom_band {
 	MT_EE_BAND_SEL_2GHZ,
 	MT_EE_BAND_SEL_5GHZ,
 	MT_EE_BAND_SEL_6GHZ,
+	MT_EE_BAND_SEL_5GHZ_6GHZ,
 };
 
 static inline int

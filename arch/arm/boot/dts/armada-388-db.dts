@@ -62,7 +62,7 @@
 			};
 
 			usb@58000 {
-				status = "okay";
+				status = "ok";
 			};
 
 			ethernet@70000 {

@@ -24,6 +24,7 @@ void bpf_rcu_read_unlock(void) __ksym;
 SEC("?iter.s/cgroup")
 int cgroup_iter(struct bpf_iter__cgroup *ctx)
 {
+	struct seq_file *seq = ctx->meta->seq;
 	struct cgroup *cgrp = ctx->cgroup;
 	long *ptr;
 
@@ -48,7 +49,7 @@ int no_rcu_lock(void *ctx)
 	if (task->pid != target_pid)
 		return 0;
 
-	/* task->cgroups is untrusted in sleepable prog outside of RCU CS */
+	/* ptr_to_btf_id semantics. should work. */
 	cgrp = task->cgroups->dfl_cgrp;
 	ptr = bpf_cgrp_storage_get(&map_a, cgrp, 0,
 				   BPF_LOCAL_STORAGE_GET_F_CREATE);
@@ -70,7 +71,7 @@ int yes_rcu_lock(void *ctx)
 
 	bpf_rcu_read_lock();
 	cgrp = task->cgroups->dfl_cgrp;
-	/* cgrp is trusted under RCU CS */
+	/* cgrp is untrusted and cannot pass to bpf_cgrp_storage_get() helper. */
 	ptr = bpf_cgrp_storage_get(&map_a, cgrp, 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
 	if (ptr)
 		cgroup_id = cgrp->kn->id;

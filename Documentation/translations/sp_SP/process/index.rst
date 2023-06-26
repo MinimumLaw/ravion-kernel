@@ -18,5 +18,3 @@
    email-clients
    magic-number
    programming-language
-   deprecated
-   adding-syscalls

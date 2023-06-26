@@ -20,7 +20,6 @@ properties:
     enum:
       - snps,axi-dma-1.01a
       - intel,kmb-axi-dma
-      - starfive,jh7110-axi-dma
 
   reg:
     minItems: 1
@@ -59,8 +58,7 @@ properties:
     maximum: 8
 
   resets:
-    minItems: 1
-    maxItems: 2
+    maxItems: 1
 
   snps,dma-masters:
     description: |
@@ -110,25 +108,6 @@ required:
   - snps,data-width
   - snps,priority
   - snps,block-size
-
-if:
-  properties:
-    compatible:
-      contains:
-        enum:
-          - starfive,jh7110-axi-dma
-then:
-  properties:
-    resets:
-      minItems: 2
-      items:
-        - description: AXI reset line
-        - description: AHB reset line
-        - description: module reset
-else:
-  properties:
-    resets:
-      maxItems: 1
 
 additionalProperties: false
 

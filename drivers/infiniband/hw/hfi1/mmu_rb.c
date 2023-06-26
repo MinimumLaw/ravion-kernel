@@ -46,14 +46,12 @@ int hfi1_mmu_rb_register(void *ops_arg,
 			 struct mmu_rb_handler **handler)
 {
 	struct mmu_rb_handler *h;
-	void *free_ptr;
 	int ret;
 
-	free_ptr = kzalloc(sizeof(*h) + cache_line_size() - 1, GFP_KERNEL);
-	if (!free_ptr)
+	h = kzalloc(sizeof(*h), GFP_KERNEL);
+	if (!h)
 		return -ENOMEM;
 
-	h = PTR_ALIGN(free_ptr, cache_line_size());
 	h->root = RB_ROOT_CACHED;
 	h->ops = ops;
 	h->ops_arg = ops_arg;
@@ -64,11 +62,10 @@ int hfi1_mmu_rb_register(void *ops_arg,
 	INIT_LIST_HEAD(&h->del_list);
 	INIT_LIST_HEAD(&h->lru_list);
 	h->wq = wq;
-	h->free_ptr = free_ptr;
 
 	ret = mmu_notifier_register(&h->mn, current->mm);
 	if (ret) {
-		kfree(free_ptr);
+		kfree(h);
 		return ret;
 	}
 
@@ -111,7 +108,7 @@ void hfi1_mmu_rb_unregister(struct mmu_rb_handler *handler)
 	/* Now the mm may be freed. */
 	mmdrop(handler->mn.mm);
 
-	kfree(handler->free_ptr);
+	kfree(handler);
 }
 
 int hfi1_mmu_rb_insert(struct mmu_rb_handler *handler,

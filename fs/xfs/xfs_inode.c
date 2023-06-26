@@ -1620,7 +1620,16 @@ xfs_inactive_ifree(
 	 */
 	xfs_trans_mod_dquot_byino(tp, ip, XFS_TRANS_DQ_ICOUNT, -1);
 
-	return xfs_trans_commit(tp);
+	/*
+	 * Just ignore errors at this point.  There is nothing we can do except
+	 * to try to keep going. Make sure it's not a silent error.
+	 */
+	error = xfs_trans_commit(tp);
+	if (error)
+		xfs_notice(mp, "%s: xfs_trans_commit returned error %d",
+			__func__, error);
+
+	return 0;
 }
 
 /*
@@ -1684,12 +1693,12 @@ xfs_inode_needs_inactive(
  * now be truncated.  Also, we clear all of the read-ahead state
  * kept for the inode here since the file is now closed.
  */
-int
+void
 xfs_inactive(
 	xfs_inode_t	*ip)
 {
 	struct xfs_mount	*mp;
-	int			error = 0;
+	int			error;
 	int			truncate = 0;
 
 	/*
@@ -1727,7 +1736,7 @@ xfs_inactive(
 		 * reference to the inode at this point anyways.
 		 */
 		if (xfs_can_free_eofblocks(ip, true))
-			error = xfs_free_eofblocks(ip);
+			xfs_free_eofblocks(ip);
 
 		goto out;
 	}
@@ -1764,7 +1773,7 @@ xfs_inactive(
 	/*
 	 * Free the inode.
 	 */
-	error = xfs_inactive_ifree(ip);
+	xfs_inactive_ifree(ip);
 
 out:
 	/*
@@ -1772,7 +1781,6 @@ out:
 	 * the attached dquots.
 	 */
 	xfs_qm_dqdetach(ip);
-	return error;
 }
 
 /*

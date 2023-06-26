@@ -99,50 +99,48 @@ static void req_retry(struct rxe_qp *qp)
 void rnr_nak_timer(struct timer_list *t)
 {
 	struct rxe_qp *qp = from_timer(qp, t, rnr_nak_timer);
-	unsigned long flags;
 
 	rxe_dbg_qp(qp, "nak timer fired\n");
 
-	spin_lock_irqsave(&qp->state_lock, flags);
-	if (qp->valid) {
-		/* request a send queue retry */
-		qp->req.need_retry = 1;
-		qp->req.wait_for_rnr_timer = 0;
-		rxe_sched_task(&qp->req.task);
-	}
-	spin_unlock_irqrestore(&qp->state_lock, flags);
+	/* request a send queue retry */
+	qp->req.need_retry = 1;
+	qp->req.wait_for_rnr_timer = 0;
+	rxe_sched_task(&qp->req.task);
 }
 
-static void req_check_sq_drain_done(struct rxe_qp *qp)
+static struct rxe_send_wqe *req_next_wqe(struct rxe_qp *qp)
 {
-	struct rxe_queue *q;
-	unsigned int index;
-	unsigned int cons;
 	struct rxe_send_wqe *wqe;
-	unsigned long flags;
+	struct rxe_queue *q = qp->sq.queue;
+	unsigned int index = qp->req.wqe_index;
+	unsigned int cons;
+	unsigned int prod;
 
-	spin_lock_irqsave(&qp->state_lock, flags);
-	if (qp_state(qp) == IB_QPS_SQD) {
-		q = qp->sq.queue;
-		index = qp->req.wqe_index;
-		cons = queue_get_consumer(q, QUEUE_TYPE_FROM_CLIENT);
-		wqe = queue_addr_from_index(q, cons);
+	wqe = queue_head(q, QUEUE_TYPE_FROM_CLIENT);
+	cons = queue_get_consumer(q, QUEUE_TYPE_FROM_CLIENT);
+	prod = queue_get_producer(q, QUEUE_TYPE_FROM_CLIENT);
 
+	if (unlikely(qp->req.state == QP_STATE_DRAIN)) {
 		/* check to see if we are drained;
 		 * state_lock used by requester and completer
 		 */
+		spin_lock_bh(&qp->state_lock);
 		do {
-			if (!qp->attr.sq_draining)
+			if (qp->req.state != QP_STATE_DRAIN) {
 				/* comp just finished */
+				spin_unlock_bh(&qp->state_lock);
 				break;
+			}
 
 			if (wqe && ((index != cons) ||
-				(wqe->state != wqe_state_posted)))
+				(wqe->state != wqe_state_posted))) {
 				/* comp not done yet */
+				spin_unlock_bh(&qp->state_lock);
 				break;
+			}
 
-			qp->attr.sq_draining = 0;
-			spin_unlock_irqrestore(&qp->state_lock, flags);
+			qp->req.state = QP_STATE_DRAINED;
+			spin_unlock_bh(&qp->state_lock);
 
 			if (qp->ibqp.event_handler) {
 				struct ib_event ev;
@@ -153,43 +151,18 @@ static void req_check_sq_drain_done(struct rxe_qp *qp)
 				qp->ibqp.event_handler(&ev,
 					qp->ibqp.qp_context);
 			}
-			return;
 		} while (0);
 	}
-	spin_unlock_irqrestore(&qp->state_lock, flags);
-}
 
-static struct rxe_send_wqe *__req_next_wqe(struct rxe_qp *qp)
-{
-	struct rxe_queue *q = qp->sq.queue;
-	unsigned int index = qp->req.wqe_index;
-	unsigned int prod;
-
-	prod = queue_get_producer(q, QUEUE_TYPE_FROM_CLIENT);
 	if (index == prod)
 		return NULL;
-	else
-		return queue_addr_from_index(q, index);
-}
 
-static struct rxe_send_wqe *req_next_wqe(struct rxe_qp *qp)
-{
-	struct rxe_send_wqe *wqe;
-	unsigned long flags;
+	wqe = queue_addr_from_index(q, index);
 
-	req_check_sq_drain_done(qp);
-
-	wqe = __req_next_wqe(qp);
-	if (wqe == NULL)
+	if (unlikely((qp->req.state == QP_STATE_DRAIN ||
+		      qp->req.state == QP_STATE_DRAINED) &&
+		     (wqe->state != wqe_state_processing)))
 		return NULL;
-
-	spin_lock_irqsave(&qp->state_lock, flags);
-	if (unlikely((qp_state(qp) == IB_QPS_SQD) &&
-		     (wqe->state != wqe_state_processing))) {
-		spin_unlock_irqrestore(&qp->state_lock, flags);
-		return NULL;
-	}
-	spin_unlock_irqrestore(&qp->state_lock, flags);
 
 	wqe->mask = wr_opcode_mask(wqe->wr.opcode, qp);
 	return wqe;
@@ -679,24 +652,25 @@ int rxe_requester(struct rxe_qp *qp)
 	struct rxe_queue *q = qp->sq.queue;
 	struct rxe_ah *ah;
 	struct rxe_av *av;
-	unsigned long flags;
 
-	spin_lock_irqsave(&qp->state_lock, flags);
-	if (unlikely(!qp->valid)) {
-		spin_unlock_irqrestore(&qp->state_lock, flags);
+	if (!rxe_get(qp))
+		return -EAGAIN;
+
+	if (unlikely(!qp->valid))
 		goto exit;
-	}
 
-	if (unlikely(qp_state(qp) == IB_QPS_ERR)) {
-		wqe = __req_next_wqe(qp);
-		spin_unlock_irqrestore(&qp->state_lock, flags);
+	if (unlikely(qp->req.state == QP_STATE_ERROR)) {
+		wqe = req_next_wqe(qp);
 		if (wqe)
+			/*
+			 * Generate an error completion for error qp state
+			 */
 			goto err;
 		else
 			goto exit;
 	}
 
-	if (unlikely(qp_state(qp) == IB_QPS_RESET)) {
+	if (unlikely(qp->req.state == QP_STATE_RESET)) {
 		qp->req.wqe_index = queue_get_consumer(q,
 						QUEUE_TYPE_FROM_CLIENT);
 		qp->req.opcode = -1;
@@ -704,10 +678,8 @@ int rxe_requester(struct rxe_qp *qp)
 		qp->req.wait_psn = 0;
 		qp->req.need_retry = 0;
 		qp->req.wait_for_rnr_timer = 0;
-		spin_unlock_irqrestore(&qp->state_lock, flags);
 		goto exit;
 	}
-	spin_unlock_irqrestore(&qp->state_lock, flags);
 
 	/* we come here if the retransmit timer has fired
 	 * or if the rnr timer has fired. If the retransmit
@@ -784,7 +756,7 @@ int rxe_requester(struct rxe_qp *qp)
 						       qp->req.wqe_index);
 			wqe->state = wqe_state_done;
 			wqe->status = IB_WC_SUCCESS;
-			rxe_sched_task(&qp->comp.task);
+			rxe_run_task(&qp->comp.task);
 			goto done;
 		}
 		payload = mtu;
@@ -867,9 +839,12 @@ err:
 	/* update wqe_index for each wqe completion */
 	qp->req.wqe_index = queue_next_index(qp->sq.queue, qp->req.wqe_index);
 	wqe->state = wqe_state_error;
-	rxe_qp_error(qp);
+	qp->req.state = QP_STATE_ERROR;
+	rxe_run_task(&qp->comp.task);
 exit:
 	ret = -EAGAIN;
 out:
+	rxe_put(qp);
+
 	return ret;
 }

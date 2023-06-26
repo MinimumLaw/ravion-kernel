@@ -4,7 +4,6 @@
 #include "dso.h"
 #include "build-id.h"
 #include "hist.h"
-#include "kvm-stat.h"
 #include "map.h"
 #include "map_symbol.h"
 #include "branch.h"
@@ -106,7 +105,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 		hists__set_col_len(hists, HISTC_THREAD, len + 8);
 
 	if (h->ms.map) {
-		len = dso__name_len(map__dso(h->ms.map));
+		len = dso__name_len(h->ms.map->dso);
 		hists__new_col_len(hists, HISTC_DSO, len);
 	}
 
@@ -120,7 +119,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 				symlen += BITS_PER_LONG / 4 + 2 + 3;
 			hists__new_col_len(hists, HISTC_SYMBOL_FROM, symlen);
 
-			symlen = dso__name_len(map__dso(h->branch_info->from.ms.map));
+			symlen = dso__name_len(h->branch_info->from.ms.map->dso);
 			hists__new_col_len(hists, HISTC_DSO_FROM, symlen);
 		} else {
 			symlen = unresolved_col_width + 4 + 2;
@@ -135,7 +134,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 				symlen += BITS_PER_LONG / 4 + 2 + 3;
 			hists__new_col_len(hists, HISTC_SYMBOL_TO, symlen);
 
-			symlen = dso__name_len(map__dso(h->branch_info->to.ms.map));
+			symlen = dso__name_len(h->branch_info->to.ms.map->dso);
 			hists__new_col_len(hists, HISTC_DSO_TO, symlen);
 		} else {
 			symlen = unresolved_col_width + 4 + 2;
@@ -180,7 +179,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 		}
 
 		if (h->mem_info->daddr.ms.map) {
-			symlen = dso__name_len(map__dso(h->mem_info->daddr.ms.map));
+			symlen = dso__name_len(h->mem_info->daddr.ms.map->dso);
 			hists__new_col_len(hists, HISTC_MEM_DADDR_DSO,
 					   symlen);
 		} else {
@@ -208,7 +207,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 	hists__new_col_len(hists, HISTC_MEM_LOCKED, 6);
 	hists__new_col_len(hists, HISTC_MEM_TLB, 22);
 	hists__new_col_len(hists, HISTC_MEM_SNOOP, 12);
-	hists__new_col_len(hists, HISTC_MEM_LVL, 36 + 3);
+	hists__new_col_len(hists, HISTC_MEM_LVL, 21 + 3);
 	hists__new_col_len(hists, HISTC_LOCAL_WEIGHT, 12);
 	hists__new_col_len(hists, HISTC_GLOBAL_WEIGHT, 12);
 	hists__new_col_len(hists, HISTC_MEM_BLOCKED, 10);
@@ -241,7 +240,7 @@ void hists__calc_col_len(struct hists *hists, struct hist_entry *h)
 
 	if (h->cgroup) {
 		const char *cgrp_name = "unknown";
-		struct cgroup *cgrp = cgroup__find(maps__machine(h->ms.maps)->env,
+		struct cgroup *cgrp = cgroup__find(h->ms.maps->machine->env,
 						   h->cgroup);
 		if (cgrp != NULL)
 			cgrp_name = cgrp->name;
@@ -450,7 +449,7 @@ static int hist_entry__init(struct hist_entry *he,
 			memset(&he->stat, 0, sizeof(he->stat));
 	}
 
-	he->ms.map = map__get(he->ms.map);
+	map__get(he->ms.map);
 
 	if (he->branch_info) {
 		/*
@@ -465,13 +464,13 @@ static int hist_entry__init(struct hist_entry *he,
 		memcpy(he->branch_info, template->branch_info,
 		       sizeof(*he->branch_info));
 
-		he->branch_info->from.ms.map = map__get(he->branch_info->from.ms.map);
-		he->branch_info->to.ms.map = map__get(he->branch_info->to.ms.map);
+		map__get(he->branch_info->from.ms.map);
+		map__get(he->branch_info->to.ms.map);
 	}
 
 	if (he->mem_info) {
-		he->mem_info->iaddr.ms.map = map__get(he->mem_info->iaddr.ms.map);
-		he->mem_info->daddr.ms.map = map__get(he->mem_info->daddr.ms.map);
+		map__get(he->mem_info->iaddr.ms.map);
+		map__get(he->mem_info->daddr.ms.map);
 	}
 
 	if (hist_entry__has_callchains(he) && symbol_conf.use_callchain)
@@ -628,8 +627,6 @@ static struct hist_entry *hists__findnew_entry(struct hists *hists,
 
 			block_info__zput(entry->block_info);
 
-			kvm_info__zput(entry->kvm_info);
-
 			/* If the map of an existing hist_entry has
 			 * become out-of-date due to an exec() or
 			 * similar, update it.  Otherwise we will
@@ -701,7 +698,6 @@ __hists__add_entry(struct hists *hists,
 		   struct symbol *sym_parent,
 		   struct branch_info *bi,
 		   struct mem_info *mi,
-		   struct kvm_info *ki,
 		   struct block_info *block_info,
 		   struct perf_sample *sample,
 		   bool sample_self,
@@ -737,7 +733,6 @@ __hists__add_entry(struct hists *hists,
 		.hists	= hists,
 		.branch_info = bi,
 		.mem_info = mi,
-		.kvm_info = ki,
 		.block_info = block_info,
 		.transaction = sample->transaction,
 		.raw_data = sample->raw_data,
@@ -747,7 +742,6 @@ __hists__add_entry(struct hists *hists,
 		.weight = sample->weight,
 		.ins_lat = sample->ins_lat,
 		.p_stage_cyc = sample->p_stage_cyc,
-		.simd_flags = sample->simd_flags,
 	}, *he = hists__findnew_entry(hists, &entry, al, sample_self);
 
 	if (!hists->has_callchains && he && he->callchain_size != 0)
@@ -762,11 +756,10 @@ struct hist_entry *hists__add_entry(struct hists *hists,
 				    struct symbol *sym_parent,
 				    struct branch_info *bi,
 				    struct mem_info *mi,
-				    struct kvm_info *ki,
 				    struct perf_sample *sample,
 				    bool sample_self)
 {
-	return __hists__add_entry(hists, al, sym_parent, bi, mi, ki, NULL,
+	return __hists__add_entry(hists, al, sym_parent, bi, mi, NULL,
 				  sample, sample_self, NULL);
 }
 
@@ -776,11 +769,10 @@ struct hist_entry *hists__add_entry_ops(struct hists *hists,
 					struct symbol *sym_parent,
 					struct branch_info *bi,
 					struct mem_info *mi,
-					struct kvm_info *ki,
 					struct perf_sample *sample,
 					bool sample_self)
 {
-	return __hists__add_entry(hists, al, sym_parent, bi, mi, ki, NULL,
+	return __hists__add_entry(hists, al, sym_parent, bi, mi, NULL,
 				  sample, sample_self, ops);
 }
 
@@ -854,7 +846,7 @@ iter_add_single_mem_entry(struct hist_entry_iter *iter, struct addr_location *al
 	 */
 	sample->period = cost;
 
-	he = hists__add_entry(hists, al, iter->parent, NULL, mi, NULL,
+	he = hists__add_entry(hists, al, iter->parent, NULL, mi,
 			      sample, true);
 	if (!he)
 		return -ENOMEM;
@@ -957,7 +949,7 @@ iter_add_next_branch_entry(struct hist_entry_iter *iter, struct addr_location *a
 	sample->period = 1;
 	sample->weight = bi->flags.cycles ? bi->flags.cycles : 1;
 
-	he = hists__add_entry(hists, al, iter->parent, &bi[i], NULL, NULL,
+	he = hists__add_entry(hists, al, iter->parent, &bi[i], NULL,
 			      sample, true);
 	if (he == NULL)
 		return -ENOMEM;
@@ -995,7 +987,7 @@ iter_add_single_normal_entry(struct hist_entry_iter *iter, struct addr_location 
 	struct hist_entry *he;
 
 	he = hists__add_entry(evsel__hists(evsel), al, iter->parent, NULL, NULL,
-			      NULL, sample, true);
+			      sample, true);
 	if (he == NULL)
 		return -ENOMEM;
 
@@ -1055,7 +1047,7 @@ iter_add_single_cumulative_entry(struct hist_entry_iter *iter,
 	struct hist_entry *he;
 	int err = 0;
 
-	he = hists__add_entry(hists, al, iter->parent, NULL, NULL, NULL,
+	he = hists__add_entry(hists, al, iter->parent, NULL, NULL,
 			      sample, true);
 	if (he == NULL)
 		return -ENOMEM;
@@ -1156,7 +1148,7 @@ iter_add_next_cumulative_entry(struct hist_entry_iter *iter,
 	}
 
 	he = hists__add_entry(evsel__hists(evsel), al, iter->parent, NULL, NULL,
-			      NULL, sample, false);
+			      sample, false);
 	if (he == NULL)
 		return -ENOMEM;
 
@@ -1325,9 +1317,6 @@ void hist_entry__delete(struct hist_entry *he)
 
 	if (he->block_info)
 		block_info__zput(he->block_info);
-
-	if (he->kvm_info)
-		kvm_info__zput(he->kvm_info);
 
 	zfree(&he->res_samples);
 	zfree(&he->stat_acc);
@@ -2110,7 +2099,7 @@ static bool hists__filter_entry_by_dso(struct hists *hists,
 				       struct hist_entry *he)
 {
 	if (hists->dso_filter != NULL &&
-	    (he->ms.map == NULL || map__dso(he->ms.map) != hists->dso_filter)) {
+	    (he->ms.map == NULL || he->ms.map->dso != hists->dso_filter)) {
 		he->filtered |= (1 << HIST_FILTER__DSO);
 		return true;
 	}

@@ -957,18 +957,14 @@ err_lock:
 	return ret;
 }
 
-static void meson_sar_adc_hw_disable(struct iio_dev *indio_dev)
+static int meson_sar_adc_hw_disable(struct iio_dev *indio_dev)
 {
 	struct meson_sar_adc_priv *priv = iio_priv(indio_dev);
 	int ret;
 
-	/*
-	 * If taking the lock fails we have to assume that BL30 is broken. The
-	 * best we can do then is to release the resources anyhow.
-	 */
 	ret = meson_sar_adc_lock(indio_dev);
 	if (ret)
-		dev_err(indio_dev->dev.parent, "Failed to lock ADC (%pE)\n", ERR_PTR(ret));
+		return ret;
 
 	clk_disable_unprepare(priv->adc_clk);
 
@@ -981,8 +977,9 @@ static void meson_sar_adc_hw_disable(struct iio_dev *indio_dev)
 
 	regulator_disable(priv->vref);
 
-	if (!ret)
-		meson_sar_adc_unlock(indio_dev);
+	meson_sar_adc_unlock(indio_dev);
+
+	return 0;
 }
 
 static irqreturn_t meson_sar_adc_irq(int irq, void *data)
@@ -1286,18 +1283,14 @@ static int meson_sar_adc_remove(struct platform_device *pdev)
 
 	iio_device_unregister(indio_dev);
 
-	meson_sar_adc_hw_disable(indio_dev);
-
-	return 0;
+	return meson_sar_adc_hw_disable(indio_dev);
 }
 
 static int meson_sar_adc_suspend(struct device *dev)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 
-	meson_sar_adc_hw_disable(indio_dev);
-
-	return 0;
+	return meson_sar_adc_hw_disable(indio_dev);
 }
 
 static int meson_sar_adc_resume(struct device *dev)

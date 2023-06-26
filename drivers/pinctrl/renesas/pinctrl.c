@@ -40,6 +40,10 @@ struct sh_pfc_pinctrl {
 
 	struct pinctrl_pin_desc *pins;
 	struct sh_pfc_pin_config *configs;
+
+	const char *func_prop_name;
+	const char *groups_prop_name;
+	const char *pins_prop_name;
 };
 
 static int sh_pfc_get_groups_count(struct pinctrl_dev *pctldev)
@@ -116,10 +120,27 @@ static int sh_pfc_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 	const char *pin;
 	int ret;
 
+	/* Support both the old Renesas-specific properties and the new standard
+	 * properties. Mixing old and new properties isn't allowed, neither
+	 * inside a subnode nor across subnodes.
+	 */
+	if (!pmx->func_prop_name) {
+		if (of_find_property(np, "groups", NULL) ||
+		    of_find_property(np, "pins", NULL)) {
+			pmx->func_prop_name = "function";
+			pmx->groups_prop_name = "groups";
+			pmx->pins_prop_name = "pins";
+		} else {
+			pmx->func_prop_name = "renesas,function";
+			pmx->groups_prop_name = "renesas,groups";
+			pmx->pins_prop_name = "renesas,pins";
+		}
+	}
+
 	/* Parse the function and configuration properties. At least a function
 	 * or one configuration must be specified.
 	 */
-	ret = of_property_read_string(np, "function", &function);
+	ret = of_property_read_string(np, pmx->func_prop_name, &function);
 	if (ret < 0 && ret != -EINVAL) {
 		dev_err(dev, "Invalid function in DT\n");
 		return ret;
@@ -137,7 +158,7 @@ static int sh_pfc_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 	}
 
 	/* Count the number of pins and groups and reallocate mappings. */
-	ret = of_property_count_strings(np, "pins");
+	ret = of_property_count_strings(np, pmx->pins_prop_name);
 	if (ret == -EINVAL) {
 		num_pins = 0;
 	} else if (ret < 0) {
@@ -147,7 +168,7 @@ static int sh_pfc_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		num_pins = ret;
 	}
 
-	ret = of_property_count_strings(np, "groups");
+	ret = of_property_count_strings(np, pmx->groups_prop_name);
 	if (ret == -EINVAL) {
 		num_groups = 0;
 	} else if (ret < 0) {
@@ -178,7 +199,7 @@ static int sh_pfc_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 	*num_maps = nmaps;
 
 	/* Iterate over pins and groups and create the mappings. */
-	of_property_for_each_string(np, "groups", prop, group) {
+	of_property_for_each_string(np, pmx->groups_prop_name, prop, group) {
 		if (function) {
 			maps[idx].type = PIN_MAP_TYPE_MUX_GROUP;
 			maps[idx].data.mux.group = group;
@@ -202,7 +223,7 @@ static int sh_pfc_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		goto done;
 	}
 
-	of_property_for_each_string(np, "pins", prop, pin) {
+	of_property_for_each_string(np, pmx->pins_prop_name, prop, pin) {
 		ret = sh_pfc_map_add_config(&maps[idx], pin,
 					    PIN_MAP_TYPE_CONFIGS_PIN,
 					    configs, num_configs);
@@ -559,7 +580,7 @@ static bool sh_pfc_pinconf_validate(struct sh_pfc *pfc, unsigned int _pin,
 		return pin->configs & SH_PFC_PIN_CFG_DRIVE_STRENGTH;
 
 	case PIN_CONFIG_POWER_SOURCE:
-		return pin->configs & SH_PFC_PIN_CFG_IO_VOLTAGE_MASK;
+		return pin->configs & SH_PFC_PIN_CFG_IO_VOLTAGE;
 
 	default:
 		return false;
@@ -612,7 +633,7 @@ static int sh_pfc_pinconf_get(struct pinctrl_dev *pctldev, unsigned _pin,
 	case PIN_CONFIG_POWER_SOURCE: {
 		int idx = sh_pfc_get_pin_index(pfc, _pin);
 		const struct sh_pfc_pin *pin = &pfc->info->pins[idx];
-		unsigned int mode, lo, hi;
+		unsigned int lower_voltage;
 		u32 pocctrl, val;
 		int bit;
 
@@ -625,11 +646,10 @@ static int sh_pfc_pinconf_get(struct pinctrl_dev *pctldev, unsigned _pin,
 
 		val = sh_pfc_read(pfc, pocctrl);
 
-		mode = pin->configs & SH_PFC_PIN_CFG_IO_VOLTAGE_MASK;
-		lo = mode <= SH_PFC_PIN_CFG_IO_VOLTAGE_18_33 ? 1800 : 2500;
-		hi = mode >= SH_PFC_PIN_CFG_IO_VOLTAGE_18_33 ? 3300 : 2500;
+		lower_voltage = (pin->configs & SH_PFC_PIN_VOLTAGE_25_33) ?
+			2500 : 1800;
 
-		arg = (val & BIT(bit)) ? hi : lo;
+		arg = (val & BIT(bit)) ? 3300 : lower_voltage;
 		break;
 	}
 
@@ -685,7 +705,7 @@ static int sh_pfc_pinconf_set(struct pinctrl_dev *pctldev, unsigned _pin,
 			unsigned int mV = pinconf_to_config_argument(configs[i]);
 			int idx = sh_pfc_get_pin_index(pfc, _pin);
 			const struct sh_pfc_pin *pin = &pfc->info->pins[idx];
-			unsigned int mode, lo, hi;
+			unsigned int lower_voltage;
 			u32 pocctrl, val;
 			int bit;
 
@@ -696,16 +716,15 @@ static int sh_pfc_pinconf_set(struct pinctrl_dev *pctldev, unsigned _pin,
 			if (WARN(bit < 0, "invalid pin %#x", _pin))
 				return bit;
 
-			mode = pin->configs & SH_PFC_PIN_CFG_IO_VOLTAGE_MASK;
-			lo = mode <= SH_PFC_PIN_CFG_IO_VOLTAGE_18_33 ? 1800 : 2500;
-			hi = mode >= SH_PFC_PIN_CFG_IO_VOLTAGE_18_33 ? 3300 : 2500;
+			lower_voltage = (pin->configs & SH_PFC_PIN_VOLTAGE_25_33) ?
+				2500 : 1800;
 
-			if (mV != lo && mV != hi)
+			if (mV != lower_voltage && mV != 3300)
 				return -EINVAL;
 
 			spin_lock_irqsave(&pfc->lock, flags);
 			val = sh_pfc_read(pfc, pocctrl);
-			if (mV == hi)
+			if (mV == 3300)
 				val |= BIT(bit);
 			else
 				val &= ~BIT(bit);

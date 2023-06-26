@@ -26,7 +26,7 @@ static inline unsigned int tdx_io_in(int size, u16 port)
 		.r14 = port,
 	};
 
-	if (__tdx_hypercall_ret(&args))
+	if (__tdx_hypercall(&args, TDX_HCALL_HAS_OUTPUT))
 		return UINT_MAX;
 
 	return args.r11;
@@ -43,7 +43,7 @@ static inline void tdx_io_out(int size, u16 port, u32 value)
 		.r15 = value,
 	};
 
-	__tdx_hypercall(&args);
+	__tdx_hypercall(&args, 0);
 }
 
 static inline u8 tdx_inb(u16 port)

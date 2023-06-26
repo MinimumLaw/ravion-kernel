@@ -311,30 +311,17 @@ const char *thread__comm_str(struct thread *thread)
 	return str;
 }
 
-static int __thread__comm_len(struct thread *thread, const char *comm)
-{
-	if (!comm)
-		return 0;
-	thread->comm_len = strlen(comm);
-
-	return thread->comm_len;
-}
-
 /* CHECKME: it should probably better return the max comm len from its comm list */
 int thread__comm_len(struct thread *thread)
 {
-	int comm_len = thread->comm_len;
-
-	if (!comm_len) {
-		const char *comm;
-
-		down_read(&thread->comm_lock);
-		comm = __thread__comm_str(thread);
-		comm_len = __thread__comm_len(thread, comm);
-		up_read(&thread->comm_lock);
+	if (!thread->comm_len) {
+		const char *comm = thread__comm_str(thread);
+		if (!comm)
+			return 0;
+		thread->comm_len = strlen(comm);
 	}
 
-	return comm_len;
+	return thread->comm_len;
 }
 
 size_t thread__fprintf(struct thread *thread, FILE *fp)
@@ -352,7 +339,9 @@ int thread__insert_map(struct thread *thread, struct map *map)
 		return ret;
 
 	maps__fixup_overlappings(thread->maps, map, stderr);
-	return maps__insert(thread->maps, map);
+	maps__insert(thread->maps, map);
+
+	return 0;
 }
 
 static int __thread__prepare_access(struct thread *thread)
@@ -360,17 +349,17 @@ static int __thread__prepare_access(struct thread *thread)
 	bool initialized = false;
 	int err = 0;
 	struct maps *maps = thread->maps;
-	struct map_rb_node *rb_node;
+	struct map *map;
 
-	down_read(maps__lock(maps));
+	down_read(&maps->lock);
 
-	maps__for_each_entry(maps, rb_node) {
-		err = unwind__prepare_access(thread->maps, rb_node->map, &initialized);
+	maps__for_each_entry(maps, map) {
+		err = unwind__prepare_access(thread->maps, map, &initialized);
 		if (err || initialized)
 			break;
 	}
 
-	up_read(maps__lock(maps));
+	up_read(&maps->lock);
 
 	return err;
 }
@@ -448,27 +437,23 @@ struct thread *thread__main_thread(struct machine *machine, struct thread *threa
 int thread__memcpy(struct thread *thread, struct machine *machine,
 		   void *buf, u64 ip, int len, bool *is64bit)
 {
-	u8 cpumode = PERF_RECORD_MISC_USER;
-	struct addr_location al;
-	struct dso *dso;
-	long offset;
+       u8 cpumode = PERF_RECORD_MISC_USER;
+       struct addr_location al;
+       long offset;
 
-	if (machine__kernel_ip(machine, ip))
-		cpumode = PERF_RECORD_MISC_KERNEL;
+       if (machine__kernel_ip(machine, ip))
+               cpumode = PERF_RECORD_MISC_KERNEL;
 
-	if (!thread__find_map(thread, cpumode, ip, &al))
-	       return -1;
+       if (!thread__find_map(thread, cpumode, ip, &al) || !al.map->dso ||
+	   al.map->dso->data.status == DSO_DATA_STATUS_ERROR ||
+	   map__load(al.map) < 0)
+               return -1;
 
-	dso = map__dso(al.map);
+       offset = al.map->map_ip(al.map, ip);
+       if (is64bit)
+               *is64bit = al.map->dso->is_64_bit;
 
-	if( !dso || dso->data.status == DSO_DATA_STATUS_ERROR || map__load(al.map) < 0)
-		return -1;
-
-	offset = map__map_ip(al.map, ip);
-	if (is64bit)
-		*is64bit = dso->is_64_bit;
-
-	return dso__data_read_offset(dso, machine, offset, buf, len);
+       return dso__data_read_offset(al.map->dso, machine, offset, buf, len);
 }
 
 void thread__free_stitch_list(struct thread *thread)

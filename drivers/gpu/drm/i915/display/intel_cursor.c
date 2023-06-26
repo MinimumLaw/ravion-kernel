@@ -21,6 +21,7 @@
 #include "intel_fb_pin.h"
 #include "intel_frontbuffer.h"
 #include "intel_psr.h"
+#include "intel_sprite.h"
 #include "skl_watermark.h"
 
 /* Cursor formats */
@@ -531,10 +532,9 @@ static void i9xx_cursor_update_arm(struct intel_plane *plane,
 		skl_write_cursor_wm(plane, crtc_state);
 
 	if (plane_state)
-		intel_psr2_program_plane_sel_fetch_arm(plane, crtc_state,
-						       plane_state);
+		intel_psr2_program_plane_sel_fetch(plane, crtc_state, plane_state, 0);
 	else
-		intel_psr2_disable_plane_sel_fetch_arm(plane, crtc_state);
+		intel_psr2_disable_plane_sel_fetch(plane, crtc_state);
 
 	if (plane->cursor.base != base ||
 	    plane->cursor.size != fbc_ctl ||

@@ -48,7 +48,5 @@ struct amdgpu_mmhub {
 	struct amdgpu_mmhub_ras  *ras;
 };
 
-int amdgpu_mmhub_ras_sw_init(struct amdgpu_device *adev);
-
 #endif
 

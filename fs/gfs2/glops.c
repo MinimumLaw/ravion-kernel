@@ -90,7 +90,7 @@ static int gfs2_ail_empty_gl(struct gfs2_glock *gl)
 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
 	struct gfs2_trans tr;
 	unsigned int revokes;
-	int ret = 0;
+	int ret;
 
 	revokes = atomic_read(&gl->gl_ail_count);
 
@@ -124,18 +124,15 @@ static int gfs2_ail_empty_gl(struct gfs2_glock *gl)
 	memset(&tr, 0, sizeof(tr));
 	set_bit(TR_ONSTACK, &tr.tr_flags);
 	ret = __gfs2_trans_begin(&tr, sdp, 0, revokes, _RET_IP_);
-	if (ret) {
-		fs_err(sdp, "Transaction error %d: Unable to write revokes.", ret);
+	if (ret)
 		goto flush;
-	}
 	__gfs2_ail_flush(gl, 0, revokes);
 	gfs2_trans_end(sdp);
 
 flush:
-	if (!ret)
-		gfs2_log_flush(sdp, NULL, GFS2_LOG_HEAD_FLUSH_NORMAL |
-				GFS2_LFC_AIL_EMPTY_GL);
-	return ret;
+	gfs2_log_flush(sdp, NULL, GFS2_LOG_HEAD_FLUSH_NORMAL |
+		       GFS2_LFC_AIL_EMPTY_GL);
+	return 0;
 }
 
 void gfs2_ail_flush(struct gfs2_glock *gl, bool fsync)
@@ -329,9 +326,7 @@ static int inode_go_sync(struct gfs2_glock *gl)
 	ret = gfs2_inode_metasync(gl);
 	if (!error)
 		error = ret;
-	ret = gfs2_ail_empty_gl(gl);
-	if (!error)
-		error = ret;
+	gfs2_ail_empty_gl(gl);
 	/*
 	 * Writeback of the data mapping may cause the dirty flag to be set
 	 * so we have to clear it again here.
@@ -540,13 +535,12 @@ static void inode_go_dump(struct seq_file *seq, struct gfs2_glock *gl,
 			  const char *fs_id_buf)
 {
 	struct gfs2_inode *ip = gl->gl_object;
-	struct inode *inode;
+	struct inode *inode = &ip->i_inode;
 	unsigned long nrpages;
 
 	if (ip == NULL)
 		return;
 
-	inode = &ip->i_inode;
 	xa_lock_irq(&inode->i_data.i_pages);
 	nrpages = inode->i_data.nrpages;
 	xa_unlock_irq(&inode->i_data.i_pages);

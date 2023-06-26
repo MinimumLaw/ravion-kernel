@@ -935,18 +935,13 @@ static void handle_tx_zerocopy(struct vhost_net *net, struct socket *sock)
 
 		err = sock->ops->sendmsg(sock, &msg, len);
 		if (unlikely(err < 0)) {
-			bool retry = err == -EAGAIN || err == -ENOMEM || err == -ENOBUFS;
-
 			if (zcopy_used) {
 				if (vq->heads[ubuf->desc].len == VHOST_DMA_IN_PROGRESS)
 					vhost_net_ubuf_put(ubufs);
-				if (retry)
-					nvq->upend_idx = ((unsigned)nvq->upend_idx - 1)
-						% UIO_MAXIOV;
-				else
-					vq->heads[ubuf->desc].len = VHOST_DMA_DONE_LEN;
+				nvq->upend_idx = ((unsigned)nvq->upend_idx - 1)
+					% UIO_MAXIOV;
 			}
-			if (retry) {
+			if (err == -EAGAIN || err == -ENOMEM || err == -ENOBUFS) {
 				vhost_discard_vq_desc(vq, 1);
 				vhost_net_enable_vq(net, vq);
 				break;

@@ -15,7 +15,7 @@ description: |
   to/from the PBUS.
 
 allOf:
-  - $ref: nvmem.yaml#
+  - $ref: "nvmem.yaml#"
 
 properties:
   compatible:
@@ -42,22 +42,17 @@ unevaluatedProperties: false
 
 examples:
   - |
-    pmic {
-        #address-cells = <1>;
-        #size-cells = <0>;
+      sdam_1: nvram@b000 {
+          #address-cells = <1>;
+          #size-cells = <1>;
+          compatible = "qcom,spmi-sdam";
+          reg = <0xb000 0x100>;
+          ranges = <0 0xb000 0x100>;
 
-        sdam_1: nvram@b000 {
-            compatible = "qcom,spmi-sdam";
-            reg = <0xb000>;
-            #address-cells = <1>;
-            #size-cells = <1>;
-            ranges = <0 0xb000 0x100>;
-
-            /* Data cells */
-            restart_reason: restart@50 {
-                reg = <0x50 0x1>;
-                bits = <6 2>;
-            };
-        };
-    };
+          /* Data cells */
+          restart_reason: restart@50 {
+              reg = <0x50 0x1>;
+              bits = <6 2>;
+          };
+      };
 ...

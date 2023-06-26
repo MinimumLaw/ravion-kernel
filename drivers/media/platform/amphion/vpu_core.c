@@ -709,7 +709,7 @@ err_runtime_disable:
 	return ret;
 }
 
-static void vpu_core_remove(struct platform_device *pdev)
+static int vpu_core_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct vpu_core *core = platform_get_drvdata(pdev);
@@ -728,6 +728,8 @@ static void vpu_core_remove(struct platform_device *pdev)
 	memunmap(core->rpc.virt);
 	mutex_destroy(&core->lock);
 	mutex_destroy(&core->cmd_lock);
+
+	return 0;
 }
 
 static int __maybe_unused vpu_core_runtime_resume(struct device *dev)
@@ -862,7 +864,7 @@ MODULE_DEVICE_TABLE(of, vpu_core_dt_match);
 
 static struct platform_driver amphion_vpu_core_driver = {
 	.probe = vpu_core_probe,
-	.remove_new = vpu_core_remove,
+	.remove = vpu_core_remove,
 	.driver = {
 		.name = "amphion-vpu-core",
 		.of_match_table = vpu_core_dt_match,

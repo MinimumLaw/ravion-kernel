@@ -338,12 +338,7 @@ static int get_syms(char ***symsp, size_t *cntp, bool kernel)
 	 * Filtering out duplicates by using hashmap__add, which won't
 	 * add existing entry.
 	 */
-
-	if (access("/sys/kernel/tracing/trace", F_OK) == 0)
-		f = fopen("/sys/kernel/tracing/available_filter_functions", "r");
-	else
-		f = fopen("/sys/kernel/debug/tracing/available_filter_functions", "r");
-
+	f = fopen("/sys/kernel/debug/tracing/available_filter_functions", "r");
 	if (!f)
 		return -EINVAL;
 
@@ -381,10 +376,8 @@ static int get_syms(char ***symsp, size_t *cntp, bool kernel)
 			continue;
 
 		err = hashmap__add(map, name, 0);
-		if (err == -EEXIST) {
-			err = 0;
+		if (err == -EEXIST)
 			continue;
-		}
 		if (err)
 			goto error;
 

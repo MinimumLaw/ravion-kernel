@@ -180,7 +180,6 @@
 		L2_0: l2-cache {
 			compatible = "cache";
 			cache-level = <2>;
-			cache-unified;
 		};
 
 		idle-states {
@@ -1871,7 +1870,7 @@
 			};
 		};
 
-		wcnss: remoteproc@a21b000 {
+		pronto: remoteproc@a21b000 {
 			compatible = "qcom,pronto-v2-pil", "qcom,pronto";
 			reg = <0x0a204000 0x2000>, <0x0a202000 0x1000>, <0x0a21b000 0x3000>;
 			reg-names = "ccu", "dxe", "pmu";
@@ -1897,8 +1896,9 @@
 
 			status = "disabled";
 
-			wcnss_iris: iris {
-				/* Separate chip, compatible is board-specific */
+			iris {
+				compatible = "qcom,wcn3620";
+
 				clocks = <&rpmcc RPM_SMD_RF_CLK2>;
 				clock-names = "xo";
 			};
@@ -1916,13 +1916,13 @@
 					compatible = "qcom,wcnss";
 					qcom,smd-channels = "WCNSS_CTRL";
 
-					qcom,mmio = <&wcnss>;
+					qcom,mmio = <&pronto>;
 
-					wcnss_bt: bluetooth {
+					bluetooth {
 						compatible = "qcom,wcnss-bt";
 					};
 
-					wcnss_wifi: wifi {
+					wifi {
 						compatible = "qcom,wcnss-wlan";
 
 						interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
@@ -2180,6 +2180,7 @@
 				};
 			};
 		};
+
 	};
 
 	timer {

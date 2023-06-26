@@ -1234,8 +1234,6 @@ static int wiz_phy_fullrt_div(struct wiz *wiz, int lane)
 		if (wiz->lane_phy_type[lane] == PHY_TYPE_PCIE)
 			return regmap_field_write(wiz->p0_fullrt_div[lane], 0x1);
 		break;
-
-	case J721E_WIZ_16G:
 	case J721E_WIZ_10G:
 	case J7200_WIZ_10G:
 	case J721S2_WIZ_10G:
@@ -1637,7 +1635,7 @@ err_addr_to_resource:
 	return ret;
 }
 
-static void wiz_remove(struct platform_device *pdev)
+static int wiz_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
@@ -1651,11 +1649,13 @@ static void wiz_remove(struct platform_device *pdev)
 	wiz_clock_cleanup(wiz, node);
 	pm_runtime_put(dev);
 	pm_runtime_disable(dev);
+
+	return 0;
 }
 
 static struct platform_driver wiz_driver = {
 	.probe		= wiz_probe,
-	.remove_new	= wiz_remove,
+	.remove		= wiz_remove,
 	.driver		= {
 		.name	= "wiz",
 		.of_match_table = wiz_id_table,

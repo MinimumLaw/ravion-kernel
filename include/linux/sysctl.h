@@ -221,8 +221,14 @@ extern void retire_sysctl_set(struct ctl_table_set *set);
 struct ctl_table_header *__register_sysctl_table(
 	struct ctl_table_set *set,
 	const char *path, struct ctl_table *table);
+struct ctl_table_header *__register_sysctl_paths(
+	struct ctl_table_set *set,
+	const struct ctl_path *path, struct ctl_table *table);
 struct ctl_table_header *register_sysctl(const char *path, struct ctl_table *table);
 struct ctl_table_header *register_sysctl_table(struct ctl_table * table);
+struct ctl_table_header *register_sysctl_paths(const struct ctl_path *path,
+						struct ctl_table *table);
+
 void unregister_sysctl_table(struct ctl_table_header * table);
 
 extern int sysctl_init_bases(void);
@@ -267,6 +273,12 @@ static inline void register_sysctl_init(const char *path, struct ctl_table *tabl
 }
 
 static inline struct ctl_table_header *register_sysctl_mount_point(const char *path)
+{
+	return NULL;
+}
+
+static inline struct ctl_table_header *register_sysctl_paths(
+			const struct ctl_path *path, struct ctl_table *table)
 {
 	return NULL;
 }

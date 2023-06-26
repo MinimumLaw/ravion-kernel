@@ -336,7 +336,7 @@ struct folio *swap_cache_get_folio(swp_entry_t entry,
 	struct folio *folio;
 
 	folio = filemap_get_folio(swap_address_space(entry), swp_offset(entry));
-	if (!IS_ERR(folio)) {
+	if (folio) {
 		bool vma_ra = swap_use_vma_readahead();
 		bool readahead;
 
@@ -366,8 +366,6 @@ struct folio *swap_cache_get_folio(swp_entry_t entry,
 			if (!vma || !vma_ra)
 				atomic_inc(&swapin_readahead_hits);
 		}
-	} else {
-		folio = NULL;
 	}
 
 	return folio;
@@ -388,26 +386,25 @@ struct folio *filemap_get_incore_folio(struct address_space *mapping,
 {
 	swp_entry_t swp;
 	struct swap_info_struct *si;
-	struct folio *folio = filemap_get_entry(mapping, index);
+	struct folio *folio = __filemap_get_folio(mapping, index, FGP_ENTRY, 0);
 
-	if (!folio)
-		return ERR_PTR(-ENOENT);
 	if (!xa_is_value(folio))
-		return folio;
+		goto out;
 	if (!shmem_mapping(mapping))
-		return ERR_PTR(-ENOENT);
+		return NULL;
 
 	swp = radix_to_swp_entry(folio);
 	/* There might be swapin error entries in shmem mapping. */
 	if (non_swap_entry(swp))
-		return ERR_PTR(-ENOENT);
+		return NULL;
 	/* Prevent swapoff from happening to us */
 	si = get_swap_device(swp);
 	if (!si)
-		return ERR_PTR(-ENOENT);
+		return NULL;
 	index = swp_offset(swp);
 	folio = filemap_get_folio(swap_address_space(swp), index);
 	put_swap_device(si);
+out:
 	return folio;
 }
 
@@ -434,7 +431,7 @@ struct page *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 		folio = filemap_get_folio(swap_address_space(entry),
 						swp_offset(entry));
 		put_swap_device(si);
-		if (!IS_ERR(folio))
+		if (folio)
 			return folio_file_page(folio, swp_offset(entry));
 
 		/*

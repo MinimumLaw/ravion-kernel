@@ -435,44 +435,18 @@ xfs_iget_check_free_state(
 }
 
 /* Make all pending inactivation work start immediately. */
-static bool
+static void
 xfs_inodegc_queue_all(
 	struct xfs_mount	*mp)
 {
 	struct xfs_inodegc	*gc;
 	int			cpu;
-	bool			ret = false;
 
 	for_each_online_cpu(cpu) {
 		gc = per_cpu_ptr(mp->m_inodegc, cpu);
-		if (!llist_empty(&gc->list)) {
+		if (!llist_empty(&gc->list))
 			mod_delayed_work_on(cpu, mp->m_inodegc_wq, &gc->work, 0);
-			ret = true;
-		}
 	}
-
-	return ret;
-}
-
-/* Wait for all queued work and collect errors */
-static int
-xfs_inodegc_wait_all(
-	struct xfs_mount	*mp)
-{
-	int			cpu;
-	int			error = 0;
-
-	flush_workqueue(mp->m_inodegc_wq);
-	for_each_online_cpu(cpu) {
-		struct xfs_inodegc	*gc;
-
-		gc = per_cpu_ptr(mp->m_inodegc, cpu);
-		if (gc->error && !error)
-			error = gc->error;
-		gc->error = 0;
-	}
-
-	return error;
 }
 
 /*
@@ -793,8 +767,7 @@ again:
 	return 0;
 
 out_error_or_again:
-	if (!(flags & (XFS_IGET_INCORE | XFS_IGET_NORETRY)) &&
-	    error == -EAGAIN) {
+	if (!(flags & XFS_IGET_INCORE) && error == -EAGAIN) {
 		delay(1);
 		goto again;
 	}
@@ -1512,14 +1485,15 @@ xfs_blockgc_free_space(
 	if (error)
 		return error;
 
-	return xfs_inodegc_flush(mp);
+	xfs_inodegc_flush(mp);
+	return 0;
 }
 
 /*
  * Reclaim all the free space that we can by scheduling the background blockgc
  * and inodegc workers immediately and waiting for them all to clear.
  */
-int
+void
 xfs_blockgc_flush_all(
 	struct xfs_mount	*mp)
 {
@@ -1540,7 +1514,7 @@ xfs_blockgc_flush_all(
 	for_each_perag_tag(mp, agno, pag, XFS_ICI_BLOCKGC_TAG)
 		flush_delayed_work(&pag->pag_blockgc_work);
 
-	return xfs_inodegc_flush(mp);
+	xfs_inodegc_flush(mp);
 }
 
 /*
@@ -1862,17 +1836,13 @@ xfs_inodegc_set_reclaimable(
  * This is the last chance to make changes to an otherwise unreferenced file
  * before incore reclamation happens.
  */
-static int
+static void
 xfs_inodegc_inactivate(
 	struct xfs_inode	*ip)
 {
-	int			error;
-
 	trace_xfs_inode_inactivating(ip);
-	error = xfs_inactive(ip);
+	xfs_inactive(ip);
 	xfs_inodegc_set_reclaimable(ip);
-	return error;
-
 }
 
 void
@@ -1884,8 +1854,6 @@ xfs_inodegc_worker(
 	struct llist_node	*node = llist_del_all(&gc->list);
 	struct xfs_inode	*ip, *n;
 	unsigned int		nofs_flag;
-
-	ASSERT(gc->cpu == smp_processor_id());
 
 	WRITE_ONCE(gc->items, 0);
 
@@ -1904,12 +1872,8 @@ xfs_inodegc_worker(
 
 	WRITE_ONCE(gc->shrinker_hits, 0);
 	llist_for_each_entry_safe(ip, n, node, i_gclist) {
-		int	error;
-
 		xfs_iflags_set(ip, XFS_INACTIVATING);
-		error = xfs_inodegc_inactivate(ip);
-		if (error && !gc->error)
-			gc->error = error;
+		xfs_inodegc_inactivate(ip);
 	}
 
 	memalloc_nofs_restore(nofs_flag);
@@ -1933,52 +1897,35 @@ xfs_inodegc_push(
  * Force all currently queued inode inactivation work to run immediately and
  * wait for the work to finish.
  */
-int
+void
 xfs_inodegc_flush(
 	struct xfs_mount	*mp)
 {
 	xfs_inodegc_push(mp);
 	trace_xfs_inodegc_flush(mp, __return_address);
-	return xfs_inodegc_wait_all(mp);
+	flush_workqueue(mp->m_inodegc_wq);
 }
 
 /*
  * Flush all the pending work and then disable the inode inactivation background
- * workers and wait for them to stop.  Caller must hold sb->s_umount to
- * coordinate changes in the inodegc_enabled state.
+ * workers and wait for them to stop.
  */
 void
 xfs_inodegc_stop(
 	struct xfs_mount	*mp)
 {
-	bool			rerun;
-
 	if (!xfs_clear_inodegc_enabled(mp))
 		return;
 
-	/*
-	 * Drain all pending inodegc work, including inodes that could be
-	 * queued by racing xfs_inodegc_queue or xfs_inodegc_shrinker_scan
-	 * threads that sample the inodegc state just prior to us clearing it.
-	 * The inodegc flag state prevents new threads from queuing more
-	 * inodes, so we queue pending work items and flush the workqueue until
-	 * all inodegc lists are empty.  IOWs, we cannot use drain_workqueue
-	 * here because it does not allow other unserialized mechanisms to
-	 * reschedule inodegc work while this draining is in progress.
-	 */
 	xfs_inodegc_queue_all(mp);
-	do {
-		flush_workqueue(mp->m_inodegc_wq);
-		rerun = xfs_inodegc_queue_all(mp);
-	} while (rerun);
+	drain_workqueue(mp->m_inodegc_wq);
 
 	trace_xfs_inodegc_stop(mp, __return_address);
 }
 
 /*
  * Enable the inode inactivation background workers and schedule deferred inode
- * inactivation work if there is any.  Caller must hold sb->s_umount to
- * coordinate changes in the inodegc_enabled state.
+ * inactivation work if there is any.
  */
 void
 xfs_inodegc_start(
@@ -2121,8 +2068,7 @@ xfs_inodegc_queue(
 		queue_delay = 0;
 
 	trace_xfs_inodegc_queue(mp, __return_address);
-	mod_delayed_work_on(current_cpu(), mp->m_inodegc_wq, &gc->work,
-			queue_delay);
+	mod_delayed_work(mp->m_inodegc_wq, &gc->work, queue_delay);
 	put_cpu_ptr(gc);
 
 	if (xfs_inodegc_want_flush_work(ip, items, shrinker_hits)) {
@@ -2166,8 +2112,7 @@ xfs_inodegc_cpu_dead(
 
 	if (xfs_is_inodegc_enabled(mp)) {
 		trace_xfs_inodegc_queue(mp, __return_address);
-		mod_delayed_work_on(current_cpu(), mp->m_inodegc_wq, &gc->work,
-				0);
+		mod_delayed_work(mp->m_inodegc_wq, &gc->work, 0);
 	}
 	put_cpu_ptr(gc);
 }

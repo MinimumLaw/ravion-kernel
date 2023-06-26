@@ -22,8 +22,8 @@ description: |
 properties:
   compatible:
     oneOf:
-      - enum:
-          - mediatek,mt8183-disp-dither
+      - items:
+          - const: mediatek,mt8183-disp-dither
       - items:
           - enum:
               - mediatek,mt8186-disp-dither

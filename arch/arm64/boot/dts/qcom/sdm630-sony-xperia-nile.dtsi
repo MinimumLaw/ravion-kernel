@@ -112,7 +112,7 @@
 			gpios = <&pm660l_gpios 7 GPIO_ACTIVE_LOW>;
 			linux,input-type = <1>;
 			linux,code = <KEY_VOLUMEDOWN>;
-			wakeup-source;
+			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
 	};

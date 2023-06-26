@@ -14,7 +14,6 @@
 #include <linux/kvm_types.h>
 #include <linux/spinlock.h>
 #include <asm/hwcap.h>
-#include <asm/kvm_aia.h>
 #include <asm/kvm_vcpu_fp.h>
 #include <asm/kvm_vcpu_insn.h>
 #include <asm/kvm_vcpu_sbi.h>
@@ -95,9 +94,6 @@ struct kvm_arch {
 
 	/* Guest Timer */
 	struct kvm_guest_timer timer;
-
-	/* AIA Guest/VM context */
-	struct kvm_aia aia;
 };
 
 struct kvm_cpu_trap {
@@ -204,9 +200,8 @@ struct kvm_vcpu_arch {
 	 * in irqs_pending. Our approach is modeled around multiple producer
 	 * and single consumer problem where the consumer is the VCPU itself.
 	 */
-#define KVM_RISCV_VCPU_NR_IRQS	64
-	DECLARE_BITMAP(irqs_pending, KVM_RISCV_VCPU_NR_IRQS);
-	DECLARE_BITMAP(irqs_pending_mask, KVM_RISCV_VCPU_NR_IRQS);
+	unsigned long irqs_pending;
+	unsigned long irqs_pending_mask;
 
 	/* VCPU Timer */
 	struct kvm_vcpu_timer timer;
@@ -225,9 +220,6 @@ struct kvm_vcpu_arch {
 
 	/* SBI context */
 	struct kvm_vcpu_sbi_context sbi_context;
-
-	/* AIA VCPU context */
-	struct kvm_vcpu_aia aia_context;
 
 	/* Cache pages needed to program page tables with spinlock held */
 	struct kvm_mmu_memory_cache mmu_page_cache;
@@ -335,7 +327,7 @@ int kvm_riscv_vcpu_set_interrupt(struct kvm_vcpu *vcpu, unsigned int irq);
 int kvm_riscv_vcpu_unset_interrupt(struct kvm_vcpu *vcpu, unsigned int irq);
 void kvm_riscv_vcpu_flush_interrupts(struct kvm_vcpu *vcpu);
 void kvm_riscv_vcpu_sync_interrupts(struct kvm_vcpu *vcpu);
-bool kvm_riscv_vcpu_has_interrupts(struct kvm_vcpu *vcpu, u64 mask);
+bool kvm_riscv_vcpu_has_interrupts(struct kvm_vcpu *vcpu, unsigned long mask);
 void kvm_riscv_vcpu_power_off(struct kvm_vcpu *vcpu);
 void kvm_riscv_vcpu_power_on(struct kvm_vcpu *vcpu);
 

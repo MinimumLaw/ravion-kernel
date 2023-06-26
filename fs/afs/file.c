@@ -569,10 +569,20 @@ static void afs_vm_close(struct vm_area_struct *vma)
 static vm_fault_t afs_vm_map_pages(struct vm_fault *vmf, pgoff_t start_pgoff, pgoff_t end_pgoff)
 {
 	struct afs_vnode *vnode = AFS_FS_I(file_inode(vmf->vma->vm_file));
+	struct afs_file *af = vmf->vma->vm_file->private_data;
 
-	if (afs_pagecache_valid(vnode))
+	switch (afs_validate(vnode, af->key)) {
+	case 0:
 		return filemap_map_pages(vmf, start_pgoff, end_pgoff);
-	return 0;
+	case -ENOMEM:
+		return VM_FAULT_OOM;
+	case -EINTR:
+	case -ERESTARTSYS:
+		return VM_FAULT_RETRY;
+	case -ESTALE:
+	default:
+		return VM_FAULT_SIGBUS;
+	}
 }
 
 static ssize_t afs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)

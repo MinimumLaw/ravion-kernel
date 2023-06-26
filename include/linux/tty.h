@@ -227,7 +227,7 @@ struct tty_struct {
 		unsigned long unused[0];
 	} __aligned(sizeof(unsigned long)) ctrl;
 
-	bool hw_stopped;
+	int hw_stopped;
 	unsigned int receive_room;
 	int flow_change;
 
@@ -387,7 +387,7 @@ extern struct ktermios tty_std_termios;
 
 int vcs_init(void);
 
-extern const struct class tty_class;
+extern struct class *tty_class;
 
 /**
  *	tty_kref_get		-	get a tty reference

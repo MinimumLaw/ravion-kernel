@@ -101,7 +101,6 @@ required:
 patternProperties:
   "^display-controller@[1-9a-f][0-9a-f]*$":
     type: object
-    additionalProperties: true
     properties:
       compatible:
         contains:
@@ -109,7 +108,6 @@ patternProperties:
 
   "^dsi@[1-9a-f][0-9a-f]*$":
     type: object
-    additionalProperties: true
     properties:
       compatible:
         contains:
@@ -117,7 +115,6 @@ patternProperties:
 
   "^phy@[1-9a-f][0-9a-f]*$":
     type: object
-    additionalProperties: true
     properties:
       compatible:
         enum:
@@ -135,7 +132,6 @@ patternProperties:
 
   "^hdmi-tx@[1-9a-f][0-9a-f]*$":
     type: object
-    additionalProperties: true
     properties:
       compatible:
         enum:

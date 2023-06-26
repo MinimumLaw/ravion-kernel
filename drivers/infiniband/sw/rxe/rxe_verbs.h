@@ -102,7 +102,17 @@ struct rxe_srq {
 	int			error;
 };
 
+enum rxe_qp_state {
+	QP_STATE_RESET,
+	QP_STATE_INIT,
+	QP_STATE_READY,
+	QP_STATE_DRAIN,		/* req only */
+	QP_STATE_DRAINED,	/* req only */
+	QP_STATE_ERROR
+};
+
 struct rxe_req_info {
+	enum rxe_qp_state	state;
 	int			wqe_index;
 	u32			psn;
 	int			opcode;
@@ -117,6 +127,7 @@ struct rxe_req_info {
 };
 
 struct rxe_comp_info {
+	enum rxe_qp_state	state;
 	u32			psn;
 	int			opcode;
 	int			timeout;
@@ -162,6 +173,7 @@ struct resp_res {
 };
 
 struct rxe_resp_info {
+	enum rxe_qp_state	state;
 	u32			msn;
 	u32			psn;
 	u32			ack_psn;

@@ -109,7 +109,7 @@
 		};
 
 		pci@c0000000 {
-			status = "okay";
+			status = "ok";
 
 			/*
 			 * Taken from NAS 100D PCI boardfile (nas100d-pci.c)
@@ -129,7 +129,7 @@
 		};
 
 		ethernet@c8009000 {
-			status = "okay";
+			status = "ok";
 			queue-rx = <&qmgr 3>;
 			queue-txready = <&qmgr 20>;
 			phy-mode = "rgmii";

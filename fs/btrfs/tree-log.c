@@ -2563,28 +2563,6 @@ static void unaccount_log_buffer(struct btrfs_fs_info *fs_info, u64 start)
 	btrfs_put_block_group(cache);
 }
 
-static int clean_log_buffer(struct btrfs_trans_handle *trans,
-			    struct extent_buffer *eb)
-{
-	int ret;
-
-	btrfs_tree_lock(eb);
-	btrfs_clear_buffer_dirty(trans, eb);
-	wait_on_extent_buffer_writeback(eb);
-	btrfs_tree_unlock(eb);
-
-	if (trans) {
-		ret = btrfs_pin_reserved_extent(trans, eb->start, eb->len);
-		if (ret)
-			return ret;
-		btrfs_redirty_list_add(trans->transaction, eb);
-	} else {
-		unaccount_log_buffer(eb->fs_info, eb->start);
-	}
-
-	return 0;
-}
-
 static noinline int walk_down_log_tree(struct btrfs_trans_handle *trans,
 				   struct btrfs_root *root,
 				   struct btrfs_path *path, int *level,
@@ -2595,6 +2573,7 @@ static noinline int walk_down_log_tree(struct btrfs_trans_handle *trans,
 	u64 ptr_gen;
 	struct extent_buffer *next;
 	struct extent_buffer *cur;
+	u32 blocksize;
 	int ret = 0;
 
 	while (*level > 0) {
@@ -2614,6 +2593,7 @@ static noinline int walk_down_log_tree(struct btrfs_trans_handle *trans,
 		check.level = *level - 1;
 		check.has_first_key = true;
 		btrfs_node_key_to_cpu(cur, &check.first_key, path->slots[*level]);
+		blocksize = fs_info->nodesize;
 
 		next = btrfs_find_create_tree_block(fs_info, bytenr,
 						    btrfs_header_owner(cur),
@@ -2637,10 +2617,22 @@ static noinline int walk_down_log_tree(struct btrfs_trans_handle *trans,
 					return ret;
 				}
 
-				ret = clean_log_buffer(trans, next);
-				if (ret) {
-					free_extent_buffer(next);
-					return ret;
+				btrfs_tree_lock(next);
+				btrfs_clear_buffer_dirty(trans, next);
+				wait_on_extent_buffer_writeback(next);
+				btrfs_tree_unlock(next);
+
+				if (trans) {
+					ret = btrfs_pin_reserved_extent(trans,
+							bytenr, blocksize);
+					if (ret) {
+						free_extent_buffer(next);
+						return ret;
+					}
+					btrfs_redirty_list_add(
+						trans->transaction, next);
+				} else {
+					unaccount_log_buffer(fs_info, bytenr);
 				}
 			}
 			free_extent_buffer(next);
@@ -2670,6 +2662,7 @@ static noinline int walk_up_log_tree(struct btrfs_trans_handle *trans,
 				 struct btrfs_path *path, int *level,
 				 struct walk_control *wc)
 {
+	struct btrfs_fs_info *fs_info = root->fs_info;
 	int i;
 	int slot;
 	int ret;
@@ -2689,9 +2682,27 @@ static noinline int walk_up_log_tree(struct btrfs_trans_handle *trans,
 				return ret;
 
 			if (wc->free) {
-				ret = clean_log_buffer(trans, path->nodes[*level]);
-				if (ret)
-					return ret;
+				struct extent_buffer *next;
+
+				next = path->nodes[*level];
+
+				btrfs_tree_lock(next);
+				btrfs_clear_buffer_dirty(trans, next);
+				wait_on_extent_buffer_writeback(next);
+				btrfs_tree_unlock(next);
+
+				if (trans) {
+					ret = btrfs_pin_reserved_extent(trans,
+						     path->nodes[*level]->start,
+						     path->nodes[*level]->len);
+					if (ret)
+						return ret;
+					btrfs_redirty_list_add(trans->transaction,
+							       next);
+				} else {
+					unaccount_log_buffer(fs_info,
+						path->nodes[*level]->start);
+				}
 			}
 			free_extent_buffer(path->nodes[*level]);
 			path->nodes[*level] = NULL;
@@ -2709,6 +2720,7 @@ static noinline int walk_up_log_tree(struct btrfs_trans_handle *trans,
 static int walk_log_tree(struct btrfs_trans_handle *trans,
 			 struct btrfs_root *log, struct walk_control *wc)
 {
+	struct btrfs_fs_info *fs_info = log->fs_info;
 	int ret = 0;
 	int wret;
 	int level;
@@ -2750,8 +2762,26 @@ static int walk_log_tree(struct btrfs_trans_handle *trans,
 			 orig_level);
 		if (ret)
 			goto out;
-		if (wc->free)
-			ret = clean_log_buffer(trans, path->nodes[orig_level]);
+		if (wc->free) {
+			struct extent_buffer *next;
+
+			next = path->nodes[orig_level];
+
+			btrfs_tree_lock(next);
+			btrfs_clear_buffer_dirty(trans, next);
+			wait_on_extent_buffer_writeback(next);
+			btrfs_tree_unlock(next);
+
+			if (trans) {
+				ret = btrfs_pin_reserved_extent(trans,
+						next->start, next->len);
+				if (ret)
+					goto out;
+				btrfs_redirty_list_add(trans->transaction, next);
+			} else {
+				unaccount_log_buffer(fs_info, next->start);
+			}
+		}
 	}
 
 out:
@@ -3618,9 +3648,6 @@ static int flush_dir_items_batch(struct btrfs_trans_handle *trans,
 		ret = BTRFS_LOG_FORCE_COMMIT;
 	else
 		inode->last_dir_index_offset = last_index;
-
-	if (btrfs_get_first_dir_index_to_log(inode) == 0)
-		btrfs_set_first_dir_index_to_log(inode, batch.keys[0].offset);
 out:
 	kfree(ins_data);
 
@@ -4072,7 +4099,7 @@ static int drop_inode_items(struct btrfs_trans_handle *trans,
 
 		found_key.offset = 0;
 		found_key.type = 0;
-		ret = btrfs_bin_search(path->nodes[0], 0, &found_key, &start_slot);
+		ret = btrfs_bin_search(path->nodes[0], &found_key, &start_slot);
 		if (ret < 0)
 			break;
 
@@ -5379,7 +5406,6 @@ static int log_new_dir_dentries(struct btrfs_trans_handle *trans,
 	LIST_HEAD(dir_list);
 	struct btrfs_dir_list *dir_elem;
 	u64 ino = btrfs_ino(start_inode);
-	struct btrfs_inode *curr_inode = start_inode;
 	int ret = 0;
 
 	/*
@@ -5394,39 +5420,43 @@ static int log_new_dir_dentries(struct btrfs_trans_handle *trans,
 	if (!path)
 		return -ENOMEM;
 
-	/* Pairs with btrfs_add_delayed_iput below. */
-	ihold(&curr_inode->vfs_inode);
-
 	while (true) {
-		struct inode *vfs_inode;
-		struct btrfs_key key;
-		struct btrfs_key found_key;
-		u64 next_index;
+		struct extent_buffer *leaf;
+		struct btrfs_key min_key;
 		bool continue_curr_inode = true;
-		int iter_ret;
+		int nritems;
+		int i;
 
-		key.objectid = ino;
-		key.type = BTRFS_DIR_INDEX_KEY;
-		key.offset = btrfs_get_first_dir_index_to_log(curr_inode);
-		next_index = key.offset;
+		min_key.objectid = ino;
+		min_key.type = BTRFS_DIR_INDEX_KEY;
+		min_key.offset = 0;
 again:
-		btrfs_for_each_slot(root->log_root, &key, &found_key, path, iter_ret) {
-			struct extent_buffer *leaf = path->nodes[0];
+		btrfs_release_path(path);
+		ret = btrfs_search_forward(root, &min_key, path, trans->transid);
+		if (ret < 0) {
+			break;
+		} else if (ret > 0) {
+			ret = 0;
+			goto next;
+		}
+
+		leaf = path->nodes[0];
+		nritems = btrfs_header_nritems(leaf);
+		for (i = path->slots[0]; i < nritems; i++) {
 			struct btrfs_dir_item *di;
 			struct btrfs_key di_key;
 			struct inode *di_inode;
 			int log_mode = LOG_INODE_EXISTS;
 			int type;
 
-			if (found_key.objectid != ino ||
-			    found_key.type != BTRFS_DIR_INDEX_KEY) {
+			btrfs_item_key_to_cpu(leaf, &min_key, i);
+			if (min_key.objectid != ino ||
+			    min_key.type != BTRFS_DIR_INDEX_KEY) {
 				continue_curr_inode = false;
 				break;
 			}
 
-			next_index = found_key.offset + 1;
-
-			di = btrfs_item_ptr(leaf, path->slots[0], struct btrfs_dir_item);
+			di = btrfs_item_ptr(leaf, i, struct btrfs_dir_item);
 			type = btrfs_dir_ftype(leaf, di);
 			if (btrfs_dir_transid(leaf, di) < trans->transid)
 				continue;
@@ -5466,24 +5496,12 @@ again:
 			break;
 		}
 
-		btrfs_release_path(path);
-
-		if (iter_ret < 0) {
-			ret = iter_ret;
-			goto out;
-		} else if (iter_ret > 0) {
-			continue_curr_inode = false;
-		} else {
-			key = found_key;
-		}
-
-		if (continue_curr_inode && key.offset < (u64)-1) {
-			key.offset++;
+		if (continue_curr_inode && min_key.offset < (u64)-1) {
+			min_key.offset++;
 			goto again;
 		}
 
-		btrfs_set_first_dir_index_to_log(curr_inode, next_index);
-
+next:
 		if (list_empty(&dir_list))
 			break;
 
@@ -5491,22 +5509,9 @@ again:
 		ino = dir_elem->ino;
 		list_del(&dir_elem->list);
 		kfree(dir_elem);
-
-		btrfs_add_delayed_iput(curr_inode);
-		curr_inode = NULL;
-
-		vfs_inode = btrfs_iget(fs_info->sb, ino, root);
-		if (IS_ERR(vfs_inode)) {
-			ret = PTR_ERR(vfs_inode);
-			break;
-		}
-		curr_inode = BTRFS_I(vfs_inode);
 	}
 out:
 	btrfs_free_path(path);
-	if (curr_inode)
-		btrfs_add_delayed_iput(curr_inode);
-
 	if (ret) {
 		struct btrfs_dir_list *next;
 
@@ -6158,7 +6163,7 @@ static int log_delayed_deletions_incremental(struct btrfs_trans_handle *trans,
 {
 	struct btrfs_root *log = inode->root->log_root;
 	const struct btrfs_delayed_item *curr;
-	u64 last_range_start = 0;
+	u64 last_range_start;
 	u64 last_range_end = 0;
 	struct btrfs_key key;
 

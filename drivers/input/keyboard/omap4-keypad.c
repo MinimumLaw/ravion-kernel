@@ -274,7 +274,8 @@ static int omap4_keypad_parse_dt(struct device *dev,
 	if (err)
 		return err;
 
-	keypad_data->no_autorepeat = of_property_read_bool(np, "linux,input-no-autorepeat");
+	if (of_get_property(np, "linux,input-no-autorepeat", NULL))
+		keypad_data->no_autorepeat = true;
 
 	return 0;
 }

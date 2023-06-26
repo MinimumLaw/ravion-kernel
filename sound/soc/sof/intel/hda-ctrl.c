@@ -19,7 +19,6 @@
 #include <sound/hdaudio_ext.h>
 #include <sound/hda_register.h>
 #include <sound/hda_component.h>
-#include <sound/hda-mlink.h>
 #include "../ops.h"
 #include "hda.h"
 
@@ -159,18 +158,16 @@ void hda_dsp_ctrl_misc_clock_gating(struct snd_sof_dev *sdev, bool enable)
  */
 int hda_dsp_ctrl_clock_power_gating(struct snd_sof_dev *sdev, bool enable)
 {
-	struct sof_intel_hda_dev *hda = sdev->pdata->hw_pdata;
 	u32 val;
 
 	/* enable/disable audio dsp clock gating */
 	val = enable ? PCI_CGCTL_ADSPDCGE : 0;
 	snd_sof_pci_update_bits(sdev, PCI_CGCTL, PCI_CGCTL_ADSPDCGE, val);
 
-	/* disable the DMI link when requested. But enable only if it wasn't disabled previously */
+	/* enable/disable DMI Link L1 support */
 	val = enable ? HDA_VS_INTEL_EM2_L1SEN : 0;
-	if (!enable || !hda->l1_disabled)
-		snd_sof_dsp_update_bits(sdev, HDA_DSP_HDA_BAR, HDA_VS_INTEL_EM2,
-					HDA_VS_INTEL_EM2_L1SEN, val);
+	snd_sof_dsp_update_bits(sdev, HDA_DSP_HDA_BAR, HDA_VS_INTEL_EM2,
+				HDA_VS_INTEL_EM2_L1SEN, val);
 
 	/* enable/disable audio dsp power gating */
 	val = enable ? 0 : PCI_PGCTL_ADSPPGD;

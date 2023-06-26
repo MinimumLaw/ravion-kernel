@@ -290,9 +290,7 @@ retry:
 		 * Do not perform a synchronous scan because callers can hold
 		 * other locks.
 		 */
-		error = xfs_blockgc_flush_all(mp);
-		if (error)
-			return error;
+		xfs_blockgc_flush_all(mp);
 		want_retry = false;
 		goto retry;
 	}
@@ -970,11 +968,6 @@ __xfs_trans_commit(
 		     !(tp->t_flags & XFS_TRANS_PERM_LOG_RES));
 	if (!regrant && (tp->t_flags & XFS_TRANS_PERM_LOG_RES)) {
 		error = xfs_defer_finish_noroll(&tp);
-		if (error)
-			goto out_unreserve;
-
-		/* Run precommits from final tx in defer chain. */
-		error = xfs_trans_run_precommits(tp);
 		if (error)
 			goto out_unreserve;
 	}

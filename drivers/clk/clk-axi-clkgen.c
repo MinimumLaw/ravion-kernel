@@ -553,8 +553,15 @@ static int axi_clkgen_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	return devm_of_clk_add_hw_provider(&pdev->dev, of_clk_hw_simple_get,
-					   &axi_clkgen->clk_hw);
+	return of_clk_add_hw_provider(pdev->dev.of_node, of_clk_hw_simple_get,
+				      &axi_clkgen->clk_hw);
+}
+
+static int axi_clkgen_remove(struct platform_device *pdev)
+{
+	of_clk_del_provider(pdev->dev.of_node);
+
+	return 0;
 }
 
 static const struct of_device_id axi_clkgen_ids[] = {
@@ -576,6 +583,7 @@ static struct platform_driver axi_clkgen_driver = {
 		.of_match_table = axi_clkgen_ids,
 	},
 	.probe = axi_clkgen_probe,
+	.remove = axi_clkgen_remove,
 };
 module_platform_driver(axi_clkgen_driver);
 

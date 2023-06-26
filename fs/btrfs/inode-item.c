@@ -527,7 +527,7 @@ search_again:
 
 	while (1) {
 		u64 clear_start = 0, clear_len = 0, extent_start = 0;
-		bool refill_delayed_refs_rsv = false;
+		bool should_throttle = false;
 
 		fi = NULL;
 		leaf = path->nodes[0];
@@ -660,7 +660,8 @@ delete:
 				/* No pending yet, add ourselves */
 				pending_del_slot = path->slots[0];
 				pending_del_nr = 1;
-			} else if (path->slots[0] + 1 == pending_del_slot) {
+			} else if (pending_del_nr &&
+				   path->slots[0] + 1 == pending_del_slot) {
 				/* Hop on the pending chunk */
 				pending_del_nr++;
 				pending_del_slot = path->slots[0];
@@ -685,8 +686,10 @@ delete:
 				btrfs_abort_transaction(trans, ret);
 				break;
 			}
-			if (be_nice && btrfs_check_space_for_delayed_refs(fs_info))
-				refill_delayed_refs_rsv = true;
+			if (be_nice) {
+				if (btrfs_should_throttle_delayed_refs(trans))
+					should_throttle = true;
+			}
 		}
 
 		if (found_type == BTRFS_INODE_ITEM_KEY)
@@ -694,7 +697,7 @@ delete:
 
 		if (path->slots[0] == 0 ||
 		    path->slots[0] != pending_del_slot ||
-		    refill_delayed_refs_rsv) {
+		    should_throttle) {
 			if (pending_del_nr) {
 				ret = btrfs_del_items(trans, root, path,
 						pending_del_slot,
@@ -717,7 +720,7 @@ delete:
 			 * actually allocate, so just bail if we're short and
 			 * let the normal reservation dance happen higher up.
 			 */
-			if (refill_delayed_refs_rsv) {
+			if (should_throttle) {
 				ret = btrfs_delayed_refs_rsv_refill(fs_info,
 							BTRFS_RESERVE_NO_FLUSH);
 				if (ret) {

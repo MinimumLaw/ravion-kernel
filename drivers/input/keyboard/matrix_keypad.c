@@ -425,12 +425,14 @@ matrix_keypad_parse_dt(struct device *dev)
 		return ERR_PTR(-EINVAL);
 	}
 
-	pdata->no_autorepeat = of_property_read_bool(np, "linux,no-autorepeat");
+	if (of_get_property(np, "linux,no-autorepeat", NULL))
+		pdata->no_autorepeat = true;
 
 	pdata->wakeup = of_property_read_bool(np, "wakeup-source") ||
 			of_property_read_bool(np, "linux,wakeup"); /* legacy */
 
-	pdata->active_low = of_property_read_bool(np, "gpio-activelow");
+	if (of_get_property(np, "gpio-activelow", NULL))
+		pdata->active_low = true;
 
 	pdata->drive_inactive_cols =
 		of_property_read_bool(np, "drive-inactive-cols");

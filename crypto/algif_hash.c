@@ -235,19 +235,12 @@ static int hash_accept(struct socket *sock, struct socket *newsock, int flags,
 	struct alg_sock *ask = alg_sk(sk);
 	struct hash_ctx *ctx = ask->private;
 	struct ahash_request *req = &ctx->req;
-	struct crypto_ahash *tfm;
+	char state[HASH_MAX_STATESIZE];
 	struct sock *sk2;
 	struct alg_sock *ask2;
 	struct hash_ctx *ctx2;
-	char *state;
 	bool more;
 	int err;
-
-	tfm = crypto_ahash_reqtfm(req);
-	state = kmalloc(crypto_ahash_statesize(tfm), GFP_KERNEL);
-	err = -ENOMEM;
-	if (!state)
-		goto out;
 
 	lock_sock(sk);
 	more = ctx->more;
@@ -255,11 +248,11 @@ static int hash_accept(struct socket *sock, struct socket *newsock, int flags,
 	release_sock(sk);
 
 	if (err)
-		goto out_free_state;
+		return err;
 
 	err = af_alg_accept(ask->parent, newsock, kern);
 	if (err)
-		goto out_free_state;
+		return err;
 
 	sk2 = newsock->sk;
 	ask2 = alg_sk(sk2);
@@ -267,7 +260,7 @@ static int hash_accept(struct socket *sock, struct socket *newsock, int flags,
 	ctx2->more = more;
 
 	if (!more)
-		goto out_free_state;
+		return err;
 
 	err = crypto_ahash_import(&ctx2->req, state);
 	if (err) {
@@ -275,10 +268,6 @@ static int hash_accept(struct socket *sock, struct socket *newsock, int flags,
 		sock_put(sk2);
 	}
 
-out_free_state:
-	kfree_sensitive(state);
-
-out:
 	return err;
 }
 

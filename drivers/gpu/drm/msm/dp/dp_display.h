@@ -29,7 +29,6 @@ struct msm_dp {
 
 	u32 max_dp_lanes;
 	struct dp_audio *dp_audio;
-	bool psr_supported;
 };
 
 int dp_display_set_plugged_cb(struct msm_dp *dp_display,
@@ -40,6 +39,5 @@ bool dp_display_check_video_test(struct msm_dp *dp_display);
 int dp_display_get_test_bpp(struct msm_dp *dp_display);
 void dp_display_signal_audio_start(struct msm_dp *dp_display);
 void dp_display_signal_audio_complete(struct msm_dp *dp_display);
-void dp_display_set_psr(struct msm_dp *dp, bool enter);
 
 #endif /* _DP_DISPLAY_H_ */

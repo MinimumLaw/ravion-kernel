@@ -291,8 +291,7 @@ static int i2c_rollball_mii_cmd(struct mii_bus *bus, int bus_addr, u8 cmd,
 	return i2c_transfer_rollball(i2c, msgs, ARRAY_SIZE(msgs));
 }
 
-static int i2c_mii_read_rollball(struct mii_bus *bus, int phy_id, int devad,
-				 int reg)
+static int i2c_mii_read_rollball(struct mii_bus *bus, int phy_id, int reg)
 {
 	u8 buf[4], res[6];
 	int bus_addr, ret;
@@ -303,7 +302,7 @@ static int i2c_mii_read_rollball(struct mii_bus *bus, int phy_id, int devad,
 		return 0xffff;
 
 	buf[0] = ROLLBALL_DATA_ADDR;
-	buf[1] = devad;
+	buf[1] = (reg >> 16) & 0x1f;
 	buf[2] = (reg >> 8) & 0xff;
 	buf[3] = reg & 0xff;
 
@@ -323,8 +322,8 @@ static int i2c_mii_read_rollball(struct mii_bus *bus, int phy_id, int devad,
 	return val;
 }
 
-static int i2c_mii_write_rollball(struct mii_bus *bus, int phy_id, int devad,
-				  int reg, u16 val)
+static int i2c_mii_write_rollball(struct mii_bus *bus, int phy_id, int reg,
+				  u16 val)
 {
 	int bus_addr, ret;
 	u8 buf[6];
@@ -334,7 +333,7 @@ static int i2c_mii_write_rollball(struct mii_bus *bus, int phy_id, int devad,
 		return 0;
 
 	buf[0] = ROLLBALL_DATA_ADDR;
-	buf[1] = devad;
+	buf[1] = (reg >> 16) & 0x1f;
 	buf[2] = (reg >> 8) & 0xff;
 	buf[3] = reg & 0xff;
 	buf[4] = val >> 8;
@@ -406,8 +405,8 @@ struct mii_bus *mdio_i2c_alloc(struct device *parent, struct i2c_adapter *i2c,
 			return ERR_PTR(ret);
 		}
 
-		mii->read_c45 = i2c_mii_read_rollball;
-		mii->write_c45 = i2c_mii_write_rollball;
+		mii->read = i2c_mii_read_rollball;
+		mii->write = i2c_mii_write_rollball;
 		break;
 	default:
 		mii->read = i2c_mii_read_default_c22;

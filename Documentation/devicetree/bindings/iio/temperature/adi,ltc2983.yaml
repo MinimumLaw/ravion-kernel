@@ -18,28 +18,6 @@ description: |
   https://www.analog.com/media/en/technical-documentation/data-sheets/29861fa.pdf
   https://www.analog.com/media/en/technical-documentation/data-sheets/ltm2985.pdf
 
-$defs:
-  sensor-node:
-    type: object
-    description: Sensor node common constraints
-
-    properties:
-      reg:
-        description:
-          Channel number. Connects the sensor to the channel with this number
-          of the device.
-        minimum: 1
-        maximum: 20
-
-      adi,sensor-type:
-        description: Type of sensor connected to the device.
-        $ref: /schemas/types.yaml#/definitions/uint32
-
-    required:
-      - reg
-      - adi,sensor-type
-
-
 properties:
   compatible:
     oneOf:
@@ -86,10 +64,28 @@ properties:
     const: 0
 
 patternProperties:
-  "^thermocouple@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+  "@([0-9a-f]+)$":
+    type: object
+    description: Sensor.
 
+    properties:
+      reg:
+        description:
+          Channel number. Connects the sensor to the channel with this number
+          of the device.
+        minimum: 1
+        maximum: 20
+
+      adi,sensor-type:
+        description: Type of sensor connected to the device.
+        $ref: /schemas/types.yaml#/definitions/uint32
+
+    required:
+      - reg
+      - adi,sensor-type
+
+  "^thermocouple@":
+    type: object
     description: Thermocouple sensor.
 
     properties:
@@ -127,7 +123,7 @@ patternProperties:
         description:
           Used for digitizing custom thermocouples.
           See Page 59 of the datasheet.
-        $ref: /schemas/types.yaml#/definitions/int64-matrix
+        $ref: /schemas/types.yaml#/definitions/uint64-matrix
         minItems: 3
         maxItems: 64
         items:
@@ -145,9 +141,7 @@ patternProperties:
             - adi,custom-thermocouple
 
   "^diode@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
-
+    type: object
     description: Diode sensor.
 
     properties:
@@ -190,8 +184,7 @@ patternProperties:
         default: 0
 
   "^rtd@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+    type: object
     description: RTD sensor.
 
     properties:
@@ -289,8 +282,7 @@ patternProperties:
             - adi,custom-rtd
 
   "^thermistor@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+    type: object
     description: Thermistor sensor.
 
     properties:
@@ -391,8 +383,7 @@ patternProperties:
             - adi,custom-thermistor
 
   "^adc@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+    type: object
     description: Direct ADC sensor.
 
     properties:
@@ -406,8 +397,7 @@ patternProperties:
         type: boolean
 
   "^temp@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+    type: object
     description: Active analog temperature sensor.
 
     properties:
@@ -436,8 +426,7 @@ patternProperties:
       - adi,custom-temp
 
   "^rsense@":
-    $ref: '#/$defs/sensor-node'
-    unevaluatedProperties: false
+    type: object
     description: Sense resistor sensor.
 
     properties:

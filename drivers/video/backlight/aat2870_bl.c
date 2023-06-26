@@ -178,7 +178,7 @@ out:
 	return ret;
 }
 
-static void aat2870_bl_remove(struct platform_device *pdev)
+static int aat2870_bl_remove(struct platform_device *pdev)
 {
 	struct aat2870_bl_driver_data *aat2870_bl = platform_get_drvdata(pdev);
 	struct backlight_device *bd = aat2870_bl->bd;
@@ -186,6 +186,8 @@ static void aat2870_bl_remove(struct platform_device *pdev)
 	bd->props.power = FB_BLANK_POWERDOWN;
 	bd->props.brightness = 0;
 	backlight_update_status(bd);
+
+	return 0;
 }
 
 static struct platform_driver aat2870_bl_driver = {
@@ -193,7 +195,7 @@ static struct platform_driver aat2870_bl_driver = {
 		.name	= "aat2870-backlight",
 	},
 	.probe		= aat2870_bl_probe,
-	.remove_new	= aat2870_bl_remove,
+	.remove		= aat2870_bl_remove,
 };
 
 static int __init aat2870_bl_init(void)

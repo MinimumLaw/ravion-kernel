@@ -33,7 +33,6 @@ struct timerlat_top_params {
 	int			set_sched;
 	int			dma_latency;
 	int			no_aa;
-	int			aa_only;
 	int			dump_tasks;
 	struct sched_attr	sched_param;
 	struct trace_events	*events;
@@ -143,12 +142,10 @@ timerlat_top_handler(struct trace_seq *s, struct tep_record *record,
 	top = container_of(trace, struct osnoise_tool, trace);
 	params = top->params;
 
-	if (!params->aa_only) {
-		tep_get_field_val(s, event, "context", record, &thread, 1);
-		tep_get_field_val(s, event, "timer_latency", record, &latency, 1);
+	tep_get_field_val(s, event, "context", record, &thread, 1);
+	tep_get_field_val(s, event, "timer_latency", record, &latency, 1);
 
-		timerlat_top_update(top, cpu, thread, latency);
-	}
+	timerlat_top_update(top, cpu, thread, latency);
 
 	if (!params->no_aa)
 		timerlat_aa_handler(s, record, event, context);
@@ -253,9 +250,6 @@ timerlat_print_stats(struct timerlat_top_params *params, struct osnoise_tool *to
 	static int nr_cpus = -1;
 	int i;
 
-	if (params->aa_only)
-		return;
-
 	if (nr_cpus == -1)
 		nr_cpus = sysconf(_SC_NPROCESSORS_CONF);
 
@@ -285,11 +279,10 @@ static void timerlat_top_usage(char *usage)
 		"",
 		"  usage: rtla timerlat [top] [-h] [-q] [-a us] [-d s] [-D] [-n] [-p us] [-i us] [-T us] [-s us] \\",
 		"	  [[-t[=file]] [-e sys[:event]] [--filter <filter>] [--trigger <trigger>] [-c cpu-list] \\",
-		"	  [-P priority] [--dma-latency us] [--aa-only us]",
+		"	  [-P priority] [--dma-latency us]",
 		"",
 		"	  -h/--help: print this menu",
 		"	  -a/--auto: set automatic trace mode, stopping the session if argument in us latency is hit",
-		"	     --aa-only us: stop if <us> latency is hit, only printing the auto analysis (reduces CPU usage)",
 		"	  -p/--period us: timerlat period in us",
 		"	  -i/--irq us: stop trace if the irq latency is higher than the argument in us",
 		"	  -T/--thread us: stop trace if the thread latency is higher than the argument in us",
@@ -369,14 +362,13 @@ static struct timerlat_top_params
 			{"dma-latency",		required_argument,	0, '2'},
 			{"no-aa",		no_argument,		0, '3'},
 			{"dump-tasks",		no_argument,		0, '4'},
-			{"aa-only",		required_argument,	0, '5'},
 			{0, 0, 0, 0}
 		};
 
 		/* getopt_long stores the option index here. */
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "a:c:d:De:hi:np:P:qs:t::T:0:1:2:345:",
+		c = getopt_long(argc, argv, "a:c:d:De:hi:np:P:qs:t::T:0:1:2:34",
 				 long_options, &option_index);
 
 		/* detect the end of the options. */
@@ -396,20 +388,6 @@ static struct timerlat_top_params
 
 			/* set trace */
 			params->trace_output = "timerlat_trace.txt";
-			break;
-		case '5':
-			/* it is here because it is similar to -a */
-			auto_thresh = get_llong_from_str(optarg);
-
-			/* set thread stop to auto_thresh */
-			params->stop_total_us = auto_thresh;
-			params->stop_us = auto_thresh;
-
-			/* get stack trace */
-			params->print_stack = auto_thresh;
-
-			/* set aa_only to avoid parsing the trace */
-			params->aa_only = 1;
 			break;
 		case 'c':
 			retval = parse_cpu_list(optarg, &params->monitored_cpus);
@@ -524,9 +502,6 @@ static struct timerlat_top_params
 	 */
 	if (!params->stop_us && !params->stop_total_us)
 		params->no_aa = 1;
-
-	if (params->no_aa && params->aa_only)
-		timerlat_top_usage("--no-aa and --aa-only are mutually exclusive!");
 
 	return params;
 }
@@ -659,7 +634,6 @@ int timerlat_top_main(int argc, char *argv[])
 	struct trace_instance *trace;
 	int dma_latency_fd = -1;
 	int return_value = 1;
-	char *max_lat;
 	int retval;
 
 	params = timerlat_top_parse_args(argc, argv);
@@ -726,9 +700,6 @@ int timerlat_top_main(int argc, char *argv[])
 	while (!stop_tracing) {
 		sleep(params->sleep_time);
 
-		if (params->aa_only && !trace_is_off(&top->trace, &record->trace))
-			continue;
-
 		retval = tracefs_iterate_raw_events(trace->tep,
 						    trace->inst,
 						    NULL,
@@ -761,16 +732,6 @@ int timerlat_top_main(int argc, char *argv[])
 		if (params->trace_output) {
 			printf("  Saving trace to %s\n", params->trace_output);
 			save_trace_to_file(record->trace.inst, params->trace_output);
-		}
-	} else if (params->aa_only) {
-		/*
-		 * If the trace did not stop with --aa-only, at least print the
-		 * max known latency.
-		 */
-		max_lat = tracefs_instance_file_read(trace->inst, "tracing_max_latency", NULL);
-		if (max_lat) {
-			printf("  Max latency was %s\n", max_lat);
-			free(max_lat);
 		}
 	}
 
