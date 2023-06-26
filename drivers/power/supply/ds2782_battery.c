@@ -19,8 +19,6 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/idr.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
 #include <linux/ds2782_battery.h>
@@ -422,11 +420,6 @@ static int ds278x_battery_probe(struct i2c_client *client)
 	info->capacity = 100;
 	info->status = POWER_SUPPLY_STATUS_FULL;
 
-	if (ds278x_get_status(info, &info->status)) {
-		dev_err(&client->dev, "failed to reead battery status\n");
-		goto fail_register;
-	}
-
 	INIT_DELAYED_WORK(&info->bat_work, ds278x_bat_work);
 
 	info->battery = power_supply_register(&client->dev,
@@ -453,13 +446,6 @@ fail_id:
 	return ret;
 }
 
-static const struct of_device_id ds278x_of_match[] = {
-	{ .compatible = "maxim,ds2782", },
-	{ .compatible = "maxim,ds2786", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, ds278x_of_match);
-
 static const struct i2c_device_id ds278x_id[] = {
 	{"ds2782", DS2782},
 	{"ds2786", DS2786},
@@ -471,7 +457,6 @@ static struct i2c_driver ds278x_battery_driver = {
 	.driver 	= {
 		.name	= "ds2782-battery",
 		.pm	= &ds278x_battery_pm_ops,
-		.of_match_table = of_match_ptr(ds278x_of_match),
 	},
 	.probe_new	= ds278x_battery_probe,
 	.remove		= ds278x_battery_remove,

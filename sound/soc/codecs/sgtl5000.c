@@ -1621,14 +1621,11 @@ static int sgtl5000_i2c_probe(struct i2c_client *client)
 		goto disable_regs;
 	}
 
+	/* Need 8 clocks before I2C accesses */
+	udelay(1);
+
 	/* read chip information */
-	value = 10;
-	do {
-		/* By docs we need 8 clocks before I2C accesses
-		   In real world this time may be longer */
-		udelay(1);
-		ret = regmap_read(sgtl5000->regmap, SGTL5000_CHIP_ID, &reg);
-	} while(ret && value--);
+	ret = regmap_read(sgtl5000->regmap, SGTL5000_CHIP_ID, &reg);
 	if (ret) {
 		dev_err(&client->dev, "Error reading chip id %d\n", ret);
 		goto disable_clk;

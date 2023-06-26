@@ -62,7 +62,6 @@ struct flash_info {
 static struct flash_info sst25l_flash_info[] = {
 	{"sst25lf020a", 0xbf43, 256, 1024, 4096},
 	{"sst25lf040a",	0xbf44,	256, 2048, 4096},
-	{"sst25vf512a", 0xbf48, 256,  256, 4096},
 };
 
 static int sst25l_status(struct sst25l_flash *flash, int *status)
@@ -406,17 +405,9 @@ static void sst25l_remove(struct spi_device *spi)
 	WARN_ON(mtd_device_unregister(&flash->mtd));
 }
 
-static const struct of_device_id sst25l_of_match[] = {
-	{ .compatible = "atmel,sst25lf", },
-	{ .compatible = "microchip,sst25vf", },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, sst25l_of_match);
-
 static struct spi_driver sst25l_driver = {
 	.driver = {
 		.name	= "sst25l",
-		.of_match_table = of_match_ptr(sst25l_of_match),
 	},
 	.probe		= sst25l_probe,
 	.remove		= sst25l_remove,

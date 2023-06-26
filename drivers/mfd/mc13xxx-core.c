@@ -113,8 +113,6 @@ int mc13xxx_irq_unmask(struct mc13xxx *mc13xxx, int irq)
 {
 	int virq = regmap_irq_get_virq(mc13xxx->irq_data, irq);
 
-	/* FixMe; Unbalanced enable for IRQ - just disable first */
-	disable_irq_nosync(virq);
 	enable_irq(virq);
 
 	return 0;
