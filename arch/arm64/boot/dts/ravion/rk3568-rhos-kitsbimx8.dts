@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "rk3568-rhos.dtsi"
+
+/ {
+	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
+	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
+};

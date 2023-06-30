@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "rk3568.dtsi"
+
+/ {
+	model = "RHOS CPU module with RK3568J CPU";
+	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
+};
+
+&pinctrl {
+	usb2_ctrl {
+		usb2_0_ctrl_pins {
+			rockchip-pins = /* VCCIO4 domain */
+/* 013 */			<2 RK_PA3 0 &pcfg_pull_up>,	/* USB2_PEN0 */
+/* 015 */			<2 RK_PA5 0 &pcfg_pull_up>;	/* USB2_OC0 */
+		};
+
+     		usb2_1_ctrl_pins {
+     			rockchip-pins = /* VCCIO4 domain */
+/* 006 */			<2 RK_PA7 0 &pcfg_pull_up>,	/* USB2_ID1 */
+/* 014 */			<2 RK_PA4 0 &pcfg_pull_up>,     /* USB2_PEN1 */
+/* 016 */			<2 RK_PA6 0 &pcfg_pull_up>;     /* USB2_OC1 */
+		};
+	};
+
+	smbus_ctrl {
+		smb_ctrl_pins {
+			rockchip-pins =
+/* 131 */			<0 RK_PB0 0 &pcfg_pull_up>,	/* SMB_ALERT */
+/* 133 */			<0 RK_PC1 0 &pcfg_pull_up>,	/* SMB_IN */
+/* 135 */			<0 RK_PC4 0 &pcfg_pull_up>;	/* SMB_OUT */
+		};
+	};
+
+	sdio_ctrl {
+		sdio_ctrl_pins {
+			rockchip-pins = /* VCCIO4 domain */
+/* 157 */			<2 RK_PB0 0 &pcfg_pull_up>,	/* MMC1_PEN */
+/* 159 */ 			<2 RK_PB7 0 &pcfg_pull_up>;	/* MMC1_18EN */
+		};
+	};
+
+	gpio_bank1_ctrl {
+		gpio_bank1_pins {
+			rockchip-pins = /* VCCIO5 domain */
+/* 146 */			<2 RK_PD0 0 &pcfg_pull_up>,	/* UIO1_1 */
+/* 148 */			<2 RK_PD1 0 &pcfg_pull_up>,	/* UIO1_2 */
+/* 150 */			<2 RK_PD2 0 &pcfg_pull_up>,	/* UIO1_3 */
+/* 152 */			<2 RK_PD3 0 &pcfg_pull_up>,	/* UIO1_4 */
+/* 154 */			<2 RK_PD4 0 &pcfg_pull_up>,	/* UIO1_5 */
+/* 156 */			<2 RK_PD5 0 &pcfg_pull_up>,	/* UIO1_6 */
+/* 158 */			<2 RK_PD6 0 &pcfg_pull_up>,	/* UIO1_7 */
+/* 160 */			<2 RK_PD7 0 &pcfg_pull_up>;	/* UIO1_8 */
+		};
+	};
+
+	gpio_bank2_ctrl {
+		gpio_bank2_pins {
+			rockchip-pins = /* VCCIO6 domain */
+/* 163 */ 			<3 RK_PD0 0 &pcfg_pull_up>,	/* UIO2_1 */
+/* 165 */			<3 RK_PD1 0 &pcfg_pull_up>,	/* UIO2_2 */
+/* 167 */			<3 RK_PD2 0 &pcfg_pull_up>,	/* UIO2_3 */
+/* 169 */			<3 RK_PD3 0 &pcfg_pull_up>,	/* UIO2_4 */
+/* 171 */			<3 RK_PD4 0 &pcfg_pull_up>,	/* UIO2_5 */
+/* 173 */			<3 RK_PD5 0 &pcfg_pull_up>,	/* UIO2_6 */
+/* 175 */			<3 RK_PC6 0 &pcfg_pull_up>,	/* UIO2_7 */
+/* 177 */			<3 RK_PC7 0 &pcfg_pull_up>;	/* UIO2_8 */
+		};
+	};
+
+	gpio_bank3_ctrl {
+		gpio_bank3_pins {
+			rockchip-pins = /* VCCIO5 domain */
+/* 164 */			<3 RK_PA2 0 &pcfg_pull_up>,	/* UIO3_1 */
+/* 166 */			<3 RK_PA3 0 &pcfg_pull_up>,	/* UIO3_2 */
+/* 168 */			<3 RK_PA4 0 &pcfg_pull_up>,	/* UIO3_3 */
+/* 170 */			<3 RK_PA5 0 &pcfg_pull_up>,	/* UIO3_4 */
+/* 172 */			<3 RK_PA6 0 &pcfg_pull_up>,	/* UIO3_5 */
+/* 174 */			<3 RK_PC4 0 &pcfg_pull_up>,	/* UIO3_6 */
+/* 176 */			<3 RK_PC5 0 &pcfg_pull_up>,	/* UIO3_7 */
+/* 178 */			<3 RK_PB4 0 &pcfg_pull_up>;	/* UIO3_8 */
+		};
+	};
+};
