@@ -667,7 +667,15 @@ static void __init memblock_region_swap(void *a, void *b, int size)
 
 #ifdef CONFIG_KASAN
 #define __sha(x)	((unsigned long)kasan_mem_to_shadow((void *)x))
+
+static inline int set_memory_kasan(unsigned long start, unsigned long end)
+{
+	start = PAGE_ALIGN_DOWN(__sha(start));
+	end = PAGE_ALIGN(__sha(end));
+	return set_memory_rwnx(start, (end - start) >> PAGE_SHIFT);
+}
 #endif
+
 /*
  * map whole physical memory to virtual memory (identity mapping)
  * we reserve enough space in the vmalloc area for vmemmap to hotplug
@@ -737,10 +745,8 @@ void __init vmem_map_init(void)
 	}
 
 #ifdef CONFIG_KASAN
-	for_each_mem_range(i, &base, &end) {
-		set_memory_rwnx(__sha(base),
-				(__sha(end) - __sha(base)) >> PAGE_SHIFT);
-	}
+	for_each_mem_range(i, &base, &end)
+		set_memory_kasan(base, end);
 #endif
 	set_memory_rox((unsigned long)_stext,
 		       (unsigned long)(_etext - _stext) >> PAGE_SHIFT);
@@ -755,6 +761,8 @@ void __init vmem_map_init(void)
 	if (static_key_enabled(&cpu_has_bear))
 		set_memory_nx(0, 1);
 	set_memory_nx(PAGE_SIZE, 1);
+	if (debug_pagealloc_enabled())
+		set_memory_4k(0, ident_map_size >> PAGE_SHIFT);
 
 	pr_info("Write protected kernel read-only data: %luk\n",
 		(unsigned long)(__end_rodata - _stext) >> 10);

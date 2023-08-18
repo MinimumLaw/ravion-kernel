@@ -855,7 +855,6 @@ struct dc_debug_options {
 	bool force_usr_allow;
 	/* uses value at boot and disables switch */
 	bool disable_dtb_ref_clk_switch;
-	uint32_t fixed_vs_aux_delay_config_wa;
 	bool extended_blank_optimization;
 	union aux_wake_wa_options aux_wake_wa;
 	uint32_t mst_start_top_delay;
@@ -2126,8 +2125,6 @@ struct dc_sink_init_data {
 	bool converter_disable_audio;
 };
 
-bool dc_extended_blank_supported(struct dc *dc);
-
 struct dc_sink *dc_sink_create(const struct dc_sink_init_data *init_params);
 
 /* Newer interfaces  */
@@ -2225,5 +2222,8 @@ void dc_process_dmub_dpia_hpd_int_enable(const struct dc *dc,
 
 /* Disable acc mode Interfaces */
 void dc_disable_accelerated_mode(struct dc *dc);
+
+bool dc_is_timing_changed(struct dc_stream_state *cur_stream,
+		       struct dc_stream_state *new_stream);
 
 #endif /* DC_INTERFACE_H_ */
