@@ -473,7 +473,7 @@ static struct i2c_driver ds278x_battery_driver = {
 		.pm	= &ds278x_battery_pm_ops,
 		.of_match_table = of_match_ptr(ds278x_of_match),
 	},
-	.probe_new	= ds278x_battery_probe,
+	.probe		= ds278x_battery_probe,
 	.remove		= ds278x_battery_remove,
 	.id_table	= ds278x_id,
 };
