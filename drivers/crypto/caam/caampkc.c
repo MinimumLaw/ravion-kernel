@@ -223,7 +223,9 @@ static int caam_rsa_count_leading_zeros(struct scatterlist *sgl,
 		if (len && *buff)
 			break;
 
-		sg_miter_next(&miter);
+		if (!sg_miter_next(&miter))
+			break;
+
 		buff = miter.addr;
 		len = miter.length;
 
@@ -1162,10 +1164,10 @@ int caam_pkc_init(struct device *ctrldev)
 
 	/* Determine public key hardware accelerator presence. */
 	if (priv->era < 10) {
-		pk_inst = (rd_reg32(&priv->ctrl->perfmon.cha_num_ls) &
+		pk_inst = (rd_reg32(&priv->jr[0]->perfmon.cha_num_ls) &
 			   CHA_ID_LS_PK_MASK) >> CHA_ID_LS_PK_SHIFT;
 	} else {
-		pkha = rd_reg32(&priv->ctrl->vreg.pkha);
+		pkha = rd_reg32(&priv->jr[0]->vreg.pkha);
 		pk_inst = pkha & CHA_VER_NUM_MASK;
 
 		/*

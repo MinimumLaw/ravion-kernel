@@ -20,6 +20,15 @@ config MFD_CS5535
 	  This is the core driver for CS5535/CS5536 MFD functions.  This is
 	  necessary for using the board's GPIO and MFGPT functionality.
 
+config MFD_ADP5585
+	tristate "ADI ADP5585 core functions"
+	select MFD_CORE
+	depends on I2C && OF
+
+	help
+	  This is ADI adp5585 core support, implement the support for
+	  communication through i2c bus.
+
 config MFD_ALTERA_A10SR
 	bool "Altera Arria10 DevKit System Resource chip"
 	depends on ARCH_INTEL_SOCFPGA && SPI_MASTER=y && OF
@@ -500,6 +509,21 @@ config MFD_MX25_TSADC
 	  i.MX25 processors. They consist of a conversion queue for general
 	  purpose ADC and a queue for Touchscreens.
 
+config MFD_IMX_FLEXIO
+	tristate "NXP i.MX FlexIO core driver support"
+	depends on OF
+	select MFD_CORE
+	select REGMAP_MMIO
+	help
+	  Enable FlexIO core driver support.
+
+config MFD_MXC_HDMI
+	tristate "Freescale HDMI Core"
+	select MFD_CORE
+	help
+	  This is the core driver for the Freescale i.MX6 on-chip HDMI.
+	  This MFD driver connects with the video and audio drivers for HDMI.
+
 config MFD_HI6421_PMIC
 	tristate "HiSilicon Hi6421 PMU/Codec IC"
 	depends on OF
@@ -791,6 +815,22 @@ config MFD_MAX14577
 	  This driver provides common support for accessing the device;
 	  additional drivers must be enabled in order to use the functionality
 	  of the device.
+
+config MFD_MAX17135
+	tristate "Maxim MAX17135 EPD PMIC core"
+	depends on I2C
+
+	help
+	  This is the MAX17135 PMIC support. It includes
+	  core support for communication with the MAX17135 chip.
+
+config MFD_FP9931
+	tristate "Fitipower FP9931 EPD PMIC Core"
+	depends on I2C && OF
+
+	help
+	  This is the FP9931 PMIC support. It includes
+	  core support for communication with the FP9931 chip.
 
 config MFD_MAX77620
 	bool "Maxim Semiconductor MAX77620 and MAX20024 PMIC Support"

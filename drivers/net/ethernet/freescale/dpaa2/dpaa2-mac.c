@@ -5,7 +5,8 @@
 #include <linux/pcs-lynx.h>
 #include <linux/phy/phy.h>
 #include <linux/property.h>
-
+#include <linux/fsl/mc.h>
+#include <linux/msi.h>
 #include "dpaa2-eth.h"
 #include "dpaa2-mac.h"
 
@@ -54,6 +55,9 @@ static int phy_mode(enum dpmac_eth_if eth_if, phy_interface_t *if_mode)
 	case DPMAC_ETH_IF_XFI:
 		*if_mode = PHY_INTERFACE_MODE_10GBASER;
 		break;
+	case DPMAC_ETH_IF_CAUI:
+		*if_mode = PHY_INTERFACE_MODE_25GBASER;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -79,6 +83,8 @@ static enum dpmac_eth_if dpmac_eth_if_mode(phy_interface_t if_mode)
 		return DPMAC_ETH_IF_XFI;
 	case PHY_INTERFACE_MODE_1000BASEX:
 		return DPMAC_ETH_IF_1000BASEX;
+	case PHY_INTERFACE_MODE_25GBASER:
+		return DPMAC_ETH_IF_CAUI;
 	default:
 		return DPMAC_ETH_IF_MII;
 	}
@@ -181,6 +187,13 @@ static void dpaa2_mac_config(struct phylink_config *config, unsigned int mode,
 	err = phy_set_mode_ext(mac->serdes_phy, PHY_MODE_ETHERNET, state->interface);
 	if (err)
 		netdev_err(mac->net_dev, "phy_set_mode_ext() = %d\n", err);
+
+	if (!mac->retimer_phy)
+		return;
+
+	err = phy_set_mode_ext(mac->retimer_phy, PHY_MODE_ETHERNET, state->interface);
+	if (err)
+		netdev_err(mac->net_dev, "phy_set_mode_ext() on retimer = %d\n", err);
 }
 
 static void dpaa2_mac_link_up(struct phylink_config *config,
@@ -336,12 +349,20 @@ static void dpaa2_mac_set_supported_interfaces(struct dpaa2_mac *mac)
 
 void dpaa2_mac_start(struct dpaa2_mac *mac)
 {
+	ASSERT_RTNL();
+
 	if (mac->serdes_phy)
 		phy_power_on(mac->serdes_phy);
+
+	phylink_start(mac->phylink);
 }
 
 void dpaa2_mac_stop(struct dpaa2_mac *mac)
 {
+	ASSERT_RTNL();
+
+	phylink_stop(mac->phylink);
+
 	if (mac->serdes_phy)
 		phy_power_off(mac->serdes_phy);
 }
@@ -350,6 +371,7 @@ int dpaa2_mac_connect(struct dpaa2_mac *mac)
 {
 	struct net_device *net_dev = mac->net_dev;
 	struct fwnode_handle *dpmac_node;
+	struct phy *retimer_phy = NULL;
 	struct phy *serdes_phy = NULL;
 	struct phylink *phylink;
 	int err;
@@ -378,8 +400,17 @@ int dpaa2_mac_connect(struct dpaa2_mac *mac)
 			return PTR_ERR(serdes_phy);
 		else
 			phy_init(serdes_phy);
+
+		retimer_phy = of_phy_get(to_of_node(dpmac_node), "retimer");
+		if (retimer_phy == ERR_PTR(-ENODEV))
+			retimer_phy = NULL;
+		else if (IS_ERR(retimer_phy))
+			return PTR_ERR(retimer_phy);
+		else
+			phy_init(retimer_phy);
 	}
 	mac->serdes_phy = serdes_phy;
+	mac->retimer_phy = retimer_phy;
 
 	/* The MAC does not have the capability to add RGMII delays so
 	 * error out if the interface mode requests them and there is no PHY
@@ -407,7 +438,7 @@ int dpaa2_mac_connect(struct dpaa2_mac *mac)
 
 	mac->phylink_config.mac_capabilities = MAC_SYM_PAUSE | MAC_ASYM_PAUSE |
 		MAC_10FD | MAC_100FD | MAC_1000FD | MAC_2500FD | MAC_5000FD |
-		MAC_10000FD;
+		MAC_10000FD | MAC_25000FD;
 
 	dpaa2_mac_set_supported_interfaces(mac);
 
@@ -420,7 +451,9 @@ int dpaa2_mac_connect(struct dpaa2_mac *mac)
 	}
 	mac->phylink = phylink;
 
+	rtnl_lock();
 	err = phylink_fwnode_phy_connect(mac->phylink, dpmac_node, 0);
+	rtnl_unlock();
 	if (err) {
 		netdev_err(net_dev, "phylink_fwnode_phy_connect() = %d\n", err);
 		goto err_phylink_destroy;
@@ -438,10 +471,10 @@ err_pcs_destroy:
 
 void dpaa2_mac_disconnect(struct dpaa2_mac *mac)
 {
-	if (!mac->phylink)
-		return;
-
+	rtnl_lock();
 	phylink_disconnect_phy(mac->phylink);
+	rtnl_unlock();
+
 	phylink_destroy(mac->phylink);
 	dpaa2_pcs_destroy(mac);
 	of_phy_put(mac->serdes_phy);
@@ -571,4 +604,26 @@ void dpaa2_mac_get_ethtool_stats(struct dpaa2_mac *mac, u64 *data)
 		}
 		*(data + i) = value;
 	}
+}
+
+void dpaa2_mac_driver_attach(struct fsl_mc_device *dpmac_dev)
+{
+	struct device_driver *drv = driver_find("fsl_dpaa2_mac", &fsl_mc_bus_type);
+	struct device *dev = &dpmac_dev->dev;
+	int err;
+
+	if (dev && dev->driver == NULL && drv) {
+		err = device_attach(dev);
+		if (err && err != -EAGAIN)
+			dev_err(dev, "Error in attaching the fsl_dpaa2_mac driver\n");
+	}
+}
+
+void dpaa2_mac_driver_detach(struct fsl_mc_device *dpmac_dev)
+{
+	struct device_driver *drv = driver_find("fsl_dpaa2_mac", &fsl_mc_bus_type);
+	struct device *dev = &dpmac_dev->dev;
+
+	if (dev && dev->driver == drv)
+		device_release_driver(dev);
 }
