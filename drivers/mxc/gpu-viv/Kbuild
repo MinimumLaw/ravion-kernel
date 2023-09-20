@@ -86,11 +86,6 @@ SOC_PLATFORM_OBJS ?= $(SOC_PLATFORM_LOCATION)/gc_hal_kernel_platform_$(soc_board
 # Include platform config if exists.
 -include $(AQROOT)/$(SOC_PLATFORM_LOCATION)/gc_hal_kernel_platform_$(soc_board).config
 
-ifeq ($(CONFIG_KASAN),)
-EXTRA_CFLAGS += -Werror -Wno-implicit-fallthrough
-ccflags-$(CONFIG_WERROR) += -Werror
-endif
-
 OBJS := $(OS_KERNEL_DIR)/gc_hal_kernel_device.o \
         $(OS_KERNEL_DIR)/gc_hal_kernel_linux.o \
         $(OS_KERNEL_DIR)/gc_hal_kernel_math.o \

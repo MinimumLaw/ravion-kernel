@@ -1,0 +1,1 @@
+./../freescale/imx8mq-pinfunc.h
