@@ -15,8 +15,8 @@
 /* CAMERA SELETION (select one)
  *****************************/
 #undef	RASPBERRY_CAMERA_V1
-#undef	RASPBERRY_CAMERA_V2
-#define	RAVION_ADV7280_CAMERA
+#define	RASPBERRY_CAMERA_V2
+#undef	RAVION_ADV7280_CAMERA
 
 
 #include "imx8mq-rhos.dtsi"
@@ -255,48 +255,10 @@
 			wakeup-source;
 		};
 	};
-
-	sound-hdmi {
-		compatible = "fsl,imx-audio-hdmi";
-		model = "imx-audio-hdmi";
-		audio-cpu = <&sai2>;
-		hdmi-out;
-		status = "okay";
-		constraint-rate = <44100>,
-				<88200>,
-				<176400>,
-				<32000>,
-				<48000>,
-				<96000>,
-				<192000>;
-	};
 };
 
 &irqsteer {
 	status = "okay";
-};
-
-&dcss {
-	status = "okay";
-	disp-dev = "hdmi_disp";
-
-	port@0 {
-		dcss_out: endpoint {
-			remote-endpoint = <&hdmi_in>;
-		};
-	};
-};
-
-&hdmi {
-	compatible = "cdn,imx8mq-hdmi";
-	lane-mapping = <0xe4>;
-	hdcp-config = <0x3>;
-	status = "okay";
-	port@1 {
-		hdmi_in: endpoint {
-			remote-endpoint = <&dcss_out>;
-		};
-	};
 };
 
 &lcdif	{	status = "okay";	};
@@ -554,16 +516,24 @@
 /* MIPI CSI interface
  *******************/
 &csi1          {       status = "okay";        };
-&mipi_csi1     {       status = "okay";        };
 
-&imx8mq_csi_in {
-	remote-endpoint = <&csi_sensor_out>;
-	clock-lanes = <0>;
+&mipi_csi1 {
+	status = "okay";
+
+	ports {
+		port@0 {
+			reg = <0>;
+                        imx8mq_csi_in: endpoint {
+				remote-endpoint = <&csi_sensor_out>;
+				clock-lanes = <0>;
 #if defined	(RAVION_ADV7280_CAMERA)
-	data-lanes = <1>;
+				data-lanes = <1>;
 #else /* RASPBERRY_CAMERA_V1 & V2 */
-	data-lanes = <1 2>;
+				data-lanes = <1 2>;
 #endif
+			};
+		};
+	};
 };
 
 &i2c_camera
