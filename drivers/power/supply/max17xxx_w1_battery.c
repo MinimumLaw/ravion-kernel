@@ -26,9 +26,11 @@
 #define DEF_DEV_NAME_MAX173X2		"MAX173X15"
 #define DEF_DEV_NAME_MAX173X3		"MAX173X15"
 #define DEF_DEV_NAME_MAX17320		"MAX17320"
+#define DEF_DEV_NAME_MAX17320_CHINA	"MAX17320 CHINA"
 #define DEF_DEV_NAME_MAX17330		"MAX17330"
 #define DEF_DEV_NAME_UNKNOWN		"UNKNOWN"
 #define DEF_MFG_NAME			"MAXIM"
+#define ADI_MFG_NAME			"ADI"
 
 #define MAX172XX_REG_DEVNAME	0x021	/* DevName regiter */
 #define MAX172XX_DEVID_MASK	0x000F	/* Device field in DevName register */
@@ -40,6 +42,7 @@
 #define MAX173X2_DEVNAME	0x4066
 #define MAX173X3_DEVNAME	0x4067
 #define MAX17320_DEVNAME	0x4209
+#define MAX17320_CHINA_DEVNAME	0x420A
 #define MAX17330_DEVNAME	0x4309 /* FixMe: correct value required!!! */
 
 #define PSY_MAX_NAME_LEN	32
@@ -105,7 +108,7 @@ struct max172xx_device_info {
 	unsigned int TempRegister;
 	unsigned int CurrentRegister;
 	unsigned int AvgCurrentRegister;
-	char DeviceName[9]; /* MAX17XXX\0 */
+	char DeviceName[16]; /* MAX17320 CHINA\0 */
 	char ManufacturerName[7]; /* MAXIM_\0 */
 	char SerialNumber[13]; /* see get_sn_str() later for comment */
 };
@@ -519,9 +522,20 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 	info->CurrentRegister	= MAX173XX_REG_CURRENT;
 	info->AvgCurrentRegister= MAX173XX_REG_AVGCURRENT;
 
+	/* Ignore ManufacturerName (format uncknown) - set to "MAXIM" */
+	strncpy(info->ManufacturerName, DEF_MFG_NAME,
+		sizeof(info->ManufacturerName) - 1);
+
 	switch (dev_name) {
 	case MAX17330_DEVNAME:
 		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17330,
+			sizeof(info->DeviceName) - 1);
+		break;
+	case MAX17320_CHINA_DEVNAME:
+		/* Ignore ManufacturerName (format uncknown) - set to "ADI" */
+		strncpy(info->ManufacturerName, ADI_MFG_NAME,
+			sizeof(info->ManufacturerName) - 1);
+		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17320_CHINA,
 			sizeof(info->DeviceName) - 1);
 		break;
 	case MAX17320_DEVNAME:
@@ -564,10 +578,6 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 			return -ENOTSUPP;
 	    };
 	}
-
-	/* Ignore ManufacturerName (format uncknown) - set to "MAXIM" */
-	strncpy(info->ManufacturerName, DEF_MFG_NAME,
-		sizeof(info->ManufacturerName) - 1);
 
 	if (get_sn_string(info, info->SerialNumber)) {
 		dev_err(info->w1_dev, "Can't read serial. Hardware error.\n");
