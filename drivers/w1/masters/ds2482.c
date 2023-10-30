@@ -561,7 +561,7 @@ static struct i2c_driver ds2482_driver = {
 		.name	= "ds2482",
 		.of_match_table = of_match_ptr(ds2482_of_match),
 	},
-	.probe_new	= ds2482_probe,
+	.probe		= ds2482_probe,
 	.remove		= ds2482_remove,
 	.id_table	= ds2482_id,
 };
