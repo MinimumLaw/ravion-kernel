@@ -40,11 +40,13 @@ void cifs_dump_detail(void *buf, struct TCP_Server_Info *server)
 #ifdef CONFIG_CIFS_DEBUG2
 	struct smb_hdr *smb = buf;
 
-	cifs_dbg(VFS, "Cmd: %d Err: 0x%x Flags: 0x%x Flgs2: 0x%x Mid: %d Pid: %d\n",
-		 smb->Command, smb->Status.CifsError,
-		 smb->Flags, smb->Flags2, smb->Mid, smb->Pid);
-	cifs_dbg(VFS, "smb buf %p len %u\n", smb,
-		 server->ops->calc_smb_size(smb));
+	cifs_dbg(VFS, "Cmd: %d Err: 0x%x Flags: 0x%x Flgs2: 0x%x Mid: %d Pid: %d Wct: %d\n",
+		 smb->Command, smb->Status.CifsError, smb->Flags,
+		 smb->Flags2, smb->Mid, smb->Pid, smb->WordCount);
+	if (!server->ops->check_message(buf, server->total_read, server)) {
+		cifs_dbg(VFS, "smb buf %p len %u\n", smb,
+			 server->ops->calc_smb_size(smb));
+	}
 #endif /* CONFIG_CIFS_DEBUG2 */
 }
 
@@ -135,6 +137,11 @@ static void
 cifs_dump_channel(struct seq_file *m, int i, struct cifs_chan *chan)
 {
 	struct TCP_Server_Info *server = chan->server;
+
+	if (!server) {
+		seq_printf(m, "\n\n\t\tChannel: %d DISABLED", i+1);
+		return;
+	}
 
 	seq_printf(m, "\n\n\t\tChannel: %d ConnectionId: 0x%llx"
 		   "\n\t\tNumber of credits: %d,%d,%d Dialect 0x%x"
@@ -428,6 +435,8 @@ skip_rdma:
 			seq_printf(m, " posix");
 		if (server->nosharesock)
 			seq_printf(m, " nosharesock");
+
+		seq_printf(m, "\nServer capabilities: 0x%x", server->capabilities);
 
 		if (server->rdma)
 			seq_printf(m, "\nRDMA ");
@@ -760,14 +769,14 @@ static ssize_t name##_write(struct file *file, const char __user *buffer, \
 	size_t count, loff_t *ppos) \
 { \
 	int rc; \
-	rc = kstrtoint_from_user(buffer, count, 10, & name); \
+	rc = kstrtoint_from_user(buffer, count, 10, &name); \
 	if (rc) \
 		return rc; \
 	return count; \
 } \
 static int name##_proc_show(struct seq_file *m, void *v) \
 { \
-	seq_printf(m, "%d\n", name ); \
+	seq_printf(m, "%d\n", name); \
 	return 0; \
 } \
 static int name##_open(struct inode *inode, struct file *file) \

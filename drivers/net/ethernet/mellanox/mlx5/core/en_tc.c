@@ -756,19 +756,21 @@ static int mlx5e_hairpin_create_indirect_rqt(struct mlx5e_hairpin *hp)
 {
 	struct mlx5e_priv *priv = hp->func_priv;
 	struct mlx5_core_dev *mdev = priv->mdev;
-	struct mlx5e_rss_params_indir *indir;
+	struct mlx5e_rss_params_indir indir;
 	int err;
 
-	indir = kvmalloc(sizeof(*indir), GFP_KERNEL);
-	if (!indir)
-		return -ENOMEM;
+	err = mlx5e_rss_params_indir_init(&indir, mdev,
+					  mlx5e_rqt_size(mdev, hp->num_channels),
+					  mlx5e_rqt_size(mdev, priv->max_nch));
+	if (err)
+		return err;
 
-	mlx5e_rss_params_indir_init_uniform(indir, hp->num_channels);
+	mlx5e_rss_params_indir_init_uniform(&indir, hp->num_channels);
 	err = mlx5e_rqt_init_indir(&hp->indir_rqt, mdev, hp->pair->rqn, hp->num_channels,
 				   mlx5e_rx_res_get_current_hash(priv->rx_res).hfunc,
-				   indir);
+				   &indir);
 
-	kvfree(indir);
+	mlx5e_rss_params_indir_cleanup(&indir);
 	return err;
 }
 
@@ -3776,7 +3778,8 @@ alloc_branch_attr(struct mlx5e_tc_flow *flow,
 		break;
 	case FLOW_ACTION_ACCEPT:
 	case FLOW_ACTION_PIPE:
-		if (set_branch_dest_ft(flow->priv, attr))
+		err = set_branch_dest_ft(flow->priv, attr);
+		if (err)
 			goto out_err;
 		break;
 	case FLOW_ACTION_JUMP:
@@ -3786,7 +3789,8 @@ alloc_branch_attr(struct mlx5e_tc_flow *flow,
 			goto out_err;
 		}
 		*jump_count = cond->extval;
-		if (set_branch_dest_ft(flow->priv, attr))
+		err = set_branch_dest_ft(flow->priv, attr);
+		if (err)
 			goto out_err;
 		break;
 	default:
@@ -5734,8 +5738,10 @@ int mlx5e_tc_action_miss_mapping_get(struct mlx5e_priv *priv, struct mlx5_flow_a
 
 	esw = priv->mdev->priv.eswitch;
 	attr->act_id_restore_rule = esw_add_restore_rule(esw, *act_miss_mapping);
-	if (IS_ERR(attr->act_id_restore_rule))
+	if (IS_ERR(attr->act_id_restore_rule)) {
+		err = PTR_ERR(attr->act_id_restore_rule);
 		goto err_rule;
+	}
 
 	return 0;
 

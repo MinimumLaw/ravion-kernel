@@ -49,7 +49,7 @@ void mlx5e_ethtool_get_drvinfo(struct mlx5e_priv *priv,
 	count = snprintf(drvinfo->fw_version, sizeof(drvinfo->fw_version),
 			 "%d.%d.%04d (%.16s)", fw_rev_maj(mdev),
 			 fw_rev_min(mdev), fw_rev_sub(mdev), mdev->board_id);
-	if (count == sizeof(drvinfo->fw_version))
+	if (count >= sizeof(drvinfo->fw_version))
 		snprintf(drvinfo->fw_version, sizeof(drvinfo->fw_version),
 			 "%d.%d.%04d", fw_rev_maj(mdev),
 			 fw_rev_min(mdev), fw_rev_sub(mdev));
@@ -1252,7 +1252,7 @@ static u32 mlx5e_get_rxfh_key_size(struct net_device *netdev)
 
 u32 mlx5e_ethtool_get_rxfh_indir_size(struct mlx5e_priv *priv)
 {
-	return MLX5E_INDIR_RQT_SIZE;
+	return mlx5e_rqt_size(priv->mdev, priv->channels.params.num_channels);
 }
 
 static u32 mlx5e_get_rxfh_indir_size(struct net_device *netdev)
