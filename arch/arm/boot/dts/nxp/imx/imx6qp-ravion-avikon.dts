@@ -1,0 +1,332 @@
+/*
+ * Copyright 2018 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:avikon";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific regulators
+	 */
+	pwr_src: pwr_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "P15V_IN";
+			/* FixMe: 12.8...25V input voltage */
+			regulator-min-microvolt = <15000000>;
+			regulator-max-microvolt = <15000000>;
+			regulator-always-on;
+	};
+
+	p5vg: p5vg_regulator { /* DA12 */
+			compatible = "regulator-fixed";
+			regulator-name = "P5VG";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p5v_reg: p5v_regulator { /* DA26 */
+			compatible = "regulator-fixed";
+			regulator-name = "P5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p3v3_reg: p3v3_regulator { /* DA24 */
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&pwr_src>;
+			regulator-always-on;
+	};
+
+	p1v8_bt_reg: p1v8_bt_regulator { /* DA17 */
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&p3v3_reg>;
+			regulator-always-on;
+	};
+
+	/*
+	 * Input keys (signals)
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		kl1 {
+			label = "KL1";
+			gpios = <&gpio5 31 GPIO_ACTIVE_LOW>;	/* soDimm 116 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		kl1 {
+			label = "KL2";
+			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
+			linux,code = <KEY_F9>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		kl2 {
+			label = "KL3";
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
+			linux,code = <KEY_F10>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	/*
+	 * Control leds (signals)
+	 */
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		gnss_port {
+			label = "gnss::nmea";
+			gpios = <&gpio6 5 GPIO_ACTIVE_LOW>;	/*soDimm 162 */
+			default-state = "on";
+		};
+
+		wlan_en {
+			label = "wlan::enable";
+			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm 164 */
+			default-state = "on";
+		};
+
+		bt_en {
+			label = "bluetoth::enable";
+			gpios = <&gpio6 2 GPIO_ACTIVE_LOW>;	/* soDimm 166 */
+			default-state = "on";
+		};
+
+		ext_on {
+			label = "on_ext::active";
+			gpios = <&gpio6 0 GPIO_ACTIVE_HIGH>;	/* soDimm 168 */
+			default-state = "off";
+		};
+
+		pwr_video {
+			label = "videocapture::enable";
+			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;	/* soDimm 133 */
+			default-state = "on";
+		};
+
+		heater_en {
+			label = "heater::enable";
+			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;	/* soDimm 119 */
+			default-state = "off";
+		};
+	};
+
+	/* TFT Bus connected panel */
+	panel {
+		compatible = "tianma,NL6448BC26-22F", "panel-dpi";
+		backlight = <&backlight>;
+
+		width-mm = <170>;
+		height-mm = <128>;
+
+		panel-timing {
+			clock-frequency = <25175000>;
+			hactive = <640>;
+			vactive = <480>;
+			hsync-len = <96>;
+			hfront-porch = <16>;
+			hback-porch = <48>;
+			vfront-porch = <12>;
+			vback-porch = <31>;
+			vsync-len = <2>;
+			de-active = <1>;
+		};
+
+		port {
+			display_panel_in: endpoint {
+				remote-endpoint = <&tft_bus_out>;
+			};
+		};
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
+		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <9>;
+		status = "okay";
+	};
+
+	/* Display init sequense fixup */
+	display-subsystem {
+		compatible = "fsl,imx-display-subsystem";
+		ports = <&ipu1_di0>, <&ipu1_di1>, <&ipu2_di0>, <&ipu2_di1>;
+	};
+};
+
+/*
+ * Video subsystem
+ */
+&tft_display_bus {
+	status = "okay";
+};
+
+&tft_bus_out {
+	remote-endpoint = <&display_panel_in>;
+};
+
+/*
+ * Serial ports
+ */
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
+	status = "okay";
+
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		compatible = "ti,wl1837-st";
+		max-speed = <3686400>;
+		/*
+		 * Params not found in source, but described in documentation
+		 */
+		current-speed = <115200>;
+		vio-supply = <&p1v8_bt_reg>;
+		vbat-supply = <&p3v3_reg>;
+		status = "okay";
+	};
+};
+
+&uart3 {
+	status = "okay";
+};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {
+	status = "okay";
+};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	status = "okay";
+
+	sensor@20 { /* ADV7280BCPZ - Composite video capture with MIPI interface */
+		compatible = "adi,adv7280-m";
+		reg = <0x20>;
+
+		port {
+			csi_sensor_out: endpoint {
+				remote-endpoint = <&csi_port_in>;
+				clock-lanes = <0>;
+				data-lanes = <1>;
+			};
+		};
+	};
+
+	rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
+	};
+};
+
+&mipi_csi {
+	status = "okay";
+
+	port@0 {
+		reg = <0>;
+		csi_port_in: endpoint {
+			remote-endpoint = <&csi_sensor_out>;
+			clock-lanes = <0>;
+			data-lanes = <1>;
+		};
+	};
+};
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	}; /* compatible */
+&usdhc2 {				   /* externed - WiFi module */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	WL1837MOD: wlcore@2 {
+		compatible = "ti,wl1837";
+		reg = <2>;
+		interrupts = <&gpio3 24 IRQ_TYPE_LEVEL_HIGH>; 	/* soDim023 */
+	};
+};
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{ /* OTG */
+	status = "okay";
+};
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
+
+/*
+ * Video subsystems
+ */
+/* HDMI: forced to IPU2 */
+/delete-node/&ipu1_di0_hdmi;
+/delete-node/&hdmi_mux_0;
+/delete-node/&ipu1_di1_hdmi;
+/delete-node/&hdmi_mux_1;
+&hdmi	{	status = "okay";	};
+
+/* Avikon board use full uart lines as gpio */
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
+};

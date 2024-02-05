@@ -8,7 +8,7 @@ export DTBS="${DTBS} nxp/imx/imx6qp-ravion-kitsbimx6.dtb	nxp/imx/imx6qp-ravion-c
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-mtu.dtb		nxp/imx/imx6qp-ravion-router.dtb"
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-pkk-m7.dtb		nxp/imx/imx6qp-ravion-pkk-m10.dtb"
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-cimc215.dtb		nxp/imx/imx6qp-ravion-bm.dtb"
-export DTBS="${DTBS} nxp/imx/imx6qp-ravion-cimc-no-video.dtb"
+export DTBS="${DTBS} nxp/imx/imx6qp-ravion-cimc-no-video.dtb	nxp/imx/imx6qp-ravion-avikon.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     export DEFCONFIG=ravion_imx6_defconfig
