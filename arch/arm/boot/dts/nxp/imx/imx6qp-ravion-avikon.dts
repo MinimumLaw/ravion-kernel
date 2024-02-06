@@ -79,7 +79,7 @@
 			wakeup-source;
 		};
 
-		kl1 {
+		kl2 {
 			label = "KL2";
 			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
 			linux,code = <KEY_F9>;
@@ -87,7 +87,7 @@
 			wakeup-source;
 		};
 
-		kl2 {
+		kl3 {
 			label = "KL3";
 			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
 			linux,code = <KEY_F10>;
@@ -110,16 +110,16 @@
 
 		wlan_en {
 			label = "wlan::enable";
-			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm 164 */
+			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm 164 */
 			default-state = "on";
 		};
-
+#if 0
 		bt_en {
 			label = "bluetoth::enable";
-			gpios = <&gpio6 2 GPIO_ACTIVE_LOW>;	/* soDimm 166 */
+			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;	/* soDimm 166 */
 			default-state = "on";
 		};
-
+#endif
 		ext_on {
 			label = "on_ext::active";
 			gpios = <&gpio6 0 GPIO_ACTIVE_HIGH>;	/* soDimm 168 */
@@ -128,13 +128,13 @@
 
 		pwr_video {
 			label = "videocapture::enable";
-			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;	/* soDimm 133 */
+			gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;	/* soDimm 133 */
 			default-state = "on";
 		};
 
 		heater_en {
 			label = "heater::enable";
-			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;	/* soDimm 119 */
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
 			default-state = "off";
 		};
 	};
@@ -169,7 +169,7 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio6 5 GPIO_ACTIVE_LOW>; /* soDimm  162 */
+		enable-gpios = <&gpio6 1 GPIO_ACTIVE_LOW>; /* soDimm  160 */
 		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
@@ -199,13 +199,15 @@
  */
 /* &uart1 {	status = "okay";	}; => Allways enabled */
 &uart2 {
+	uart-has-rtscts;
 	status = "okay";
 
-
-	bluetooth { /* DD19: CC2564CRVM */
-		enable-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+	bluetooth {
+		enable-gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;
 		compatible = "ti,wl1837-st";
 		max-speed = <3686400>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
 		/*
 		 * Params not found in source, but described in documentation
 		 */
@@ -213,6 +215,13 @@
 		vio-supply = <&p1v8_bt_reg>;
 		vbat-supply = <&p3v3_reg>;
 		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
 	};
 };
 
@@ -254,6 +263,11 @@
 				data-lanes = <1>;
 			};
 		};
+	};
+
+	lm75@47 { /* LM75BDP - Thermal sensor */
+		compatible = "national,lm75b";
+		reg = <0x47>;
 	};
 
 	rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
