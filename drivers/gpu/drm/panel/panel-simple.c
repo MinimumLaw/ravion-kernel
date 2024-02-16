@@ -4188,6 +4188,32 @@ static const struct panel_desc tfc_s9700rtwv43tr_01b = {
 	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_SAMPLE_NEGEDGE,
 };
 
+static const struct drm_display_mode tianma_nl6448bc26_mode = {
+	.clock = 25175,
+	.hdisplay = 640,
+	.hsync_start = 640 + 16,
+	.hsync_end = 640 + 16 + 48,
+	.htotal = 640 + 16 + 48 + 96,
+	.vdisplay = 480,
+	.vsync_start = 480 + 10,
+	.vsync_end = 480 + 10 + 3,
+	.vtotal = 480 + 10 + 3 + 32,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc tianma_nl6448bc26 = {
+	.modes = &tianma_nl6448bc26_mode,
+	.num_modes = 1,
+	.bpc = 8,
+	.size = {
+		.width = 170,
+		.height = 128,
+	},
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
+};
+
 static const struct display_timing tianma_tm070jdhg30_timing = {
 	.pixelclock = { 62600000, 68200000, 78100000 },
 	.hactive = { 1280, 1280, 1280 },
@@ -4935,6 +4961,9 @@ static const struct of_device_id platform_of_match[] = {
 	}, {
 		.compatible = "tfc,s9700rtwv43tr-01b",
 		.data = &tfc_s9700rtwv43tr_01b,
+	}, {
+		.compatible = "tianma,nl6448bc26-22f",
+		.data = &tianma_nl6448bc26,
 	}, {
 		.compatible = "tianma,tm070jdhg30",
 		.data = &tianma_tm070jdhg30,
