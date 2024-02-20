@@ -164,8 +164,8 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>; /* soDimm  160 */
-		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
+		enable-gpios = <&gpio6 1 GPIO_ACTIVE_LOW>; /* soDimm  160 */
+		pwms = <&pwm3 0 2000 1>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
 		status = "okay";
@@ -293,6 +293,13 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	/* Tune-Up
+	non-removable;
+	no-mmc-hs400;
+	no-sdio;
+	no-sd;
+	no-1-8-v;
+	no-mmc; */
 
 	WL1837MOD: wlcore@2 {
 		compatible = "ti,wl1837";
