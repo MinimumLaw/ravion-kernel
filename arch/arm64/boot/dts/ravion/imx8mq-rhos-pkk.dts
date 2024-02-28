@@ -1,0 +1,318 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "imx8mq-rhos.dtsi"
+
+/ {
+	model = "PKK with RHOS-I.MX8MQ CPU Module";
+	compatible = "ravion,pkk", "ravion,imx8mq-rhos", "fsl,imx8mq";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	p18v: regulator-p18v {
+		compatible = "regulator-fixed";
+		regulator-name = "p18v";
+		regulator-min-microvolt = <18000000>;
+		regulator-max-microvolt = <18000000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator-p12v {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p5v: regulator-p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator-p3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p1v8: regulator-p1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_ext: regulator-p3v3_ext {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_ext";
+		vin-supply = <&p5v>;
+		gpio = <&gpio3 9 0>; /* FixMe: soDimm174 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	p3v3_lcd: regulator-p3v3_lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_lcd";
+		vin-supply = <&p3v3>;
+		gpio = <&gpio3 8 0>; /* FixMe: soDimm166 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	p_apd: regulator-p_apd {
+		compatible = "regulator-fixed";
+		regulator-name = "p_apd";
+		vin-supply = <&p5v>;
+		gpio = <&gpio3 9 0>; /* FixMe: soDimm168 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	p_ext1: regulator-p_ext1 {
+		compatible = "regulator-fixed";
+		regulator-name = "p_ext1";
+		vin-supply = <&p5v>;
+		gpio = <&gpio3 9 0>; /* FixMe: soDimm170 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	p_ext2: regulator-p_ext2 {
+		compatible = "regulator-fixed";
+		regulator-name = "p_ext2";
+		vin-supply = <&p5v>;
+		gpio = <&gpio3 9 0>; /* FixMe: soDimm172 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	gpio-leds {
+	};
+
+	gpio-keys {
+	};
+
+	/*Recomended LVDS display panel
+	 *****************************/
+	lvds_panel {
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+		backlight = <&lvds_backlight>;
+		data-mapping = "jeida-24";
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&bridge_lvds_out>;
+			};
+		};
+	};
+
+	lvds_backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&p3v3_lcd>;
+		enable-gpios = <&gpio3 13 GPIO_ACTIVE_LOW>; /* soDimm169 */
+		pwms = <&pwm3 0 100000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <8>;
+		status = "okay";
+	};
+
+	soundcard@0 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(M)";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+
+		simple-audio-card,cpu {
+			sound-dai = <&sai1 0>;
+		};
+
+		dailink0_master:
+		simple-audio-card,codec {
+			sound-dai = <&sgtl5000 0>;
+		};
+	};
+
+};
+
+/* Serial audio interface
+ ***********************/
+&sai1	{
+	status = "okay";
+	/* default - any, I2S - 1-st tx/rx, PDM - disabled */
+	fst,dataline = <0 0x0F 0x0F 0x01 0x01 0x01 0x02 0x00 0x00>;
+	clocks = <&clk IMX8MQ_CLK_SAI1_IPG>,
+		<&clk IMX8MQ_CLK_DUMMY>,	/* MCLK floated on SAI side  */
+		<&clk IMX8MQ_CLK_DUMMY>,
+		<&clk IMX8MQ_CLK_DUMMY>;
+	clock-names = "bus", "mclk1", "mclk2", "mclk3";
+};
+
+&irqsteer {	status = "okay";	};
+
+&lcdif {	status = "okay";	};
+
+&mipi_dsi {
+	status = "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+			mipi_dsi_out: endpoint {
+				remote-endpoint = <&bridge_dsi_in>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+&dphy {		status = "okay";	};
+
+&i2c1 {
+	status = "okay";
+
+	rtc0: ds1342@68 {
+		compatible = "dallas,ds1341";
+		reg = <0x68>;
+		status = "okay";
+	};
+};
+
+&i2c2 {
+	dsi2lvds-bridge@2c {
+		compatible = "ti,sn65dsi83";
+		reg = <0x2c>;
+		enable-gpios = <&gpio3 12 GPIO_ACTIVE_LOW>; /* soDimm167 */
+/*		irq-gpios = <&gpio3 3 GPIO_ACTIVE_LOW >; soDimm148 */
+		vcc-supply = <&p1v8>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				bridge_dsi_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&mipi_dsi_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				bridge_lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
+	};
+
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_clko1>;
+		clocks = <&clk IMX8MQ_CLK_CLKO1>;
+		VDDA-supply = <&p3v3>; /* +3.3VA is drosseled +3.3V */
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&p1v8>;
+		status = "okay";
+	};
+};
+
+
+&i2c3 {
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+/* MIPI CSI interface
+ *******************/
+&csi1 { status = "okay";  };
+
+
+/* PWMs
+ *****/
+&pwm3 {		status = "okay";	};
+&pwm4 {		status = "okay";	};
+
+/* Bluetooth interface
+ ********************/
+&uart4 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
+		compatible = "ti,wl1271-st";
+		enable-gpios = <&gpio3 11 GPIO_ACTIVE_HIGH>; /* XP48 */
+/*		vio-supply = <&p1v8_bt>; */
+		vbat-supply = <&p3v3>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+/* MicroSD card slot
+ ******************/
+&usdhc2 {	status = "okay";	};
+
+/* PCIe M.2 slot
+ **************/
+&pcie0 {	status = "okay";	};
+
+/* PCIe 4x slot
+ *************/
+&pcie1 {	status = "okay";	};
+
+
+/* Temporary disable USB3 interface(s)
+ ************************************/
+&usb3_phy0 {	status = "disabled";	};
+&usb3_phy1 {	status = "disabled";	};
