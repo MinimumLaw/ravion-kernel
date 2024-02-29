@@ -192,6 +192,12 @@
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
 
+	gen_100MHz: generator@68 {
+		compatible = "9FGV0641AKILF";
+		reg = <0x68>;
+		status = "okay";
+	};
+
 	VDD_ARM_0V9: arm_reg@42 {
 		reg = <0x42>;
 		compatible = "ti,tps62869";

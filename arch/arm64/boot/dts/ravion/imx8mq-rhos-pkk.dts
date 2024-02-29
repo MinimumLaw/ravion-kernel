@@ -59,7 +59,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p3v3_ext";
 		vin-supply = <&p5v>;
-		gpio = <&gpio3 9 0>; /* FixMe: soDimm174 */
+		gpio = <&gpio3 22 0>; /* FixMe: soDimm174 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -68,7 +68,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p3v3_lcd";
 		vin-supply = <&p3v3>;
-		gpio = <&gpio3 8 0>; /* FixMe: soDimm166 */
+		gpio = <&gpio3 18 0>; /* FixMe: soDimm166 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -77,7 +77,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p_apd";
 		vin-supply = <&p5v>;
-		gpio = <&gpio3 9 0>; /* FixMe: soDimm168 */
+		gpio = <&gpio3 23 0>; /* FixMe: soDimm168 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -86,7 +86,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p_ext1";
 		vin-supply = <&p5v>;
-		gpio = <&gpio3 9 0>; /* FixMe: soDimm170 */
+		gpio = <&gpio3 20 0>; /* FixMe: soDimm170 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -95,7 +95,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p_ext2";
 		vin-supply = <&p5v>;
-		gpio = <&gpio3 9 0>; /* FixMe: soDimm172 */
+		gpio = <&gpio3 21 0>; /* FixMe: soDimm172 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
@@ -104,6 +104,47 @@
 	};
 
 	gpio-keys {
+		compatible = "gpio-keys";
+
+		power-key {
+			label = "Power";
+			gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		sw1-key {
+			label = "SW1";
+			gpios = <&gpio3 6 GPIO_ACTIVE_LOW>; /* soDimm154 */
+			linux,code = <KEY_F1>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		sw2-key {
+			label = "SW2";
+			gpios = <&gpio3 7 GPIO_ACTIVE_LOW>; /* soDimm156 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		sw3-key {
+			label = "SW3";
+			gpios = <&gpio3 8 GPIO_ACTIVE_LOW>; /* soDimm158 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		sw4-key {
+			label = "SW4";
+			gpios = <&gpio3 9 GPIO_ACTIVE_LOW>; /* soDimm160 */
+			linux,code = <KEY_F4>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
 	};
 
 	/*Recomended LVDS display panel
@@ -203,11 +244,29 @@
 
 &i2c1 {
 	status = "okay";
+	#address-cells = <1>;	#size-cells = <0>;
 
-	rtc0: ds1342@68 {
-		compatible = "dallas,ds1341";
-		reg = <0x68>;
-		status = "okay";
+	rtc0: rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
+	};
+
+	bmg160@57 {
+		compatible = "bosch,bmi160";
+		reg = <0x57>;
+		vdd-supply = <&p3v3>;
+		vddio-supply = <&p3v3>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <2 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm 146 */
+		interrupt-names = "INT1";
+	};
+
+	light@44 {
+		compatible = "isil,isl29035";
+		vcc-supply = <&p3v3>;
+		reg = <0x44>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <4 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm 150 */
 	};
 };
 
