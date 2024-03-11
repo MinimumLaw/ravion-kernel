@@ -458,7 +458,8 @@ static int adv7280m_g_std(struct v4l2_subdev *sd, v4l2_std_id *norm)
 	return 0;
 }
 
-static int adv7280m_g_frame_interval(struct v4l2_subdev *sd,
+static int adv7280m_get_frame_interval(struct v4l2_subdev *sd,
+				    struct v4l2_subdev_state *sd_state,
 				    struct v4l2_subdev_frame_interval *fi)
 {
 	struct adv7280m_state *state = to_state(sd);
@@ -697,7 +698,7 @@ static int adv7280m_get_pad_format(struct v4l2_subdev *sd,
 	struct adv7280m_state *state = to_state(sd);
 
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		format->format = *v4l2_subdev_get_try_format(sd, sd_state, 0);
+		format->format = *v4l2_subdev_state_get_format(sd_state, 0);
 	} else {
 		adv7280m_mbus_fmt(sd, &format->format);
 		format->format.field = state->field;
@@ -734,14 +735,14 @@ static int adv7280m_set_pad_format(struct v4l2_subdev *sd,
 			adv7280m_s_power(sd, 1);
 		}
 	} else {
-		framefmt = v4l2_subdev_get_try_format(sd, sd_state, 0);
+		framefmt = v4l2_subdev_state_get_format(sd_state, 0);
 		*framefmt = format->format;
 	}
 
 	return ret;
 }
 
-static int adv7280m_init_cfg(struct v4l2_subdev *sd,
+static int adv7280m_init_state(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_state *sd_state)
 {
 	struct v4l2_subdev_format fmt = {
@@ -834,7 +835,6 @@ static int adv7280m_subscribe_event(struct v4l2_subdev *sd,
 static const struct v4l2_subdev_video_ops adv7280m_video_ops = {
 	.s_std = adv7280m_s_std,
 	.g_std = adv7280m_g_std,
-	.g_frame_interval = adv7280m_g_frame_interval,
 	.querystd = adv7280m_querystd,
 	.g_input_status = adv7280m_g_input_status,
 	.s_routing = adv7280m_s_routing,
@@ -850,10 +850,10 @@ static const struct v4l2_subdev_core_ops adv7280m_core_ops = {
 };
 
 static const struct v4l2_subdev_pad_ops adv7280m_pad_ops = {
-	.init_cfg = adv7280m_init_cfg,
 	.enum_mbus_code = adv7280m_enum_mbus_code,
 	.set_fmt = adv7280m_set_pad_format,
 	.get_fmt = adv7280m_get_pad_format,
+	.get_frame_interval = adv7280m_get_frame_interval,
 	.get_mbus_config = adv7280m_get_mbus_config,
 };
 
@@ -866,6 +866,10 @@ static const struct v4l2_subdev_ops adv7280m_ops = {
 	.video = &adv7280m_video_ops,
 	.pad = &adv7280m_pad_ops,
 	.sensor = &adv7280m_sensor_ops,
+};
+
+static const struct v4l2_subdev_internal_ops adv7280m_internal_ops = {
+	.init_state = adv7280m_init_state,
 };
 
 static irqreturn_t adv7280m_irq(int irq, void *devid)
@@ -1177,6 +1181,7 @@ static int adv7280m_probe(struct i2c_client *client)
 	state->input = 0;
 	sd = &state->sd;
 	v4l2_i2c_subdev_init(sd, client, &adv7280m_ops);
+	sd->internal_ops = &adv7280m_internal_ops;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	ret = adv7280m_init_controls(state);
