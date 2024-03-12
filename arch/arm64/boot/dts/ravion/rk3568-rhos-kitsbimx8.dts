@@ -10,4 +10,186 @@
 / {
 	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
+
+	chosen {
+		stdout-path = "&uart2:115200n8";
+	};
+
+	/* from 2 - 0,1 on CPU module */
+	p15v_in: regulator-p15v_in {
+		compatible = "regulator-fixed";
+		regulator-name = "p15v_in";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator-p12v {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p12v_lcd: regulator-p12v-lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		vin-supply = <&p12v>;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p5v: regulator-p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator-p3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		vin-supply = <&p15v_in>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_cam: regulator-p3v3_cam {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_cam";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio2 RK_PD7 0>;			/* soDimm160 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p3v3_lcd: regulator-p3v3_lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3_lcd";
+		vin-supply = <&p15v_in>;
+		gpio = <&gpio2 RK_PD6 0>;			/* soDimm158 */
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p1v8: regulator-p1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	p1v8_bt: regulator-p1v8_bt { /* XP48 */
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8_bt";
+		vin-supply = <&p3v3>;
+		gpio = <&gpio2 RK_PD4 0>;			/* soDimm154 FixMe: broken GPIO_ACTIVE_HIGH */
+		enable-active-high;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	avcc: regulator-avcc {
+		compatible = "regulator-fixed";
+		regulator-name = "avcc";
+		vin-supply = <&p5v>;
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		regulator-always-on;
+	};
+
+	avdd: regulator-avdd {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd";
+		vin-supply = <&p3v3>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	codec_mclk: codec-mclk-clock { /* XP40, XP41 - both removed*/
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12288000>;
+	};
+
+	/*Recomended LVDS display panel
+	 *****************************/
+	lvds_panel {
+		compatible = "sharp,LQ121K1LG52", "panel-lvds";
+		backlight = <&lvds_backlight>;
+		data-mapping = "jeida-24";
+
+		width-mm = <261>;
+		height-mm = <163>;
+
+		panel-timing {
+			clock-frequency = <83500000>;
+			hactive = <1280>;
+			vactive = <800>;
+			hsync-len = <200>;
+			hfront-porch = <100>;
+			hback-porch = <100>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <11>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+/*				remote-endpoint = <&bridge_lvds_out>; */
+			};
+		};
+	};
+
+	lvds_backlight: backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
+		enable-gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_LOW>; /* soDimm  169 */
+/*		pwms = <&pwm3 0 100000 0>;  FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <8>;
+		status = "okay";
+	};
 };
+
+
+/* Bluetooth interface
+ ********************/
+&uart1	{
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
+		compatible = "ti,wl1271-st";
+		enable-gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;	/* soDimm XP32 2-3 */
+		vio-supply = <&p1v8_bt>;
+		vbat-supply = <&p3v3>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+&uart2 {	status = "okay"; };	/* Dedicated debug UART */
+&uart3 {	status = "okay"; };	/* Generic UART0 */
+&uart4 {	status = "okay"; };	/* Geberic UART1 */

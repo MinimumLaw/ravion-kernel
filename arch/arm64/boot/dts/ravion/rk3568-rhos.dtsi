@@ -38,13 +38,6 @@
 	/*
 	 * Clock sources
 	 */
-	gmac1_clkin: external-gmac1-clock {
-		compatible = "fixed-clock";
-		clock-frequency = <125000000>;
-		clock-output-names = "gmac1_clkin";
-		#clock-cells = <0>;
-	};
-
 	pcie0_refclk: pcie0-refclk { /* DD8, DIF0, PCIe3 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -117,7 +110,6 @@
 	status = "okay";
 };
 
-
 /*
  * PCI-e interfaces
  */
@@ -134,17 +126,15 @@
 	status = "okay";
 };
 
-
-
 /*
  * I2C/SMBUS
  */
 &i2c0 { /* PMIC, CPU voltage */
 	status = "okay";
 
-	pcie_clkgen: glkgen@f { /* FixMe: DD8 real address?? */
+	pcie_clkgen: glkgen@68 { /* DD8 */
 		compatible = "9FGV0641AKLF";
-		reg = <0x0f>;
+		reg = <0x68>;
 	};
 
 	vdd_cpu: regulator@1c {
@@ -384,8 +374,11 @@
 
 &sdhci { /* eMMC */
 	pinctrl-names = "default";
-	pinctrl-0 = <&emmc_bus8>, <&emmc_cmd>, <&emmc_clk>,
-		<&emmc_datastrobe>, <&emmc_rstnout>;
+	pinctrl-0 = <&emmc_bus8
+		     &emmc_cmd
+		     &emmc_clk
+		     &emmc_datastrobe
+		     &emmc_rstnout>;
 	status = "okay";
 };
 
@@ -394,38 +387,49 @@
 };
 
 &gmac1 { /* Ethernet */
-	clock_in_out = "input";
-	phy-handle = <&rgmii_phy1>;
-	phy-mode = "rgmii";
-	phy-supply = <&vcc_1v8>;
-	snps,reset-gpio = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <75000000>;
-	snps,reset-active-low;
-	tx_delay = <0x42>;
-	rx_delay = <0x28>;
+	/*
+	 * RHOS module _NOT_ used 125MHz (GMAC1_MCLKINOUTM1) and
+	 * 25MHz (CLK025M1) outputs, so we not init this clocks.
+	 */
+	clock_in_out = "output";
+	assigned-clocks = <&cru SCLK_GMAC1_RX_TX>, <&cru SCLK_GMAC1>;
+	assigned-clock-parents = <&cru SCLK_GMAC1_RGMII_SPEED>, <&cru CLK_MAC1_2TOP>;
+	assigned-clock-rates = <0>, <125000000>;
+
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1m1_miim
 		     &gmac1m1_tx_bus2
 		     &gmac1m1_rx_bus2
 		     &gmac1m1_rgmii_clk
-		     &gmac1m1_clkinout
-		     &gmac1m1_rgmii_bus
-		     &gmac1_phy1_pins>;
+		     &gmac1m1_rgmii_bus>;
+
+	phy-handle = <&rgmii_phy1>;
+	phy-mode = "rgmii";
+	phy-supply = <&vcc_1v8>;
+
 	status = "okay";
 };
 
 &mdio1 {
 	rgmii_phy1: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gmac1_phy1_pins>;
 		reg = <0x1>;
-		vddio-supply = <&vcc_1v8>;
+
+		reset-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
+		reset-aasert-us = <20000>;
+		reset-deassert-us= <100000>;
 	};
 };
 
 &pinctrl {
 	pinctrl-names = "default";
-	pinctrl-0 = <&hog_ctrl_pins>, <&gpio_bank1_pins>,
-		<&gpio_bank2_pins>, <&gpio_bank3_pins>;
+	pinctrl-0 = <&hog_ctrl_pins
+		     &gpio_bank1_pins
+		     &gpio_bank2_pins
+		     &gpio_bank3_pins
+		     &smb_ctrl_pins>;
 
 	hog_ctrl {
 		hog_ctrl_pins: hog_ctrl_pins {
@@ -452,81 +456,81 @@
 
 	gmac1_phy1_ctrl {
 		gmac1_phy1_pins: gmac1_phy1_pins {
-			rockchip,pins = <3 RK_PB0 &pcfg_pull_up>; /* RSTN_ETHPHY */
+			rockchip,pins = <3 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>; /* RSTN_ETHPHY */
 		};
 	};
 
 	usb2_ctrl {
 		usb2_0_ctrl_pins {
 			rockchip,pins = /* VCCIO4 domain */
-/* 013 */			<2 RK_PA3 0 &pcfg_pull_up>,	/* USB2_PEN0 */
-/* 015 */			<2 RK_PA5 0 &pcfg_pull_up>;	/* USB2_OC0 */
+/* 013 */			<2 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN0 */
+/* 015 */			<2 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;	/* USB2_OC0 */
 		};
 
 		usb2_1_ctrl_pins {
 			rockchip,pins = /* VCCIO4 domain */
-/* 006 */			<2 RK_PA7 0 &pcfg_pull_up>,	/* USB2_ID1 */
-/* 014 */			<2 RK_PA4 0 &pcfg_pull_up>,     /* USB2_PEN1 */
-/* 016 */			<2 RK_PA6 0 &pcfg_pull_up>;     /* USB2_OC1 */
+/* 006 */			<2 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_ID1 */
+/* 014 */			<2 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,     /* USB2_PEN1 */
+/* 016 */			<2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;     /* USB2_OC1 */
 		};
 	};
 
 	smbus_ctrl {
-		smb_ctrl_pins {
+	  	smb_ctrl_pins: smb_ctrl_pins {
 			rockchip,pins =
-/* 131 */			<0 RK_PB0 0 &pcfg_pull_up>,	/* SMB_ALERT */
-/* 133 */			<0 RK_PC1 0 &pcfg_pull_up>,	/* SMB_IN */
-/* 135 */			<0 RK_PC4 0 &pcfg_pull_up>;	/* SMB_OUT */
+/* 131 */			<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,	/* SMB_ALERT */
+/* 133 */			<0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>,	/* SMB_IN */
+/* 135 */			<0 RK_PC4 RK_FUNC_GPIO &pcfg_pull_up>;	/* SMB_OUT */
 		};
 	};
 
 	sdio_ctrl {
 		sdio_ctrl_pins {
 			rockchip,pins = /* VCCIO4 domain */
-/* 157 */			<2 RK_PB0 0 &pcfg_pull_up>,	/* MMC1_PEN */
-/* 159 */ 			<2 RK_PB7 0 &pcfg_pull_up>;	/* MMC1_18EN */
+/* 157 */			<2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,	/* MMC1_PEN */
+/* 159 */ 			<2 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>;	/* MMC1_18EN */
 		};
 	};
 
 	gpio_bank1_ctrl {
 		gpio_bank1_pins: gpio_bank1_pins {
 			rockchip,pins = /* VCCIO5 domain */
-/* 146 */			<2 RK_PD0 0 &pcfg_pull_up>,	/* UIO1_1 */
-/* 148 */			<2 RK_PD1 0 &pcfg_pull_up>,	/* UIO1_2 */
-/* 150 */			<2 RK_PD2 0 &pcfg_pull_up>,	/* UIO1_3 */
-/* 152 */			<2 RK_PD3 0 &pcfg_pull_up>,	/* UIO1_4 */
-/* 154 */			<2 RK_PD4 0 &pcfg_pull_up>,	/* UIO1_5 */
-/* 156 */			<2 RK_PD5 0 &pcfg_pull_up>,	/* UIO1_6 */
-/* 158 */			<2 RK_PD6 0 &pcfg_pull_up>,	/* UIO1_7 */
-/* 160 */			<2 RK_PD7 0 &pcfg_pull_up>;	/* UIO1_8 */
+/* 146 */			<2 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_1 */
+/* 148 */			<2 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_2 */
+/* 150 */			<2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_3 */
+/* 152 */			<2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_4 */
+/* 154 */			<2 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_5 */
+/* 156 */			<2 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_6 */
+/* 158 */			<2 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO1_7 */
+/* 160 */			<2 RK_PD7 RK_FUNC_GPIO &pcfg_pull_up>;	/* UIO1_8 */
 		};
 	};
 
 	gpio_bank2_ctrl {
 		gpio_bank2_pins: gpio_bank2_pins {
 			rockchip,pins = /* VCCIO6 domain */
-/* 163 */ 			<3 RK_PD0 0 &pcfg_pull_up>,	/* UIO2_1 */
-/* 165 */			<3 RK_PD1 0 &pcfg_pull_up>,	/* UIO2_2 */
-/* 167 */			<3 RK_PD2 0 &pcfg_pull_up>,	/* UIO2_3 */
-/* 169 */			<3 RK_PD3 0 &pcfg_pull_up>,	/* UIO2_4 */
-/* 171 */			<3 RK_PD4 0 &pcfg_pull_up>,	/* UIO2_5 */
-/* 173 */			<3 RK_PD5 0 &pcfg_pull_up>,	/* UIO2_6 */
-/* 175 */			<3 RK_PC6 0 &pcfg_pull_up>,	/* UIO2_7 */
-/* 177 */			<3 RK_PC7 0 &pcfg_pull_up>;	/* UIO2_8 */
+/* 163 */ 			<3 RK_PD0 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_1 */
+/* 165 */			<3 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_2 */
+/* 167 */			<3 RK_PD2 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_3 */
+/* 169 */			<3 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_4 */
+/* 171 */			<3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_5 */
+/* 173 */			<3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_6 */
+/* 175 */			<3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO2_7 */
+/* 177 */			<3 RK_PC7 RK_FUNC_GPIO &pcfg_pull_up>;	/* UIO2_8 */
 		};
 	};
 
 	gpio_bank3_ctrl {
 		gpio_bank3_pins: gpio_bank3_pins {
 			rockchip,pins = /* VCCIO5 domain */
-/* 164 */			<3 RK_PA2 0 &pcfg_pull_up>,	/* UIO3_1 */
-/* 166 */			<3 RK_PA3 0 &pcfg_pull_up>,	/* UIO3_2 */
-/* 168 */			<3 RK_PA4 0 &pcfg_pull_up>,	/* UIO3_3 */
-/* 170 */			<3 RK_PA5 0 &pcfg_pull_up>,	/* UIO3_4 */
-/* 172 */			<3 RK_PA6 0 &pcfg_pull_up>,	/* UIO3_5 */
-/* 174 */			<3 RK_PC4 0 &pcfg_pull_up>,	/* UIO3_6 */
-/* 176 */			<3 RK_PC5 0 &pcfg_pull_up>,	/* UIO3_7 */
-/* 178 */			<3 RK_PB4 0 &pcfg_pull_up>;	/* UIO3_8 */
+/* 164 */			<3 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_1 */
+/* 166 */			<3 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_2 */
+/* 168 */			<3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_3 */
+/* 170 */			<3 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_4 */
+/* 172 */			<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_5 */
+/* 174 */			<3 RK_PC4 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_6 */
+/* 176 */			<3 RK_PC5 RK_FUNC_GPIO &pcfg_pull_up>,	/* UIO3_7 */
+/* 178 */			<3 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>;	/* UIO3_8 */
 		};
 	};
 };
@@ -566,7 +570,7 @@
 	avdd-0v9-supply = <&vdda0v9_image>;
 	avdd-1v8-supply = <&vcca1v8_image>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmitx_scl &hdmitx_sda &hdmitxm1_cec>;
+	pinctrl-0 = <&hdmitx_scl &hdmitx_sda>;
 	status = "okay";
 };
 

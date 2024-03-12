@@ -78,7 +78,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p3v3_cam";
 		vin-supply = <&p15v_in>;
-		gpio = <&gpio3 9 0>;
+		gpio = <&gpio3 9 0>;				/* soDimm160 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
@@ -88,7 +88,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p3v3_lcd";
 		vin-supply = <&p15v_in>;
-		gpio = <&gpio3 8 0>;
+		gpio = <&gpio3 8 0>;				/* soDimm158 */
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
@@ -107,7 +107,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "p1v8_bt";
 		vin-supply = <&p3v3>;
-		gpio = <&gpio3 6 0>; /* FixMe: broken GPIO_ACTIVE_HIGH */
+		gpio = <&gpio3 6 0>;				/* soDimm154 FixMe: broken GPIO_ACTIVE_HIGH */
 		enable-active-high;
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
