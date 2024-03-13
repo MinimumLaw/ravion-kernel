@@ -50,6 +50,16 @@
 		clock-frequency = <100000000>;
 	};
 
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		sys_rst {
+			label = "sys::RESET";
+			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;	/* soDimm165 */
+			default-state = "off";
+		};
+	};
+
 	/*
 	 * ToDo: HDMI connector _MUST_ be moved into board DTS (from this SoM DTS)
 	 */
@@ -81,34 +91,21 @@
 /*
  * USB interfaces
  */
-&usb_host0_ehci { status = "okay"; };
-&usb_host0_ohci { status = "okay"; };
 &usb_host0_xhci {
 	extcon = <&usb2phy0>;
 	status = "okay";
 };
-&usb2phy0	{ status = "okay"; };
-&usb2phy0_host {
-/*	phy-supply = <&vcc5v0_usb_host>; */
-	status = "okay";
-};
-&usb2phy0_otg {
-/*	phy-supply = <&vcc5v0_usb_otg>; */
-	status = "okay";
-};
+&usb2phy0      { status = "okay"; };
+&usb2phy0_host { status = "okay"; };
+&usb2phy0_otg  { status = "okay"; };
 
-&usb_host1_ehci { status = "okay"; };
-&usb_host1_ohci { status = "okay"; };
-&usb_host1_xhci { status = "okay"; };
-&usb2phy1	{ status = "okay"; };
-&usb2phy1_host {
-/*	phy-supply = <&vcc5v0_usb_host>; */
+&usb_host1_xhci {
+	extcon = <&usb2phy1>;
 	status = "okay";
 };
-&usb2phy1_otg {
-/*	phy-supply = <&vcc5v0_usb_host>; */
-	status = "okay";
-};
+&usb2phy1      { status = "okay"; };
+&usb2phy1_host { status = "okay"; };
+&usb2phy1_otg  { status = "okay"; };
 
 /*
  * PCI-e interfaces
@@ -132,12 +129,12 @@
 &i2c0 { /* PMIC, CPU voltage */
 	status = "okay";
 
-	pcie_clkgen: glkgen@68 { /* DD8 */
+	pcie_clkgen: glkgen@68 { /* DD8 - not have driver this time */
 		compatible = "9FGV0641AKLF";
 		reg = <0x68>;
 	};
 
-	vdd_cpu: regulator@1c {
+	vdd_cpu: regulator@1c { /* FixMe: temporary disabled !!! _NOT_ boot!!! */
 		compatible = "tcs,tcs4525";
 		reg = <0x1c>;
 		fcs,suspend-voltage-selector = <1>;
@@ -148,6 +145,7 @@
 		regulator-max-microvolt = <1150000>;
 		regulator-ramp-delay = <2300>;
 		vin-supply = <&P3V3>;
+		status = "disabled";
 
 		regulator-state-mem {
 			regulator-off-in-suspend;
@@ -372,6 +370,18 @@
 
 };
 
+/* soDimm099 SDA
+ * soDimm101 SCL */
+&i2c1 {
+    status = "okay";
+};
+
+/* soDimm100 SDA
+ * soDimm102 SCL */
+&i2c2 {
+    status = "okay";
+};
+
 &sdhci { /* eMMC */
 	pinctrl-names = "default";
 	pinctrl-0 = <&emmc_bus8
@@ -403,6 +413,8 @@
 		     &gmac1m1_rgmii_clk
 		     &gmac1m1_rgmii_bus>;
 
+	tx-delay = <48>;
+	rx-delay = <16>;
 	phy-handle = <&rgmii_phy1>;
 	phy-mode = "rgmii";
 	phy-supply = <&vcc_1v8>;
@@ -422,6 +434,19 @@
 		reset-deassert-us= <100000>;
 	};
 };
+
+&pwm0 { /* soDimm122 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0m0_pins>;
+	status = "okay";
+};
+
+&pwm1 { /* soDimm124 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm1m0_pins>;
+	status = "okay";
+};
+
 
 &pinctrl {
 	pinctrl-names = "default";
@@ -463,8 +488,8 @@
 		usb2_1_ctrl_pins {
 			rockchip,pins = /* VCCIO4 domain */
 /* 006 */			<2 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_ID1 */
-/* 014 */			<2 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,     /* USB2_PEN1 */
-/* 016 */			<2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;     /* USB2_OC1 */
+/* 014 */			<2 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN1 */
+/* 016 */			<2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;	/* USB2_OC1 */
 		};
 	};
 
@@ -540,17 +565,18 @@
 &cpu2 {	cpu-supply = <&vdd_cpu>; };
 &cpu3 {	cpu-supply = <&vdd_cpu>; };
 
-&vop {
-	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>;
-	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>;
-	status = "okay";
-};
+&vop { status = "okay"; };
 &vop_mmu { status = "okay"; };
 
 &vp0 {
 	vp0_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
 		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
 		remote-endpoint = <&hdmi_in_vp0>;
+	};
+
+	vp0_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
+		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
+		remote-endpoint = <&mipi1_in_vp0>;
 	};
 };
 
@@ -567,6 +593,12 @@
 	status = "okay";
 };
 
+&dsi1_in {
+	mipi1_in_vp0: endpoint {
+		remote-endpoint = <&vp0_out_mipi1>;
+	};
+};
+
 &hdmi_in {
 	hdmi_in_vp0: endpoint {
 		remote-endpoint = <&vp0_out_hdmi>;
@@ -579,9 +611,27 @@
 	};
 };
 
-&hdmi_sound {
+&hdmi_sound { status = "okay"; };
+&i2s0_8ch   { status = "okay";};
+
+&i2s2_2ch {
+	pinctrl-names = "default";
+	pinctrl-0 = </*&i2s3m0_mclk	 soDimmXXX */
+		     &i2s2m0_sclktx	/* soDimmXXX */
+		     &i2s2m0_lrcktx	/* soDimmXXX */
+		     &i2s2m0_sdi	/* soDimmXXX */
+		     &i2s2m0_sdo>;	/* soDimmXXX */
 	status = "okay";
 };
+
+/* MIPI DSI intrface internals
+ *****************************/
+&dsi_dphy1 { status = "okay"; };
+&dsi1 {	status = "okay"; }; /* FixMe: SCMI firmwae protocol 14 ??? */
+
+/* MIPI CSI intrface internals
+ *****************************/
+&csi_dphy { status = "okay"; };
 
 &pmu_io_domains {
 	pmuio1-supply = <&vcc3v3_pmu>;

@@ -5,15 +5,18 @@
 
 /dts-v1/;
 
+/* For SPI_CAN comment and move XP71 from 1-2 to 2-3 position */
+#define	SPI_FLASH
+/* SGTL5000 act as I2S master device. FixMe: XP...*/
+#define	CODEC_MASTER
+/* define for use external clock generator for codec */
+#undef	CODEC_CLOCK_SELF
+
 #include "rk3568-rhos.dtsi"
 
 / {
 	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
-
-	chosen: chosen {
-		stdout-path = "serial2:115200n8";
-	};
 
 	/* from 2 - 0,1 on CPU module */
 	p15v_in: regulator-p15v_in {
@@ -99,25 +102,25 @@
 		regulator-max-microvolt = <1800000>;
 	};
 
-	avcc: regulator-avcc {
+	pavcc: regulator-pavcc {
 		compatible = "regulator-fixed";
-		regulator-name = "avcc";
+		regulator-name = "pavcc";
 		vin-supply = <&p5v>;
 		regulator-min-microvolt = <3000000>;
 		regulator-max-microvolt = <3000000>;
 		regulator-always-on;
 	};
 
-	avdd: regulator-avdd {
+	pavdd: regulator-pavdd {
 		compatible = "regulator-fixed";
-		regulator-name = "avdd";
+		regulator-name = "pavdd";
 		vin-supply = <&p3v3>;
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
 
-	codec_mclk: codec-mclk-clock { /* XP40, XP41 - both removed*/
+	codec_mclk: codec-mclk-clock { /* XP40, XP41 - both removed */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <12288000>;
@@ -148,7 +151,7 @@
 
 		port {
 			lvds_panel_in: endpoint {
-/*				remote-endpoint = <&bridge_lvds_out>; */
+				remote-endpoint = <&bridge_lvds_out>;
 			};
 		};
 	};
@@ -157,11 +160,75 @@
 		compatible = "pwm-backlight";
 		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
 		enable-gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_LOW>; /* soDimm  169 */
-/*		pwms = <&pwm3 0 100000 0>;  FixMe: frequency !!! */
+		pwms = <&pwm0 0 100000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <8>;
 		status = "okay";
 	};
+
+	/*
+	 */
+	soundcard@0 {
+		compatible = "simple-audio-card";
+#ifdef	CODEC_MASTER
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(M)";
+#else
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(S)";
+#endif
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+#ifndef	CODEC_MASTER
+		dailink0_master:
+#endif
+		simple-audio-card,cpu {
+			sound-dai = <&i2s2_2ch 0>;
+		};
+#ifdef	CODEC_MASTER
+		dailink0_master:
+#endif
+		simple-audio-card,codec {
+			sound-dai = <&sgtl5000 0>;
+		};
+	};
+
+};
+
+/* SPI interface
+ **************/
+&spi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi1m1_cs0 &spi1m1_pins>;
+	status = "okay";
+
+#if defined SPI_FLASH	/* XP71 1-2 */
+	s25fl256@0 {
+		compatible = "spansion,s25fl256s1"; /* "jedec,spi-nor"; */
+		reg = <0>;
+		spi-max-frequency = <20000000>; /* 40MHz ABSOLUTE MAXIMUM */
+	};
+#else /* !defined SPI_FLASH, XP71 2-3 */
+	mcp2518@0 {
+		compatible = "microchip,mcp2518fd";
+		reg = <0>;
+		clocks = <&clk_20m_can 0>;
+		interrupts-extended = <&gpio2 RK_PD0 IRQ_TYPE_LEVEL_LOW>; /* soDimm146 */
+		vdd-supply = <&p3v3>;
+		xceiver-supply = <&p5v>;
+		microchip,int0-gpios = <&gpio2 RK_PD0 0>;	/* soDimm146 not used, just for info */
+		microchip,rx-int-gpios = <&gpio2 RK_PD2 0>;	/* soDimm150 GPIO1/INT1 pinout */
+		spi-max-frequency = <10000000>;		/* clocks/2 or less */
+		status = "okay";
+
+		clk_20m_can: can_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+			clock-accuracy = <100>;
+		};
+	};
+#endif /* SPI_FLASH */
 };
 
 
@@ -193,3 +260,93 @@
 &uart2 {	status = "okay"; };	/* Dedicated debug UART */
 &uart3 {	status = "okay"; };	/* Generic UART0 */
 &uart4 {	status = "okay"; };	/* Geberic UART1 */
+
+&i2c1 { /* can be diabled on XP68 jumpers removed def [1-2],[3-4] */
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "microchip,24c08", "atmel,24c08";
+		reg = <0x50>;
+		vcc-supply = <&p1v8>;
+		status = "okay";
+	};
+
+	dsi2lvds-bridge@2c {
+		compatible = "ti,sn65dsi83";
+		reg = <0x2c>;
+		enable-gpios = <&gpio3 RK_PC7 GPIO_ACTIVE_LOW>;	/* soDimm177 XP78 - closed */
+		vcc-supply = <&p1v8>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				bridge_dsi_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&mipi_dsi_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				bridge_lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	rtc0: ds1342@68 {
+		compatible = "dallas,ds1341";
+		reg = <0x68>;
+		status = "okay";
+	};
+
+	usb-hub@2d { /* can be disabled on XP76 [2-4],[6-8] def. [3-4],[5-6] */
+		compatible = "ignore,no-device-driver-required";
+		status = "disabled";
+		reg = <0x2d>;
+	};
+
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+#ifdef	CODEC_MASTER
+#ifdef	CODEC_CLOCK_SELF
+		clocks = <&codec_mclk 0>;
+#else	/* !CODEC_CLOCK_SELF - use CLKO1 from CPU */
+		pinctrl-names = "default";
+		pinctrl-0 = <&refclk_pins>;	/* soDimm140 and soDimm142 */
+
+		clocks = <&cru I2S2_MCLKOUT>;
+#endif	/* CODEC_CLOCK_SELF */
+#else /* !defined CODEC_MASTER */
+#warning Codec clock MUST be 8K or more, so rate in SLAVE mode min 8192K/512=16K
+                clocks = <&clk IMX8MQ_CLK_SAI1_ROOT>;
+                clock-names = "mclk";
+		assigned-clocks = <&clk IMX8MQ_CLK_SAI1>;
+		assigned-clock-parents = <&clk IMX8MQ_AUDIO_PLL1_OUT>;
+		assigned-clock-rates = <8192000>;
+#endif
+		VDDA-supply = <&pavcc>;
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&pavdd>;
+		status = "okay";
+	};
+
+};
+
+&dsi1_out {
+	mipi_dsi_out: endpoint {
+		remote-endpoint = <&bridge_dsi_in>;
+	};
+};
