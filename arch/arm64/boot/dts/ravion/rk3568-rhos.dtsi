@@ -425,17 +425,10 @@
 
 &pinctrl {
 	pinctrl-names = "default";
-	pinctrl-0 = <&hog_ctrl_pins
-		     &gpio_bank1_pins
+	pinctrl-0 = <&gpio_bank1_pins
 		     &gpio_bank2_pins
 		     &gpio_bank3_pins
 		     &smb_ctrl_pins>;
-
-	hog_ctrl {
-		hog_ctrl_pins: hog_ctrl_pins {
-			/* ToDo: not used pins here */
-		};
-	};
 
 	pmic {
 		pmic_int: pmic_int {

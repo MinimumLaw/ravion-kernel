@@ -11,8 +11,8 @@
 	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
 
-	chosen {
-		stdout-path = "&uart2:115200n8";
+	chosen: chosen {
+		stdout-path = "serial2:115200n8";
 	};
 
 	/* from 2 - 0,1 on CPU module */
@@ -172,7 +172,7 @@
 
 	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
 		compatible = "ti,wl1271-st";
-		enable-gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;	/* soDimm XP32 2-3 */
+		enable-gpios = <&gpio2 RK_PD5 GPIO_ACTIVE_HIGH>;	/* soDimm156 XP32 2-3 */
 		vio-supply = <&p1v8_bt>;
 		vbat-supply = <&p3v3>;
 		clocks = <&clk_32k_bt 0>;
