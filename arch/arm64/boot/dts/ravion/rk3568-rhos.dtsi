@@ -112,14 +112,16 @@
  */
 &pcie2x1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie20m2_pins>;
+	pinctrl-0 = <&pcie20m2_pins
+		     &pcie2_clkreq_soc>; /* pull-up GPIO4 C6 - PCI0_CLKREQ_SOC */
 	status = "okay";
 };
 
 &pcie30phy { status = "okay"; };
 &pcie3x2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie30x2m2_pins>;
+	pinctrl-0 = <&pcie30x2m2_pins
+		     &pcie3_clkreq_soc>; /* pull-up GPIO1 A4 - PCI1_CLKREQ_SOC */
 	status = "okay";
 };
 
@@ -290,9 +292,11 @@
 				regulator-name = "vccio_sd";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
 
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
+					regulator-suspend-microvolt = <3300000>;
 				};
 			};
 
@@ -353,7 +357,7 @@
 					regulator-off-in-suspend;
 				};
 			};
-
+#if 0 /* not used in our schematic */
 			vcc3v3_sd: SWITCH_REG2 {
 				regulator-name = "vcc3v3_sd";
 
@@ -361,6 +365,7 @@
 					regulator-off-in-suspend;
 				};
 			};
+#endif
 		};
 
 		codec {
@@ -380,6 +385,14 @@
  * soDimm102 SCL */
 &i2c2 {
     status = "okay";
+};
+
+/* soDimm129 SDA
+ * soDimm127 SCL => SMBUS */
+&i2c3 {
+	pinctrl-0 = <&i2c3m1_xfer>;
+	pinctrl-names = "default";
+	status = "okay";
 };
 
 &sdhci { /* eMMC */
@@ -455,6 +468,7 @@
 		     &gpio_bank3_pins
 		     &smb_ctrl_pins>;
 
+
 	pmic {
 		pmic_int: pmic_int {
 			rockchip,pins =
@@ -464,11 +478,11 @@
 
 	pcie {
 		pcie3_clkreq_soc: pcie2-clkreq-soc {
-			rockchip,pins = <4 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <4 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 
 		pcie2_clkreq_soc: pcie3-clkreq-soc {
-			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
@@ -565,24 +579,38 @@
 &cpu2 {	cpu-supply = <&vdd_cpu>; };
 &cpu3 {	cpu-supply = <&vdd_cpu>; };
 
+&gpu {
+	mali-supply = <&vdd_gpu>;
+	status = "okay";
+};
+
 &vop { status = "okay"; };
 &vop_mmu { status = "okay"; };
 
 &vp0 {
-	vp0_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
-		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
-		remote-endpoint = <&hdmi_in_vp0>;
-	};
-
 	vp0_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
 		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
 		remote-endpoint = <&mipi1_in_vp0>;
 	};
 };
 
-&gpu {
-	mali-supply = <&vdd_gpu>;
-	status = "okay";
+&dsi1_in {
+	mipi1_in_vp0: endpoint {
+		remote-endpoint = <&vp0_out_mipi1>;
+	};
+};
+
+&vp1 {
+	vp1_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
+		remote-endpoint = <&hdmi_in_vp1>;
+	};
+};
+
+&hdmi_in {
+	hdmi_in_vp1: endpoint {
+		remote-endpoint = <&vp1_out_hdmi>;
+	};
 };
 
 &hdmi {
@@ -593,45 +621,41 @@
 	status = "okay";
 };
 
-&dsi1_in {
-	mipi1_in_vp0: endpoint {
-		remote-endpoint = <&vp0_out_mipi1>;
-	};
-};
-
-&hdmi_in {
-	hdmi_in_vp0: endpoint {
-		remote-endpoint = <&vp0_out_hdmi>;
-	};
-};
-
-&hdmi_out {
-	hdmi_out_con: endpoint {
-		remote-endpoint = <&hdmi_con_in>;
-	};
-};
-
-&hdmi_sound { status = "okay"; };
-&i2s0_8ch   { status = "okay";};
-
 &i2s2_2ch {
 	pinctrl-names = "default";
-	pinctrl-0 = </*&i2s3m0_mclk	 soDimmXXX */
-		     &i2s2m0_sclktx	/* soDimmXXX */
-		     &i2s2m0_lrcktx	/* soDimmXXX */
-		     &i2s2m0_sdi	/* soDimmXXX */
-		     &i2s2m0_sdo>;	/* soDimmXXX */
+	pinctrl-0 = <&i2s2m0_sclktx	/* soDimm130 */
+		     &i2s2m0_lrcktx	/* soDimm132 */
+		     &i2s2m0_sdo	/* soDimm134 */
+		     &i2s2m0_sdi>;	/* soDimm136 */
+	rockchip,trcm-sync-tx-only;	/* use only sclktx/lrcktx for both tx & rx */
 	status = "okay";
 };
 
 /* MIPI DSI intrface internals
  *****************************/
 &dsi_dphy1 { status = "okay"; };
-&dsi1 {	status = "okay"; }; /* FixMe: SCMI firmwae protocol 14 ??? */
+&dsi1 { status = "okay"; };
 
 /* MIPI CSI intrface internals
  *****************************/
-&csi_dphy { status = "okay"; };
+&csi_dphy {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			mipi_csi_receiver: endpoint@0 {
+				reg = <0>;
+			};
+		};
+	};
+};
 
 &pmu_io_domains {
 	pmuio1-supply = <&vcc3v3_pmu>;

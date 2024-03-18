@@ -49,7 +49,7 @@
 
 	p12v_lcd: regulator-p12v-lcd {
 		compatible = "regulator-fixed";
-		regulator-name = "p12v";
+		regulator-name = "p12v_lcd";
 		vin-supply = <&p12v>;
 		regulator-min-microvolt = <12000000>;
 		regulator-max-microvolt = <12000000>;
@@ -393,11 +393,12 @@
 
 	i2c-mux@71 {
 		compatible = "nxp,pca9846";
-		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* XP32 2-3 */
+		reset-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;	/* soDimm163 - XP32 2-3 */
+		vdd-supply = <&p1v8>;
+		reg = <0x71>;
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg = <0x71>;
 
 		m2_slot: i2c@0 {
 			status = "disabled";
