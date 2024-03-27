@@ -163,7 +163,6 @@
 		regulator-always-on;
 	};
 #endif
-
 	/*Recomended LVDS display panel
 	 *****************************/
 	lvds_panel {
@@ -205,6 +204,21 @@
 	};
 
 	/*
+	 * HDMI connector
+	 */
+	hdmi-con {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&hdmi_out_con>;
+			};
+		};
+	};
+
+	/*
+	 * Sound
 	 */
 	soundcard@0 {
 		compatible = "simple-audio-card";
@@ -230,8 +244,9 @@
 			sound-dai = <&sgtl5000 0>;
 		};
 	};
-
 };
+
+&hdmi {	status = "okay"; };
 
 /* SPI interface
  **************/

@@ -35,6 +35,22 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
+	PSDCARD: sdcard-vmmc-regulatror {
+		pinctrl-names = "default";
+		pinctrl-0 = <&psdcard_pins>;
+		compatible = "regulator-gpio";
+		regulator-name = "PSDCARD";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		enable-gpios = <&gpio2 RK_PB0 GPIO_ACTIVE_LOW>;	/* soDimm157 */
+		gpios = <&gpio2 RK_PB7 GPIO_ACTIVE_HIGH>;	/* soDimm159 */
+		states =
+		    <1800000 0x0>,
+		    <3300000 0x1>;
+	};
+
 	/*
 	 * Clock sources
 	 */
@@ -57,20 +73,6 @@
 			label = "sys::RESET";
 			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;	/* soDimm165 */
 			default-state = "off";
-		};
-	};
-
-	/*
-	 * ToDo: HDMI connector _MUST_ be moved into board DTS (from this SoM DTS)
-	 */
-	hdmi-con {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_con_in: endpoint {
-				remote-endpoint = <&hdmi_out_con>;
-			};
 		};
 	};
 };
@@ -284,7 +286,7 @@
 				regulator-max-microvolt = <3300000>;
 
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 
@@ -296,7 +298,6 @@
 
 				regulator-state-mem {
 					regulator-on-in-suspend;
-					regulator-suspend-microvolt = <3300000>;
 				};
 			};
 
@@ -357,22 +358,8 @@
 					regulator-off-in-suspend;
 				};
 			};
-#if 0 /* not used in our schematic */
-			vcc3v3_sd: SWITCH_REG2 {
-				regulator-name = "vcc3v3_sd";
-
-				regulator-state-mem {
-					regulator-off-in-suspend;
-				};
-			};
-#endif
-		};
-
-		codec {
-			mic-in-differential;
 		};
 	};
-
 };
 
 /* soDimm099 SDA
@@ -402,10 +389,23 @@
 		     &emmc_clk
 		     &emmc_datastrobe
 		     &emmc_rstnout>;
+	non-removable;
+	bus-width = <8>;
+	vmmc-supply = <&vcc_3v3>;
+	vqmmc-supply = <&vcc_1v8>;	/* PMIC: SW5 */
 	status = "okay";
 };
 
 &sdmmc0 { /* SD-Card */
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc0_bus4
+		     &sdmmc0_clk
+		     &sdmmc0_cmd>;
+	bus-width = <4>;
+	vmmc-supply = <&PSDCARD>;	/* Use soDimm159 pin for select voltatge */
+	vqmmc-supply = <&vccio_sd>;	/* PMIC: LDO5 */
+	broken-cd;			/* Ne _NOT_ use &sdmmc0_det gpio */
+	no-1-8-v;			/* 3,3V default for board level, fix if required */
 	status = "okay";
 };
 
@@ -468,6 +468,13 @@
 		     &gpio_bank3_pins
 		     &smb_ctrl_pins>;
 
+	psdcard {
+		psdcard_pins: psdcard_pins {
+			rockchip,pins =
+/* 157 */			<2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>, /* SD1_PWR  */
+/* 159 */			<2 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>; /* SD1_18EN */
+		};
+	};
 
 	pmic {
 		pmic_int: pmic_int {
@@ -587,29 +594,35 @@
 &vop { status = "okay"; };
 &vop_mmu { status = "okay"; };
 
+/* VP0 support up to 4096x2304@60 with HDR10 (TRM-Part2, chapter 13.1)
+ * We want hold them for (external) HDMI display
+ **********************************************************************/
 &vp0 {
-	vp0_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
-		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
-		remote-endpoint = <&mipi1_in_vp0>;
-	};
-};
-
-&dsi1_in {
-	mipi1_in_vp0: endpoint {
-		remote-endpoint = <&vp0_out_mipi1>;
-	};
-};
-
-&vp1 {
-	vp1_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+	vp0_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
 		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
-		remote-endpoint = <&hdmi_in_vp1>;
+		remote-endpoint = <&hdmi_in_vp0>;
 	};
 };
 
 &hdmi_in {
-	hdmi_in_vp1: endpoint {
-		remote-endpoint = <&vp1_out_hdmi>;
+	hdmi_in_vp0: endpoint {
+		remote-endpoint = <&vp0_out_hdmi>;
+	};
+};
+
+/* VP1/2 support up to 1920x1080@60 with 24bit (TRM-Part2, chapter 13.1)
+ * We use them for (internal) display
+ **********************************************************************/
+&vp1 {
+	vp1_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
+		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
+		remote-endpoint = <&mipi1_in_vp1>;
+	};
+};
+
+&dsi1_in {
+	mipi1_in_vp1: endpoint {
+		remote-endpoint = <&vp1_out_mipi1>;
 	};
 };
 
@@ -618,7 +631,6 @@
 	avdd-1v8-supply = <&vcca1v8_image>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&hdmitx_scl &hdmitx_sda>;
-	status = "okay";
 };
 
 &i2s2_2ch {
@@ -661,8 +673,8 @@
 	pmuio1-supply = <&vcc3v3_pmu>;
 	pmuio2-supply = <&vcc_1v8>;
 	vccio1-supply = <&vcc_1v8>;
-	vccio2-supply = <&vcc_1v8>;
-	vccio3-supply = <&vccio_sd>;
+	vccio2-supply = <&vcc_1v8>;	/* PMIC: SW5 */
+	vccio3-supply = <&vccio_sd>;	/* PMIC: LDO5 */
 	vccio4-supply = <&vcc_1v8>;
 	vccio5-supply = <&vcc_1v8>;
 	vccio6-supply = <&vcc_1v8>;

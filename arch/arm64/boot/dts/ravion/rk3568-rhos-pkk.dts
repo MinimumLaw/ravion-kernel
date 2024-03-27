@@ -1,0 +1,359 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "dt-bindings/input/input.h"
+#include "rk3568-rhos.dtsi"
+
+/ {
+	model = "PKK with RHOS-RK3568J CPU Module";
+	compatible = "ravion,pkk", "ravion,rk3568-rhos", "rockchip,rk3568";
+
+	chosen {
+		stdout-path = "serial2:115200n8";
+	};
+
+	p18v: regulator-p18v {
+		compatible = "regulator-fixed";
+		regulator-name = "p18v";
+		regulator-min-microvolt = <18000000>;
+		regulator-max-microvolt = <18000000>;
+		regulator-always-on;
+	};
+
+	p12v: regulator-p12v {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		regulator-always-on;
+	};
+
+	p5v: regulator-p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	p3v3: regulator-p3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	p1v8: regulator-p1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		sys_rst {
+			label = "sys::RESET";
+			gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_LOW>;	/* soDimm165 */
+			default-state = "off";
+		};
+
+		status {
+			label = "sys::STATUS";
+			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
+			default-state = "on";
+		};
+
+		pwr_lcd {
+			label = "pwr::LCD";
+			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
+			default-state = "on";
+		};
+
+		pwr_apd {
+			label = "pwr::APD";
+			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;	/* soDimm168 */
+			default-state = "on";
+		};
+
+		pwr_ext1 {
+			label = "pwr::EXT1";
+			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_HIGH>;	/* soDimm170 */
+			default-state = "on";
+		};
+
+		pwr_ow {
+			label = "pwr::OW";
+			gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;	/* soDimm171 */
+			default-state = "on";
+		};
+
+		pwr_ext2 {
+			label = "pwr::EXT2";
+			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
+			default-state = "on";
+		};
+
+		pwr_ext3 {
+			label = "pwr::EXT3";
+			gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
+			default-state = "on";
+		};
+
+		disp_orient {
+			label = "display::ORIENT";
+			gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_HIGH>;	/* soDimm169 */
+			default-state = "on";
+		};
+
+		ts_orient {
+			label = "touchscreen::ORIENT";
+			gpios = <&gpio3 RK_PC7 GPIO_ACTIVE_HIGH>;	/* soDimm177 */
+			default-state = "on";
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		sw1-key {
+			label = "SW1";
+			gpios = <&gpio2 RK_PD4 GPIO_ACTIVE_LOW>;	/* soDimm154 */
+			linux,code = <KEY_F1>;
+			debounce-interval = <25>;
+			wakeup-source;
+		};
+
+		sw2-key {
+			label = "SW2";
+			gpios = <&gpio2 RK_PD5 GPIO_ACTIVE_LOW>;	/* soDimm156 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <25>;
+			wakeup-source;
+		};
+
+		sw3-key {
+			label = "SW3";
+			gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_LOW>;	/* soDimm158 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <25>;
+			wakeup-source;
+		};
+
+		sw4-key {
+			label = "SW4";
+			gpios = <&gpio2 RK_PD7 GPIO_ACTIVE_LOW>;	/* soDimm160 */
+			linux,code = <KEY_F4>;
+			debounce-interval = <25>;
+			wakeup-source;
+		};
+
+		ext-tng-key {
+			label = "EXT_TANGENTA";
+			gpios = <&gpio2 RK_PD3 GPIO_ACTIVE_LOW>;	/* soDimm152 */
+			linux,code = <KEY_F5>;
+			debounce-interval = <25>;
+			wakeup-source;
+		};
+	};
+
+	/* Mitsubishi AA070TA01ADA11 LVDS display panel
+	 *********************************************/
+	lvds_panel {
+		compatible = "panel-lvds";
+		backlight = <&lvds_backlight>;
+		data-mapping = "jeida-24";
+
+		width-mm = <152>;
+		height-mm = <91>;
+
+		/*
+		 * FixMe: DENA active high, h(f+b+l)=32, v(f+b+l)=30 @ 62.8MHz by spec,
+		 *        but NOT work in out module! Fix polarity and recalculate.
+		 */
+		panel-timing {
+			clock-frequency = <67200000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len = <40>;
+			hfront-porch = <40>;
+			hback-porch = <40>;
+			vfront-porch = <11>;
+			vback-porch = <10>;
+			vsync-len = <10>;
+			de-active = <0>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&bridge_lvds_out>;
+			};
+		};
+	};
+
+	lvds_backlight: backlight {
+		compatible = "pwm-backlight";
+		enable-gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_LOW>;	/* soDimm175 */
+		pwms = <&pwm0 0 100000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <8>;
+		status = "okay";
+	};
+
+	soundcard@0 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "RHOS IMX8MQ SGTL5000";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&dailink0_master>;
+		simple-audio-card,frame-master = <&dailink0_master>;
+
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s2_2ch 0>;
+		};
+
+		dailink0_master:
+		simple-audio-card,codec {
+			sound-dai = <&sgtl5000 0>;
+		};
+	};
+
+};
+
+&dsi1_out {
+	mipi_dsi_out: endpoint {
+		remote-endpoint = <&bridge_dsi_in>;
+		clock-lanes = <0>;
+		data-lanes = <1 2 3 4>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	rtc0: rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
+	};
+
+	bmg160@68 { /* FixMe: address 0x68 already in use by CPU module clock generator */
+		compatible = "bosch,bmi160";
+		reg = <0x68>;
+		vdd-supply = <&p3v3>;
+		vddio-supply = <&p3v3>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <RK_PD0 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm146 */
+		interrupt-names = "INT1";
+	};
+
+	light@44 {
+		compatible = "isil,isl29035";
+		vcc-supply = <&p3v3>;
+		reg = <0x44>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <RK_PD2 (IRQ_TYPE_EDGE_RISING)>;	/* soDimm150 */
+	};
+};
+
+&i2c2 {
+	dsi2lvds-bridge@2c {
+		compatible = "ti,sn65dsi83";
+		reg = <0x2c>;
+		enable-gpios = <&gpio3 RK_PD2 GPIO_ACTIVE_HIGH>;	/* soDimm167 */
+		irq-gpios = <&gpio2 RK_PD1 GPIO_ACTIVE_LOW >;		/* soDimm148 <- NOT USED */
+		vcc-supply = <&p1v8>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				bridge_dsi_in: endpoint {
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&mipi_dsi_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				bridge_lvds_out: endpoint {
+					remote-endpoint = <&lvds_panel_in>;
+				};
+			};
+		};
+	};
+
+	sgtl5000: codec@a {
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		#sound-dai-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&refclk_pins>;	/* soDimm140 and soDimm142 as MCLK - 24MHz default */
+		clocks = <&pmucru CLK_WIFI>;
+		VDDA-supply = <&p3v3>;		/* +3.3VA is drosseled +3.3V */
+		VDDIO-supply = <&p3v3>;
+		VDDD-supply = <&p1v8>;
+		status = "okay";
+	};
+};
+
+
+&i2c3 {
+	owc: ds2482@18 { /* DS2484: I2C to OneWire Converter */
+		status = "okay";
+		compatible = "maxim,ds2482";
+		reg = <0x18>;
+	};
+};
+
+/* PWMs
+ *****/
+&pwm0 {		status = "okay";	};
+&pwm1 {		status = "okay";	};
+
+/* Bluetooth interface
+ ********************/
+&uart1 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM - XP36 setup, or COM3 connector */
+		compatible = "ti,wl1271-st";
+		enable-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_HIGH>;	/* soDimm173 */
+		vbat-supply = <&p3v3>;
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+/* MicroSD card slot
+ ******************/
+&sdmmc0 {	status = "okay";	};
+
+/* PCIe M.2 slot
+ **************/
+&pcie2x1 {	status = "okay";	};
+
+/* PCIe 4x slot
+ *************/
+&pcie3x2 {	status = "okay";	};
