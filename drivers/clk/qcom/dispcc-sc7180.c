@@ -771,6 +771,15 @@ static int disp_cc_sc7180_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	/* Firmware may leave ROT running; stop it before MDSS power cycling. */
+	if (!pdev->dev.of_node) {
+		ret = regmap_update_bits(regmap,
+					disp_cc_mdss_rot_clk.clkr.enable_reg,
+					disp_cc_mdss_rot_clk.clkr.enable_mask, 0);
+		if (ret)
+			return ret;
+	}
+
 	/* 1380MHz configuration */
 	disp_cc_pll_config.l = 0x47;
 	disp_cc_pll_config.alpha = 0xe000;
