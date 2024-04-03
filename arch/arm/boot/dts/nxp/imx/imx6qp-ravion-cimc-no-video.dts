@@ -270,6 +270,13 @@
 		compatible = "maxim,ds2482";
 		reg = <0x18>;
 	};
+
+	battery@b {	/* SMBus battery */
+		compatible = "ti,bq20z75", "sbs,sbs-battery";
+		reg = <0xb>;
+		sbs,i2c-retry-count = <2>;
+		sbs,poll-retry-count = <10>;
+	};
 };
 
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
