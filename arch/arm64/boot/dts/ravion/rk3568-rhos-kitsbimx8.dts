@@ -173,8 +173,8 @@
 		width-mm = <261>;
 		height-mm = <163>;
 
-		panel-timing {
-			clock-frequency = <83500000>;
+		panel-timing { /* 1280x800-24@60 */
+			clock-frequency = <83764800>;
 			hactive = <1280>;
 			vactive = <800>;
 			hsync-len = <200>;
