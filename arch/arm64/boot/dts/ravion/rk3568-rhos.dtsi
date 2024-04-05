@@ -82,7 +82,10 @@
  */
 &uart2 { status = "okay"; };	/* Debug UART0 on module */
 &uart3 { status = "okay"; };	/* Generic UART1 on module */
-&uart4 { status = "okay"; };	/* Generic UART2 on module */
+&uart4 {			/* Generic UART2 on module */
+	pinctrl-0 = <&uart4m1_xfer>;
+	status = "okay";
+};
 &uart1 {			/* Bluetooth UART3 on module */
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn &uart1m0_rtsn>;
