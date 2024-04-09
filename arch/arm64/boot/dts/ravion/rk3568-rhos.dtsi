@@ -141,7 +141,7 @@
 		reg = <0x68>;
 	};
 
-	vdd_cpu: regulator@1c { /* FixMe: temporary disabled !!! _NOT_ boot!!! */
+	vdd_cpu: regulator@1c {
 		compatible = "tcs,tcs4525";
 		reg = <0x1c>;
 		fcs,suspend-voltage-selector = <1>;
@@ -152,7 +152,7 @@
 		regulator-max-microvolt = <1150000>;
 		regulator-ramp-delay = <2300>;
 		vin-supply = <&P3V3>;
-		status = "disabled";
+		status = "okay";
 
 		regulator-state-mem {
 			regulator-off-in-suspend;
@@ -674,7 +674,7 @@
 
 &pmu_io_domains {
 	pmuio1-supply = <&vcc3v3_pmu>;
-	pmuio2-supply = <&vcc_1v8>;
+	pmuio2-supply = <&vcca1v8_pmu>;
 	vccio1-supply = <&vcc_1v8>;
 	vccio2-supply = <&vcc_1v8>;	/* PMIC: SW5 */
 	vccio3-supply = <&vccio_sd>;	/* PMIC: LDO5 */
