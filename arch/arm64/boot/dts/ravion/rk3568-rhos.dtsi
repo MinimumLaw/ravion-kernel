@@ -251,6 +251,9 @@
 				regulator-name = "vdda0v9_image";
 				regulator-min-microvolt = <900000>;
 				regulator-max-microvolt = <900000>;
+				regulator-always-on;
+				regulator-boot-on;
+
 
 				regulator-state-mem {
 					regulator-off-in-suspend;
@@ -346,6 +349,8 @@
 				regulator-name = "vcca1v8_image";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
 
 				regulator-state-mem {
 					regulator-off-in-suspend;

@@ -174,15 +174,15 @@
 		height-mm = <163>;
 
 		panel-timing { /* 1280x800-24@60 */
-			clock-frequency = <83764800>;
+			clock-frequency = <71928000>;
 			hactive = <1280>;
 			vactive = <800>;
-			hsync-len = <200>;
-			hfront-porch = <100>;
-			hback-porch = <100>;
-			vfront-porch = <10>;
-			vback-porch = <10>;
-			vsync-len = <11>;
+			hsync-len = <30>;
+			hfront-porch = <140>; /* not present */
+			hback-porch = <30>;
+			vfront-porch = <4>;
+			vback-porch = <3>;
+			vsync-len = <3>;
 			de-active = <0>;
 		};
 
@@ -246,7 +246,18 @@
 	};
 };
 
+
 &hdmi {	status = "okay"; };
+#if 0
+&vop {
+	/* FixMe: Why this _NOT_ work as expected???
+	 * Why HPLL 74250KHz, VOP0 74250Khz, but VOP1 37125KHz???
+	 *******************************************************/
+	assigned-clocks		= <&cru DCLK_VOP1>, <&pmucru PLL_HPLL>;
+	assigned-clock-parents	= <&pmucru PLL_HPLL>;
+	assigned-clock-rates	= <0>, <74250000>;
+};
+#endif
 
 /* SPI interface
  **************/
