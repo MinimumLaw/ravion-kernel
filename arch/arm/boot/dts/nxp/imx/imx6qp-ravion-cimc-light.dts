@@ -96,14 +96,12 @@
 	};
 
 	gpio-leds {
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_uart1gpio>;
 		compatible = "gpio-leds";
 
 		wlan_en {
 			label = "wlan::enable";
 			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm025 */
-			default-state = "on";
+			default-state = "off";
 		};
 
 		status_red {
@@ -303,7 +301,6 @@
 &pwm3	{	status = "disabled";	};
 &pwm4	{	status = "disabled";	};
 
-/* */
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
