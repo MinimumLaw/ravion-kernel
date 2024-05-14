@@ -101,25 +101,25 @@
 		wlan_en {
 			label = "wlan::enable";
 			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm025 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		status_red {
 			label = "status::red";
-			gpios = <&gpio1  4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
+			gpios = <&gpio4 7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
 			default-state = "off";
 		};
 
 		status_green {
 			label = "status::green";
-			gpios = <&gpio4  7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
 			default-state = "off";
 		};
 
 		status_blue {
 			label = "status::blue";
 			linux,default-trigger = "heartbeat";
-			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
 			default-state = "on";
 		};
 
@@ -220,7 +220,7 @@
  * SPI Bus
  */
 &ecspi1 {
-	cs-gpios = 
+	cs-gpios =
 		<&gpio5 25 GPIO_ACTIVE_LOW>, /* soDimm086 - cs0 */
 		<&gpio1  9 GPIO_ACTIVE_LOW>; /* soDimm178 - cs1 */
 	num-cs = <2>;
@@ -252,6 +252,10 @@
  */
 &usdhc1 {	status = "okay";	};	/* compatible */
 &usdhc2 {					/* externed */
+	keep-power-in-suspend;
+	cap-power-off-card;
+	non-removable;
+	max-frequency = <25000000>;
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -260,7 +264,7 @@
 		compatible = "ti,wl1837";
 		reg = <2>;
 		interrupt-parent = <&gpio3>;
-		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>; 	/* soDim023 */
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;	/* soDim023 */
 		tcxo-clock-frequency = <26000000>;
 	};
 };
