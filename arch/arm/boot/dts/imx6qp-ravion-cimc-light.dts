@@ -1,0 +1,334 @@
+/*
+ * Copyright 2024 Radioavionica Corp.
+ *
+ * Author: Alex A. Mihaylov <minimumlaw@rambler.ru>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#define SPI_CS_GPIO
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:cimc-light";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific regulators
+	 */
+	pwr_src: regulator_power {
+		compatible = "regulator-fixed";
+		regulator-name = "BATT_IN";
+		/* FixMe: 5...8.4V input voltage */
+		regulator-min-microvolt = <8400000>;
+		regulator-max-microvolt = <8400000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p5v_reg: regulator_5v0 {
+		compatible = "regulator-fixed";
+		regulator-name = "P5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p3v3_reg: regulator_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "P3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	p12v_reg: regulator_12v {
+		compatible = "regulator-fixed";
+		regulator-name = "P12V";
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on; /* XP61: enable/disable reg. */
+	};
+
+	va3v3_reg: regulator_3v3va {
+		compatible = "regulator-fixed";
+		regulator-name = "VA3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&pwr_src>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	wlan_en_reg: regulator_1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "P1V8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&pwr_src>;
+		gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
+	pps {
+		compatible = "pps-gpio";
+		gpios	= <&gpio1  2 GPIO_ACTIVE_LOW>;		/* soDimm055 */
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		tangenta {
+			label = "Tangenta";
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm120 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		switch-rfkill {
+			label = "rfkill-wlan";
+			gpios = <&gpio6 3 GPIO_ACTIVE_HIGH>;	/* soDimm059 */
+			linux,code = <SW_RFKILL_ALL>;
+			linux,input-type = <EV_SW>;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		status_red {
+			label = "status::red";
+			gpios = <&gpio4 7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
+			default-state = "off";
+		};
+
+		status_green {
+			label = "status::green";
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
+			default-state = "off";
+		};
+
+		status_blue {
+			label = "status::blue";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
+			default-state = "on";
+		};
+
+		/* charge CTL1,2,3 default to 110 - SDP */
+		charge_ctl1 {
+			label = "charge::ctl1";
+			gpios = <&gpio3 25 GPIO_ACTIVE_HIGH>;	/* soDimm029 */
+			default-state = "on";
+		};
+
+		charge_ctl2 {
+			label = "charge::ctl2";
+			gpios = <&gpio3 23 GPIO_ACTIVE_HIGH>;	/* soDimm031 */
+			default-state = "on";
+		};
+
+		charge_ctl3 {
+			label = "charge::ctl3";
+			gpios = <&gpio3 31 GPIO_ACTIVE_HIGH>;	/* soDimm037 */
+			default-state = "off";
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl_wl_ti_wifi_en: wl-ti-wifi-en {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_D19__GPIO3_IO19          0x1f0b0
+		>;
+	};
+	pinctrl_uart1gpio: uart1gpiogrp {
+		fsl,pins = <
+	/* 023 */	MX6QDL_PAD_EIM_D24__GPIO3_IO24		0x1b0b0
+	/* 027 */	MX6QDL_PAD_EIM_D20__GPIO3_IO20		0x1b0b0
+	/* 029 */	MX6QDL_PAD_EIM_D25__GPIO3_IO25		0x1b0b0
+	/* 031 */	MX6QDL_PAD_EIM_D23__GPIO3_IO23		0x1b0b0
+	/* 037 */	MX6QDL_PAD_EIM_EB3__GPIO2_IO31		0x1b0b0
+		>;
+	};
+};
+
+/*
+ * Sound subsystem
+ */
+&ssi2	{	status = "okay";	};
+
+/*
+ * Video subsystems
+ */
+&hdmi { status = "disabled";	};
+/* TFT */
+&tft_display_bus {	status = "disabled";};
+/* LVDS */
+&ldb { status = "disabled"; };
+
+/*
+ * Serial ports
+ */
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
+	status = "okay";
+
+	bluetooth { /* DD19: CC2564CRVM */
+		enable-gpios = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
+		compatible = "ti,wl1271-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+&uart3 {
+	status = "okay";
+};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {	status = "disabled"; };
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	battery@b {	/* SMBus battery */
+		compatible = "ti,bq20z75", "sbs,sbs-battery";
+		reg = <0xb>;
+		sbs,i2c-retry-count = <2>;
+		sbs,poll-retry-count = <10>;
+	};
+};
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	status = "okay";
+
+	rtc@6f { /* ISL12020: I2C Real Time Clock (battery backup) */
+		compatible = "isil,isl12022";
+		reg = <0x6f>;
+	};
+};
+
+&mipi_csi { status = "disabled"; };
+
+/*
+ * SPI Bus
+ */
+&ecspi1 {
+	cs-gpios =
+		<&gpio5 25 GPIO_ACTIVE_LOW>, /* soDimm086 - cs0 */
+		<&gpio1  9 GPIO_ACTIVE_LOW>; /* soDimm178 - cs1 */
+	num-cs = <2>;
+	status = "okay";
+
+	spi_flash: s25fl256@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		compatible = "atmel,sst25lf";	/* FixMe: bad value!!! */
+		spi-max-frequency = <10000000>;	/* 10MHz */
+	};
+
+	wpan: at86rf212@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <1>;
+		compatible = "atmel,at86rf212";
+		spi-max-frequency = <2500000>; /* 2.5MHz as start value */
+		interrupts = <6 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&gpio1>;			/* soDimm180 */
+		sleep-gpio = <&gpio4 5 GPIO_ACTIVE_HIGH>;	/* soDimm176 */
+		xtal-trim = /bits/ 8 <0x06>;
+	};
+};
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	};	/* compatible */
+&usdhc2 {					/* externed */
+	keep-power-in-suspend;
+	cap-power-off-card;
+	non-removable;
+	max-frequency = <25000000>;
+	status = "okay";
+	vmmc-supply = <&wlan_en_reg>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	WL1837MOD: wlcore@2 {
+		compatible = "ti,wl1837";
+		reg = <2>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;	/* soDim023 */
+		tcxo-clock-frequency = <26000000>;
+	};
+};
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/*
+ * High-speed serial bus
+ */
+
+&sata {	status = "disabled"; };
+
+/* &usbh1 {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{ /* OTG */
+	status = "okay";
+};
+
+&usbh3 { /* HSIC */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "disabled";	};
+&pwm4	{	status = "disabled";	};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
+};
