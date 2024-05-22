@@ -71,11 +71,15 @@
 		regulator-always-on;
 	};
 
-	rfkill {
-		compatible = "rfkill-gpio";
-		label = "rfkill-wlan";
-		radio-type = "wlan";
-		shutdown-gpios = <&gpio6  3 GPIO_ACTIVE_LOW>;	/* soDimm059 */
+	wlan_en_reg: regulator_1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "P1V8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&pwr_src>;
+		gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <70000>;
+		enable-active-high;
 	};
 
 	pps {
@@ -93,16 +97,17 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+
+		switch-rfkill {
+			label = "rfkill-wlan";
+			gpios = <&gpio6 3 GPIO_ACTIVE_HIGH>;	/* soDimm059 */
+			linux,code = <SW_RFKILL_ALL>;
+			linux,input-type = <EV_SW>;
+		};
 	};
 
 	gpio-leds {
 		compatible = "gpio-leds";
-
-		wlan_en {
-			label = "wlan::enable";
-			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm025 */
-			default-state = "on";
-		};
 
 		status_red {
 			label = "status::red";
@@ -257,6 +262,7 @@
 	non-removable;
 	max-frequency = <25000000>;
 	status = "okay";
+	vmmc-supply = <&wlan_en_reg>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
