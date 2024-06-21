@@ -498,19 +498,14 @@
 &vop { status = "okay"; };
 &vop_mmu { status = "okay"; };
 
+#ifndef USE_ONLY_VP0
 /* VP0 support up to 4096x2304@60 with HDR10 (TRM-Part2, chapter 13.1)
  * We want hold them for (external) HDMI display
  **********************************************************************/
 &vp0 {
-	vp0_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+	vp_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
 		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
-		remote-endpoint = <&hdmi_in_vp0>;
-	};
-};
-
-&hdmi_in {
-	hdmi_in_vp0: endpoint {
-		remote-endpoint = <&vp0_out_hdmi>;
+		remote-endpoint = <&hdmi_in_vp>;
 	};
 };
 
@@ -518,15 +513,42 @@
  * We use them for (internal) display
  **********************************************************************/
 &vp1 {
-	vp1_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
+	vp_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
 		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
-		remote-endpoint = <&mipi1_in_vp1>;
+		remote-endpoint = <&mipi1_in_vp>;
+	};
+};
+
+#else /* defined USE_ONLY_VP0 */
+/******************************************************************
+ * Use VP0 for both HDMI and MIPI display
+ *****************************************************************/
+
+/* VP0 support up to 4096x2304@60 with HDR10 (TRM-Part2, chapter 13.1)
+ * We want hold them for (external) HDMI display
+ **********************************************************************/
+&vp0 {
+	vp_out_hdmi: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
+		remote-endpoint = <&hdmi_in_vp>;
+	};
+
+	vp_out_mipi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
+		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
+		remote-endpoint = <&mipi1_in_vp>;
+	};
+};
+#endif /* USE_ONLY_VP0 */
+
+&hdmi_in {
+	hdmi_in_vp: endpoint {
+		remote-endpoint = <&vp_out_hdmi>;
 	};
 };
 
 &dsi1_in {
-	mipi1_in_vp1: endpoint {
-		remote-endpoint = <&vp1_out_mipi1>;
+	mipi1_in_vp: endpoint {
+		remote-endpoint = <&vp_out_mipi1>;
 	};
 };
 

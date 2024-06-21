@@ -15,6 +15,9 @@
 /* MIPI CSI Camera select */
 #define RASPBERRY_CAMERA_V2
 
+/* define for both display connect to VP0 */
+#undef USE_ONLY_VP0
+
 #include "rk3568-rhos.dtsi"
 
 / {
