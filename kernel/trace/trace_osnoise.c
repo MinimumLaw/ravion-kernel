@@ -228,6 +228,11 @@ static inline struct osnoise_variables *this_cpu_osn_var(void)
 	return this_cpu_ptr(&per_cpu_osnoise_var);
 }
 
+/*
+ * Protect the interface.
+ */
+static struct mutex interface_lock;
+
 #ifdef CONFIG_TIMERLAT_TRACER
 /*
  * Runtime information for the timer mode.
@@ -251,11 +256,6 @@ static inline struct timerlat_variables *this_cpu_tmr_var(void)
 {
 	return this_cpu_ptr(&per_cpu_timerlat_var);
 }
-
-/*
- * Protect the interface.
- */
-static struct mutex interface_lock;
 
 /*
  * tlat_var_reset - Reset the values of the given timerlat_variables
@@ -1450,9 +1450,9 @@ static int run_osnoise(void)
 	save_osn_sample_stats(osn_var, &s);
 
 	/*
-	 * if threshold is 0, use the default value of 5 us.
+	 * if threshold is 0, use the default value of 1 us.
 	 */
-	threshold = tracing_thresh ? : 5000;
+	threshold = tracing_thresh ? : 1000;
 
 	/*
 	 * Apply PREEMPT and IRQ disabled options.
