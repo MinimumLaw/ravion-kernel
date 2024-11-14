@@ -24,6 +24,11 @@
 	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
 
+	aliases {
+		rtc0 = &rtc0;
+		rtc1 = &rk809;
+	};
+
 	/* from 2 - 0,1 on CPU module */
 	p15v_in: regulator-p15v_in {
 		compatible = "regulator-fixed";
