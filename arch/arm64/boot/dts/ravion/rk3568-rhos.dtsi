@@ -23,6 +23,17 @@
 		stdout-path = "serial2:115200n8";
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		optee@ { /* Protect optee memory range from kernel */
+			reg = <0x0 0x08400000 0x0 0x04000000>;
+			no-map;
+		};
+	};
+
 	/*
 	 * Regulators
 	 */
