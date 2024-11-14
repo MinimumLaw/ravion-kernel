@@ -251,7 +251,7 @@
 
 
 &hdmi {	status = "okay"; };
-#if 0
+
 &vop {
 	/* FixMe: Why this _NOT_ work as expected???
 	 * Why HPLL 74250KHz, VOP0 74250Khz, but VOP1 37125KHz???
@@ -260,7 +260,6 @@
 	assigned-clock-parents	= <&pmucru PLL_HPLL>;
 	assigned-clock-rates	= <0>, <74250000>;
 };
-#endif
 
 /* SPI interface
  **************/
