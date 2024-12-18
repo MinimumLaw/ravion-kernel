@@ -171,6 +171,37 @@
 		regulator-always-on;
 	};
 #endif
+#if 0
+	/* PKK LVDS display panel (in process)
+	 *************************************/
+	lvds_panel {
+		compatible = "FLD-070VMLW0PC001#00", "panel-lvds";
+		backlight = <&lvds_backlight>;
+		data-mapping = "vesa-24";
+
+		width-mm = <152>;
+		height-mm = <91>;
+
+		panel-timing { /* 1280x800-24@60 */
+			clock-frequency = <61600000>,<66400000>,<74600000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len =	<20>,	<4>,	<4>;
+			hfront-porch =	<10>,	<60>,	<170>;
+			hback-porch =	<10>,	<20>,	<4>;
+			vfront-porch =	<3>,	<20>,	<81>;
+			vback-porch =	<3>,	<20>,	<2>;
+			vsync-len =	<4>,	<3>,	<2>;
+			de-active = <1>;
+		};
+
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&bridge_lvds_out>;
+			};
+		};
+	};
+#else
 	/*Recomended LVDS display panel
 	 *****************************/
 	lvds_panel {
@@ -200,7 +231,7 @@
 			};
 		};
 	};
-
+#endif
 	lvds_backlight: backlight {
 		compatible = "pwm-backlight";
 		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
