@@ -65,6 +65,17 @@
 			regulator-always-on;
 	};
 
+	wlan_en_reg: regulator_1v8 {
+			compatible = "regulator-fixed";
+			regulator-name = "WLAN_EN_REG";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&pwr_src>;
+			gpio = <&gpio5 30 GPIO_ACTIVE_HIGH>;
+			startup-delay-us = <70000>;
+			enable-active-high;
+	};
+
 	/*
 	 * Input keys (signals)
 	 */
@@ -105,12 +116,6 @@
 		gnss_port {
 			label = "gnss::nmea";
 			gpios = <&gpio6 5 GPIO_ACTIVE_LOW>;	/*soDimm 162 */
-			default-state = "on";
-		};
-
-		wlan_en {
-			label = "wlan::enable";
-			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm 164 */
 			default-state = "on";
 		};
 
@@ -165,7 +170,7 @@
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		enable-gpios = <&gpio6 1 GPIO_ACTIVE_LOW>; /* soDimm  160 */
-		pwms = <&pwm3 0 2000 1>; /* FixMe: frequency !!! */
+		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <9>;
 		status = "okay";
@@ -290,22 +295,20 @@
  */
 &usdhc1 {	status = "okay";	}; /* compatible */
 &usdhc2 {				   /* externed - WiFi module */
+	keep-power-in-suspend;
+	cap-power-off-card;
+	non-removable;
+	max-frequency = <50000000>;
 	status = "okay";
+	vmmc-supply = <&wlan_en_reg>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	/* Tune-Up
-	non-removable;
-	no-mmc-hs400;
-	no-sdio;
-	no-sd;
-	no-1-8-v;
-	no-mmc; */
 
 	WL1837MOD: wlcore@2 {
 		compatible = "ti,wl1837";
 		reg = <2>;
 		interrupt-parent = <&gpio3>;
-		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>; 	/* soDim023 */
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;	/* soDim023 */
 		tcxo-clock-frequency = <26000000>;
 	};
 };
