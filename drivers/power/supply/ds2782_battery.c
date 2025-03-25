@@ -11,6 +11,7 @@
  * UEvent sending added by Evgeny Romanov <romanov@neurosoft.ru>
  */
 
+#include <linux/devm-helpers.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -19,8 +20,6 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/idr.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
 #include <linux/ds2782_battery.h>
@@ -59,14 +58,12 @@ struct ds278x_info {
 	struct power_supply_desc	battery_desc;
 	const struct ds278x_battery_ops *ops;
 	struct delayed_work	bat_work;
-	int			id;
 	int                     rsns;
 	int			capacity;
 	int			status;		/* State Of Charge */
 };
 
-static DEFINE_IDR(battery_id);
-static DEFINE_MUTEX(battery_lock);
+static DEFINE_IDA(battery_id);
 
 static inline int ds278x_read_reg(struct ds278x_info *info, int reg, u8 *val)
 {
@@ -314,21 +311,6 @@ static void ds278x_power_supply_init(struct power_supply_desc *battery)
 	battery->external_power_changed	= NULL;
 }
 
-static void ds278x_battery_remove(struct i2c_client *client)
-{
-	struct ds278x_info *info = i2c_get_clientdata(client);
-	int id = info->id;
-
-	power_supply_unregister(info->battery);
-	cancel_delayed_work_sync(&info->bat_work);
-	kfree(info->battery_desc.name);
-	kfree(info);
-
-	mutex_lock(&battery_lock);
-	idr_remove(&battery_id, id);
-	mutex_unlock(&battery_lock);
-}
-
 #ifdef CONFIG_PM_SLEEP
 
 static int ds278x_suspend(struct device *dev)
@@ -370,6 +352,13 @@ static const struct ds278x_battery_ops ds278x_ops[] = {
 	}
 };
 
+static void ds278x_free_ida(void *data)
+{
+	int num = (uintptr_t)data;
+
+	ida_free(&battery_id, num);
+}
+
 static int ds278x_battery_probe(struct i2c_client *client)
 {
 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
@@ -389,32 +378,27 @@ static int ds278x_battery_probe(struct i2c_client *client)
 	}
 
 	/* Get an ID for this battery */
-	mutex_lock(&battery_lock);
-	ret = idr_alloc(&battery_id, client, 0, 0, GFP_KERNEL);
-	mutex_unlock(&battery_lock);
-	if (ret < 0)
-		goto fail_id;
-	num = ret;
+	num = ida_alloc(&battery_id, GFP_KERNEL);
+	if (num < 0)
+		return num;
+	ret = devm_add_action_or_reset(&client->dev, ds278x_free_ida, (void *)(uintptr_t)num);
+	if (ret)
+		return ret;
 
-	info = kzalloc(sizeof(*info), GFP_KERNEL);
-	if (!info) {
-		ret = -ENOMEM;
-		goto fail_info;
-	}
+	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
 
-	info->battery_desc.name = kasprintf(GFP_KERNEL, "%s-%d",
-					    client->name, num);
-	if (!info->battery_desc.name) {
-		ret = -ENOMEM;
-		goto fail_name;
-	}
+	info->battery_desc.name = devm_kasprintf(&client->dev, GFP_KERNEL,
+						 "%s-%d", client->name, num);
+	if (!info->battery_desc.name)
+		return -ENOMEM;
 
 	if (id->driver_data == DS2786)
 		info->rsns = pdata->rsns;
 
 	i2c_set_clientdata(client, info);
 	info->client = client;
-	info->id = num;
 	info->ops  = &ds278x_ops[id->driver_data];
 	ds278x_power_supply_init(&info->battery_desc);
 	psy_cfg.drv_data = info;
@@ -422,43 +406,21 @@ static int ds278x_battery_probe(struct i2c_client *client)
 	info->capacity = 100;
 	info->status = POWER_SUPPLY_STATUS_FULL;
 
-	if (ds278x_get_status(info, &info->status)) {
-		dev_err(&client->dev, "failed to reead battery status\n");
-		goto fail_register;
-	}
-
-	INIT_DELAYED_WORK(&info->bat_work, ds278x_bat_work);
-
-	info->battery = power_supply_register(&client->dev,
-					      &info->battery_desc, &psy_cfg);
+	info->battery = devm_power_supply_register(&client->dev,
+						   &info->battery_desc,
+						   &psy_cfg);
 	if (IS_ERR(info->battery)) {
 		dev_err(&client->dev, "failed to register battery\n");
-		ret = PTR_ERR(info->battery);
-		goto fail_register;
-	} else {
-		schedule_delayed_work(&info->bat_work, DS278x_DELAY);
+		return PTR_ERR(info->battery);
 	}
 
+	ret = devm_delayed_work_autocancel(&client->dev, &info->bat_work, ds278x_bat_work);
+	if (ret)
+		return ret;
+	schedule_delayed_work(&info->bat_work, DS278x_DELAY);
+
 	return 0;
-
-fail_register:
-	kfree(info->battery_desc.name);
-fail_name:
-	kfree(info);
-fail_info:
-	mutex_lock(&battery_lock);
-	idr_remove(&battery_id, num);
-	mutex_unlock(&battery_lock);
-fail_id:
-	return ret;
 }
-
-static const struct of_device_id ds278x_of_match[] = {
-	{ .compatible = "maxim,ds2782", },
-	{ .compatible = "maxim,ds2786", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, ds278x_of_match);
 
 static const struct i2c_device_id ds278x_id[] = {
 	{"ds2782", DS2782},
@@ -471,10 +433,8 @@ static struct i2c_driver ds278x_battery_driver = {
 	.driver 	= {
 		.name	= "ds2782-battery",
 		.pm	= &ds278x_battery_pm_ops,
-		.of_match_table = of_match_ptr(ds278x_of_match),
 	},
 	.probe		= ds278x_battery_probe,
-	.remove		= ds278x_battery_remove,
 	.id_table	= ds278x_id,
 };
 module_i2c_driver(ds278x_battery_driver);
