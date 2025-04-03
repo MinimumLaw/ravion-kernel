@@ -171,10 +171,14 @@
 		regulator-always-on;
 	};
 #endif
+	lvds_panel {
 #if 0
 	/* PKK LVDS display panel (in process)
 	 *************************************/
-	lvds_panel {
+	/*	FLD-070VMLW0PC001#00,  1280x768@60Hz
+		PCLK (MHz)	61.6	66.4	74.6
+		h-full-line	1320	1364	1458
+		v-full-line	 778	 811	 853	*/
 		compatible = "FLD-070VMLW0PC001#00", "panel-lvds";
 		backlight = <&lvds_backlight>;
 		data-mapping = "vesa-24";
@@ -182,29 +186,27 @@
 		width-mm = <152>;
 		height-mm = <91>;
 
-		panel-timing { /* 1280x800-24@60 */
-			clock-frequency = <61600000>,<66400000>,<74600000>;
+		panel-timing {
+			/* 1280x800-24@60 PCLK: 74.25MHz,
+			screen 1237500px=1500*825=(1280+4+120+96)*(768+3+6+3) */
+			clock-frequency = <74250000>;
+			hsync-len =	<4>;
+			hfront-porch =	<120>;
+			hback-porch =	<96>;
+			vsync-len =	<16>;
+			vfront-porch =	<25>;
+			vback-porch =	<16>;
 			hactive = <1280>;
 			vactive = <768>;
-			hsync-len =	<20>,	<4>,	<4>;
-			hfront-porch =	<10>,	<60>,	<170>;
-			hback-porch =	<10>,	<20>,	<4>;
-			vfront-porch =	<3>,	<20>,	<81>;
-			vback-porch =	<3>,	<20>,	<2>;
-			vsync-len =	<4>,	<3>,	<2>;
 			de-active = <1>;
 		};
-
-		port {
-			lvds_panel_in: endpoint {
-				remote-endpoint = <&bridge_lvds_out>;
-			};
-		};
-	};
 #else
 	/*Recomended LVDS display panel
 	 *****************************/
-	lvds_panel {
+	/*	Sharp LQ121K1LG52,  1280x800@60Hz
+		PCLK (MHz)	70.0	83.5	85.0
+		h-full-line	1480	1680	1880
+		v-full-line	 810	 831	 852	*/
 		compatible = "sharp,LQ121K1LG52", "panel-lvds";
 		backlight = <&lvds_backlight>;
 		data-mapping = "jeida-24";
@@ -213,25 +215,27 @@
 		height-mm = <163>;
 
 		panel-timing { /* 1280x800-24@60 */
-			clock-frequency = <71928000>;
+			/* 1280x800-24@60 PCLK: 74.25MHz,
+			screen 1237500px=1500*825=(1280+4+120+96)*(800+10+10+5) */
+			clock-frequency = <74250000>;
+			hsync-len =	    <4>;
+			hfront-porch =	  <120>;
+			hback-porch =	   <96>;
+			vfront-porch =	   <10>;
+			vback-porch =	   <10>;
+			vsync-len =	    <5>;
 			hactive = <1280>;
 			vactive = <800>;
-			hsync-len = <30>;
-			hfront-porch = <140>; /* not present */
-			hback-porch = <30>;
-			vfront-porch = <4>;
-			vback-porch = <3>;
-			vsync-len = <3>;
 			de-active = <0>;
 		};
-
+#endif
 		port {
 			lvds_panel_in: endpoint {
 				remote-endpoint = <&bridge_lvds_out>;
 			};
 		};
 	};
-#endif
+
 	lvds_backlight: backlight {
 		compatible = "pwm-backlight";
 		power-supply = <&p12v_lcd>, <&p3v3_lcd>;
