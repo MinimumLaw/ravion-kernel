@@ -226,7 +226,7 @@
 			vsync-len =	    <5>;
 			hactive = <1280>;
 			vactive = <800>;
-			de-active = <0>;
+			de-active = <1>;
 		};
 #endif
 		port {
@@ -425,6 +425,7 @@
 #else
 	ssd1307: oled@3c { /* 128x64dot */
 		compatible = "solomon,ssd1315", "solomon,ssd1306";
+		solomon,page-offset = <0>;
 		solomon,com-invdir;		/* flip vertical */
 		/* solomon,segment-no-remap;	flip horizontal */
 		reg = <0x3c>;
