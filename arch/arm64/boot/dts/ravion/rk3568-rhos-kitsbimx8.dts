@@ -416,11 +416,20 @@
 		status = "okay";
 	};
 
+#if 0
 	usb-hub@2d { /* can be disabled on XP76 [2-4],[6-8] def. [3-4],[5-6] */
 		compatible = "ignore,no-device-driver-required";
 		status = "disabled";
 		reg = <0x2d>;
 	};
+#else
+	ssd1307: oled@3c { /* 128x64dot */
+		compatible = "solomon,ssd1315", "solomon,ssd1306";
+		solomon,com-invdir;		/* flip vertical */
+		/* solomon,segment-no-remap;	flip horizontal */
+		reg = <0x3c>;
+	};
+#endif
 
 	sgtl5000: codec@a {
 		compatible = "fsl,sgtl5000";
