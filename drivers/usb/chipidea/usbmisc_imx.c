@@ -440,7 +440,7 @@ static int usbmisc_imx6q_init(struct imx_usbmisc_data *data)
 		else if (data->oc_pol_configured)
 			reg &= ~MX6_BM_OVER_CUR_POLARITY;
 	}
-	/* If the polarity is not set keep it as setup by the bootlader */
+	/* If the polarity is not set keep it as setup by the bootloader */
 	if (data->pwr_pol == 1)
 		reg |= MX6_BM_PWR_POLARITY;
 	writel(reg, usbmisc->base + data->index * 4);
@@ -648,7 +648,7 @@ static int usbmisc_imx7d_init(struct imx_usbmisc_data *data)
 		else if (data->oc_pol_configured)
 			reg &= ~MX6_BM_OVER_CUR_POLARITY;
 	}
-	/* If the polarity is not set keep it as setup by the bootlader */
+	/* If the polarity is not set keep it as setup by the bootloader */
 	if (data->pwr_pol == 1)
 		reg |= MX6_BM_PWR_POLARITY;
 	writel(reg, usbmisc->base);
@@ -942,7 +942,7 @@ static int usbmisc_imx7ulp_init(struct imx_usbmisc_data *data)
 		else if (data->oc_pol_configured)
 			reg &= ~MX6_BM_OVER_CUR_POLARITY;
 	}
-	/* If the polarity is not set keep it as setup by the bootlader */
+	/* If the polarity is not set keep it as setup by the bootloader */
 	if (data->pwr_pol == 1)
 		reg |= MX6_BM_PWR_POLARITY;
 
@@ -1188,7 +1188,7 @@ int imx_usbmisc_suspend(struct imx_usbmisc_data *data, bool wakeup)
 	if (usbmisc->ops->hsic_set_clk && data->hsic)
 		ret = usbmisc->ops->hsic_set_clk(data, false);
 	if (ret) {
-		dev_err(data->dev, "set_wakeup failed, ret=%d\n", ret);
+		dev_err(data->dev, "hsic_set_clk failed, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -1227,7 +1227,7 @@ int imx_usbmisc_resume(struct imx_usbmisc_data *data, bool wakeup)
 	if (usbmisc->ops->hsic_set_clk && data->hsic)
 		ret = usbmisc->ops->hsic_set_clk(data, true);
 	if (ret) {
-		dev_err(data->dev, "set_wakeup failed, ret=%d\n", ret);
+		dev_err(data->dev, "hsic_set_clk failed, ret=%d\n", ret);
 		goto hsic_set_clk_fail;
 	}
 
