@@ -1,0 +1,428 @@
+/*
+ * Copyright 2025 Radioavionica Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+
+/*
+ * Brief description:
+ * 12v 5v 3.3v regs
+ * [+] LMZM33606RLXR dcdc 3.5-36
+ * [+] PWR_DOWN_127 default for ravion
+ * [+] PWR_REQ_125 default for ravion
+ * [+] RESETn_121 default for ravion
+ * [+] TLV320AIC3206 audio codec
+ * WL1837:
+ * [+] uart2 -> BT
+ * [+] SD2 -> WLsdio
+ * [+] WL_IRQ_23
+ * [+] WLAN_EN#_25
+ * [+] BT_EN#_27
+ *
+ * M20072:
+ * [+] PPS_55
+ * [+] GPS_EN_113
+ *
+ * [+] RESET_AUDIO_114
+ * [+] SA3_116
+ * [+] SA4_117
+ * [+] SA5_118
+ * [+] SA6_119
+ * [+] SA7_120
+ * [+] VU1_PE
+ * [+] VU2_PE
+ * [+] KEY1_152
+ * [+] KEY2_154
+ * [+] KEY3_156
+ * [+] KEY4_158
+ * [+] TNG1_160
+ * [+] TNG2_162
+ * [+] TNG_TEL_164
+ * [+] STATUS_LED_R 188
+ * [+] STATUS_LED_G 190
+ * [+] STATUS_LED_B 192
+ * [+] CY7C65215A usb -> usart1 {MAX13488EESA usart1 -> rs485} usb -> uart_msns {M20072}
+ * [+] MAX3245EETX uart1 -> rs232_1 uart3 -> rs232_3
+ * [+] I2C SMB
+ *
+ */
+
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:pou";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific regulators
+	 */
+	reg_src: regulator-power { /* DA5 */
+			compatible = "regulator-fixed";
+			regulator-name = "U_BAT";
+			regulator-min-microvolt = <16800000>;
+			regulator-max-microvolt = <16800000>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	reg_p12v: regulator-p12v { /* DA6 */
+			compatible = "regulator-fixed";
+			regulator-name = "P12V";
+			regulator-min-microvolt = <12000000>;
+			regulator-max-microvolt = <12000000>;
+			vin-supply = <&reg_src>;
+			regulator-always-on;
+	};
+
+	reg_p5v: regulator-p5v { /* DA7 */
+			compatible = "regulator-fixed";
+			regulator-name = "P5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&reg_src>;
+			regulator-always-on;
+	};
+
+	reg_p3v3: regulator-p3v3 { /* DA8 */
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&reg_src>;
+			regulator-always-on;
+	};
+
+	reg_tlv_p1v8: regulator-tlv { /* DA13 */
+			compatible = "regulator-fixed";
+			regulator-name = "TLV-P1V8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&reg_p3v3>;
+			regulator-always-on;
+	};
+
+	reg_wl1837_p1v8: regulator-wl1837-p1v8 { /* DA6 */
+			compatible = "regulator-fixed";
+			regulator-name = "wl1837-reg";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&reg_p3v3>;
+			startup-delay-us = <70000>;
+			enable-active-high;
+			regulator-always-on;
+			regulator-boot-on;
+	};
+
+	reg_VU1: regulator-vu1 { /* DA18 */
+			compatible = "regulator-fixed";
+			regulator-name = "VU1";
+			regulator-min-microvolt = <16800000>;
+			regulator-max-microvolt = <16800000>;
+			vin-supply = <&reg_src>;
+			gpio = <&gpio2 11 GPIO_ACTIVE_HIGH>;	/* soDimm133 */
+			enable-active-high;
+	};
+
+	reg_VU2: regulator-vu2 { /* DA19 */
+			compatible = "regulator-fixed";
+			regulator-name = "VU2";
+			regulator-min-microvolt = <16800000>;
+			regulator-max-microvolt = <16800000>;
+			vin-supply = <&reg_src>;
+			gpio = <&gpio4 8 GPIO_ACTIVE_LOW>;	/* soDimm150 */
+			enable-active-high;
+	};
+
+	// Need to check if this works:
+	rfkill {
+		compatible = "rfkill-gpio";
+		label = "rfkill-wlan";
+		radio-type = "wlan";
+		shutdown-gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm025 */
+	};
+
+	sound-tlv320 {
+		compatible = "fsl,imx-audio-tlv320aic32x4";
+		model = "imx-audio-tlv320aic32x6";
+		ssi-controller = <&ssi2>;
+		audio-codec = <&tlv320aic3206>;
+		audio-asrc = <&asrc>;
+		audio-routing =
+			"IN1_L", "Line In Jack",
+			"IN1_R", "Line In Jack",
+			"IN2_L", "Line In Jack",
+			"IN2_R", "Line In Jack",
+			"Headphone Jack", "HPL",
+			"Headphone Jack", "HPR",
+			"Line Out Jack", "LOL",
+			"Line Out Jack", "LOR";
+		mux-int-port = <1>;
+		mux-ext-port = <3>;
+	};
+
+	pps {
+		compatible = "pps-gpio";
+		gpios	= <&gpio1  2 GPIO_ACTIVE_LOW>;		/* soDimm055 */
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		SA116 {
+			label = "SA116";
+			gpios = <&gpio5 31 GPIO_ACTIVE_LOW>;	/* soDimm 116 */
+			linux,code = <KEY_F10>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA117 {
+			label = "SA117";
+			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
+			linux,code = <KEY_F11>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA118 {
+			label = "SA118";
+			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
+			linux,code = <KEY_F12>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA119 {
+			label = "SA119";
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA120 {
+			label = "SA120";
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		KEY1 {
+			label = "KEY1";
+			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm152 */
+			linux,code = <KEY_F15>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		KEY2 {
+			label = "KEY2";
+			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm154 */
+			linux,code = <KEY_F16>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		KEY3 {
+			label = "KEY3";
+			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>;	/* soDimm156 */
+			linux,code = <KEY_F17>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		KEY4 {
+			label = "KEY4";
+			gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;	/* soDimm158 */
+			linux,code = <KEY_F18>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		TNG1 {
+			label = "TNG1";
+			gpios = <&gpio6 1 GPIO_ACTIVE_LOW>;	/* soDimm160 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		TNG2 {
+			label = "TNG2";
+			gpios = <&gpio6 5 GPIO_ACTIVE_LOW>;	/* soDimm162 */
+			linux,code = <KEY_F19>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		TNG_TEL {
+			label = "TNG_TEL";
+			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm164 */
+			linux,code = <KEY_F20>; //TODO: fix keycode number
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		gps_en {
+			label = "msns";
+			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;	/* soDimm113 */
+			default-state = "off";
+		};
+
+		status_red {
+			label = "status::red";
+			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
+			default-state = "off";
+		};
+
+		status_green {
+			label = "status::green";
+			gpios = <&gpio4 7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
+			default-state = "off";
+		};
+
+		status_blue {
+			label = "status::blue";
+			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
+			default-state = "off";
+		};
+	};
+};
+
+/*
+ * Serial ports
+ */
+/* &uart1 {	status = "okay";	}; => Allways enabled */
+&uart2 {
+	uart-has-rtscts;
+	status = "okay";
+
+	bluetooth {
+		enable-gpios = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
+		compatible = "ti,wl1837-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+
+		clk_32k_bt: bt_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+			clock-accuracy = <100>;
+		};
+	};
+};
+
+&uart3 {
+	status = "okay";
+};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1 {
+	status = "okay";
+};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	battery@b {
+		compatible = "ti,bq20z75", "sbs,sbs-battery";
+		reg = <0xb>;
+		sbs,i2c-retry-count = <2>;
+		sbs,poll-retry-count = <10>;
+
+	};
+};
+
+&i2c3 { /* Extended I2C: soDimm 128, 130 */
+	status = "okay";
+
+	/* ext codec */
+	#address-cells = <1>;
+	#size-cells = <0>;
+	tlv320aic3206: codec@18 {
+		compatible = "ti,tlv320aic32x6";
+		reg = <0x18>;
+		iov-supply = <&reg_p3v3>;
+		av-supply = <&reg_tlv_p1v8>;
+		dv-supply = <&reg_tlv_p1v8>;
+		reset-gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* soDimm 114 */
+		clocks = <&clks IMX6QDL_CLK_CKO2>; /* soDimm 137 */
+		clock-names = "mclk";
+	};
+};
+
+&mipi_csi {
+	status = "disabled";
+};
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "okay";	}; /* compatible */
+&usdhc2 {				   /* externed - WiFi module */
+	keep-power-in-suspend;
+	cap-power-off-card;
+	non-removable;
+	max-frequency = <50000000>;
+	status = "okay";
+	vmmc-supply = <&reg_wl1837_p1v8>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	WL1837MOD: wlcore@2 {
+		compatible = "ti,wl1837";
+		reg = <2>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;	/* soDim023 */
+		tcxo-clock-frequency = <26000000>;
+	};
+};
+/* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
+
+/*
+ * Ethernet controller
+ */
+/* &fec {	status = "okay";	}; => eth0 allways enabled */
+
+/*
+ * Audio (digital part)
+ */
+/* &audmux {	status = "okay";	}; => Allways enabled */
+/* &ssi1 {	status = "okay";	}; => Allways enabled */
+
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{ /* OTG */
+	status = "okay";
+};
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "okay";	};
+&pwm4	{	status = "okay";	};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
+};
