@@ -117,16 +117,9 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			vin-supply = <&reg_p3v3>;
-			regulator-boot-on;
-			regulator-always-on;
-	};
-
-	// Need to check if this works:
-	rfkill {
-		compatible = "rfkill-gpio";
-		label = "rfkill-wlan";
-		radio-type = "wlan";
-		shutdown-gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;  /* soDimm025 */
+			gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;
+			startup-delay-us = <70000>;
+			enable-active-high;
 	};
 
 	sound-tlv320 {
@@ -158,7 +151,7 @@
 		SA116 {
 			label = "SA116";
 			gpios = <&gpio5 31 GPIO_ACTIVE_LOW>;	/* soDimm 116 */
-			linux,code = <KEY_F10>;
+			linux,code = <KEY_F12>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -166,7 +159,7 @@
 		SA117 {
 			label = "SA117";
 			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
-			linux,code = <KEY_F11>;
+			linux,code = <KEY_F13>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -174,7 +167,7 @@
 		SA118 {
 			label = "SA118";
 			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
-			linux,code = <KEY_F12>;
+			linux,code = <KEY_F14>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -182,7 +175,7 @@
 		SA119 {
 			label = "SA119";
 			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
-			linux,code = <KEY_F13>;
+			linux,code = <KEY_F15>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -190,46 +183,46 @@
 		SA120 {
 			label = "SA120";
 			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
-			linux,code = <KEY_F14>;
+			linux,code = <KEY_F16>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 
 		KEY1 {
-			label = "KEY1";
+			label = "KEY1";				/* FKC1 */
 			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm152 */
-			linux,code = <KEY_F15>; //TODO: fix keycode number
+			linux,code = <KEY_F3>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 
 		KEY2 {
-			label = "KEY2";
+			label = "KEY2";				/* PRD */
 			gpios = <&gpio4 10 GPIO_ACTIVE_LOW>;	/* soDimm154 */
-			linux,code = <KEY_F16>; //TODO: fix keycode number
+			linux,code = <KEY_F7>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 
 		KEY3 {
-			label = "KEY3";
+			label = "KEY3";				/* ABN */
 			gpios = <&gpio4 14 GPIO_ACTIVE_LOW>;	/* soDimm156 */
-			linux,code = <KEY_F17>; //TODO: fix keycode number
+			linux,code = <KEY_F6>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 
 		KEY4 {
-			label = "KEY4";
+			label = "KEY4";				/* FKC2 */
 			gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;	/* soDimm158 */
-			linux,code = <KEY_F18>; //TODO: fix keycode number
+			linux,code = <KEY_F9>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
 
 		TNG1 {
 			label = "TNG1";
-			gpios = <&gpio6 1 GPIO_ACTIVE_LOW>;	/* soDimm160 */
+			gpios = <&gpio6 5 GPIO_ACTIVE_LOW>;	/* soDimm162 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 			wakeup-source;
@@ -237,8 +230,8 @@
 
 		TNG2 {
 			label = "TNG2";
-			gpios = <&gpio6 5 GPIO_ACTIVE_LOW>;	/* soDimm162 */
-			linux,code = <KEY_F19>; //TODO: fix keycode number
+			gpios = <&gpio6 1 GPIO_ACTIVE_LOW>;	/* soDimm160 */
+			linux,code = <KEY_F10>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -246,7 +239,7 @@
 		TNG_TEL {
 			label = "TNG_TEL";
 			gpios = <&gpio5 30 GPIO_ACTIVE_LOW>;	/* soDimm164 */
-			linux,code = <KEY_F20>; //TODO: fix keycode number
+			linux,code = <KEY_F11>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -271,25 +264,26 @@
 		gps_en {
 			label = "msns";
 			gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;	/* soDimm113 */
-			default-state = "off";
+			default-state = "on";
 		};
 
 		status_red {
 			label = "status::red";
-			gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;	/* soDimm188 */
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
 			default-state = "off";
 		};
 
 		status_green {
 			label = "status::green";
-			gpios = <&gpio4 7 GPIO_ACTIVE_LOW>;	/* soDimm190 */
+			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;	/* soDimm190 */
 			default-state = "off";
 		};
 
 		status_blue {
 			label = "status::blue";
-			gpios = <&gpio5 20 GPIO_ACTIVE_LOW>;	/* soDimm192 */
-			default-state = "off";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;	/* soDimm192 */
+			default-state = "on";
 		};
 	};
 };
@@ -378,7 +372,7 @@
 	keep-power-in-suspend;
 	cap-power-off-card;
 	non-removable;
-	max-frequency = <10000000>;
+	max-frequency = <5000000>;
 	status = "okay";
 	vmmc-supply = <&reg_wl1837_p1v8>;
 	#address-cells = <1>;
@@ -402,8 +396,8 @@
 /*
  * Audio (digital part)
  */
-/* &audmux {	status = "okay";	}; => Allways enabled */
-&ssi1	{	status = "okay";	}; /* for on-module codec */
+/* &audmux	{	status = "okay";	}; => always enabled */
+/* &ssi1	{	status = "okay";	}; => always enabled */
 &ssi2 	{	status = "okay";	}; /* for external codec */
 
 /* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
