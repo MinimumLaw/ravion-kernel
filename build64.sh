@@ -4,6 +4,7 @@ export ARCH=arm64
 # Name board(s) DTB file(s)
 export DTBS="${DTBS} ravion/imx8mq-rhos-kitsbimx8.dtb	ravion/imx8mq-rhos-pkk.dtb"
 export DTBS="${DTBS} ravion/rk3568-rhos-kitsbimx8.dtb	ravion/rk3568-rhos-pkk.dtb"
+export DTBS="${DTBS} ravion/rk3568-rhos-pkk-m7.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     # defconfig name

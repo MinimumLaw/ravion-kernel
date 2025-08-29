@@ -266,9 +266,9 @@
 	soundcard@0 {
 		compatible = "simple-audio-card";
 #ifdef	CODEC_MASTER
-		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(M)";
+		simple-audio-card,name = "RHOS RK3568 SGTL5000(M)";
 #else
-		simple-audio-card,name = "RHOS IMX8MQ SGTL5000(S)";
+		simple-audio-card,name = "RHOS RK3568 SGTL5000(S)";
 #endif
 		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&dailink0_master>;

@@ -165,7 +165,7 @@
 &i2c0 { /* PMIC, CPU voltage */
 	status = "okay";
 
-	pcie_clkgen: glkgen@68 { /* DD8 - not have driver this time */
+	pcie_clkgen: clkgen@68 { /* DD8 - not have driver this time */
 		compatible = "9FGV0641AKLF";
 		reg = <0x68>;
 	};
