@@ -166,7 +166,7 @@
 
 		SA118 {
 			label = "SA118";
-			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
 			linux,code = <KEY_F14>;
 			debounce-interval = <100>;
 			wakeup-source;

@@ -100,7 +100,7 @@
 
 		kl3 {
 			label = "KL3";
-			gpios = <&gpio3 13 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
 			linux,code = <KEY_F10>;
 			debounce-interval = <100>;
 			wakeup-source;

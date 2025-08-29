@@ -76,16 +76,6 @@
 		#clock-cells = <0>;
 		clock-frequency = <100000000>;
 	};
-
-	gpio-leds {
-		compatible = "gpio-leds";
-
-		sys_rst {
-			label = "sys::RESET";
-			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;	/* soDimm165 */
-			default-state = "off";
-		};
-	};
 };
 
 /*

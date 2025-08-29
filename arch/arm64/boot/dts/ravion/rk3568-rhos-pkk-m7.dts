@@ -55,64 +55,48 @@
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
-
+/****
+BT_WAKE - soDimm172
+SIM_STAT- soDimm163
+****/
 	gpio-leds {
 		compatible = "gpio-leds";
-#if 0
-		sys_rst {
-			label = "sys::RESET";
-			gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_LOW>;	/* soDimm165 */
-			default-state = "on";
-		};
 
-		status {
-			label = "sys::STATUS";
-			gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
-			default-state = "on";
-		};
-
-		pwr_lcd {
-			label = "pwr::LCD";
+		status_led {
+			label = "status";
 			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
 			default-state = "on";
 		};
 
-		pwr_ext1 {
-			label = "pwr::EXT1";
-			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_HIGH>;	/* soDimm170 */
-			default-state = "on";
-		};
-
-		pwr_ow {
-			label = "pwr::OW";
-			gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;	/* soDimm171 */
-			default-state = "on";
-		};
-
-		pwr_ext2 {
-			label = "pwr::EXT2";
-			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
-			default-state = "on";
-		};
-
-		pwr_ext3 {
-			label = "pwr::EXT3";
-			gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
-			default-state = "on";
-		};
-
-		disp_orient {
-			label = "display::ORIENT";
+		tmg_pwr_pe {
+			label = "PWR::TMG";
 			gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_HIGH>;	/* soDimm169 */
 			default-state = "off";
 		};
 
-		ts_orient {
-			label = "touchscreen::ORIENT";
-			gpios = <&gpio3 RK_PC7 GPIO_ACTIVE_HIGH>;	/* soDimm177 */
+		vu_pwr_pe {
+			label = "PWR::VU";
+			gpios = <&gpio2 RK_PD3 GPIO_ACTIVE_HIGH>;	/* soDimm152 */
 			default-state = "on";
 		};
-#endif		
+
+		hp_amp_en {
+			label = "hp_amp_en";
+			gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_HIGH>;	/* soDimm173 */
+			default-state = "on";
+		};
+/*** Attention: May be this bad idea ***/
+		wl_en {
+			label = "wl_en";
+			gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;	/* soDimm158 */
+			default-state = "on";
+		};
+
+		sim_fly {
+			label = "sim_fly";
+			gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;	/* soDimm175 */
+			default-state = "on";
+		};
 	};
 
 	gpio-keys {
@@ -125,10 +109,10 @@
 			debounce-interval = <25>;
 			wakeup-source;
 		};
-#if 0
+
 		sw2-key {
 			label = "SW2";
-			gpios = <&gpio2 RK_PD5 GPIO_ACTIVE_LOW>;	/* soDimm139 */
+			gpios = <&gpio2 RK_PD5 GPIO_ACTIVE_LOW>;	/* soDimm156 */
 			linux,code = <KEY_F2>;
 			debounce-interval = <25>;
 			wakeup-source;
@@ -136,7 +120,7 @@
 
 		sw3-key {
 			label = "SW3";
-			gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_LOW>;	/* soDimm158 */
+			gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_LOW>;	/* soDimm174 */
 			linux,code = <KEY_F3>;
 			debounce-interval = <25>;
 			wakeup-source;
@@ -144,14 +128,14 @@
 
 		sw4-key {
 			label = "SW4";
-			gpios = <&gpio2 RK_PD7 GPIO_ACTIVE_LOW>;	/* soDimm160 */
+			gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_LOW>;	/* soDimm176 */
 			linux,code = <KEY_F4>;
 			debounce-interval = <25>;
 			wakeup-source;
 		};
 
 		sw5-key {
-			label = "SW4";
+			label = "SW5";
 			gpios = <&gpio2 RK_PD4 GPIO_ACTIVE_LOW>;	/* soDimm154 */
 			linux,code = <KEY_F5>;
 			debounce-interval = <25>;
@@ -160,12 +144,11 @@
 
 		ext-tng-key {
 			label = "EXT_TANGENTA";
-			gpios = <&gpio2 RK_PD3 GPIO_ACTIVE_LOW>;	/* soDimm152 */
-			linux,code = <KEY_F5>;
+			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;	/* soDimm170 */
+			linux,code = <KEY_F13>;
 			debounce-interval = <25>;
 			wakeup-source;
 		};
-#endif
 	};
 
 
