@@ -169,7 +169,7 @@
 
 		pwr_APD {
 			label = "pwr::APD";
-			gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;	/* soDimm 118 */
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;	/* soDimm 118 */
 			default-state = "on";
 		};
 
