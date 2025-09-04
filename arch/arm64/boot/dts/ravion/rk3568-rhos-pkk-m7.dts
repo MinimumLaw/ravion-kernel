@@ -55,10 +55,7 @@
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
 	};
-/****
-BT_WAKE - soDimm172
-SIM_STAT- soDimm163
-****/
+
 	gpio-leds {
 		compatible = "gpio-leds";
 
@@ -149,8 +146,21 @@ SIM_STAT- soDimm163
 			debounce-interval = <25>;
 			wakeup-source;
 		};
+
+		/* FixMe: bt-wake realy button? */
+		bt-wake {
+			lebael = "BLUETOOTH_WAKE";
+			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;	/* soDimm172 */
+			linux,code = <KEY_MACRO2>;
+			wakeup-source;
+		};
 	};
 
+	rfkill {
+		compatible = "rfkill-gpio";
+		radio-type = "wlan";
+		shutdown-gpios = <&gpio3 RK_PD0 GPIO_ACTIVE_LOW>;	/* soDimm163 */
+	};
 
 	lvds_panel {
 	/* Mitsubishi AA070TA01ADA11 LVDS display panel
@@ -363,19 +373,14 @@ SIM_STAT- soDimm163
  *****/
 &pwm0 {		status = "okay";	};
 
-/*
- * M.2 Slot interfaces
- */
+/* PCIe 2.0 disabled on this board
+ **********************************/
+&pcie2x1 {	status = "disabled";	};
 
-/* Bluetooth interface
- ********************/
-&uart1 {	status = "okay";	};
-
-
-/* PCIe M.2 slot
- **************/
-&pcie2x1 {	status = "okay";	};
-
-/* PCIe 4x slot
- *************/
+/* PCIe 3.0 - WiFi interface slot
+ *********************************/
 &pcie3x2 {	status = "okay";	};
+
+/* Bluetooth interface on WiFi slot
+ ***********************************/
+&uart1 {	status = "okay";	};
