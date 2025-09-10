@@ -727,7 +727,8 @@ static int aic32x4_setup_clocks(struct snd_soc_component *component,
 		{ .id = "bdiv" },
 	};
 
-	printk("%s: sr=%d, ch=%d, bit=%d\n", __FUNCTION__, sample_rate, channels, bit_depth);
+	dev_err(component->dev, "sample_rate=%d, channels=%d, bit_depth=%d\n",
+		sample_rate, channels, bit_depth);
 
 	ret = devm_clk_bulk_get(component->dev, ARRAY_SIZE(clocks), clocks);
 	if (ret)
@@ -788,11 +789,13 @@ static int aic32x4_setup_clocks(struct snd_soc_component *component,
 					dac_clock_rate = ndac * mdac * dosr *
 							sample_rate;
 					if (dac_clock_rate == adc_clock_rate) {
+						if (dosr%bit_depth || aosr%bit_depth)
+							continue;
 						if (clk_round_rate(clocks[0].clk, dac_clock_rate) == 0)
 							continue;
 
-	printk("%s: Try clock rate %ld (nadc,madc,aosr=%d,%d,%d/ndac,mdac,dosr=%d,%d,%d)\n",
-		__FUNCTION__, dac_clock_rate, nadc, madc, aosr, ndac, mdac, dosr);
+	dev_err(component->dev,"Set clock rate %ld (nadc,madc,aosr=%d,%d,%d/ndac,mdac,dosr=%d,%d,%d)\n",
+		dac_clock_rate, nadc, madc, aosr, ndac, mdac, dosr);
 
 						clk_set_rate(clocks[0].clk,
 							dac_clock_rate);

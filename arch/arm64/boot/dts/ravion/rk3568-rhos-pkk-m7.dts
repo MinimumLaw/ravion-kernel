@@ -302,6 +302,8 @@
 		compatible = "fsl,sgtl5000";
 		reg = <0xa>;
 		#sound-dai-cells = <0>;
+		assigned-clocks = <&pmucru CLK_WIFI>;
+		assigned-clock-rates = <12000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&refclk_pins>;	/* soDimm140 and soDimm142 as MCLK - 24MHz default */
 		clocks = <&pmucru CLK_WIFI>;

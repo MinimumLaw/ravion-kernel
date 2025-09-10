@@ -161,14 +161,12 @@ static int clk_aic32x4_pll_calc_muldiv(struct clk_aic32x4_pll_muldiv *settings,
 	if (settings->p > 8)
 		return -1;
 
-	/* Find optimal p value or stay with minimum value */
+	/* FixMe: Quick fix to find optimal p value */
 	for(i=settings->p;i < 9;i++) {
 		u64 temp =((u64) rate * i * 10000);
 
-		printk("%s: try p=%d\n", __FUNCTION__, i);
 		if (do_div(temp, parent_rate) == 0) {
 			settings->p = i;
-			printk("%s: Found p=%d\n", __FUNCTION__, i);
 			break;
 		};
 	};
@@ -199,14 +197,6 @@ static int clk_aic32x4_pll_calc_muldiv(struct clk_aic32x4_pll_muldiv *settings,
 	/* Figure out the integer part, J, and the fractional part, D. */
 	settings->j = (u32) multiplier / 10000;
 	settings->d = (u32) multiplier % 10000;
-
-	printk("%s: rate=%ld, p_rate=%ld, p=%d, r=%d, k(j.d)=%d.%04d\n", __FUNCTION__,
-	    rate,
-	    parent_rate,
-	    settings->p,
-	    settings->r,
-	    settings->j,
-	    settings->d);
 
 	return 0;
 }
@@ -359,7 +349,6 @@ static int clk_aic32x4_div_determine_rate(struct clk_hw *hw,
 		return -EINVAL;
 
 	req->rate = DIV_ROUND_UP(req->best_parent_rate, divisor);
-	printk("%s: got %ld\n", __FUNCTION__, req->rate);
 	return 0;
 }
 
