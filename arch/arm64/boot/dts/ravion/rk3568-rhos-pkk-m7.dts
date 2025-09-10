@@ -204,7 +204,7 @@
 
 	lvds_backlight: backlight {
 		compatible = "pwm-backlight";
-		enable-gpios = <&gpio2 RK_PD1 GPIO_ACTIVE_LOW>;	/* soDimm148 */
+		enable-gpios = <&gpio2 RK_PD1 GPIO_ACTIVE_HIGH>;	/* soDimm148 */
 		pwms = <&pwm0 0 100000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
 		default-brightness-level = <8>;
@@ -308,6 +308,8 @@
 		VDDA-supply = <&p3v3>;		/* +3.3VA is crosseed +3.3V */
 		VDDIO-supply = <&p3v3>;
 		VDDD-supply = <&p1v8>;
+		micbias-resistor-k-ohms = <2>;
+/*		micbias-voltage-m-volts = <3000>; */
 		status = "okay";
 	};
 };

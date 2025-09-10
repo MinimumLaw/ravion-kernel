@@ -60,6 +60,16 @@
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
+	 * Device cpecifiv clock generators
+	 */
+	clk_32k_bt: bt_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-accuracy = <100>;
+	};
+
+	/*
 	 * Device specific regulators
 	 */
 	reg_src: regulator-power { /* DA5 */
@@ -124,7 +134,7 @@
 
 	sound-tlv320 {
 		compatible = "fsl,imx-audio-tlv320aic32x4";
-		model = "imx-audio-tlv320aic32x6";
+		model = "ravion-tlv320aic3206";
 		ssi-controller = <&ssi2>;
 		audio-codec = <&tlv320aic3206>;
 		audio-routing =
@@ -304,13 +314,6 @@
 		max-speed = <3686400>;
 		current-speed = <115200>;
 		status = "okay";
-
-		clk_32k_bt: bt_clk {
-			compatible = "fixed-clock";
-			#clock-cells = <0>;
-			clock-frequency = <32768>;
-			clock-accuracy = <100>;
-		};
 	};
 };
 
@@ -340,6 +343,20 @@
 	};
 };
 
+#if 0
+&clks {
+	assigned-clocks =
+		<&clks IMX6QDL_CLK_CKO2>,
+		<&clks IMX6QDL_CLK_CKO2_SEL>;
+	assigned-clock-parents =
+/* CKO2 */	<&clks IMX6QDL_CLK_CKO2_PODF>,
+/* CKO2_SEL */	<&clks IMX6QDL_CLK_HSI_TX>;
+	assigned-clock-rates =
+/* CKO2 */	<24750000>,
+/* CKO2_SEL */	<198000000>;
+};
+#endif
+
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
 	status = "okay";
 
@@ -355,7 +372,7 @@
 		av-supply = <&reg_tlv_p1v8>;
 		dv-supply = <&reg_tlv_p1v8>;
 		reset-gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* soDimm 114 */
-		clocks = <&clks IMX6QDL_CLK_CKO2>; /* soDimm 137 */
+		clocks = <&clks IMX6QDL_CLK_CKO2>;	/* FixMe: CCM_CKO2 pin??? */
 		clock-names = "mclk";
 	};
 };
