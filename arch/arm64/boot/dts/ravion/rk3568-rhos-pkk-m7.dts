@@ -387,4 +387,8 @@
 
 /* Bluetooth interface on WiFi slot
  ***********************************/
-&uart1 {	status = "okay";	};
+&uart1 {
+	bluetooth {
+		compatible = "mrvl,88w8997";
+	};
+};
