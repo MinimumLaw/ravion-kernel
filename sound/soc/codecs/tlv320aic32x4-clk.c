@@ -86,6 +86,7 @@ static int clk_aic32x4_pll_get_muldiv(struct clk_aic32x4 *pll,
 		return ret;
 	settings->r = val & AIC32X4_PLL_R_MASK;
 	settings->p = (val & AIC32X4_PLL_P_MASK) >> AIC32X4_PLL_P_SHIFT;
+	if (settings->p == 0) settings->p = 8;
 
 	ret = regmap_read(pll->regmap, AIC32X4_PLLJ, &val);
 	if (ret < 0)
@@ -155,27 +156,37 @@ static int clk_aic32x4_pll_calc_muldiv(struct clk_aic32x4_pll_muldiv *settings,
 			unsigned long rate, unsigned long parent_rate)
 {
 	u64 multiplier;
+	u32 reminder, min_reminder;
 	int i;
 
-	settings->p = parent_rate / AIC32X4_MAX_PLL_CLKIN + 1;
-	if (settings->p > 8)
-		return -1;
 
-	/* FixMe: Quick fix to find optimal p value */
-	for(i=settings->p;i < 9;i++) {
-		u64 temp =((u64) rate * i * 10000);
-
-		if (do_div(temp, parent_rate) == 0) {
-			settings->p = i;
-			break;
-		};
-	};
-
-	/*
+	/*        Fin * R * J.D
+	 * Fpll = -------------; J up to 63, D up to 9999, R up to 4
+	 *              P
+	 * Find optimal P (up to 8) by find minimal (Fpll*p)%Fin < 256
+	 *
 	 * We scale this figure by 10000 so that we can get the decimal part
 	 * of the multiplier.	This is because we can't do floating point
 	 * math in the kernel.
 	 */
+	settings->p = parent_rate / AIC32X4_MAX_PLL_CLKIN + 1;
+	if (settings->p > 8)
+		return -1;
+
+	multiplier = (u64) rate * settings->p * 10000;
+	min_reminder = do_div(multiplier, parent_rate);
+	for(i=settings->p; settings->p < 9; settings->p++) {
+		multiplier = (u64) rate * settings->p * 10000;
+		reminder = do_div(multiplier, parent_rate);
+		if (reminder < min_reminder ||
+		    reminder < 2560000) {
+		    min_reminder = reminder;
+		    i = settings->p;
+		};
+	};
+	settings->p = i;
+
+	/* Recalc multipler for optimal P value */
 	multiplier = (u64) rate * settings->p * 10000;
 	do_div(multiplier, parent_rate);
 
