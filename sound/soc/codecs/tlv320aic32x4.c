@@ -754,7 +754,11 @@ static int aic32x4_setup_clocks(struct snd_soc_component *component,
 					dac_clock_rate = ndac * mdac * dosr *
 							sample_rate;
 					if (dac_clock_rate == adc_clock_rate) {
-						if (clk_round_rate(clocks[0].clk, dac_clock_rate) == 0)
+						/* FixMe: dosr and aosr not multiples bit_depth
+						   break sound in real world, fix this. */
+						if (dosr%bit_depth ||
+						    aosr%bit_depth ||
+						    clk_round_rate(clocks[0].clk, dac_clock_rate) == 0)
 							continue;
 
 						clk_set_rate(clocks[0].clk,
