@@ -304,7 +304,6 @@
 		iov-supply = <&reg_p3v3>;
 		av-supply = <&reg_tlv_p1v8>;
 		dv-supply = <&reg_tlv_p1v8>;
-//		reset-gpios = <>; /* Not connected */
 		clocks = <&clks IMX6QDL_CLK_CKO2>; /* soDimm 137 */
 		clock-names = "mclk";
 	};

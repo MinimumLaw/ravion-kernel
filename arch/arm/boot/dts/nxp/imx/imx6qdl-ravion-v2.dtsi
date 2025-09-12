@@ -290,7 +290,7 @@
 		VDDA-supply = <&avcc_reg>;
 		VDDIO-supply = <&vcc_reg>;
 		VDDD-supply = <&vgen2_reg>;
-		clocks = <&clks IMX6QDL_CLK_CKO>; /* FixMe: CCM_CKO1 pin??? */
+		clocks = <&clks IMX6QDL_CLK_CKO>;
 		lrclk-strength = <3>;
 	};
 };

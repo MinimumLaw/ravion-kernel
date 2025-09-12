@@ -343,20 +343,6 @@
 	};
 };
 
-#if 0
-&clks {
-	assigned-clocks =
-		<&clks IMX6QDL_CLK_CKO2>,
-		<&clks IMX6QDL_CLK_CKO2_SEL>;
-	assigned-clock-parents =
-/* CKO2 */	<&clks IMX6QDL_CLK_CKO2_PODF>,
-/* CKO2_SEL */	<&clks IMX6QDL_CLK_HSI_TX>;
-	assigned-clock-rates =
-/* CKO2 */	<24750000>,
-/* CKO2_SEL */	<198000000>;
-};
-#endif
-
 &i2c3 { /* Extended I2C: soDimm 128, 130 */
 	status = "okay";
 
@@ -371,8 +357,8 @@
 		iov-supply = <&reg_p3v3>;
 		av-supply = <&reg_tlv_p1v8>;
 		dv-supply = <&reg_tlv_p1v8>;
-		reset-gpios = <&gpio2 27 GPIO_ACTIVE_LOW>; /* soDimm 114 */
-		clocks = <&clks IMX6QDL_CLK_CKO2>;	/* FixMe: CCM_CKO2 pin??? */
+		reset-gpios = <&gpio2 27 GPIO_ACTIVE_LOW>;	/* soDimm 114 */
+		clocks = <&clks IMX6QDL_CLK_CKO2>;		/* soDimm 137 */
 		clock-names = "mclk";
 	};
 };
