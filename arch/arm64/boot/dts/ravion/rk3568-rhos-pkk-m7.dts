@@ -249,8 +249,22 @@
 		enable-gpios = <&gpio2 RK_PD1 GPIO_ACTIVE_HIGH>;	/* soDimm148 */
 		pwms = <&pwm0 0 100000 0>; /* FixMe: frequency !!! */
 		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
-		default-brightness-level = <8>;
+		default-brightness-level = <2>;
 		status = "okay";
+	};
+
+	/*
+	 * HDMI connector
+	 */
+	hdmi-con {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&hdmi_out_con>;
+			};
+		};
 	};
 
 	soundcard@0 {
@@ -279,6 +293,14 @@
 		data-lanes = <1 2 3 4>;
 	};
 };
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
+	};
+};
+
+&hdmi	{	status = "okay";	};
 
 &i2c1 {
 	light@44 {
