@@ -14,6 +14,7 @@ Optional properties:
   - sleep-gpio:		GPIO spec for the slp_tr pin
   - xtal-trim:		u8 value for fine tuning the internal capacitance
 			arrays of xtal pins: 0 = +0 pF, 0xf = +4.5 pF
+  - rx-tx-indicator: enable external RF front-end control
 
 Example:
 

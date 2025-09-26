@@ -93,6 +93,7 @@ struct at86rf230_local {
 	struct regmap *regmap;
 	int slp_tr;
 	bool sleep;
+	bool pa_ext_en;
 
 	struct completion state_complete;
 	struct at86rf230_state_change state;
@@ -957,6 +958,8 @@ at86rf230_start(struct ieee802154_hw *hw)
 
 	at86rf230_awake(lp);
 	enable_irq(lp->spi->irq);
+	if (lp->pa_ext_en)
+		at86rf230_write_subreg(lp, SR_PA_EXT_EN, 0x01);
 
 	return at86rf230_sync_state_change(lp, STATE_RX_AACK_ON);
 }
@@ -979,6 +982,9 @@ at86rf230_stop(struct ieee802154_hw *hw)
 	get_random_bytes(csma_seed, ARRAY_SIZE(csma_seed));
 	at86rf230_write_subreg(lp, SR_CSMA_SEED_0, csma_seed[0]);
 	at86rf230_write_subreg(lp, SR_CSMA_SEED_1, csma_seed[1]);
+
+	if (lp->pa_ext_en)
+		at86rf230_write_subreg(lp, SR_PA_EXT_EN, 0x00);
 
 	at86rf230_sleep(lp);
 }
@@ -1427,6 +1433,14 @@ static int at86rf230_hw_init(struct at86rf230_local *lp, u8 xtal_trim)
 	rc = at86rf230_write_subreg(lp, SR_CLKM_CTRL, 0x00);
 	if (rc)
 		return rc;
+
+	/* RX/TX indicator enable */
+	if (lp->pa_ext_en) {
+		rc = at86rf230_write_subreg(lp, SR_PA_EXT_EN, 0x01);
+		if (rc)
+			return rc;
+	}
+
 	/* Wait the next SLEEP cycle */
 	usleep_range(lp->data->t_sleep_cycle,
 		     lp->data->t_sleep_cycle + 100);
@@ -1757,6 +1771,13 @@ static int at86rf230_probe(struct spi_device *spi)
 	rc = ieee802154_register_hw(lp->hw);
 	if (rc)
 		goto free_debugfs;
+
+	/* Check if external RF control needed */
+	lp->pa_ext_en = false;
+	if (device_property_read_bool(&spi->dev, "rx-tx-indicator")) {
+		lp->pa_ext_en = true;
+		dev_dbg(&spi->dev, "rx-tx-indicator property found\n");
+	}
 
 	return rc;
 

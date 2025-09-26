@@ -54,7 +54,7 @@
 
 	p1v8_extaudio_reg: p1v8_extaudio_regulator {
 			compatible = "regulator-fixed";
-			regulator-name = "P3V3";
+			regulator-name = "P1V8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			vin-supply = <&p3v3_reg>;
