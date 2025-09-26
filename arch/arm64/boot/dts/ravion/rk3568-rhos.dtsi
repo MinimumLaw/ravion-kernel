@@ -46,6 +46,28 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
+	P5V0_OTG: regulator-vcc5v0-usb-otg-power {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio2 RK_PB1 GPIO_ACTIVE_HIGH>; /* soDimm013 */
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb2_0_ctrl_pins>;
+		regulator-name = "vcc5v0_usb_0";
+		regulator-always-on;
+		vin-supply = <&P3V3>;
+	};
+
+	P5V0_HOST: regulator-vcc5v0-usb-host-power {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>; /* soDimm014 */
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb2_1_ctrl_pins>;
+		regulator-name = "vcc5v0_usb_1";
+		regulator-always-on;
+		vin-supply = <&P3V3>;
+	};
+
 	PSDCARD: sdcard-vmmc-regulatror {
 		pinctrl-names = "default";
 		pinctrl-0 = <&psdcard_pins>;
@@ -120,16 +142,28 @@
 	status = "okay";
 };
 &usb2phy0      { status = "okay"; };
-&usb2phy0_host { status = "okay"; };
-&usb2phy0_otg  { status = "okay"; };
+&usb2phy0_host {
+	phy-supply = <&P5V0_OTG>;
+	status = "okay";
+};
+&usb2phy0_otg  {
+	phy-supply = <&P5V0_OTG>;
+	status = "okay";
+};
 
 &usb_host1_xhci {
 	extcon = <&usb2phy1>;
 	status = "okay";
 };
 &usb2phy1      { status = "okay"; };
-&usb2phy1_host { status = "okay"; };
-&usb2phy1_otg  { status = "okay"; };
+&usb2phy1_host {
+	phy-supply = <&P5V0_HOST>;
+	status = "okay";
+};
+&usb2phy1_otg  {
+	phy-supply = <&P5V0_HOST>;
+	status = "okay";
+};
 
 /*
  * PCI-e interfaces
@@ -636,11 +670,17 @@
 
 	pcie {
 		pcie3_clkreq_soc: pcie3-clkreq-soc {
-			rockchip,pins = <4 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>;
+			rockchip,pins =
+				<4 RK_PC2 4 &pcfg_pull_up>,		/* AF4  - CLKREQn */
+				<4 RK_PC4 4 &pcfg_pull_up>,		/* AF4  - PERSTn */
+				<4 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>;	/* GPIO - CLKREQn_SOC */
 		};
 
 		pcie2_clkreq_soc: pcie2-clkreq-soc {
-			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
+			rockchip,pins =
+				<1 RK_PB0 4 &pcfg_pull_up>,		/* AF4  - CLKREQn */
+				<1 RK_PB2 4 &pcfg_pull_up>,		/* AF4  - PERSTn */
+				<1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;	/* GPIO - CLKREQn_SOC */
 		};
 	};
 
@@ -651,16 +691,16 @@
 	};
 
 	usb2_ctrl {
-		usb2_0_ctrl_pins {
+		usb2_0_ctrl_pins: usb2-0-ctrl-pins {
 			rockchip,pins = /* VCCIO4 domain */
-/* 013 */			<2 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN0 */
+/* 013 */			<2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN0 */
 /* 015 */			<2 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;	/* USB2_OC0 */
 		};
 
-		usb2_1_ctrl_pins {
+		usb2_1_ctrl_pins: usb2-1-ctrl-pins {
 			rockchip,pins = /* VCCIO4 domain */
 /* 006 */			<2 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_ID1 */
-/* 014 */			<2 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN1 */
+/* 014 */			<2 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN1 */
 /* 016 */			<2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;	/* USB2_OC1 */
 		};
 	};
