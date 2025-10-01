@@ -271,7 +271,7 @@
 		reg = <0x18>;
 	};
 
-	battery@b {	/* SMBus battery */
+	battery@b { /* SBS Battery on compatible I2C */
 		compatible = "ti,bq20z75", "sbs,sbs-battery";
 		reg = <0xb>;
 		sbs,i2c-retry-count = <2>;

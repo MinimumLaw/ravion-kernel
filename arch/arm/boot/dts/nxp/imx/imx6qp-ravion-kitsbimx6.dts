@@ -54,7 +54,7 @@
 
 	p1v8_extaudio_reg: p1v8_extaudio_regulator {
 			compatible = "regulator-fixed";
-			regulator-name = "P3V3";
+			regulator-name = "P1V8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			vin-supply = <&p3v3_reg>;
@@ -319,27 +319,6 @@
  */
 &can1 {
 	status = "okay";
-};
-
-&clks {
-	assigned-clocks =
-		<&clks IMX6QDL_CLK_CKO>,
-		<&clks IMX6QDL_CLK_CKO1>,
-		<&clks IMX6QDL_CLK_CKO1_SEL>,
-		<&clks IMX6QDL_CLK_CKO2>,
-		<&clks IMX6QDL_CLK_CKO2_SEL>;
-	assigned-clock-parents =
-/* CKO */	<&clks IMX6QDL_CLK_CKO1>,
-/* CKO1 */	<&clks IMX6QDL_CLK_CKO1_PODF>,
-/* CKO1_SEL */	<&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>,
-/* CKO2 */	<&clks IMX6QDL_CLK_CKO2_PODF>,
-/* CKO2_SEL */	<&clks IMX6QDL_CLK_HSI_TX>;
-	assigned-clock-rates =
-/* CKO */	<12288000>,
-/* CKO1 */	<12288000>,
-/* CLKO1_SEL */	<24576000>,
-/* CKO2 */	<24750000>,
-/* CKO2_SEL */	<198000000>;
 };
 
 /*

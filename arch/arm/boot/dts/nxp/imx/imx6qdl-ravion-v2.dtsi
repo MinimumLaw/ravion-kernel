@@ -15,7 +15,6 @@
 
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pwm/pwm.h>
 
 / {
 	chosen {
@@ -170,7 +169,6 @@
 &i2c1 { /* Internal I2C - default OK */
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	single-master;
 	pinctrl-0 = <&pinctrl_i2c_int>;
 	status = "okay";
 
@@ -227,8 +225,6 @@
 			swbst_reg: swbst {
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5150000>;
-				regulator-boot-on;
-				regulator-always-on;
 			};
 
 			snvs_reg: vsnvs {
@@ -258,7 +254,6 @@
 			vgen3_reg: vgen3 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-boot-on;
 				regulator-always-on;
 			};
 
@@ -290,7 +285,7 @@
 		VDDA-supply = <&avcc_reg>;
 		VDDIO-supply = <&vcc_reg>;
 		VDDD-supply = <&vgen2_reg>;
-		clocks = <&clks IMX6QDL_CLK_CKO>;
+		clocks = <&clks IMX6QDL_CLK_CKO>; /* FixMe: CCM_CKO1 pin??? */
 		lrclk-strength = <3>;
 	};
 };
@@ -303,7 +298,6 @@
 &i2c2 { /* Compatible I2C - default disabled */
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	single-master;
 	pinctrl-0 = <&pinctrl_i2c>;
 	status = "disabled";
 };
@@ -311,7 +305,6 @@
 &i2c3 { /* Extended I2C - default disabled */
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	single-master;
 	pinctrl-0 = <&pinctrl_i2c_ext>;
 	status = "disabled";
 };
