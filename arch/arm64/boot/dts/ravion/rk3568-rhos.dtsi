@@ -46,25 +46,27 @@
 		regulator-max-microvolt = <3300000>;
 	};
 
-	P5V0_OTG: regulator-vcc5v0-usb-otg-power {
+	PEN_OTG: regulator-usb-otg-power {
 		compatible = "regulator-fixed";
 		enable-active-high;
 		gpio = <&gpio2 RK_PB1 GPIO_ACTIVE_HIGH>; /* soDimm013 */
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb2_0_ctrl_pins>;
-		regulator-name = "vcc5v0_usb_0";
-		regulator-always-on;
+		regulator-name = "otg_pwr";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
 		vin-supply = <&P3V3>;
 	};
 
-	P5V0_HOST: regulator-vcc5v0-usb-host-power {
+	PEN_HOST: regulator-usb-host-power {
 		compatible = "regulator-fixed";
 		enable-active-high;
 		gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>; /* soDimm014 */
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb2_1_ctrl_pins>;
-		regulator-name = "vcc5v0_usb_1";
-		regulator-always-on;
+		regulator-name = "host_pwr";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
 		vin-supply = <&P3V3>;
 	};
 
@@ -141,13 +143,14 @@
 	extcon = <&usb2phy0>;
 	status = "okay";
 };
-&usb2phy0      { status = "okay"; };
-&usb2phy0_host {
-	phy-supply = <&P5V0_OTG>;
+&usb2phy0      {
 	status = "okay";
 };
-&usb2phy0_otg  {
-	phy-supply = <&P5V0_OTG>;
+&usb2phy0_otg {
+	phy-supply = <&PEN_OTG>;
+	status = "okay";
+};
+&usb2phy0_host {
 	status = "okay";
 };
 
@@ -155,13 +158,14 @@
 	extcon = <&usb2phy1>;
 	status = "okay";
 };
-&usb2phy1      { status = "okay"; };
-&usb2phy1_host {
-	phy-supply = <&P5V0_HOST>;
+&usb2phy1 {
 	status = "okay";
 };
-&usb2phy1_otg  {
-	phy-supply = <&P5V0_HOST>;
+&usb2phy1_otg {
+	status = "okay";
+};
+&usb2phy1_host {
+	phy-supply = <&PEN_HOST>;
 	status = "okay";
 };
 
