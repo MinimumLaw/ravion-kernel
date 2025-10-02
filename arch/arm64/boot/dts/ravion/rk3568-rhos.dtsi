@@ -51,7 +51,7 @@
 		enable-active-high;
 		gpio = <&gpio2 RK_PB1 GPIO_ACTIVE_HIGH>; /* soDimm013 */
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb2_0_ctrl_pins>;
+		pinctrl-0 = <&usb0_ctrl_pins>;
 		regulator-name = "otg_pwr";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
@@ -63,7 +63,7 @@
 		enable-active-high;
 		gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>; /* soDimm014 */
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb2_1_ctrl_pins>;
+		pinctrl-0 = <&usb1_ctrl_pins>;
 		regulator-name = "host_pwr";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
@@ -143,14 +143,9 @@
 	extcon = <&usb2phy0>;
 	status = "okay";
 };
-&usb2phy0      {
-	status = "okay";
-};
+&usb2phy0 { status = "okay"; };
 &usb2phy0_otg {
 	phy-supply = <&PEN_OTG>;
-	status = "okay";
-};
-&usb2phy0_host {
 	status = "okay";
 };
 
@@ -158,12 +153,7 @@
 	extcon = <&usb2phy1>;
 	status = "okay";
 };
-&usb2phy1 {
-	status = "okay";
-};
-&usb2phy1_otg {
-	status = "okay";
-};
+&usb2phy1 { status = "okay"; };
 &usb2phy1_host {
 	phy-supply = <&PEN_HOST>;
 	status = "okay";
@@ -695,13 +685,13 @@
 	};
 
 	usb2_ctrl {
-		usb2_0_ctrl_pins: usb2-0-ctrl-pins {
+		usb0_ctrl_pins: usb2-0-ctrl-pins {
 			rockchip,pins = /* VCCIO4 domain */
 /* 013 */			<2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN0 */
 /* 015 */			<2 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;	/* USB2_OC0 */
 		};
 
-		usb2_1_ctrl_pins: usb2-1-ctrl-pins {
+		usb1_ctrl_pins: usb2-1-ctrl-pins {
 			rockchip,pins = /* VCCIO4 domain */
 /* 006 */			<2 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_ID1 */
 /* 014 */			<2 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>,	/* USB2_PEN1 */
