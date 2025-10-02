@@ -372,7 +372,7 @@ int phy_power_off(struct phy *phy)
 	mutex_unlock(&phy->mutex);
 	phy_pm_runtime_put(phy);
 
-	if (phy->pwr)
+	if (phy->pwr && regulator_is_enabled(phy->pwr))
 		regulator_disable(phy->pwr);
 
 	return 0;
