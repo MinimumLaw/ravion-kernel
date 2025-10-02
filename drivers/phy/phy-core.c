@@ -309,7 +309,7 @@ int phy_power_on(struct phy *phy)
 	if (!phy)
 		goto out;
 
-	if (phy->pwr) {
+	if (phy->pwr && !regulator_is_enabled(phy->pwr)) {
 		ret = regulator_enable(phy->pwr);
 		if (ret)
 			goto out;
