@@ -300,12 +300,21 @@
 
 &ecspi1 {
 	status = "okay";
+#if 1
+	eth_hub: ksz8795clx@0 {
+		compatible = "microchip,ethernet-switch";
+		reg = <0>;
+		spi-max-frequency = <200000>;
+		spi_cpha;
+		status = "okay";
+	};
+#else
 	spi_switch: ksz8795clx@0 {
 		compatible = "microchip,ksz8795";
 		reg = <0>;
-
 		spi-max-frequency = <200000>;
 		spi_cpha;
+		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
 		ports {
 			#address-cells = <1>;
@@ -333,6 +342,7 @@
 			};
 		};
 	};
+#endif
 };
 
 &mipi_csi {
@@ -372,9 +382,11 @@
  * Audio (digital part)
  */
 /* &audmux {	status = "okay";	}; => Allways enabled */
+#if 0
 &sgtl5000 {	status = "disabled";	};
 &module_sound {	status = "disabled";	};
 &ssi1	{	status = "disabled";	};
+#endif
 &ssi2 	{	status = "okay";	}; /* for external codec */
 
 &usbh1 { /* Host interface - default enabled (always connected to HUB) */
