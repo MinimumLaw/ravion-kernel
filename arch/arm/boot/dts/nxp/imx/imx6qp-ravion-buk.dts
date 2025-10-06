@@ -268,7 +268,6 @@
 		iov-supply = <&reg_p3v3>;
 		av-supply = <&reg_tlv_p1v8>;
 		dv-supply = <&reg_tlv_p1v8>;
-//		reset-gpios = <>; /* Not connected */
 		clocks = <&clks IMX6QDL_CLK_CKO2>; /* soDimm 137 */
 		clock-names = "mclk";
 	};
@@ -300,9 +299,6 @@
 };
 
 &ecspi1 {
-	/delete-property/dmas;
-	/delete-property/dma-names;
-
 	status = "okay";
 	spi_switch: ksz8795clx@0 {
 		compatible = "microchip,ksz8795";
@@ -310,8 +306,6 @@
 
 		spi-max-frequency = <200000>;
 		spi_cpha;
-		//spi-cpol;
-//		reset-gpios = <>; /* Not connected */
 
 		ports {
 			#address-cells = <1>;
@@ -387,13 +381,13 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	usb-port@1 {
-		compatible = "usb424,9514";
+		compatible = "usb0424,9514";
 		reg = <1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
 		eth_usb: lan9514@1 {
-			compatible = "usb424,ec00";
+			compatible = "usb0424,ec00";
 			reg = <1>;
 		};
 	};
