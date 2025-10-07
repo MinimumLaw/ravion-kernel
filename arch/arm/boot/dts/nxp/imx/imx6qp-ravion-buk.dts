@@ -11,6 +11,7 @@
 #include "imx6qp.dtsi"
 
 #define SPI_CS_GPIO
+#define USE_MANAGED_SWITCH
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -300,7 +301,7 @@
 
 &ecspi1 {
 	status = "okay";
-#if 1
+#ifdef USE_MANAGED_SWITCH
 	eth_hub: ksz8795clx@0 {
 		compatible = "microchip,ethernet-switch";
 		reg = <0>;
@@ -382,11 +383,9 @@
  * Audio (digital part)
  */
 /* &audmux {	status = "okay";	}; => Allways enabled */
-#if 0
 &sgtl5000 {	status = "disabled";	};
 &module_sound {	status = "disabled";	};
 &ssi1	{	status = "disabled";	};
-#endif
 &ssi2 	{	status = "okay";	}; /* for external codec */
 
 &usbh1 { /* Host interface - default enabled (always connected to HUB) */
