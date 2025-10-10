@@ -11,6 +11,7 @@
 #include "imx6qp.dtsi"
 
 #define SPI_CS_GPIO
+#define USE_MANAGED_SWITCH
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -304,6 +305,15 @@
 	/delete-property/dma-names;
 
 	status = "okay";
+#ifdef USE_MANAGED_SWITCH
+	eth_hub: ksz8795clx@0 {
+		compatible = "microchip,ethernet-switch";
+		reg = <0>;
+		spi-max-frequency = <200000>;
+		spi_cpha;
+		status = "okay";
+	};
+#else
 	spi_switch: ksz8795clx@0 {
 		compatible = "microchip,ksz8795";
 		reg = <0>;
@@ -339,6 +349,7 @@
 			};
 		};
 	};
+#endif
 };
 
 &mipi_csi {
