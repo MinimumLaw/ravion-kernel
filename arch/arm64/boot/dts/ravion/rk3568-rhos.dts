@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025 Radioavionica Corp., Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+/dts-v1/;
+
+#include "rk3568-rhos.dtsi"
+
+/*
+ * ONLY RHOS CPU Module in primary DTB.
+ *
+ * enabled:
+ *  4 UARTS with console on uart2
+ *  Both USB interfaces
+ *  Both PCIe interfaces
+ *  4 I2Cs (I2C0 with PMIC, CPU regulator and PCIe clock source)
+ *  eMMC, SDCARD - as basic storage
+ *  GMAC
+ *  PWM0 and PWM1
+ *  VPU, HDMI, MIPI DSI
+ *  I2S
+ */

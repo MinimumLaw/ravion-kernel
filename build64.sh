@@ -5,6 +5,10 @@ export ARCH=arm64
 export DTBS="${DTBS} ravion/imx8mq-rhos-kitsbimx8.dtb	ravion/imx8mq-rhos-pkk.dtb"
 export DTBS="${DTBS} ravion/rk3568-rhos-kitsbimx8.dtb	ravion/rk3568-rhos-pkk.dtb"
 export DTBS="${DTBS} ravion/rk3568-rhos-pkk-m7.dtb"
+# Try move to root DTB with additional DTBO files
+export DTBS="${DTBS} ravion/rk3568-rhos.dtb"
+export DTBS="${DTBS} ravion/rk3568-rhos-kitsbimx8.dtbo"
+
 
 if [ -z ${DEFCONFIG} ]; then
     # defconfig name
