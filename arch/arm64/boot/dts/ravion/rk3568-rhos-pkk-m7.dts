@@ -253,20 +253,6 @@
 		status = "okay";
 	};
 
-	/*
-	 * HDMI connector
-	 */
-	hdmi-con {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_con_in: endpoint {
-				remote-endpoint = <&hdmi_out_con>;
-			};
-		};
-	};
-
 	soundcard@0 {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "RHOS RK3568 SGTL5000";
@@ -293,14 +279,6 @@
 		data-lanes = <1 2 3 4>;
 	};
 };
-
-&hdmi_out {
-	hdmi_out_con: endpoint {
-		remote-endpoint = <&hdmi_con_in>;
-	};
-};
-
-&hdmi	{	status = "okay";	};
 
 &i2c1 {
 	light@44 {

@@ -100,6 +100,20 @@
 		#clock-cells = <0>;
 		clock-frequency = <100000000>;
 	};
+
+	/*
+	 * HDMI connector
+	 */
+	hdmi-con {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&hdmi_out_con>;
+			};
+		};
+	};
 };
 
 /*
@@ -575,17 +589,29 @@
 	};
 };
 
-&dsi1_in {
-	mipi1_in_vp: endpoint {
-		remote-endpoint = <&vp_out_mipi1>;
-	};
-};
-
 &hdmi {
 	avdd-0v9-supply = <&vdda0v9_image>;
 	avdd-1v8-supply = <&vcca1v8_image>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&hdmitx_scl &hdmitx_sda>;
+	status = "okay";
+};
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
+	};
+};
+
+/*
+ * MIPI DSI interface
+ */
+&dsi_dphy1 { status = "okay"; };
+&dsi1 { status = "okay"; };
+&dsi1_in {
+	mipi1_in_vp: endpoint {
+		remote-endpoint = <&vp_out_mipi1>;
+	};
 };
 
 &i2s2_2ch {
@@ -597,12 +623,6 @@
 	rockchip,trcm-sync-tx-only;	/* use only sclktx/lrcktx for both tx & rx */
 	status = "okay";
 };
-
-/*
- * MIPI DSI interface
- */
-&dsi_dphy1 { status = "okay"; };
-&dsi1 { status = "okay"; };
 
 /*
  * MIPI CSI interface

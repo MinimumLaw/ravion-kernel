@@ -251,20 +251,6 @@
 	};
 
 	/*
-	 * HDMI connector
-	 */
-	hdmi-con {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_con_in: endpoint {
-				remote-endpoint = <&hdmi_out_con>;
-			};
-		};
-	};
-
-	/*
 	 * Sound
 	 */
 	soundcard@0 {
@@ -292,9 +278,6 @@
 		};
 	};
 };
-
-
-&hdmi {	status = "okay"; };
 
 &vop {
 	/* FixMe: Why this _NOT_ work as expected???
@@ -572,17 +555,10 @@
 #endif /* RASPBERRY_CAMERA */
 };
 
-
 &mipi_csi_receiver {
 	remote-endpoint = <&csi_sensor_out>;
 	clock-lanes = <0>;
 	data-lanes = <1 2>;
-};
-
-&hdmi_out {
-	hdmi_out_con: endpoint {
-		remote-endpoint = <&hdmi_con_in>;
-	};
 };
 
 &dsi1_out {

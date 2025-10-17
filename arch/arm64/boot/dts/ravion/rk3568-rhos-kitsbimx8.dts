@@ -21,7 +21,7 @@
 #include "rk3568-rhos.dtsi"
 
 / {
-	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
+	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board (overlay)";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
 
 	aliases {
@@ -247,20 +247,6 @@
 	};
 
 	/*
-	 * HDMI connector
-	 */
-	hdmi-con {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_con_in: endpoint {
-				remote-endpoint = <&hdmi_out_con>;
-			};
-		};
-	};
-
-	/*
 	 * Sound
 	 */
 	soundcard@0 {
@@ -288,9 +274,6 @@
 		};
 	};
 };
-
-
-&hdmi {	status = "okay"; };
 
 &vop {
 	/* FixMe: Why this _NOT_ work as expected???
@@ -336,7 +319,6 @@
 	};
 #endif /* SPI_FLASH */
 };
-
 
 /* Bluetooth interface
  ********************/
@@ -415,7 +397,6 @@
 		reg = <0x68>;
 		status = "okay";
 	};
-
 #if 0
 	usb-hub@2d { /* can be disabled on XP76 [2-4],[6-8] def. [3-4],[5-6] */
 		compatible = "ignore,no-device-driver-required";
@@ -431,7 +412,6 @@
 		reg = <0x3c>;
 	};
 #endif
-
 	sgtl5000: codec@a {
 		compatible = "fsl,sgtl5000";
 		reg = <0xa>;
@@ -459,7 +439,6 @@
 		VDDD-supply = <&pavdd>;
 		status = "okay";
 	};
-
 };
 
 &i2c3 {
@@ -499,7 +478,6 @@
 			#size-cells = <0>;
 			reg = <3>;
 		};
-
 	};
 };
 
@@ -562,12 +540,6 @@
 	remote-endpoint = <&csi_sensor_out>;
 	clock-lanes = <0>;
 	data-lanes = <1 2>;
-};
-
-&hdmi_out {
-	hdmi_out_con: endpoint {
-		remote-endpoint = <&hdmi_con_in>;
-	};
 };
 
 &dsi1_out {

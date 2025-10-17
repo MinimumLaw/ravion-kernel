@@ -164,7 +164,6 @@
 		};
 	};
 
-
 	lvds_panel {
 #if 0
 	/* PKK LVDS display panel (in process)
@@ -291,6 +290,8 @@
 		data-lanes = <1 2 3 4>;
 	};
 };
+
+&hdmi {	status = "disabled";	};
 
 &i2c1 {
 	status = "okay";

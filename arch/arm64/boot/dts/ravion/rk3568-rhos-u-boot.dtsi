@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * (C) Copyright 2024 Alex A. Mihaylov <minimumlaw@rambler.ru>
+ */
+
+#include "rk356x-u-boot.dtsi"
+
+/ {
+	chosen {
+		stdout-path = &uart2;
+	};
+
+	bootstd {
+		compatible = "u-boot,boot-std";
+
+		filename-prefixes = "/";
+		bootdev-order = "usb0", "mmc1", "nvme0", "mmc0";
+
+		efi-bootmgr {
+			/* EFI BootOrder variable */
+			compatible = "u-boot,efi-bootmgr";
+		};
+
+		extlinux {
+			/* /extlinux/extlinux.conf */
+			compatible = "u-boot,extlinux";
+		};
+
+		script {
+			/* /booot.scr or /boot.scr.uimg */
+			compatible = "u-boot,script";
+		};
+	};
+};
+
+/* We need this for UBoot only */
+&usb2phy0_host 	{	status = "okay";	};
+&usb2phy1_otg	{	status = "okay";	};
+
+&sdhci {
+	bootph-all;
+	mmc-hs400-enhanced-strobe;
+};
+
+&pcie2x1 {
+	reset-gpios = <&gpio4 RK_PC4 GPIO_ACTIVE_HIGH>;
+};
+
+&pcie3x2 {
+	reset-gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_HIGH>;
+};
+
+&uart2 {
+	clock-frequency = <24000000>;
+	bootph-all;
+	status = "okay";
+};
