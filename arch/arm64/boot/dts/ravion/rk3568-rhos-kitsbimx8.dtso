@@ -26,7 +26,7 @@
 #undef USE_ONLY_VP0
 
 / {
-	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board";
+	model = "RHOS CPU module with RK3568J CPU on KitSBiMX8 development board (overlay)";
 	compatible = "ravion,rk3568-rhos", "rockchip,rk3568";
 
 	aliases {
