@@ -295,6 +295,11 @@ static const struct snd_kcontrol_new aic32x4_snd_controls[] = {
 	SOC_DOUBLE_R_TLV("PGA Level Volume", AIC32X4_LMICPGAVOL,
 			AIC32X4_RMICPGAVOL, 0, 0x5f, 0, tlv_step_0_5),
 
+	SOC_DOUBLE_R("IN1 to HP volume", AIC32X4_IN1HPVOLL,
+			AIC32X4_IN1HPVOLR, 0, 0x72, 1),
+	SOC_DOUBLE_R("MIXAMP volume", AIC32X4_MIXAMPVOLL,
+			AIC32X4_MIXAMPVOLR, 0, 0x28, 1),
+
 	SOC_SINGLE("Auto-mute Switch", AIC32X4_DACMUTE, 4, 7, 0),
 
 	SOC_SINGLE("AGC Left Switch", AIC32X4_LAGC1, 7, 1, 0),
@@ -322,19 +327,26 @@ static const struct snd_kcontrol_new aic32x4_snd_controls[] = {
 static const struct snd_kcontrol_new hpl_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE("L_DAC Switch", AIC32X4_HPLROUTE, 3, 1, 0),
 	SOC_DAPM_SINGLE("IN1_L Switch", AIC32X4_HPLROUTE, 2, 1, 0),
+	SOC_DAPM_SINGLE("MAL Switch",   AIC32X4_HPLROUTE, 1, 1, 0),
+	SOC_DAPM_SINGLE("MAR Switch",   AIC32X4_HPLROUTE, 0, 1, 0),
 };
 
 static const struct snd_kcontrol_new hpr_output_mixer_controls[] = {
+	SOC_DAPM_SINGLE("L_DAC Switch", AIC32X4_HPRROUTE, 4, 1, 0),
 	SOC_DAPM_SINGLE("R_DAC Switch", AIC32X4_HPRROUTE, 3, 1, 0),
 	SOC_DAPM_SINGLE("IN1_R Switch", AIC32X4_HPRROUTE, 2, 1, 0),
+	SOC_DAPM_SINGLE("MAR Switch",   AIC32X4_HPRROUTE, 1, 1, 0),
 };
 
 static const struct snd_kcontrol_new lol_output_mixer_controls[] = {
+	SOC_DAPM_SINGLE("R_DAC Switch", AIC32X4_LOLROUTE, 4, 1, 0),
 	SOC_DAPM_SINGLE("L_DAC Switch", AIC32X4_LOLROUTE, 3, 1, 0),
+	SOC_DAPM_SINGLE("MAL Switch",   AIC32X4_LOLROUTE, 1, 1, 0),
 };
 
 static const struct snd_kcontrol_new lor_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE("R_DAC Switch", AIC32X4_LORROUTE, 3, 1, 0),
+	SOC_DAPM_SINGLE("MAR Switch",   AIC32X4_LORROUTE, 1, 1, 0),
 };
 
 static const char * const resistor_text[] = {
@@ -407,24 +419,26 @@ static const struct snd_kcontrol_new in3l_to_rmixer_controls[] = {
 static const struct snd_soc_dapm_widget aic32x4_dapm_widgets[] = {
 	SND_SOC_DAPM_DAC("Left DAC", "Left Playback", AIC32X4_DACSETUP, 7, 0),
 	SND_SOC_DAPM_MIXER("HPL Output Mixer", SND_SOC_NOPM, 0, 0,
-			   &hpl_output_mixer_controls[0],
+			   hpl_output_mixer_controls,
 			   ARRAY_SIZE(hpl_output_mixer_controls)),
 	SND_SOC_DAPM_PGA("HPL Power", AIC32X4_OUTPWRCTL, 5, 0, NULL, 0),
 
 	SND_SOC_DAPM_MIXER("LOL Output Mixer", SND_SOC_NOPM, 0, 0,
-			   &lol_output_mixer_controls[0],
+			   lol_output_mixer_controls,
 			   ARRAY_SIZE(lol_output_mixer_controls)),
 	SND_SOC_DAPM_PGA("LOL Power", AIC32X4_OUTPWRCTL, 3, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("MAL Power", AIC32X4_OUTPWRCTL, 1, 0, NULL, 0),
 
 	SND_SOC_DAPM_DAC("Right DAC", "Right Playback", AIC32X4_DACSETUP, 6, 0),
 	SND_SOC_DAPM_MIXER("HPR Output Mixer", SND_SOC_NOPM, 0, 0,
-			   &hpr_output_mixer_controls[0],
+			   hpr_output_mixer_controls,
 			   ARRAY_SIZE(hpr_output_mixer_controls)),
 	SND_SOC_DAPM_PGA("HPR Power", AIC32X4_OUTPWRCTL, 4, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("LOR Output Mixer", SND_SOC_NOPM, 0, 0,
-			   &lor_output_mixer_controls[0],
+			   lor_output_mixer_controls,
 			   ARRAY_SIZE(lor_output_mixer_controls)),
 	SND_SOC_DAPM_PGA("LOR Power", AIC32X4_OUTPWRCTL, 2, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("MAR Power", AIC32X4_OUTPWRCTL, 0, 0, NULL, 0),
 
 	SND_SOC_DAPM_ADC("Right ADC", "Right Capture", AIC32X4_ADCSETUP, 6, 0),
 	SND_SOC_DAPM_MUX("IN1_R to Right Mixer Positive Resistor", SND_SOC_NOPM, 0, 0,
@@ -481,26 +495,41 @@ static const struct snd_soc_dapm_route aic32x4_dapm_routes[] = {
 	/* Left Output */
 	{"HPL Output Mixer", "L_DAC Switch", "Left DAC"},
 	{"HPL Output Mixer", "IN1_L Switch", "IN1_L"},
+	{"HPL Output Mixer", "MAL Switch", "IN1_L" },
+	{"HPL Output Mixer", "MAR Switch", "IN1_R" },
 
+	{"MAL Power", NULL, "HPL Output Mixer"},
 	{"HPL Power", NULL, "HPL Output Mixer"},
 	{"HPL", NULL, "HPL Power"},
+	{"HPL", NULL, "MAL Power"},
 
+	{"LOL Output Mixer", "R_DAC Switch", "Right DAC"},
 	{"LOL Output Mixer", "L_DAC Switch", "Left DAC"},
+	{"LOL Output Mixer", "MAL Switch", "IN1_L"},
 
+	{"MAL Power", NULL, "LOL Output Mixer"},
 	{"LOL Power", NULL, "LOL Output Mixer"},
 	{"LOL", NULL, "LOL Power"},
+	{"LOL", NULL, "MAL Power"},
 
 	/* Right Output */
+	{"HPR Output Mixer", "L_DAC Switch", "Left DAC"},
 	{"HPR Output Mixer", "R_DAC Switch", "Right DAC"},
 	{"HPR Output Mixer", "IN1_R Switch", "IN1_R"},
+	{"HPR Output Mixer", "MAR Switch",   "IN1_R"},
 
+	{"MAR Power", NULL, "HPR Output Mixer"},
 	{"HPR Power", NULL, "HPR Output Mixer"},
 	{"HPR", NULL, "HPR Power"},
+	{"HPR", NULL, "MAR Power"},
 
 	{"LOR Output Mixer", "R_DAC Switch", "Right DAC"},
+	{"LOR Output Mixer", "MAR Switch",   "IN1_R"},
 
 	{"LOR Power", NULL, "LOR Output Mixer"},
+	{"MAR Power", NULL, "LOR Output Mixer"},
 	{"LOR", NULL, "LOR Power"},
+	{"LOR", NULL, "MAR Power"},
 
 	/* Right Input */
 	{"Right ADC", NULL, "IN1_R to Right Mixer Positive Resistor"},
