@@ -89,6 +89,22 @@
 			debounce-interval = <100>;
 			wakeup-source;
 		};
+
+		CALL1 {
+			label = "CALL1";
+			gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;	/* soDimm111 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		CALL2 {
+			label = "CALL2";
+			gpios = <&gpio2 25 GPIO_ACTIVE_LOW>;	/* soDimm110 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
 	};
 
 	gpio-keys-front-panel { //TODO: make interrupts work
