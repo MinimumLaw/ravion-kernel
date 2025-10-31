@@ -204,6 +204,7 @@ static int imx_pd_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 
 	bridge->funcs = &imx_pd_bridge_funcs;
+	kref_init(&bridge->refcount);
 	drm_bridge_attach(encoder, bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
 
 	connector = drm_bridge_connector_init(drm, encoder);
