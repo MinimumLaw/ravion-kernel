@@ -3602,6 +3602,7 @@ static const struct panel_desc mitsubishi_ac043na11_02_00 = {
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
 	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct drm_display_mode mitsubishi_aa050mh01_da1_timing = {
