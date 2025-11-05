@@ -1633,6 +1633,7 @@ static const struct panel_desc boe_nv101wxmn51 = {
 		.enable = 50,
 		.unprepare = 160,
 	},
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct drm_display_mode boe_nv110wtm_n61_modes[] = {
@@ -1777,6 +1778,7 @@ static const struct panel_desc bolimin_bt35sn7g1e0 = {
 		.height = 53,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct display_timing cct_cmt430b19n00_timing = {
@@ -3125,6 +3127,7 @@ static const struct panel_desc koe_tx09d200vm0baa = {
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
 	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct display_timing koe_tx14d24vm1bpa_timing = {
@@ -3628,6 +3631,7 @@ static const struct panel_desc mitsubishi_aa050mh01_da1 = {
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
 	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct panel_desc mitsubishi_aa070me11ada11 = {
@@ -3665,6 +3669,7 @@ static const struct panel_desc mitsubishi_aa104xf12_de2 = {
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
 	.bus_flags = DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE,
+	.connector_type = DRM_MODE_CONNECTOR_DPI,
 };
 
 static const struct drm_display_mode mitsubishi_aa084xe01_mode = {
