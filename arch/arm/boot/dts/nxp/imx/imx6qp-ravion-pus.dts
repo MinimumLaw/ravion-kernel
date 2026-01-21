@@ -1,0 +1,405 @@
+/*
+ * Copyright 2026 Radioavionica Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:pus";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device specific regulators
+	 */
+	reg_src: regulator-power { /* Power source */
+			compatible = "regulator-fixed";
+			regulator-name = "U_BAT";
+			regulator-min-microvolt = <16800000>;
+			regulator-max-microvolt = <16800000>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	reg_p5v: regulator-p5v { /* DA1 */
+			compatible = "regulator-fixed";
+			regulator-name = "P5V";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			vin-supply = <&reg_src>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	reg_p3v3: regulator-p3v3 { /* DA2 */
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			vin-supply = <&reg_src>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	reg_tlv_p1v8: regulator-tlv { /* DA3 */
+			compatible = "regulator-fixed";
+			regulator-name = "TLV-P1V8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&reg_p3v3>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		PTT_A1 {
+			label = "PTT_A1";
+			gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm23 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_A2 {
+			label = "PTT_A2";
+			gpios = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm27 */
+			linux,code = <KEY_F10>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_B1 {
+			label = "PTT_B1";
+			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm25 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_B2 {
+			label = "PTT_B2";
+			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm29 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		VOL_UP {
+			label = "VOLUME_UP";
+			gpios = <&gpio6 0 GPIO_ACTIVE_LOW>;	/* soDimm168 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		VOL_DN {
+			label = "VOLUME_DOWN";
+			gpios = <&gpio5 21 GPIO_ACTIVE_LOW>;	/* soDimm170 */
+			linux,code = <KEY_F10>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		MODE {
+			label = "MODE";
+			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm117 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		RS1 {
+			label = "RS1";
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm119 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		RS2 {
+			label = "RS2";
+			gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;	/* soDimm111 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		RS3 {
+			label = "RS3";
+			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm113 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SERVICE {
+			label = "Service";
+			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm125 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		RS1_RED {
+			label = "rs1::red";
+			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm116 */
+			default-stat = "off";
+		};
+
+		RS1_GREEN {
+			label = "rs1::green";
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;	/* soDimm118 */
+			default-stat = "off";
+		};
+
+		RS1_BLUE {
+			label = "rs1::blue";
+			gpios = <&gpio2 27 GPIO_ACTIVE_HIGH>;	/* soDimm114 */
+			default-stat = "off";
+		};
+
+		RS2_RED {
+			label = "rs2::red";
+			gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;	/* soDimm110 */
+			default-stat = "off";
+		};
+
+		RS2_GREEN {
+			label = "rs2::green";
+			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;	/* soDimm112 */
+			default-stat = "off";
+		};
+
+		RS2_BLUE {
+			label = "rs2::blue";
+			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;	/* soDimm106 */
+			default-stat = "off";
+		};
+
+		RS3_RED {
+			label = "rs3::red";
+			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm121 */
+			default-stat = "off";
+		};
+
+		RS3_GREEN {
+			label = "rs3::green";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;	/* soDimm123 */
+			default-stat = "off";
+		};
+
+		RS3_BLUE {
+			label = "rs3::blue";
+			gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm115 */
+			default-stat = "off";
+		};
+
+		PROF1_RED {
+			label = "prof1::red";
+			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
+			default-stat = "off";
+		};
+
+		PROF1_GREEN {
+			label = "prof1::green";
+			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
+			default-stat = "off";
+		};
+
+		PROF1_BLUE {
+			label = "prof1::blue";
+			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;	/* soDimm162 */
+			default-stat = "off";
+		};
+
+		PROF2_RED {
+			label = "prof2::red";
+			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm158 */
+			default-stat = "off";
+		};
+
+		PROF2_GREEN {
+			label = "prof2::green";
+			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;	/* soDimm160 */
+			default-stat = "off";
+		};
+
+		PROF2_BLUE {
+			label = "prof2::blue";
+			gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;	/* soDimm156 */
+			default-stat = "off";
+		};
+
+		PROF3_RED {
+			label = "prof3::red";
+			gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>;	/* soDimm152 */
+			default-stat = "off";
+		};
+
+		PROF3_GREEN {
+			label = "prof3::green";
+			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>;	/* soDimm154 */
+			default-stat = "off";
+		};
+
+		PROF3_BLUE {
+			label = "prof3::blue";
+			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;	/* soDimm126 */
+			default-stat = "off";
+		};
+
+		PROF4_RED {
+			label = "prof4::red";
+			gpios = <&gpio5 9 GPIO_ACTIVE_HIGH>;	/* soDimm122 */
+			default-stat = "off";
+		};
+
+		PROF4_GREEN {
+			label = "prof4::green";
+			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;	/* soDimm124 */
+			default-stat = "off";
+		};
+
+		PROF4_BLUE {
+			label = "prof4::blue";
+			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>;	/* soDimm120 */
+			default-stat = "off";
+		};
+
+		MODE_RED {
+			label = "mode::red";
+			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;	/* soDimm184 */
+			default-stat = "off";
+		};
+
+		MODE_GREEN {
+			label = "mode::green";
+			gpios = <&gpio7 13 GPIO_ACTIVE_HIGH>;	/* soDimm186 */
+			default-stat = "off";
+		};
+
+		MODE_BLUE {
+			label = "mode::blue";
+			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;	/* soDimm180 */
+			default-stat = "off";
+		};
+
+		VOLUME1 {
+			label = "volume1";
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;	/* soDimm178 */
+			default-stat = "off";
+		};
+
+		VOLUME2 {
+			label = "volume2";
+			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;	/* soDimm176 */
+			default-stat = "off";
+		};
+
+		VOLUME3 {
+			label = "volume3";
+			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
+			default-stat = "off";
+		};
+
+		VOLUME4 {
+			label = "volume4";
+			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
+			default-stat = "off";
+		};
+
+		BACKLIGHT {
+			label = "backlight";
+			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>;	/* soDimm127 */
+			default-stat = "off";
+		};
+
+		status_red {
+			label = "status::red";
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
+			default-state = "off";
+		};
+
+		status_green {
+			label = "status::green";
+			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;	/* soDimm190 */
+			default-state = "off";
+		};
+
+		status_blue {
+			label = "status::blue";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;	/* soDimm192 */
+			default-state = "on";
+		};
+	};
+
+	sound-tlv320 {
+		compatible = "fsl,imx-audio-tlv320aic32x4";
+		model = "ravion-tlv320aic32x6";
+		ssi-controller = <&ssi2>;
+		audio-codec = <&tlv320aic3206>;
+		audio-routing =
+			"IN1_L", "Line In Jack",
+			"IN1_R", "Line In Jack",
+			"IN2_L", "Line In Jack",
+			"IN2_R", "Line In Jack",
+			"Headphone Jack", "HPL",
+			"Headphone Jack", "HPR",
+			"Line Out Jack", "LOL",
+			"Line Out Jack", "LOR";
+		mux-int-port = <2>;
+		mux-ext-port = <5>;
+	};
+};
+
+/*
+ * Serial ports
+ */
+&uart1 {	status = "okay";	};
+&uart2 {	status = "disabled";	};
+&uart3 {	status = "okay";	};
+
+/*
+ * I2C Busses
+ */
+&i2c2 {	/* Compatible I2C: soDimm 194, 196 */
+	status = "okay";
+
+	/* ext codec */
+	#address-cells = <1>;
+	#size-cells = <0>;
+	tlv320aic3206: codec@18 {
+		compatible = "ti,tlv320aic32x6";
+		reg = <0x18>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_ext_aud5>, <&pinctrl_clkext>;
+		iov-supply = <&reg_p3v3>;
+		av-supply = <&reg_tlv_p1v8>;
+		dv-supply = <&reg_tlv_p1v8>;
+		clocks = <&clks IMX6QDL_CLK_CKO2>; /* soDimm 137 */
+		clock-names = "mclk";
+	};
+};
+
+/*
+ * SSI subsystem
+ */
+&ssi2 	{	status = "okay";	}; /* for external codec */
+
+&usbotg	{ /* OTG */
+	status = "okay";
+};
