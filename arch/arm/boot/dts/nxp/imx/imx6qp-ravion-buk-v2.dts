@@ -11,11 +11,10 @@
 #include "imx6qp.dtsi"
 
 #define SPI_CS_GPIO
-#define USE_MANAGED_SWITCH
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:buk";
+	model = "ravion:buk-v2";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	/*
@@ -305,7 +304,7 @@
 		spi_cpha;
 		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
-		ports {
+		/*ethernet-*/ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			port@0 {
@@ -322,17 +321,15 @@
 			};
 			port@3 {
 				reg = <3>;
-				label = "int-lan4";
-				ethernet = <&eth_usb>;
-				fixed-link {
-					speed = <100>;
-					full-duplex;
-				};
+				label = "lan4";
 			};
 			port@4 {
 				reg = <4>;
-				label = "pcie-rgmii";
-				ethernet = <&eth_mux>;
+				label = "cpu";
+				phy-mode = "rgmii";
+				rx-internal-delay-ps = <0>;
+				tx-internal-delay-ps = <0>;
+				ethernet = <&lan7431>;
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
@@ -343,15 +340,36 @@
 };
 
 &pcie {
+	#address-cells = <0x03>;
+	#size-cells = <0x02>;
 	status = "okay";
-
-	lan7431@0,0 {
-		/* Vendor: 1055, Product: 7431 */
+	/*
+		reg = <0xBBSSFF00 0 0 0 0>;
+		BB - BUS number (hex)
+		SS - Device/Slot number (5 bit)
+		FF - Function (3 bit)
+		lspci :
+		01:00.0 Ethernet controller: Microchip Technology / SMSC LAN7431...
+		Bus: 01, Device/Slot: 00, Function: 0
+	*/
+	pcie@0,0 {
+		#address-cells = <0x03>;
+		#size-cells = <0x02>;
+		compatible ="pci16c3,abcd";
+		reg = <0x00000000 0 0 0 0>;
+		class-code = <0x060400>; /* bridge */
 		status = "okay";
 
-		eth_mux: ethernet@1 {
-			reg = <1>;
+		lan7431: ethernet@1,0 {
+			compatible ="pci1055,7431";
+			reg = <0x01000000 0 0 0 0>;
+			class-code = <0x020000>; /* network */
+			phy-connection-type = "rgmii";
 			status = "okay";
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 	};
 };

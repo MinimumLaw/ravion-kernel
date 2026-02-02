@@ -45,6 +45,7 @@
 #define STRAP_READ_ADV_PM_DISABLE_	BIT(0)
 
 #define HW_CFG					(0x010)
+#define HW_CFG_CLK125_EN_			BIT(25)
 #define HW_CFG_RST_PROTECT_PCIE_		BIT(19)
 #define HW_CFG_HOT_RESET_DIS_			BIT(15)
 #define HW_CFG_D3_VAUX_OVR_			BIT(14)
