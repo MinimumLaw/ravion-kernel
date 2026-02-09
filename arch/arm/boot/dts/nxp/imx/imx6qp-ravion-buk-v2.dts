@@ -17,6 +17,18 @@
 	model = "ravion:buk-v2";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
+	aliases { /* renumbering SD/MMC cards and eMMC chip */
+		mmc0 = &usdhc3;
+		mmc1 = &usdhc1;
+		mmc2 = &usdhc2;
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart3;
+		ethernet0 = &fec;
+		ethernet1 = &lan7431;
+		ethernet2 = &eth_usb;
+	};
+
 	/*
 	 * Device specific regulators
 	 */
@@ -302,7 +314,7 @@
 		reg = <0>;
 		spi-max-frequency = <200000>;
 		spi_cpha;
-		status = "okay"; /* Attention! Tail tagging only for port 5 */
+		status = "disabled"; /* Attention! Tail tagging only for port 5 */
 
 		/*ethernet-*/ports {
 			#address-cells = <1>;
