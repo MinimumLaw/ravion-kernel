@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Radioavionica Corp.
+ * Copyright 2025 Radioavionica Corp.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -10,6 +10,7 @@
 /dts-v1/;
 #include "imx6qp.dtsi"
 
+#define SPI_CS_GPIO
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -19,21 +20,11 @@
 	/*
 	 * Device specific regulators
 	 */
-	reg_src: regulator-power { /* Power source */
-			compatible = "regulator-fixed";
-			regulator-name = "U_BAT";
-			regulator-min-microvolt = <16800000>;
-			regulator-max-microvolt = <16800000>;
-			regulator-boot-on;
-			regulator-always-on;
-	};
-
-	reg_p5v: regulator-p5v { /* DA1 */
+	reg_p5vg: regulator-p5v { /* DA1 */
 			compatible = "regulator-fixed";
 			regulator-name = "P5V";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			vin-supply = <&reg_src>;
 			regulator-boot-on;
 			regulator-always-on;
 	};
@@ -43,7 +34,6 @@
 			regulator-name = "P3V3";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
-			vin-supply = <&reg_src>;
 			regulator-boot-on;
 			regulator-always-on;
 	};
@@ -56,295 +46,6 @@
 			vin-supply = <&reg_p3v3>;
 			regulator-boot-on;
 			regulator-always-on;
-	};
-
-	gpio-keys {
-		compatible = "gpio-keys";
-
-		PTT_A1 {
-			label = "PTT_A1";
-			gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm23 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		PTT_A2 {
-			label = "PTT_A2";
-			gpios = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm27 */
-			linux,code = <KEY_F10>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		PTT_B1 {
-			label = "PTT_B1";
-			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm25 */
-			linux,code = <KEY_F13>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		PTT_B2 {
-			label = "PTT_B2";
-			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm29 */
-			linux,code = <KEY_F14>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		VOL_UP {
-			label = "VOLUME_UP";
-			gpios = <&gpio6 0 GPIO_ACTIVE_LOW>;	/* soDimm168 */
-			linux,code = <KEY_F2>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		VOL_DN {
-			label = "VOLUME_DOWN";
-			gpios = <&gpio5 21 GPIO_ACTIVE_LOW>;	/* soDimm170 */
-			linux,code = <KEY_F10>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		MODE {
-			label = "MODE";
-			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm117 */
-			linux,code = <KEY_F13>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		RS1 {
-			label = "RS1";
-			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm119 */
-			linux,code = <KEY_F13>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		RS2 {
-			label = "RS2";
-			gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;	/* soDimm111 */
-			linux,code = <KEY_F14>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		RS3 {
-			label = "RS3";
-			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm113 */
-			linux,code = <KEY_F13>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-
-		SERVICE {
-			label = "Service";
-			gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;	/* soDimm125 */
-			linux,code = <KEY_F14>;
-			debounce-interval = <100>;
-			wakeup-source;
-		};
-	};
-
-	gpio-leds {
-		compatible = "gpio-leds";
-
-		RS1_RED {
-			label = "rs1::red";
-			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;	/* soDimm116 */
-			default-stat = "off";
-		};
-
-		RS1_GREEN {
-			label = "rs1::green";
-			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;	/* soDimm118 */
-			default-stat = "off";
-		};
-
-		RS1_BLUE {
-			label = "rs1::blue";
-			gpios = <&gpio2 27 GPIO_ACTIVE_HIGH>;	/* soDimm114 */
-			default-stat = "off";
-		};
-
-		RS2_RED {
-			label = "rs2::red";
-			gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;	/* soDimm110 */
-			default-stat = "off";
-		};
-
-		RS2_GREEN {
-			label = "rs2::green";
-			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;	/* soDimm112 */
-			default-stat = "off";
-		};
-
-		RS2_BLUE {
-			label = "rs2::blue";
-			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;	/* soDimm106 */
-			default-stat = "off";
-		};
-
-		RS3_RED {
-			label = "rs3::red";
-			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;	/* soDimm121 */
-			default-stat = "off";
-		};
-
-		RS3_GREEN {
-			label = "rs3::green";
-			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;	/* soDimm123 */
-			default-stat = "off";
-		};
-
-		RS3_BLUE {
-			label = "rs3::blue";
-			gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;	/* soDimm115 */
-			default-stat = "off";
-		};
-
-		PROF1_RED {
-			label = "prof1::red";
-			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
-			default-stat = "off";
-		};
-
-		PROF1_GREEN {
-			label = "prof1::green";
-			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
-			default-stat = "off";
-		};
-
-		PROF1_BLUE {
-			label = "prof1::blue";
-			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;	/* soDimm162 */
-			default-stat = "off";
-		};
-
-		PROF2_RED {
-			label = "prof2::red";
-			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;	/* soDimm158 */
-			default-stat = "off";
-		};
-
-		PROF2_GREEN {
-			label = "prof2::green";
-			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;	/* soDimm160 */
-			default-stat = "off";
-		};
-
-		PROF2_BLUE {
-			label = "prof2::blue";
-			gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;	/* soDimm156 */
-			default-stat = "off";
-		};
-
-		PROF3_RED {
-			label = "prof3::red";
-			gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>;	/* soDimm152 */
-			default-stat = "off";
-		};
-
-		PROF3_GREEN {
-			label = "prof3::green";
-			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>;	/* soDimm154 */
-			default-stat = "off";
-		};
-
-		PROF3_BLUE {
-			label = "prof3::blue";
-			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;	/* soDimm126 */
-			default-stat = "off";
-		};
-
-		PROF4_RED {
-			label = "prof4::red";
-			gpios = <&gpio5 9 GPIO_ACTIVE_HIGH>;	/* soDimm122 */
-			default-stat = "off";
-		};
-
-		PROF4_GREEN {
-			label = "prof4::green";
-			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;	/* soDimm124 */
-			default-stat = "off";
-		};
-
-		PROF4_BLUE {
-			label = "prof4::blue";
-			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>;	/* soDimm120 */
-			default-stat = "off";
-		};
-
-		MODE_RED {
-			label = "mode::red";
-			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;	/* soDimm184 */
-			default-stat = "off";
-		};
-
-		MODE_GREEN {
-			label = "mode::green";
-			gpios = <&gpio7 13 GPIO_ACTIVE_HIGH>;	/* soDimm186 */
-			default-stat = "off";
-		};
-
-		MODE_BLUE {
-			label = "mode::blue";
-			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;	/* soDimm180 */
-			default-stat = "off";
-		};
-
-		VOLUME1 {
-			label = "volume1";
-			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;	/* soDimm178 */
-			default-stat = "off";
-		};
-
-		VOLUME2 {
-			label = "volume2";
-			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;	/* soDimm176 */
-			default-stat = "off";
-		};
-
-		VOLUME3 {
-			label = "volume3";
-			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
-			default-stat = "off";
-		};
-
-		VOLUME4 {
-			label = "volume4";
-			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
-			default-stat = "off";
-		};
-
-		BACKLIGHT {
-			label = "backlight";
-			gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>;	/* soDimm127 */
-			default-stat = "off";
-		};
-
-		status_red {
-			label = "status::red";
-			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
-			default-state = "off";
-		};
-
-		status_green {
-			label = "status::green";
-			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;	/* soDimm190 */
-			default-state = "off";
-		};
-
-		status_blue {
-			label = "status::blue";
-			linux,default-trigger = "heartbeat";
-			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;	/* soDimm192 */
-			default-state = "on";
-		};
 	};
 
 	sound-tlv320 {
@@ -364,14 +65,294 @@
 		mux-int-port = <2>;
 		mux-ext-port = <5>;
 	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		RS1_Button {
+			label = "RS1_Button";
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+			linux,code = <KEY_F1>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		RS2_Button {
+			label = "RS2_Button";
+			gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
+			linux,code = <KEY_F2>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		RS3_Button {
+			label = "RS3_Button";
+			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm 113 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		MODE_Button {
+			label = "MODE_Button";
+			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
+			linux,code = <KEY_SPACE>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		VOL_UP_Button {
+			label = "VOL_UP_Button";
+			gpios = <&gpio6 0 GPIO_ACTIVE_LOW>;	/* soDimm 168 */
+			linux,code = <KEY_VOLUMEUP>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		VOL_DN_Button {
+			label = "VOL_DN_Button";
+			gpios = <&gpio5 21 GPIO_ACTIVE_LOW>;	/* soDimm 170 */
+			linux,code = <KEY_VOLUMEDOWN>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_A1_Button {
+			label = "PTT_A1_Button";
+			gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm 23 */
+			linux,code = <KEY_F10>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_B1_Button {
+			label = "PTT_B1_Button";
+			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 25 */
+			linux,code = <KEY_F11>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_A2_Button {
+			label = "PTT_A2_Button";
+			gpios = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm 27 */
+			linux,code = <KEY_F20>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		PTT_B2_Button {
+			label = "PTT_B2_Button";
+			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 29 */
+			linux,code = <KEY_F21>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		backlight 	{
+			label = "backlight";
+			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;		/* soDimm 133 */
+			default-state = "off";
+		};
+
+		RS1_Red 	{
+			label = "rs1_red";
+			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;		/* soDimm 116 */
+			default-state = "off";
+		};
+
+		RS1_Green 	{
+			label = "rs1_green";
+			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;		/* soDimm 118 */
+			default-state = "off";
+		};
+
+		RS1_Blue 	{
+			label = "rs1_blue";
+			gpios = <&gpio2 27 GPIO_ACTIVE_HIGH>;		/* soDimm 114 */
+			default-state = "off";
+		};
+
+		RS2_Red 	{
+			label = "rs2_red";
+			gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;		/* soDimm 110 */
+			default-state = "off";
+		};
+
+		RS2_Green 	{
+			label = "rs2_green";
+			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;		/* soDimm 112 */
+			default-state = "off";
+		};
+
+		RS2_Blue 	{
+			label = "rs2_blue";
+			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;		/* soDimm 106 */
+			default-state = "off";
+		};
+
+		RS3_Red 	{
+			label = "rs3_red";
+			gpios = <&gpio6 4 GPIO_ACTIVE_HIGH>;		/* soDimm 85 */
+			default-state = "off";
+		};
+
+		RS3_Green 	{
+			label = "rs3_green";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;		/* soDimm 123 */
+			default-state = "off";
+		};
+
+		RS3_Blue 	{
+			label = "rs3_blue";
+			gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;		/* soDimm 115 */
+			default-state = "off";
+		};
+
+		MODE_Red 	{
+			label = "mode_red";
+			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;		/* soDimm 184 */
+			default-state = "off";
+		};
+
+		MODE_Green 	{
+			label = "mode_green";
+			gpios = <&gpio7 13 GPIO_ACTIVE_HIGH>;		/* soDimm 186 */
+			default-state = "off";
+		};
+
+		MODE_Blue 	{
+			label = "mode_blue";
+			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;		/* soDimm 180 */
+			default-state = "off";
+		};
+
+		PROF1_Red 	{
+			label = "prof1_red";
+			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;		/* soDimm 164 */
+			default-state = "off";
+		};
+
+		PROF1_Green 	{
+			label = "prof1_green";
+			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;		/* soDimm 166 */
+			default-state = "off";
+		};
+
+		PROF1_Blue 	{
+			label = "prof1_blue";
+			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;		/* soDimm 162 */
+			default-state = "off";
+		};
+
+		PROF2_Red 	{
+			label = "prof2_red";
+			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;		/* soDimm 158 */
+			default-state = "off";
+		};
+
+		PROF2_Green 	{
+			label = "prof2_green";
+			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;		/* soDimm 160 */
+			default-state = "off";
+		};
+
+		PROF2_Blue 	{
+			label = "prof2_blue";
+			gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;		/* soDimm 156 */
+			default-state = "off";
+		};
+
+		PROF3_Red 	{
+			label = "prof3_red";
+			gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>;		/* soDimm 152 */
+			default-state = "off";
+		};
+
+		PROF3_Green 	{
+			label = "prof3_green";
+			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>;		/* soDimm 154 */
+			default-state = "off";
+		};
+
+		PROF3_Blue 	{
+			label = "prof3_blue";
+			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;		/* soDimm 126 */
+			default-state = "off";
+		};
+
+		PROF4_Red 	{
+			label = "prof4_red";
+			gpios = <&gpio5 9 GPIO_ACTIVE_HIGH>;		/* soDimm 122 */
+			default-state = "off";
+		};
+
+		PROF4_Green 	{
+			label = "prof4_green";
+			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;		/* soDimm 124 */
+			default-state = "off";
+		};
+
+		PROF4_Blue 	{
+			label = "prof4_blue";
+			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>;		/* soDimm 120 */
+			default-state = "off";
+		};
+
+		ST_Red 	{
+			label = "st_red";
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;		/* soDimm 188 */
+			default-state = "off";
+		};
+
+		ST_Green 	{
+			label = "st_green";
+			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";		/* soDimm 190 */
+			default-state = "on";
+		};
+
+		ST_Blue 	{
+			label = "st_blue";
+			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;		/* soDimm 192 */
+			default-state = "off";
+		};
+
+		VOL1_led 	{
+			label = "vol1_led";
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;		/* soDimm 178 */
+			default-state = "off";
+		};
+
+		VOL2_led 	{
+			label = "vol2_led";
+			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;		/* soDimm 176 */
+			default-state = "off";
+		};
+
+		VOL3_led 	{
+			label = "vol3_led";
+			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;		/* soDimm 174 */
+			default-state = "off";
+		};
+
+		VOL4_led 	{
+			label = "vol4_led";
+			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;		/* soDimm 172 */
+			default-state = "off";
+		};
+	};
 };
 
 /*
  * Serial ports
  */
 &uart1 {	status = "okay";	};
-&uart2 {	status = "disabled";	};
-&uart3 {	status = "okay";	};
+&uart3 {	status = "disabled";	};	/* routed to MAX232 but not connected */
 
 /*
  * I2C Busses
@@ -396,10 +377,19 @@
 };
 
 /*
- * SSI subsystem
+ * Audio (digital part)
  */
+&sgtl5000 {	status = "disabled";	};
+&module_sound {	status = "disabled";	};
+&ssi1	{	status = "disabled";	};
 &ssi2 	{	status = "okay";	}; /* for external codec */
 
 &usbotg	{ /* OTG */
 	status = "okay";
 };
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
+};
+
