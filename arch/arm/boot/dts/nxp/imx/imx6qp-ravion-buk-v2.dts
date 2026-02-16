@@ -339,7 +339,9 @@
 			port@4 {
 				reg = <4>;
 				label = "cpu";
-				phy-mode = "rgmii";
+				phy-mode = "rgmii-id";
+				rx-internal-delay-ps = <0>;
+				tx-internal-delay-ps = <0>;
 #ifdef ENABLE_DSA
 				ethernet = <&lan7431>;
 #endif

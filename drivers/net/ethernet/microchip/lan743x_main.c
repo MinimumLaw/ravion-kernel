@@ -175,9 +175,11 @@ static void lan7431_configure_rgmii(struct lan743x_adapter *adapter)
 	lan743x_csr_write(adapter, MAC_CR, dataw);
 
 	data = lan743x_csr_read(adapter, MAC_RGMII_ID); /* MAC_RGMII_ID */
-	dataw = data | RGMII_TXC_DELAY_ENABLE | RGMII_RXC_DELAY_ENABLE;
+	dataw = data;
+	dataw &=  ~(RGMII_TXC_DELAY_ENABLE);  /* tx - enable */
+	dataw &=  ~(RGMII_RXC_DELAY_ENABLE);  /* rx - enable */
 	netif_info(adapter, probe, adapter->netdev, "MAC_RGMII_ID = 0x%X, set to 0x%X\n", data, dataw);
-	lan743x_csr_write(adapter, 0x128, dataw);
+	lan743x_csr_write(adapter, MAC_RGMII_ID, dataw);
 }
 
 static int lan743x_csr_wait_for_bit_atomic(struct lan743x_adapter *adapter,
