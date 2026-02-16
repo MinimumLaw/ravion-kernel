@@ -151,26 +151,33 @@ static void lan7431_use_int_125mhz_clock(struct lan743x_adapter *adapter)
 {
 	u32 data, dataw;
 
-	netif_info(adapter, probe, adapter->netdev, "Try enable internal 125MHz clock for RGMII mode.\n");
+	netif_info(adapter, probe, adapter->netdev, "Enable internal 125MHz clock for RGMII mode.\n");
 	data = lan743x_csr_read(adapter, HW_CFG);
-	dataw = data | HW_CFG_CLK125_EN_; /* Enable internal 125MHz clock generator */
+	dataw = data;
+	dataw |= (HW_CFG_CLK125_EN_); /* Enable internal 125MHz clock generator */
 	netif_info(adapter, probe, adapter->netdev, "HW_CFG = 0x%08X, set to 0x%08X\n",
 	    data, dataw);
 	lan743x_csr_write(adapter, HW_CFG, dataw);
+}
 
+static void lan7431_configure_rgmii(struct lan743x_adapter *adapter)
+{
+	u32 data, dataw;
+
+	netif_info(adapter, probe, adapter->netdev, "Configure RGMII interface and delays.\n");
 	data = lan743x_csr_read(adapter, MAC_CR);
-	dataw = data & ~(MAC_CR_MII_EN_); /* MII/RGMII Selection (MII_EN) = 0 - RGMII mode */
-	dataw |= 0x06; /* MAC Configuration (CFG) = 11 - 1000Mbps, RGMII/GMII mode */
+	dataw = data;
+	dataw &= ~(MAC_CR_MII_EN_); /* MII/RGMII Selection (MII_EN) = 0 - RGMII mode / 1 - MII */
+	dataw |=  (MAC_CR_CFG_H_);  /* MAC Configuration (CFG) = 11 - 1000Mbps, RGMII/GMII mode */
+	dataw &= ~(MAC_CR_CFG_L_);  /* 00 - 10Mbps, 01 - 100MBps */
 	netif_info(adapter, probe, adapter->netdev, "MAC_CR = 0x%08X, set to 0x%08X\n",
 	    data, dataw);
 	lan743x_csr_write(adapter, MAC_CR, dataw);
 
-	data = lan743x_csr_read(adapter, 0x128); /* MAC_RGMII_ID */
-	dataw = data;
+	data = lan743x_csr_read(adapter, MAC_RGMII_ID); /* MAC_RGMII_ID */
+	dataw = data | RGMII_TXC_DELAY_ENABLE | RGMII_RXC_DELAY_ENABLE;
 	netif_info(adapter, probe, adapter->netdev, "MAC_RGMII_ID = 0x%X, set to 0x%X\n", data, dataw);
-	lan743x_csr_write(adapter, 0x128, 0x03);
-
-	netif_info(adapter, probe, adapter->netdev, "Enable internal 125MHz clock for RGMII mode done.\n");
+	lan743x_csr_write(adapter, 0x128, dataw);
 }
 
 static int lan743x_csr_wait_for_bit_atomic(struct lan743x_adapter *adapter,
@@ -1252,6 +1259,8 @@ static int lan743x_mac_init(struct lan743x_adapter *adapter)
 	data = lan743x_csr_read(adapter, MAC_CR);
 	data &= ~(MAC_CR_ADD_ | MAC_CR_ASD_);
 	data |= MAC_CR_CNTR_RST_;
+	/* Configure internal RGMII clock and TX/RX delay */
+	lan7431_configure_rgmii(adapter);
 	lan743x_csr_write(adapter, MAC_CR, data);
 
 	if (!is_valid_ether_addr(adapter->mac_address)) {
@@ -3691,11 +3700,11 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 	if (ret)
 		goto cleanup_pci;
 
+	lan7431_use_int_125mhz_clock(adapter);
+
 	ret = lan743x_hw_reset_phy(adapter);
 	if (ret)
 		goto cleanup_pci;
-
-	lan7431_use_int_125mhz_clock(adapter);
 
 	ret = lan743x_hardware_init(adapter, pdev);
 	if (ret)

@@ -225,6 +225,10 @@
 
 #define MAC_MII_DATA			(0x124)
 
+#define MAC_RGMII_ID			(0x128)
+#define RGMII_RXC_DELAY_ENABLE		BIT(0)
+#define RGMII_TXC_DELAY_ENABLE		BIT(1)
+
 #define MAC_EEE_TX_LPI_REQ_DLY_CNT		(0x130)
 
 #define MAC_WUCSR				(0x140)

@@ -11,6 +11,7 @@
 #include "imx6qp.dtsi"
 
 #define SPI_CS_GPIO
+#define ENABLE_DSA
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
@@ -314,7 +315,7 @@
 		reg = <0>;
 		spi-max-frequency = <200000>;
 		spi_cpha;
-		status = "disabled"; /* Attention! Tail tagging only for port 5 */
+		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
 		/*ethernet-*/ports {
 			#address-cells = <1>;
@@ -339,9 +340,9 @@
 				reg = <4>;
 				label = "cpu";
 				phy-mode = "rgmii";
-				rx-internal-delay-ps = <0>;
-				tx-internal-delay-ps = <0>;
+#ifdef ENABLE_DSA
 				ethernet = <&lan7431>;
+#endif
 				fixed-link {
 					speed = <1000>;
 					full-duplex;
@@ -376,6 +377,8 @@
 			compatible ="pci1055,7431";
 			reg = <0x01000000 0 0 0 0>;
 			class-code = <0x020000>; /* network */
+			rx-internal-delay-ps = <0>;
+			tx-internal-delay-ps = <0>;
 			phy-connection-type = "rgmii";
 			status = "okay";
 			fixed-link {
