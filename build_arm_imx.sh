@@ -12,6 +12,7 @@ export DTBS="${DTBS} imx6qp-ravion-kitsbimx6.dtb	imx6qp-ravion-cimc.dtb"
 export DTBS="${DTBS} imx6qp-ravion-mtu.dtb		imx6qp-ravion-router.dtb"
 export DTBS="${DTBS} imx6qp-ravion-pkk-m7.dtb		imx6qp-ravion-pkk-m10.dtb"
 export DTBS="${DTBS} imx6qp-ravion-cimc215.dtb		imx6qp-ravion-bm.dtb"
+export DTBS="${DTBS} imx6qp-ravion-pus.dtb		imx6qp-ravion-bmbpp.dtb"
 # Boards for tests
 export DTBS="${DTBS} imx6qp-ravion-cimc-no-video.dtb imx6qp-ravion-cimc-light.dtb"
 export DTBS="${DTBS} imx6qp-ravion-pudl.dtb imx6qp-ravion-buk.dtb"

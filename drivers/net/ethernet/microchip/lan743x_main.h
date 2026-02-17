@@ -27,6 +27,7 @@
 #define FPGA_REV_GET_MAJOR_(fpga_rev)	((fpga_rev) & 0x000000FF)
 
 #define HW_CFG					(0x010)
+#define HW_CFG_CLK125_EN_			BIT(25)
 #define HW_CFG_RELOAD_TYPE_ALL_			(0x00000FC0)
 #define HW_CFG_EE_OTP_RELOAD_			BIT(4)
 #define HW_CFG_LRST_				BIT(1)
@@ -144,6 +145,12 @@
 #define MAC_MII_ACC_MII_BUSY_		BIT(0)
 
 #define MAC_MII_DATA			(0x124)
+
+#define MAC_RGMII_ID			(0x128)
+
+#define RGMII_RXC_DELAY_ENABLE		BIT(0)
+#define RGMII_TXC_DELAY_ENABLE		BIT(1)
+
 
 #define MAC_EEE_TX_LPI_REQ_DLY_CNT		(0x130)
 
