@@ -15,7 +15,7 @@
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:buk-v2";
+	model = "ravion:bmbpp";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	aliases { /* renumbering SD/MMC cards and eMMC chip */
