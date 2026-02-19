@@ -151,95 +151,95 @@
 	gpio-leds {
 		compatible = "gpio-leds";
 
+		STATUS_1 {
+			label = "status::red";
+			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;	/* soDimm160 */
+			default-stat = "off";
+		};
+
+		STATUS_2 {
+			label = "status::green";
+			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;	/* soDimm162 */
+			default-stat = "off";
+		};
+
+		STATUS_3 {
+			label = "status::blue";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
+			default-stat = "on";
+		};
+
+		BK_1 {
+			label = "bk::red";
+			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
+			default-stat = "off";
+		};
+
+		BK_2 {
+			label = "bk::green";
+			gpios = <&gpio6 0 GPIO_ACTIVE_HIGH>;	/* soDimm168 */
+			default-stat = "off";
+		};
+
+		BK_3 {
+			label = "bk::blue";
+			gpios = <&gpio5 21 GPIO_ACTIVE_HIGH>;	/* soDimm170 */
+			default-stat = "off";
+		};
+
 		DMW2_1 {
 			label = "dmw2::red";
-			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;	/* soDimm160 */
+			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
 			default-stat = "off";
 		};
 
 		DMW2_2 {
 			label = "dmw2::green";
-			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;	/* soDimm162 */
+			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
 			default-stat = "off";
 		};
 
 		DMW2_3 {
 			label = "dmw2::blue";
-			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;	/* soDimm164 */
-			default-stat = "off";
-		};
-
-		WLAN_1 {
-			label = "wlan::red";
-			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;	/* soDimm166 */
-			default-stat = "off";
-		};
-
-		WLAN_2 {
-			label = "wlan::green";
-			gpios = <&gpio6 0 GPIO_ACTIVE_HIGH>;	/* soDimm168 */
-			default-stat = "off";
-		};
-
-		WLAN_3 {
-			label = "wlan::blue";
-			gpios = <&gpio5 21 GPIO_ACTIVE_HIGH>;	/* soDimm170 */
+			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;	/* soDimm176 */
 			default-stat = "off";
 		};
 
 		BT_1 {
 			label = "bluetooth::red";
-			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;	/* soDimm172 */
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;	/* soDimm178 */
 			default-stat = "off";
 		};
 
 		BT_2 {
 			label = "bluetooth::green";
-			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;	/* soDimm174 */
+			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;	/* soDimm180 */
 			default-stat = "off";
 		};
 
 		BT_3 {
 			label = "bluetooth::blue";
-			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;	/* soDimm176 */
+			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;	/* soDimm184 */
 			default-stat = "off";
 		};
 
 		LAN_1 {
 			label = "lan::red";
-			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;	/* soDimm178 */
-			default-stat = "off";
-		};
-
-		LAN_2 {
-			label = "lan::green";
-			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;	/* soDimm180 */
-			default-stat = "off";
-		};
-
-		LAN_3 {
-			label = "lan::blue";
-			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;	/* soDimm184 */
-			default-stat = "off";
-		};
-
-		status_red {
-			label = "status::red";
 			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
 			default-state = "off";
 		};
 
-		status_green {
-			label = "status::green";
+		LAN_2 {
+			label = "lan::green";
 			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;	/* soDimm190 */
 			default-state = "off";
 		};
 
-		status_blue {
-			label = "status::blue";
-			linux,default-trigger = "heartbeat";
+		LAN3 {
+			label = "lan::blue";
 			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;	/* soDimm192 */
-			default-state = "on";
+			default-state = "off";
 		};
 	};
 };
