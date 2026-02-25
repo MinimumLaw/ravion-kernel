@@ -72,7 +72,7 @@
 		RS1_Button {
 			label = "RS1_Button";
 			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
-			linux,code = <KEY_F1>;
+			linux,code = <KEY_F18>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -80,7 +80,7 @@
 		RS2_Button {
 			label = "RS2_Button";
 			gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;	/* soDimm 111 */
-			linux,code = <KEY_F2>;
+			linux,code = <KEY_F19>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -88,7 +88,7 @@
 		RS3_Button {
 			label = "RS3_Button";
 			gpios = <&gpio2 1 GPIO_ACTIVE_LOW>;	/* soDimm 113 */
-			linux,code = <KEY_F3>;
+			linux,code = <KEY_F20>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -96,7 +96,7 @@
 		MODE_Button {
 			label = "MODE_Button";
 			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
-			linux,code = <KEY_SPACE>;
+			linux,code = <KEY_F17>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -120,7 +120,7 @@
 		PTT_A1_Button {
 			label = "PTT_A1_Button";
 			gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;	/* soDimm 23 */
-			linux,code = <KEY_F10>;
+			linux,code = <KEY_F2>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -128,7 +128,7 @@
 		PTT_B1_Button {
 			label = "PTT_B1_Button";
 			gpios = <&gpio3 19 GPIO_ACTIVE_LOW>;	/* soDimm 25 */
-			linux,code = <KEY_F11>;
+			linux,code = <KEY_F13>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -136,7 +136,7 @@
 		PTT_A2_Button {
 			label = "PTT_A2_Button";
 			gpios = <&gpio3 20 GPIO_ACTIVE_LOW>;	/* soDimm 27 */
-			linux,code = <KEY_F20>;
+			linux,code = <KEY_F10>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -144,7 +144,7 @@
 		PTT_B2_Button {
 			label = "PTT_B2_Button";
 			gpios = <&gpio3 25 GPIO_ACTIVE_LOW>;	/* soDimm 29 */
-			linux,code = <KEY_F21>;
+			linux,code = <KEY_F14>;
 			debounce-interval = <100>;
 			wakeup-source;
 		};
@@ -154,194 +154,194 @@
 		compatible = "gpio-leds";
 
 		backlight 	{
-			label = "backlight";
+			label = "backlight::green";
 			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;		/* soDimm 133 */
 			default-state = "off";
 		};
 
 		RS1_Red 	{
-			label = "rs1_red";
+			label = "rs1::red";
 			gpios = <&gpio5 31 GPIO_ACTIVE_HIGH>;		/* soDimm 116 */
 			default-state = "off";
 		};
 
 		RS1_Green 	{
-			label = "rs1_green";
+			label = "rs1::green";
 			gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;		/* soDimm 118 */
 			default-state = "off";
 		};
 
 		RS1_Blue 	{
-			label = "rs1_blue";
+			label = "rs1::blue";
 			gpios = <&gpio2 27 GPIO_ACTIVE_HIGH>;		/* soDimm 114 */
 			default-state = "off";
 		};
 
 		RS2_Red 	{
-			label = "rs2_red";
+			label = "rs2::red";
 			gpios = <&gpio2 25 GPIO_ACTIVE_HIGH>;		/* soDimm 110 */
 			default-state = "off";
 		};
 
 		RS2_Green 	{
-			label = "rs2_green";
+			label = "rs2::green";
 			gpios = <&gpio2 26 GPIO_ACTIVE_HIGH>;		/* soDimm 112 */
 			default-state = "off";
 		};
 
 		RS2_Blue 	{
-			label = "rs2_blue";
+			label = "rs2::blue";
 			gpios = <&gpio2 24 GPIO_ACTIVE_HIGH>;		/* soDimm 106 */
 			default-state = "off";
 		};
 
 		RS3_Red 	{
-			label = "rs3_red";
+			label = "rs3::red";
 			gpios = <&gpio6 4 GPIO_ACTIVE_HIGH>;		/* soDimm 85 */
 			default-state = "off";
 		};
 
 		RS3_Green 	{
-			label = "rs3_green";
+			label = "rs3::green";
 			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;		/* soDimm 123 */
 			default-state = "off";
 		};
 
 		RS3_Blue 	{
-			label = "rs3_blue";
+			label = "rs3::blue";
 			gpios = <&gpio2 2 GPIO_ACTIVE_HIGH>;		/* soDimm 115 */
 			default-state = "off";
 		};
 
 		MODE_Red 	{
-			label = "mode_red";
+			label = "mode::red";
 			gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;		/* soDimm 184 */
 			default-state = "off";
 		};
 
 		MODE_Green 	{
-			label = "mode_green";
+			label = "mode::green";
 			gpios = <&gpio7 13 GPIO_ACTIVE_HIGH>;		/* soDimm 186 */
 			default-state = "off";
 		};
 
 		MODE_Blue 	{
-			label = "mode_blue";
+			label = "mode::blue";
 			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;		/* soDimm 180 */
 			default-state = "off";
 		};
 
 		PROF1_Red 	{
-			label = "prof1_red";
+			label = "profile1::red";
 			gpios = <&gpio5 30 GPIO_ACTIVE_HIGH>;		/* soDimm 164 */
 			default-state = "off";
 		};
 
 		PROF1_Green 	{
-			label = "prof1_green";
+			label = "profile1::green";
 			gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;		/* soDimm 166 */
 			default-state = "off";
 		};
 
 		PROF1_Blue 	{
-			label = "prof1_blue";
+			label = "profile1::blue";
 			gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;		/* soDimm 162 */
 			default-state = "off";
 		};
 
 		PROF2_Red 	{
-			label = "prof2_red";
+			label = "profile2::red";
 			gpios = <&gpio4 15 GPIO_ACTIVE_HIGH>;		/* soDimm 158 */
 			default-state = "off";
 		};
 
 		PROF2_Green 	{
-			label = "prof2_green";
+			label = "profile2::green";
 			gpios = <&gpio6 1 GPIO_ACTIVE_HIGH>;		/* soDimm 160 */
 			default-state = "off";
 		};
 
 		PROF2_Blue 	{
-			label = "prof2_blue";
+			label = "profile2::blue";
 			gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;		/* soDimm 156 */
 			default-state = "off";
 		};
 
 		PROF3_Red 	{
-			label = "prof3_red";
+			label = "profile3::red";
 			gpios = <&gpio4 9 GPIO_ACTIVE_HIGH>;		/* soDimm 152 */
 			default-state = "off";
 		};
 
 		PROF3_Green 	{
-			label = "prof3_green";
+			label = "profile3::green";
 			gpios = <&gpio4 10 GPIO_ACTIVE_HIGH>;		/* soDimm 154 */
 			default-state = "off";
 		};
 
 		PROF3_Blue 	{
-			label = "prof3_blue";
+			label = "profile3::blue";
 			gpios = <&gpio4 11 GPIO_ACTIVE_HIGH>;		/* soDimm 126 */
 			default-state = "off";
 		};
 
 		PROF4_Red 	{
-			label = "prof4_red";
+			label = "profile4::red";
 			gpios = <&gpio5 9 GPIO_ACTIVE_HIGH>;		/* soDimm 122 */
 			default-state = "off";
 		};
 
 		PROF4_Green 	{
-			label = "prof4_green";
+			label = "profile4::green";
 			gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;		/* soDimm 124 */
 			default-state = "off";
 		};
 
 		PROF4_Blue 	{
-			label = "prof4_blue";
+			label = "profile4::blue";
 			gpios = <&gpio3 15 GPIO_ACTIVE_HIGH>;		/* soDimm 120 */
 			default-state = "off";
 		};
 
 		ST_Red 	{
-			label = "st_red";
+			label = "status::red";
 			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;		/* soDimm 188 */
 			default-state = "off";
 		};
 
 		ST_Green 	{
-			label = "st_green";
+			label = "status::green";
 			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";		/* soDimm 190 */
 			default-state = "on";
 		};
 
 		ST_Blue 	{
-			label = "st_blue";
+			label = "status::blue";
 			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;		/* soDimm 192 */
 			default-state = "off";
 		};
 
 		VOL1_led 	{
-			label = "vol1_led";
+			label = "volume1::green";
 			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;		/* soDimm 178 */
 			default-state = "off";
 		};
 
 		VOL2_led 	{
-			label = "vol2_led";
+			label = "volume2::green";
 			gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;		/* soDimm 176 */
 			default-state = "off";
 		};
 
 		VOL3_led 	{
-			label = "vol3_led";
+			label = "volume3::green";
 			gpios = <&gpio5 19 GPIO_ACTIVE_HIGH>;		/* soDimm 174 */
 			default-state = "off";
 		};
 
 		VOL4_led 	{
-			label = "vol4_led";
+			label = "volume4::green";
 			gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>;		/* soDimm 172 */
 			default-state = "off";
 		};
