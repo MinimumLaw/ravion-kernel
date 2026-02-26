@@ -14,7 +14,7 @@
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:bmbpp";
+	model = "ravion:bmbpp-dsa";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
 
 	aliases { /* renumbering SD/MMC cards and eMMC chip */
@@ -25,8 +25,8 @@
 		serial1 = &uart2;
 		serial2 = &uart3;
 		ethernet0 = &fec;
-		ethernet1 = &eth_usb;
-		ethernet2 = &lan7431;
+		ethernet1 = &lan7431;
+		ethernet2 = &eth_usb;
 	};
 
 	/*
@@ -314,7 +314,7 @@
 		reg = <0>;
 		spi-max-frequency = <200000>;
 		spi_cpha;
-		status = "disabled"; /* Attention! Tail tagging only for port 5 */
+		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
 		/*ethernet-*/ports {
 			#address-cells = <1>;
@@ -322,12 +322,6 @@
 			port@0 {
 				reg = <0>;
 				label = "lan1";
-				ethernet = <&eth_usb>;
-
-				fixed-link {
-					speed = <100>;
-					full-duplex;
-				};
 			};
 			port@1 {
 				reg = <1>;
@@ -348,7 +342,6 @@
 				rx-internal-delay-ps = <0>;
 				tx-internal-delay-ps = <0>;
 				ethernet = <&lan7431>;
-				status = "disabled";
 
 				fixed-link {
 					speed = <1000>;
@@ -362,7 +355,7 @@
 &pcie {
 	#address-cells = <0x03>;
 	#size-cells = <0x02>;
-	status = "disabled";
+	status = "okay";
 	/*
 		reg = <0xBBSSFF00 0 0 0 0>;
 		BB - BUS number (hex)
@@ -378,7 +371,7 @@
 		compatible ="pci16c3,abcd";
 		reg = <0x00000000 0 0 0 0>;
 		class-code = <0x060400>; /* bridge */
-		status = "disabled";
+		status = "okay";
 
 		lan7431: ethernet@1,0 {
 			compatible ="pci1055,7431";
@@ -442,7 +435,6 @@
 &usbh1 { /* Host interface - default enabled (always connected to HUB) */
 	#address-cells = <1>;
 	#size-cells = <0>;
-
 	usb-port@1 {
 		compatible = "usb0424,9514";
 		reg = <1>;
