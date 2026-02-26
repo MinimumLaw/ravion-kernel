@@ -311,15 +311,15 @@
 
 		ST_Green 	{
 			label = "status::green";
-			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "heartbeat";		/* soDimm 190 */
-			default-state = "on";
+			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;		/* soDimm 190 */
+			default-state = "off";
 		};
 
 		ST_Blue 	{
 			label = "status::blue";
 			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;		/* soDimm 192 */
-			default-state = "off";
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
 		};
 
 		VOL1_led 	{
