@@ -375,7 +375,7 @@
 	keep-power-in-suspend;
 	cap-power-off-card;
 	non-removable;
-	max-frequency = <5000000>;
+	max-frequency = <25000000>;
 	status = "okay";
 	vmmc-supply = <&reg_wl1837_p1v8>;
 	#address-cells = <1>;
