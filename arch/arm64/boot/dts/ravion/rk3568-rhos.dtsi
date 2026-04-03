@@ -627,22 +627,16 @@
 /*
  * MIPI CSI interface
  */
-&csi_dphy {
+&csi_dphy 	{	status = "okay";	};
+&vicap {
+	phys = <&csi_dphy>;
+	phy-names = "csi-phy0";
 	status = "okay";
-
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-
-			mipi_csi_receiver: endpoint@0 {
-				reg = <0>;
-			};
-		};
+};
+&vicap_mmu	{	status = "okay";	};
+&vicap_mipi {
+	status = "okay";
+	mipi_csi_receiver: endpoint {
 	};
 };
 

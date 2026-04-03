@@ -13,7 +13,9 @@
 #undef	CODEC_CLOCK_SELF
 
 /* MIPI CSI Camera select */
+#undef  RASPBERRY_CAMERA_V1
 #define RASPBERRY_CAMERA_V2
+#undef  RAVION_ADV7280_CAMERA
 
 /* define for both display connect to VP0 */
 #undef USE_ONLY_VP0
@@ -142,6 +144,7 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <24000000>;
+		status = "okay";
 	};
 
 	imx219_1v2_reg: cam1v2_regulator {
@@ -491,7 +494,7 @@
 
 		port {
 			csi_sensor_out: endpoint {
-				remote-endpoint = <&imx8mq_csi_in>;
+				remote-endpoint = <&mipi_csi_receiver>;
 				clock-lanes = <0>;
 				data-lanes = <1>;
 			};
@@ -526,7 +529,7 @@
 
 		port {
 			csi_sensor_out: endpoint {
-				remote-endpoint = <&imx8mq_csi_in>;
+				remote-endpoint = <&mipi_csi_receiver>;
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
 			};
@@ -535,6 +538,10 @@
 #endif /* RASPBERRY_CAMERA */
 };
 
+&csi_dphy {
+	status = "okay";
+	data-lanes = <1 2>; 
+};
 
 &mipi_csi_receiver {
 	remote-endpoint = <&csi_sensor_out>;
