@@ -633,12 +633,12 @@
 	phy-names = "csi-phy0";
 	status = "okay";
 };
-&vicap_mmu	{	status = "okay";	};
 &vicap_mipi {
 	status = "okay";
 	mipi_csi_receiver: endpoint {
 	};
 };
+&vicap_mmu	{	status = "okay";	};
 
 &pmu_io_domains {
 	pmuio1-supply = <&vcc3v3_pmu>;
