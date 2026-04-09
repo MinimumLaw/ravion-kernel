@@ -14,8 +14,8 @@
 
 /* MIPI CSI Camera select */
 #undef  RASPBERRY_CAMERA_V1
-#define RASPBERRY_CAMERA_V2
-#undef  RAVION_ADV7280_CAMERA
+#undef  RASPBERRY_CAMERA_V2
+#define RAVION_ADV7280_CAMERA
 
 /* define for both display connect to VP0 */
 #undef USE_ONLY_VP0
@@ -539,8 +539,12 @@
 };
 
 &csi_dphy {
-	status = "okay";
+#if defined	(RAVION_ADV7280_CAMERA)
+	data-lanes = <1>;
+#else
 	data-lanes = <1 2>; 
+#endif
+	status = "okay";
 };
 
 &mipi_csi_receiver {
