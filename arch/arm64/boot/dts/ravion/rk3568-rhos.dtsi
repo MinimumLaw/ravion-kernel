@@ -630,7 +630,7 @@
 &csi_dphy 	{	status = "okay";	};
 &vicap {
 	phys = <&csi_dphy>;
-	phy-names = "csi-phy0";
+	phy-names = "dphy";
 	status = "okay";
 };
 &vicap_mipi {
