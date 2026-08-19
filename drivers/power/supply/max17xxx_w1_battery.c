@@ -521,27 +521,27 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 
 	switch (dev_name) {
 	case MAX17330_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17330,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX17330,
 			sizeof(info->DeviceName) - 1);
 		break;
 	case MAX17320_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX17320,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX17320,
 			sizeof(info->DeviceName) - 1);
 		break;
 	case MAX173X0_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X0,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX173X0,
 			sizeof(info->DeviceName) - 1);
 		break;
 	case MAX173X1_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X1,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX173X1,
 			sizeof(info->DeviceName) - 1);
 		break;
 	case MAX173X2_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X2,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX173X2,
 			sizeof(info->DeviceName) -1);
 		break;
 	case MAX173X3_DEVNAME:
-		strncpy(info->DeviceName, DEF_DEV_NAME_MAX173X3,
+		strscpy(info->DeviceName, DEF_DEV_NAME_MAX173X3,
 			sizeof(info->DeviceName) - 1);
 		break;
 	default: /* older (MAX172xx) series check */
@@ -552,11 +552,11 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 
 	    switch (dev_name & MAX172XX_DEVID_MASK) { /* MAX172XX not specify revision field */
 		case MAX172X1_DEV_ID:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX172X1,
+			strscpy(info->DeviceName, DEF_DEV_NAME_MAX172X1,
 				sizeof(info->DeviceName) - 1);
 			break;
 		case MAX172X5_DEV_ID:
-			strncpy(info->DeviceName, DEF_DEV_NAME_MAX172X5,
+			strscpy(info->DeviceName, DEF_DEV_NAME_MAX172X5,
 				sizeof(info->DeviceName) - 1);
 			break;
 		default:
@@ -566,7 +566,7 @@ static int devm_w1_max1721x_add_device(struct w1_slave *sl)
 	}
 
 	/* Ignore ManufacturerName (format uncknown) - set to "MAXIM" */
-	strncpy(info->ManufacturerName, DEF_MFG_NAME,
+	strscpy(info->ManufacturerName, DEF_MFG_NAME,
 		sizeof(info->ManufacturerName) - 1);
 
 	if (get_sn_string(info, info->SerialNumber)) {
