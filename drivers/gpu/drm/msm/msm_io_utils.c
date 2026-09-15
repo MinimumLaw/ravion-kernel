@@ -7,12 +7,61 @@
 
 #include <linux/interconnect.h>
 #include <linux/io.h>
+#include <linux/property.h>
 
 #include "msm_drv.h"
 
 /*
  * Util/helpers:
  */
+
+/* clk_bulk_get_all() only enumerates OF providers. ACPI/software-node
+ * consumers must name their clkdev lookups explicitly.
+ */
+int msm_devm_clk_bulk_get_all(struct device *dev, struct clk_bulk_data **clks)
+{
+	struct clk_bulk_data *bulk;
+	const char **names;
+	int count, ret, i;
+
+	if (dev->of_node)
+		return devm_clk_bulk_get_all(dev, clks);
+
+	*clks = NULL;
+	count = device_property_string_array_count(dev, "clock-names");
+	if (count <= 0)
+		return count ?: -EINVAL;
+
+	names = kcalloc(count, sizeof(*names), GFP_KERNEL);
+	if (!names)
+		return -ENOMEM;
+	ret = device_property_read_string_array(dev, "clock-names", names, count);
+	if (ret != count) {
+		ret = ret < 0 ? ret : -EINVAL;
+		goto free_names;
+	}
+
+	bulk = devm_kcalloc(dev, count, sizeof(*bulk), GFP_KERNEL);
+	if (!bulk) {
+		ret = -ENOMEM;
+		goto free_names;
+	}
+	for (i = 0; i < count; i++) {
+		if (!names[i] || !names[i][0]) {
+			ret = -EINVAL;
+			goto free_names;
+		}
+		bulk[i].id = names[i];
+	}
+	ret = devm_clk_bulk_get(dev, count, bulk);
+	if (!ret) {
+		*clks = bulk;
+		ret = count;
+	}
+free_names:
+	kfree(names);
+	return ret;
+}
 
 struct clk *msm_clk_bulk_get_clock(struct clk_bulk_data *bulk, int count,
 		const char *name)
@@ -158,4 +207,63 @@ struct icc_path *msm_icc_get(struct device *dev, const char *name)
 	 */
 	return of_icc_get(mdss_dev, name);
 
+}
+
+static void msm_icc_release(void *data)
+{
+	icc_put(data);
+}
+
+/*
+ * Board-created non-OF consumers explicitly opt in. Each named route is a
+ * pair of qualified ICC node names in qcom,icc-<name>; qcom,icc-tag supplies
+ * the voting buckets. A DPU child may use its MDSS parent's route properties,
+ * but owns its own request and devres lifetime.
+ */
+struct icc_path *msm_devm_icc_get(struct device *dev, const char *name,
+			       bool optional)
+{
+	struct device *routes = dev;
+	struct icc_path *path;
+	const char *ends[2];
+	char prop[64];
+	u32 tag;
+	int ret;
+
+	if (dev->of_node) {
+		path = msm_icc_get(dev, name);
+		goto manage;
+	}
+
+	if (!device_property_read_bool(routes, "qcom,tcl-acpi-display"))
+		return ERR_PTR(-ENODEV);
+	if (snprintf(prop, sizeof(prop), "qcom,icc-%s", name) >= sizeof(prop))
+		return ERR_PTR(-EINVAL);
+	if (!device_property_present(routes, prop) && routes->parent &&
+	    device_property_read_bool(routes->parent, "qcom,tcl-acpi-display"))
+		routes = routes->parent;
+	if (!device_property_present(routes, prop))
+		return optional ? NULL : ERR_PTR(-ENOENT);
+
+	ret = device_property_string_array_count(routes, prop);
+	if (ret != ARRAY_SIZE(ends))
+		return ERR_PTR(ret < 0 ? ret : -EINVAL);
+	ret = device_property_read_string_array(routes, prop, ends, ARRAY_SIZE(ends));
+	if (ret != ARRAY_SIZE(ends))
+		return ERR_PTR(ret < 0 ? ret : -EINVAL);
+	ret = device_property_read_u32(routes, "qcom,icc-tag", &tag);
+	if (ret)
+		return ERR_PTR(ret);
+	if (!tag)
+		return ERR_PTR(-EINVAL);
+	path = icc_get(dev, ends[0], ends[1]);
+	if (!path)
+		return ERR_PTR(-ENODEV);
+	if (!IS_ERR(path))
+		icc_set_tag(path, tag);
+manage:
+	if (IS_ERR_OR_NULL(path))
+		return path;
+	ret = devm_add_action_or_reset(dev, msm_icc_release, path);
+	return ret ? ERR_PTR(ret) : path;
 }

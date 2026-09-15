@@ -9,6 +9,7 @@
 #include <linux/fault-inject.h>
 #include <linux/debugfs.h>
 #include <linux/of_address.h>
+#include <linux/property.h>
 #include <linux/uaccess.h>
 
 #include <drm/drm_drv.h>
@@ -909,11 +910,65 @@ static const struct drm_driver msm_gpu_driver = {
  * is no external component that we need to add since LVDS is within MDP4
  * itself.
  */
+static int msm_component_compare_fwnode(struct device *dev, void *data)
+{
+	return dev_fwnode(dev) == data;
+}
+
+static void msm_component_release_fwnode(struct device *dev, void *data)
+{
+	fwnode_handle_put(data);
+}
+
+/* The match list owns one reference, including probe failure paths. */
+static int msm_component_match_fwnode(struct device *master,
+				      struct component_match **matchptr,
+				      struct fwnode_handle *node)
+{
+	if (IS_ERR(*matchptr))
+		return PTR_ERR(*matchptr);
+	fwnode_handle_get(node);
+	component_match_add_release(master, matchptr, msm_component_release_fwnode,
+				    msm_component_compare_fwnode, node);
+	if (IS_ERR(*matchptr)) {
+		/* No entry owns our reference if allocation failed. */
+		fwnode_handle_put(node);
+		return PTR_ERR(*matchptr);
+	}
+	return 0;
+}
+
+static int msm_add_fwnode_interfaces(struct device *master,
+				    struct component_match **matchptr)
+{
+	struct fwnode_handle *ep, *remote;
+	int ret;
+
+	fwnode_graph_for_each_endpoint(dev_fwnode(master), ep) {
+		remote = fwnode_graph_get_remote_port_parent(ep);
+		if (!remote)
+			continue;
+		ret = 0;
+		if (fwnode_device_is_available(remote))
+			ret = msm_component_match_fwnode(master, matchptr, remote);
+		fwnode_handle_put(remote);
+		if (ret) {
+			fwnode_handle_put(ep);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int add_mdp_components(struct device *master_dev,
 			      struct component_match **matchptr)
 {
 	struct device_node *np = master_dev->of_node;
 	struct device_node *ep_node;
+
+	if (!np)
+		return msm_add_fwnode_interfaces(master_dev, matchptr);
 
 	for_each_endpoint_of_node(np, ep_node) {
 		struct device_node *intf;
@@ -1018,6 +1073,22 @@ static int add_gpu_components(struct device *dev,
 			      struct component_match **matchptr)
 {
 	struct device_node *np;
+
+	if (!dev->of_node) {
+		struct fwnode_handle *gpu;
+		int ret = 0;
+
+		if (!device_property_present(dev, "qcom,gpu"))
+			return 0;
+		/* Explicit reference replaces the DT-wide GPU search. */
+		gpu = fwnode_find_reference(dev_fwnode(dev), "qcom,gpu", 0);
+		if (IS_ERR(gpu))
+			return PTR_ERR(gpu);
+		if (fwnode_device_is_available(gpu))
+			ret = msm_component_match_fwnode(dev, matchptr, gpu);
+		fwnode_handle_put(gpu);
+		return ret;
+	}
 
 	np = of_find_matching_node(NULL, msm_gpu_match);
 	if (!np)

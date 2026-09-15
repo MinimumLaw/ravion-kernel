@@ -9,6 +9,8 @@
 
 #define pr_fmt(fmt)	"[drm:%s:%d] " fmt, __func__, __LINE__
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
 #include <linux/of_irq.h>
@@ -411,8 +413,7 @@ static int dpu_kms_parse_data_bus_icc_path(struct dpu_kms *dpu_kms)
 	struct icc_path *path1;
 	struct device *dpu_dev = &dpu_kms->pdev->dev;
 
-	path0 = msm_icc_get(dpu_dev, "mdp0-mem");
-	path1 = msm_icc_get(dpu_dev, "mdp1-mem");
+	path0 = msm_devm_icc_get(dpu_dev, "mdp0-mem", false);
 
 	if (IS_ERR_OR_NULL(path0))
 		return PTR_ERR_OR_ZERO(path0);
@@ -420,6 +421,9 @@ static int dpu_kms_parse_data_bus_icc_path(struct dpu_kms *dpu_kms)
 	dpu_kms->path[0] = path0;
 	dpu_kms->num_paths = 1;
 
+	path1 = msm_devm_icc_get(dpu_dev, "mdp1-mem", true);
+	if (!dpu_dev->of_node && IS_ERR(path1))
+		return PTR_ERR(path1);
 	if (!IS_ERR_OR_NULL(path1)) {
 		dpu_kms->path[1] = path1;
 		dpu_kms->num_paths++;
@@ -1168,6 +1172,9 @@ static int dpu_kms_hw_init(struct msm_kms *kms)
 	pr_info("dpu hardware revision:0x%x\n", core_rev);
 
 	dpu_kms->catalog = of_device_get_match_data(dev->dev);
+	if (!dev->dev->of_node && platform_get_device_id(dpu_kms->pdev))
+		dpu_kms->catalog = (const void *)
+			platform_get_device_id(dpu_kms->pdev)->driver_data;
 	if (!dpu_kms->catalog) {
 		DPU_ERROR("device config not known!\n");
 		rc = -EINVAL;
@@ -1304,8 +1311,12 @@ static int dpu_kms_init(struct drm_device *ddev)
 	opp = dev_pm_opp_find_freq_floor(dev, &max_freq);
 	if (!IS_ERR(opp))
 		dev_pm_opp_put(opp);
+	else if (!dev->of_node)
+		return PTR_ERR(opp);
 
-	dev_pm_opp_set_rate(dev, max_freq);
+	ret = dev_pm_opp_set_rate(dev, max_freq);
+	if (ret && !dev->of_node)
+		return dev_err_probe(dev, ret, "failed to set initial DPU OPP\n");
 
 	ret = msm_kms_init(&dpu_kms->base, &kms_funcs);
 	if (ret) {
@@ -1376,12 +1387,83 @@ static int dpu_kms_mmap_dpu(struct dpu_kms *dpu_kms)
 	return 0;
 }
 
+
+static int tcl_dpu_check_resources(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	acpi_handle gpu;
+
+	if (acpi_disabled || !dev->parent || !dev->parent->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    !device_property_read_bool(dev->parent, "qcom,tcl-acpi-display") ||
+	    !dev_name(dev->parent) ||
+	    strcmp(dev_name(dev->parent), "tcl-sc7180-mdss") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent->parent)) != gpu ||
+	    !acpi_match_acpi_device((const struct acpi_device_id[]) {
+		{ "QCOM083A" }, { }
+	    }, acpi_companion_or_self(dev->parent->parent)))
+		return -ENODEV;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mdp");
+	if (!res || res->start != 0xae01000 || resource_size(res) != 0x8f000)
+		return -EINVAL;
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vbif");
+	if (!res || res->start != 0xaeb0000 || resource_size(res) != 0x3000)
+		return -EINVAL;
+	/* The coordinator must attach CX before probe, not MDSS_GDSC. */
+	if (!dev->pm_domain)
+		return -EPROBE_DEFER;
+	return 0;
+}
+
+static void tcl_dpu_remove_opps(void *data)
+{
+	dev_pm_opp_remove_all_dynamic(data);
+}
+
+static int tcl_dpu_add_opps(struct device *dev)
+{
+	/* SC7180 display OPPs from the working TCL DT; levels are not uV. */
+	struct dev_pm_opp_data opps[] = {
+		{ .freq = 200000000, .level = 64 },
+		{ .freq = 300000000, .level = 128 },
+		{ .freq = 345000000, .level = 192 },
+		{ .freq = 460000000, .level = 256 },
+	};
+	unsigned int i;
+	int ret;
+
+	ret = dev_pm_opp_get_opp_count(dev);
+	if (ret > 0)
+		return -EEXIST;
+	if (ret < 0 && ret != -ENODEV)
+		return ret;
+	for (i = 0; i < ARRAY_SIZE(opps); i++) {
+		ret = dev_pm_opp_add_dynamic(dev, &opps[i]);
+		if (ret) {
+			tcl_dpu_remove_opps(dev);
+			return ret;
+		}
+	}
+	return devm_add_action_or_reset(dev, tcl_dpu_remove_opps, dev);
+}
+
 static int dpu_dev_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct dpu_kms *dpu_kms;
 	int irq;
 	int ret = 0;
+
+	if (!dev->of_node) {
+		ret = tcl_dpu_check_resources(pdev);
+		if (ret)
+			return ret;
+	}
 
 	if (!msm_disp_drv_should_bind(&pdev->dev, true))
 		return -ENODEV;
@@ -1395,12 +1477,18 @@ static int dpu_dev_probe(struct platform_device *pdev)
 	ret = devm_pm_opp_set_clkname(dev, "core");
 	if (ret)
 		return ret;
-	/* OPP table is optional */
-	ret = devm_pm_opp_of_add_table(dev);
-	if (ret && ret != -ENODEV)
-		return dev_err_probe(dev, ret, "invalid OPP table in device tree\n");
+	if (dev->of_node) {
+		/* OPP table is optional for existing DT platforms. */
+		ret = devm_pm_opp_of_add_table(dev);
+		if (ret && ret != -ENODEV)
+			return dev_err_probe(dev, ret, "invalid OPP table in device tree\n");
+	} else {
+		ret = tcl_dpu_add_opps(dev);
+		if (ret)
+			return dev_err_probe(dev, ret, "failed to add TCL DPU OPPs\n");
+	}
 
-	ret = devm_clk_bulk_get_all(&pdev->dev, &dpu_kms->clocks);
+	ret = msm_devm_clk_bulk_get_all(&pdev->dev, &dpu_kms->clocks);
 	if (ret < 0)
 		return dev_err_probe(dev, ret, "failed to parse clocks\n");
 
@@ -1518,7 +1606,14 @@ static const struct of_device_id dpu_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, dpu_dt_match);
 
+static const struct platform_device_id dpu_platform_ids[] = {
+	{ "tcl-sc7180-dpu", (kernel_ulong_t)&dpu_sc7180_cfg },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, dpu_platform_ids);
+
 static struct platform_driver dpu_driver = {
+	.id_table = dpu_platform_ids,
 	.probe = dpu_dev_probe,
 	.remove = dpu_dev_remove,
 	.shutdown = msm_kms_shutdown,

@@ -452,6 +452,7 @@ static inline void msm_rd_debugfs_cleanup(struct msm_drm_private *priv) {}
 
 struct clk *msm_clk_get(struct platform_device *pdev, const char *name);
 
+int msm_devm_clk_bulk_get_all(struct device *dev, struct clk_bulk_data **clks);
 struct clk *msm_clk_bulk_get_clock(struct clk_bulk_data *bulk, int count,
 	const char *name);
 void __iomem *msm_ioremap(struct platform_device *pdev, const char *name);
@@ -463,6 +464,8 @@ void __iomem *msm_ioremap_mdss(struct platform_device *mdss_pdev,
 			       const char *name);
 
 struct icc_path *msm_icc_get(struct device *dev, const char *name);
+struct icc_path *msm_devm_icc_get(struct device *dev, const char *name,
+			       bool optional);
 
 static inline void msm_rmw(void __iomem *addr, u32 mask, u32 or)
 {

@@ -3,6 +3,8 @@
  * Copyright (c) 2018, The Linux Foundation
  */
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
 #include <linux/bitfield.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -53,20 +55,24 @@ static int msm_mdss_parse_data_bus_icc_path(struct device *dev,
 	struct icc_path *path1;
 	struct icc_path *reg_bus_path;
 
-	path0 = devm_of_icc_get(dev, "mdp0-mem");
+	path0 = msm_devm_icc_get(dev, "mdp0-mem", false);
 	if (IS_ERR_OR_NULL(path0))
 		return PTR_ERR_OR_ZERO(path0);
 
 	msm_mdss->mdp_path[0] = path0;
 	msm_mdss->num_mdp_paths = 1;
 
-	path1 = devm_of_icc_get(dev, "mdp1-mem");
+	path1 = msm_devm_icc_get(dev, "mdp1-mem", true);
+	if (!dev->of_node && IS_ERR(path1))
+		return PTR_ERR(path1);
 	if (!IS_ERR_OR_NULL(path1)) {
 		msm_mdss->mdp_path[1] = path1;
 		msm_mdss->num_mdp_paths++;
 	}
 
-	reg_bus_path = of_icc_get(dev, "cpu-cfg");
+	reg_bus_path = msm_devm_icc_get(dev, "cpu-cfg", false);
+	if (!dev->of_node && IS_ERR(reg_bus_path))
+		return PTR_ERR(reg_bus_path);
 	if (!IS_ERR_OR_NULL(reg_bus_path))
 		msm_mdss->reg_bus_path = reg_bus_path;
 
@@ -300,10 +306,11 @@ static void msm_mdss_destroy(struct msm_mdss *msm_mdss)
 
 	pm_runtime_suspend(msm_mdss->dev);
 	pm_runtime_disable(msm_mdss->dev);
-	irq_domain_remove(msm_mdss->irq_controller.domain);
-	msm_mdss->irq_controller.domain = NULL;
 	irq = platform_get_irq(pdev, 0);
 	irq_set_chained_handler_and_data(irq, NULL, NULL);
+	synchronize_irq(irq);
+	irq_domain_remove(msm_mdss->irq_controller.domain);
+	msm_mdss->irq_controller.domain = NULL;
 }
 
 static int msm_mdss_reset(struct device *dev)
@@ -382,6 +389,8 @@ static struct msm_mdss *msm_mdss_init(struct platform_device *pdev, bool is_mdp5
 		return ERR_CAST(msm_mdss->mdss_data);
 
 	mdss_data = of_device_get_match_data(&pdev->dev);
+	if (!pdev->dev.of_node && platform_get_device_id(pdev))
+		mdss_data = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!mdss_data)
 		return ERR_PTR(-EINVAL);
 
@@ -400,7 +409,7 @@ static struct msm_mdss *msm_mdss_init(struct platform_device *pdev, bool is_mdp5
 	if (is_mdp5)
 		ret = mdp5_mdss_parse_clock(pdev, &msm_mdss->clocks);
 	else
-		ret = devm_clk_bulk_get_all(&pdev->dev, &msm_mdss->clocks);
+		ret = msm_devm_clk_bulk_get_all(&pdev->dev, &msm_mdss->clocks);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to parse clocks, ret=%d\n", ret);
 		return ERR_PTR(ret);
@@ -466,12 +475,42 @@ static const struct dev_pm_ops mdss_pm_ops = {
 	SET_RUNTIME_PM_OPS(mdss_runtime_suspend, mdss_runtime_resume, NULL)
 };
 
+/* Only the board coordinator supplies this supplemental SC7180 device. */
+static int tcl_mdss_check_resources(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	acpi_handle gpu;
+
+	if (acpi_disabled || !dev->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent)) != gpu ||
+	    !acpi_match_acpi_device((const struct acpi_device_id[]) {
+		{ "QCOM083A" }, { }
+	    }, acpi_companion_or_self(dev->parent)))
+		return -ENODEV;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mdss");
+	if (!res || res->start != 0xae00000 || resource_size(res) != 0x1000)
+		return -EINVAL;
+	return 0;
+}
+
 static int mdss_probe(struct platform_device *pdev)
 {
 	struct msm_mdss *mdss;
 	bool is_mdp5 = of_device_is_compatible(pdev->dev.of_node, "qcom,mdss");
 	struct device *dev = &pdev->dev;
 	int ret;
+
+	if (!dev->of_node) {
+		ret = tcl_mdss_check_resources(pdev);
+		if (ret)
+			return ret;
+	}
 
 	mdss = msm_mdss_init(pdev, is_mdp5);
 	if (IS_ERR(mdss))
@@ -485,7 +524,8 @@ static int mdss_probe(struct platform_device *pdev)
 	 * Populate the children devices, find the MDP5/DPU node, and then add
 	 * the interfaces to our components list.
 	 */
-	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
+	/* ACPI children are staged explicitly after their suppliers exist. */
+	ret = dev->of_node ? of_platform_populate(dev->of_node, NULL, NULL, dev) : 0;
 	if (ret) {
 		DRM_DEV_ERROR(dev, "failed to populate children devices\n");
 		msm_mdss_destroy(mdss);
@@ -499,7 +539,8 @@ static void mdss_remove(struct platform_device *pdev)
 {
 	struct msm_mdss *mdss = platform_get_drvdata(pdev);
 
-	of_platform_depopulate(&pdev->dev);
+	if (pdev->dev.of_node)
+		of_platform_depopulate(&pdev->dev);
 
 	msm_mdss_destroy(mdss);
 }
@@ -560,7 +601,14 @@ static const struct of_device_id mdss_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, mdss_dt_match);
 
+static const struct platform_device_id mdss_platform_ids[] = {
+	{ "tcl-sc7180-mdss", (kernel_ulong_t)&data_76k8 },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, mdss_platform_ids);
+
 static struct platform_driver mdss_platform_driver = {
+	.id_table   = mdss_platform_ids,
 	.probe      = mdss_probe,
 	.remove     = mdss_remove,
 	.driver     = {
