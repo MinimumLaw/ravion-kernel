@@ -2,6 +2,7 @@
 /* Copyright (c) 2017-2019 The Linux Foundation. All rights reserved. */
 
 
+#include "tcl_acpi.h"
 #include "msm_gem.h"
 #include "msm_mmu.h"
 #include "msm_gpu_trace.h"
@@ -2614,6 +2615,8 @@ static int a6xx_set_supported_hw(struct device *dev, struct a6xx_gpu *a6xx_gpu,
 	u32 speedbin;
 	int ret;
 
+	if (tcl_acpi_gpu_device(dev))
+		return 0; /* Board initially exposes only the all-bin 180 MHz OPP. */
 	ret = a6xx_read_speedbin(dev, a6xx_gpu, info, &speedbin);
 	/*
 	 * -ENOENT means that the platform doesn't support speedbin which is
@@ -2698,8 +2701,10 @@ static struct msm_gpu *a6xx_gpu_init(struct drm_device *dev)
 	/* Check if there is a GMU phandle and set it up */
 	struct device_node *node __free(device_node) =
 		of_parse_phandle(pdev->dev.of_node, "qcom,gmu", 0);
-	/* FIXME: How do we gracefully handle this? */
-	BUG_ON(!node);
+	if (!node && !tcl_acpi_gpu_device(&pdev->dev)) {
+		kfree(a6xx_gpu);
+		return ERR_PTR(-ENODEV);
+	}
 
 	adreno_gpu->gmu_is_wrapper = of_device_is_compatible(node, "qcom,adreno-gmu-wrapper");
 
@@ -2719,6 +2724,8 @@ static struct msm_gpu *a6xx_gpu_init(struct drm_device *dev)
 	a6xx_gpu->have_mmu500 = (phandle &&
 		of_device_is_compatible(phandle, "arm,mmu-500"));
 	of_node_put(phandle);
+	if (tcl_acpi_gpu_device(&pdev->dev))
+		a6xx_gpu->have_mmu500 = false; /* OEM IORT: generic SMMUv2, as in DT. */
 
 	if (is_a7xx || !a6xx_gpu->have_mmu500)
 		a6xx_gpu->cx_misc_mmio = msm_ioremap(pdev, "cx_mem");

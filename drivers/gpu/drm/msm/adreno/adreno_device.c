@@ -6,6 +6,7 @@
  * Copyright (c) 2014,2017 The Linux Foundation. All rights reserved.
  */
 
+#include "tcl_acpi.h"
 #include "adreno_gpu.h"
 
 bool hang_debug = false;
@@ -216,7 +217,10 @@ static int adreno_bind(struct device *dev, struct device *master, void *data)
 	struct msm_gpu *gpu;
 	int ret;
 
-	ret = find_chipid(dev->of_node, &config.chip_id);
+	if (tcl_acpi_gpu_device(dev))
+		ret = device_property_read_u32(dev, "qcom,chipid", &config.chip_id);
+	else
+		ret = find_chipid(dev->of_node, &config.chip_id);
 	/* We shouldn't have gotten this far if we can't parse the chip_id */
 	if (WARN_ON(ret))
 		return ret;
@@ -243,7 +247,7 @@ static int adreno_bind(struct device *dev, struct device *master, void *data)
 		return PTR_ERR(gpu);
 	}
 
-	ret = dev_pm_opp_of_find_icc_paths(dev, NULL);
+	ret = dev->of_node ? dev_pm_opp_of_find_icc_paths(dev, NULL) : 0;
 	if (ret)
 		return ret;
 
@@ -271,6 +275,21 @@ static const struct component_ops a3xx_ops = {
 
 static int adreno_probe(struct platform_device *pdev)
 {
+	if (!pdev->dev.of_node) {
+		struct resource *res;
+		u32 chipid;
+
+		if (!tcl_acpi_gpu_device(&pdev->dev) ||
+		    device_property_read_u32(&pdev->dev, "qcom,chipid", &chipid) ||
+		    chipid != 0x06010800)
+			return -ENODEV;
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "kgsl_3d0_reg_memory");
+		if (!res || res->start != 0x5000000 || resource_size(res) != 0x40000)
+			return -EINVAL;
+		/* Keep GPU failure independent from the working display component. */
+		return msm_gpu_probe(pdev, &a3xx_ops);
+	}
+
 	if (of_device_is_compatible(pdev->dev.of_node, "amd,imageon") ||
 	    msm_gpu_no_components())
 		return msm_gpu_probe(pdev, &a3xx_ops);
@@ -405,7 +424,13 @@ static const struct dev_pm_ops adreno_pm_ops = {
 	RUNTIME_PM_OPS(adreno_runtime_suspend, adreno_runtime_resume, NULL)
 };
 
+static const struct platform_device_id tcl_adreno_ids[] = {
+	{ "tcl-sc7180-adreno" }, { }
+};
+MODULE_DEVICE_TABLE(platform, tcl_adreno_ids);
+
 static struct platform_driver adreno_driver = {
+	.id_table = tcl_adreno_ids,
 	.probe = adreno_probe,
 	.remove = adreno_remove,
 	.shutdown = adreno_shutdown,

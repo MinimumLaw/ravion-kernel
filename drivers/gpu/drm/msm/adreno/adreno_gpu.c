@@ -6,6 +6,7 @@
  * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  */
 
+#include "tcl_acpi.h"
 #include <linux/ascii85.h>
 #include <linux/interconnect.h>
 #include <linux/firmware/qcom/qcom_scm.h>
@@ -46,15 +47,26 @@ static int zap_shader_load_mdt(struct msm_gpu *gpu, const char *fwname,
 	}
 
 	np = of_get_available_child_by_name(dev->of_node, "zap-shader");
-	if (!np) {
-		zap_available = false;
-		return -ENODEV;
-	}
+	if (tcl_acpi_gpu_device(dev)) {
+		struct resource *res = platform_get_resource_byname(gpu->pdev,
+						IORESOURCE_MEM, "zap-shader");
 
-	ret = of_reserved_mem_region_to_resource(np, 0, &r);
-	if (ret) {
-		zap_available = false;
-		return ret;
+		if (!res || res->start != 0x80840000 || resource_size(res) != 0x2000)
+			return -EINVAL;
+		r = *res;
+		ret = device_property_read_string(dev, "qcom,zap-firmware", &signed_fwname);
+		if (ret)
+			return ret;
+	} else {
+		if (!np) {
+			zap_available = false;
+			return -ENODEV;
+		}
+		ret = of_reserved_mem_region_to_resource(np, 0, &r);
+		if (ret) {
+			zap_available = false;
+			return ret;
+		}
 	}
 	mem_phys = r.start;
 
@@ -1105,7 +1117,10 @@ static int adreno_get_pwrlevels(struct device *dev,
 	gpu->fast_rate = 0;
 
 	/* devm_pm_opp_of_add_table may error out but will still create an OPP table */
-	ret = devm_pm_opp_of_add_table(dev);
+	if (tcl_acpi_gpu_device(dev))
+		ret = dev_pm_opp_get_opp_count(dev) > 0 ? 0 : -EINVAL;
+	else
+		ret = devm_pm_opp_of_add_table(dev);
 	if (ret == -ENODEV) {
 		/* Special cases for ancient hw with ancient DT bindings */
 		if (adreno_is_a2xx(adreno_gpu)) {

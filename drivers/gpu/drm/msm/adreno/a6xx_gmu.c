@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright (c) 2017-2019 The Linux Foundation. All rights reserved. */
 
+#include "tcl_acpi.h"
 #include <linux/bitfield.h>
 #include <linux/clk.h>
 #include <linux/firmware/qcom/qcom_scm.h>
@@ -1943,7 +1944,9 @@ static int a6xx_gmu_pwrlevels_probe(struct a6xx_gmu *gmu)
 	 * The GMU handles its own frequency switching so build a list of
 	 * available frequencies to send during initialization
 	 */
-	ret = devm_pm_opp_of_add_table(gmu->dev);
+	ret = tcl_acpi_gpu_device(gmu->dev) ?
+		(dev_pm_opp_get_opp_count(gmu->dev) > 0 ? 0 : -EINVAL) :
+		devm_pm_opp_of_add_table(gmu->dev);
 	if (ret) {
 		DRM_DEV_ERROR(gmu->dev, "Unable to set the OPP table for the GMU\n");
 		return ret;
@@ -1959,6 +1962,10 @@ static int a6xx_gmu_pwrlevels_probe(struct a6xx_gmu *gmu)
 	gmu->nr_gpu_freqs = a6xx_gmu_build_freq_table(&gpu->pdev->dev,
 		gmu->gpu_freqs, ARRAY_SIZE(gmu->gpu_freqs));
 
+	if (gmu->nr_gmu_freqs < 2 || gmu->nr_gpu_freqs < 2 ||
+	    gmu->nr_gmu_freqs > ARRAY_SIZE(gmu->gmu_freqs) ||
+	    gmu->nr_gpu_freqs > ARRAY_SIZE(gmu->gpu_freqs))
+		return -EINVAL;
 	gmu->current_perf_index = gmu->nr_gpu_freqs - 1;
 
 	/*
@@ -1981,6 +1988,10 @@ static int a6xx_gmu_acd_probe(struct a6xx_gmu *gmu)
 	struct msm_gpu *gpu = &adreno_gpu->base;
 	int ret, i, cmd_idx = 0;
 	extern bool disable_acd;
+
+	/* The initial board OPP has no ACD calibration data. */
+	if (tcl_acpi_gpu_device(gmu->dev))
+		return 0;
 
 	/* Skip ACD probe if requested via module param */
 	if (disable_acd) {
@@ -2045,10 +2056,27 @@ static int a6xx_gmu_acd_probe(struct a6xx_gmu *gmu)
 
 static int a6xx_gmu_clocks_probe(struct a6xx_gmu *gmu)
 {
-	int ret = devm_clk_bulk_get_all(gmu->dev, &gmu->clocks);
+	int ret;
 
+	if (tcl_acpi_gpu_device(gmu->dev)) {
+		static const char * const names[] = { "gmu", "cxo", "axi", "memnoc" };
+		int i;
+
+		gmu->clocks = devm_kcalloc(gmu->dev, ARRAY_SIZE(names),
+					  sizeof(*gmu->clocks), GFP_KERNEL);
+		if (!gmu->clocks)
+			return -ENOMEM;
+		for (i = 0; i < ARRAY_SIZE(names); i++)
+			gmu->clocks[i].id = names[i];
+		ret = devm_clk_bulk_get(gmu->dev, ARRAY_SIZE(names), gmu->clocks);
+		if (ret)
+			return ret;
+		ret = ARRAY_SIZE(names);
+	} else {
+		ret = devm_clk_bulk_get_all(gmu->dev, &gmu->clocks);
+	}
 	if (ret < 1)
-		return ret;
+		return ret ?: -EINVAL;
 
 	gmu->nr_clocks = ret;
 
@@ -2067,6 +2095,8 @@ static int a6xx_gmu_get_irq(struct a6xx_gmu *gmu, struct platform_device *pdev,
 	int irq, ret;
 
 	irq = platform_get_irq_byname(pdev, name);
+	if (irq < 0)
+		return irq;
 
 	ret = request_irq(irq, handler, IRQF_TRIGGER_HIGH | IRQF_NO_AUTOEN, name, gmu);
 	if (ret) {
@@ -2105,6 +2135,16 @@ void a6xx_gmu_sysprof_setup(struct msm_gpu *gpu, bool force_on)
 	pm_runtime_put(&gpu->pdev->dev);
 }
 
+static void a6xx_gmu_detach_domain(struct a6xx_gmu *gmu, struct device *dev)
+{
+	if (IS_ERR_OR_NULL(dev))
+		return;
+	if (tcl_acpi_gpu_device(gmu->dev))
+		put_device(dev);
+	else
+		dev_pm_domain_detach(dev, false);
+}
+
 void a6xx_gmu_remove(struct a6xx_gpu *a6xx_gpu)
 {
 	struct adreno_gpu *adreno_gpu = &a6xx_gpu->base;
@@ -2126,11 +2166,11 @@ void a6xx_gmu_remove(struct a6xx_gpu *a6xx_gpu)
 	 * Since cxpd is a virt device, the devlink with gmu-dev will be removed
 	 * automatically when we do detach
 	 */
-	dev_pm_domain_detach(gmu->cxpd, false);
+	a6xx_gmu_detach_domain(gmu, gmu->cxpd);
 
 	if (!IS_ERR_OR_NULL(gmu->gxpd)) {
 		pm_runtime_disable(gmu->gxpd);
-		dev_pm_domain_detach(gmu->gxpd, false);
+		a6xx_gmu_detach_domain(gmu, gmu->gxpd);
 	}
 
 	if (!IS_ERR_OR_NULL(gmu->qmp))
@@ -2259,7 +2299,7 @@ int a6xx_gmu_wrapper_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 	return 0;
 
 detach_cxpd:
-	dev_pm_domain_detach(gmu->cxpd, false);
+	a6xx_gmu_detach_domain(gmu, gmu->cxpd);
 
 err_mmio:
 	iounmap(gmu->mmio);
@@ -2273,7 +2313,7 @@ err_clk:
 
 int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 {
-	struct platform_device *pdev = of_find_device_by_node(node);
+	struct platform_device *pdev = node ? of_find_device_by_node(node) : NULL;
 	struct adreno_gpu *adreno_gpu = &a6xx_gpu->base;
 	struct msm_gpu *gpu = &adreno_gpu->base;
 	struct a6xx_gmu *gmu = &a6xx_gpu->gmu;
@@ -2282,14 +2322,28 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 	struct resource *res;
 	int ret;
 
+	if (!node) {
+		struct device *supplier = tcl_gpu_reference(&gpu->pdev->dev, "qcom,gmu");
+
+		if (IS_ERR(supplier))
+			return PTR_ERR(supplier);
+		pdev = to_platform_device(supplier);
+	}
 	if (!pdev)
 		return -ENODEV;
-
 	gmu->dev = &pdev->dev;
-
-	ret = of_dma_configure(gmu->dev, node, true);
-	if (ret)
+	gmu->hfi_irq = -1;
+	gmu->gmu_irq = -1;
+	if (node) {
+		ret = of_dma_configure(gmu->dev, node, true);
+	} else {
+		/* The coordinator's GMU platform driver performed checked IORT setup. */
+		ret = gmu->dev->driver && device_iommu_mapped(gmu->dev) ? 0 : -EPROBE_DEFER;
+	}
+	if (ret) {
+		put_device(gmu->dev);
 		return ret;
+	}
 
 	/* Set GMU idle level */
 	gmu->idle_level = (adreno_gpu->info->quirks & ADRENO_QUIRK_IFPC) ?
@@ -2418,9 +2472,10 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 		goto err_mmio;
 	}
 
-	gmu->cxpd = dev_pm_domain_attach_by_name(gmu->dev, "cx");
-	if (IS_ERR(gmu->cxpd)) {
-		ret = PTR_ERR(gmu->cxpd);
+	gmu->cxpd = node ? dev_pm_domain_attach_by_name(gmu->dev, "cx") :
+		tcl_gpu_reference(gmu->dev, "qcom,cx-domain");
+	if (IS_ERR_OR_NULL(gmu->cxpd)) {
+		ret = gmu->cxpd ? PTR_ERR(gmu->cxpd) : -ENODEV;
 		goto err_mmio;
 	}
 
@@ -2431,7 +2486,7 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 	}
 
 	/* Other errors are handled during GPU ACD probe */
-	gmu->qmp = qmp_get(gmu->dev);
+	gmu->qmp = node ? qmp_get(gmu->dev) : ERR_PTR(-ENODEV);
 	if (PTR_ERR_OR_ZERO(gmu->qmp) == -EPROBE_DEFER) {
 		ret = -EPROBE_DEFER;
 		goto detach_gxpd;
@@ -2445,10 +2500,17 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 	 * Get a link to the GX power domain to reset the GPU in case of GMU
 	 * crash
 	 */
-	gmu->gxpd = dev_pm_domain_attach_by_name(gmu->dev, "gx");
+	gmu->gxpd = node ? dev_pm_domain_attach_by_name(gmu->dev, "gx") :
+		tcl_gpu_reference(gmu->dev, "qcom,gx-domain");
+	if (IS_ERR_OR_NULL(gmu->gxpd)) {
+		ret = gmu->gxpd ? PTR_ERR(gmu->gxpd) : -ENODEV;
+		goto detach_gxpd;
+	}
 
-	/* Get the power levels for the GMU and GPU */
-	a6xx_gmu_pwrlevels_probe(gmu);
+	/* Do not initialize HFI with an empty or invalid RPMh vote table. */
+	ret = a6xx_gmu_pwrlevels_probe(gmu);
+	if (ret)
+		goto detach_gxpd;
 
 	ret = a6xx_gmu_acd_probe(gmu);
 	if (ret)
@@ -2466,7 +2528,7 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 
 detach_gxpd:
 	if (!IS_ERR_OR_NULL(gmu->gxpd))
-		dev_pm_domain_detach(gmu->gxpd, false);
+		a6xx_gmu_detach_domain(gmu, gmu->gxpd);
 
 	if (!IS_ERR_OR_NULL(gmu->qmp))
 		qmp_put(gmu->qmp);
@@ -2474,16 +2536,19 @@ detach_gxpd:
 	device_link_del(link);
 
 detach_cxpd:
-	dev_pm_domain_detach(gmu->cxpd, false);
+	a6xx_gmu_detach_domain(gmu, gmu->cxpd);
 
 err_mmio:
 	iounmap(gmu->mmio);
-	free_irq(gmu->gmu_irq, gmu);
-	free_irq(gmu->hfi_irq, gmu);
+	if (gmu->gmu_irq >= 0)
+		free_irq(gmu->gmu_irq, gmu);
+	if (gmu->hfi_irq >= 0)
+		free_irq(gmu->hfi_irq, gmu);
 
 err_memory:
 	a6xx_gmu_memory_free(gmu);
 err_put_device:
+	pm_runtime_disable(gmu->dev);
 	/* Drop reference taken in of_find_device_by_node */
 	put_device(gmu->dev);
 
