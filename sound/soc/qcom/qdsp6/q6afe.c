@@ -971,12 +971,14 @@ static int q6afe_callback(struct apr_device *adev, const struct apr_resp_pkt *da
 	const struct apr_hdr *hdr = &data->hdr;
 	struct q6afe_port *port;
 
-	if (data->payload_size < sizeof(*res))
+	if (!data->payload_size)
 		return 0;
 
 	res = data->payload;
 	switch (hdr->opcode) {
 	case APR_BASIC_RSP_RESULT: {
+		if (data->payload_size < sizeof(*res))
+			return 0;
 		if (res->status) {
 			dev_err(afe->dev, "cmd = 0x%x returned error = 0x%x\n",
 				res->opcode, res->status);
@@ -1003,9 +1005,12 @@ static int q6afe_callback(struct apr_device *adev, const struct apr_resp_pkt *da
 	}
 		break;
 	case AFE_CMD_RSP_REMOTE_LPASS_CORE_HW_VOTE_REQUEST:
+		if (data->payload_size < sizeof(u32))
+			return 0;
 		/* The first response word is the vote handle, not an opcode. */
 		afe->rsp_client_handle = res->opcode;
-		afe->result.status = res->status;
+		afe->result.status = data->payload_size >= sizeof(*res) ?
+			res->status : 0;
 		afe->result.opcode = hdr->opcode;
 		wake_up(&afe->wait);
 		break;
