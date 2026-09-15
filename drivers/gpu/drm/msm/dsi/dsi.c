@@ -3,6 +3,10 @@
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
+
 #include "dsi.h"
 
 bool msm_dsi_is_cmd_mode(struct msm_dsi *msm_dsi)
@@ -27,6 +31,31 @@ static int dsi_get_phy(struct msm_dsi *msm_dsi)
 	struct platform_device *pdev = msm_dsi->pdev;
 	struct platform_device *phy_pdev;
 	struct device_node *phy_node;
+
+	if (!pdev->dev.of_node) {
+		struct fwnode_handle *ref;
+		struct device *phy_dev;
+		int ret = 0;
+
+		ref = fwnode_find_reference(dev_fwnode(&pdev->dev), "phys", 0);
+		if (IS_ERR(ref))
+			return PTR_ERR(ref);
+		phy_dev = bus_find_device_by_fwnode(&platform_bus_type, ref);
+		fwnode_handle_put(ref);
+		if (!phy_dev)
+			return -EPROBE_DEFER;
+		device_lock(phy_dev);
+		if (!device_is_bound(phy_dev) || !dev_get_drvdata(phy_dev)) {
+			ret = -EPROBE_DEFER;
+		} else {
+			msm_dsi->phy = dev_get_drvdata(phy_dev);
+			msm_dsi->phy_dev = phy_dev;
+		}
+		device_unlock(phy_dev);
+		if (ret)
+			put_device(phy_dev);
+		return ret;
+	}
 
 	phy_node = of_parse_phandle(pdev->dev.of_node, "phys", 0);
 	if (!phy_node) {
@@ -128,8 +157,23 @@ static int dsi_bind(struct device *dev, struct device *master, void *data)
 	    msm_dsi_is_master_dsi(msm_dsi)) {
 		struct drm_bridge *ext_bridge;
 
-		ext_bridge = devm_drm_of_get_bridge(&msm_dsi->pdev->dev,
-						    msm_dsi->pdev->dev.of_node, 1, 0);
+		if (dev->of_node) {
+			ext_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 1, 0);
+		} else {
+			struct fwnode_handle *ep, *remote;
+
+			ep = fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), 1, 0, 0);
+			if (!ep)
+				return -EINVAL;
+			remote = fwnode_graph_get_remote_port_parent(ep);
+			fwnode_handle_put(ep);
+			if (!remote)
+				return -EINVAL;
+			ext_bridge = drm_fwnode_find_and_get_bridge(remote);
+			fwnode_handle_put(remote);
+			if (!ext_bridge)
+				return -EPROBE_DEFER;
+		}
 		if (IS_ERR(ext_bridge))
 			return PTR_ERR(ext_bridge);
 
@@ -147,6 +191,10 @@ static void dsi_unbind(struct device *dev, struct device *master,
 	struct msm_drm_private *priv = dev_get_drvdata(master);
 	struct msm_dsi *msm_dsi = dev_get_drvdata(dev);
 
+	if (!dev->of_node) {
+		drm_bridge_put(msm_dsi->next_bridge);
+		msm_dsi->next_bridge = NULL;
+	}
 	msm_dsi_tx_buf_free(msm_dsi->host);
 	priv->kms->dsi[msm_dsi->id] = NULL;
 }
@@ -166,15 +214,42 @@ void dsi_dev_detach(struct platform_device *pdev)
 	component_del(&pdev->dev, &dsi_ops);
 }
 
+static int tcl_dsi_check_resources(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	acpi_handle gpu;
+
+	if (acpi_disabled || !dev->parent || !dev->parent->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    !dev_name(dev->parent) ||
+	    strcmp(dev_name(dev->parent), "tcl-sc7180-mdss") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent->parent)) != gpu)
+		return -ENODEV;
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "dsi_ctrl");
+	if (!res || res->start != 0xae94000 || resource_size(res) != 0x400)
+		return -EINVAL;
+	return dev->pm_domain ? 0 : -EPROBE_DEFER;
+}
+
 static int dsi_dev_probe(struct platform_device *pdev)
 {
 	struct msm_dsi *msm_dsi;
 
+	if (!pdev->dev.of_node) {
+		int ret = tcl_dsi_check_resources(pdev);
+
+		if (ret)
+			return ret;
+	}
 	DBG("");
 	msm_dsi = dsi_init(pdev);
 	if (IS_ERR(msm_dsi)) {
 		/* Don't fail the bind if the dsi port is not connected */
-		if (PTR_ERR(msm_dsi) == -ENODEV)
+		if (pdev->dev.of_node && PTR_ERR(msm_dsi) == -ENODEV)
 			return 0;
 		else
 			return PTR_ERR(msm_dsi);
@@ -206,7 +281,13 @@ static const struct dev_pm_ops dsi_pm_ops = {
 				pm_runtime_force_resume)
 };
 
+static const struct platform_device_id tcl_dsi_ids[] = {
+	{ "tcl-sc7180-dsi" }, { }
+};
+MODULE_DEVICE_TABLE(platform, tcl_dsi_ids);
+
 static struct platform_driver dsi_driver = {
+	.id_table = tcl_dsi_ids,
 	.probe = dsi_dev_probe,
 	.remove = dsi_dev_remove,
 	.driver = {

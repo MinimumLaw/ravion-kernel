@@ -7,6 +7,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/iopoll.h>
+#include <linux/property.h>
 
 #include "dsi_phy.h"
 #include "dsi.xml.h"
@@ -673,6 +674,14 @@ fail:
 	return ret;
 }
 
+static void dsi_pll_10nm_clear_slot(void *data)
+{
+	struct dsi_pll_10nm *pll = data;
+
+	if (pll_10nm_list[pll->phy->id] == pll)
+		pll_10nm_list[pll->phy->id] = NULL;
+}
+
 static int dsi_pll_10nm_init(struct msm_dsi_phy *phy)
 {
 	struct platform_device *pdev = phy->pdev;
@@ -685,11 +694,15 @@ static int dsi_pll_10nm_init(struct msm_dsi_phy *phy)
 
 	DBG("DSI PLL%d", phy->id);
 
-	pll_10nm_list[phy->id] = pll_10nm;
 
 	spin_lock_init(&pll_10nm->postdiv_lock);
 
 	pll_10nm->phy = phy;
+	ret = devm_add_action_or_reset(&pdev->dev, dsi_pll_10nm_clear_slot, pll_10nm);
+	if (ret)
+		return ret;
+	pll_10nm_list[phy->id] = pll_10nm;
+
 
 	ret = pll_10nm_register(pll_10nm, phy->provided_clocks->hws);
 	if (ret) {
@@ -923,8 +936,9 @@ static int dsi_10nm_phy_parse_dt(struct msm_dsi_phy *phy)
 		return -ENOMEM;
 
 	/* Drive strength adjustment parameters */
-	ret = of_property_read_u8_array(dev->of_node, "qcom,phy-rescode-offset-top",
-					offset_top, DSI_LANE_MAX);
+	ret = device_property_present(dev, "qcom,phy-rescode-offset-top") ?
+		device_property_read_u8_array(dev, "qcom,phy-rescode-offset-top",
+					     (u8 *)offset_top, DSI_LANE_MAX) : -EINVAL;
 	if (ret && ret != -EINVAL) {
 		DRM_DEV_ERROR(dev, "failed to parse qcom,phy-rescode-offset-top, %d\n", ret);
 		return ret;
@@ -940,8 +954,9 @@ static int dsi_10nm_phy_parse_dt(struct msm_dsi_phy *phy)
 		tuning_cfg->rescode_offset_top[i] = 0x3f & offset_top[i];
 	}
 
-	ret = of_property_read_u8_array(dev->of_node, "qcom,phy-rescode-offset-bot",
-					offset_bot, DSI_LANE_MAX);
+	ret = device_property_present(dev, "qcom,phy-rescode-offset-bot") ?
+		device_property_read_u8_array(dev, "qcom,phy-rescode-offset-bot",
+					     (u8 *)offset_bot, DSI_LANE_MAX) : -EINVAL;
 	if (ret && ret != -EINVAL) {
 		DRM_DEV_ERROR(dev, "failed to parse qcom,phy-rescode-offset-bot, %d\n", ret);
 		return ret;
@@ -958,7 +973,8 @@ static int dsi_10nm_phy_parse_dt(struct msm_dsi_phy *phy)
 	}
 
 	/* Drive level/amplitude adjustment parameters */
-	ret = of_property_read_u32(dev->of_node, "qcom,phy-drive-ldo-level", &ldo_level);
+	ret = device_property_present(dev, "qcom,phy-drive-ldo-level") ?
+		device_property_read_u32(dev, "qcom,phy-drive-ldo-level", &ldo_level) : -EINVAL;
 	if (ret && ret != -EINVAL) {
 		DRM_DEV_ERROR(dev, "failed to parse qcom,phy-drive-ldo-level, %d\n", ret);
 		return ret;

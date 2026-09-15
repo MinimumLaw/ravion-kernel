@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <linux/platform_data/qcom-tcl-clkdev.h>
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
+#include <linux/clkdev.h>
 #include <linux/clk-provider.h>
 #include <linux/platform_device.h>
 #include <linux/pm_clock.h>
@@ -610,6 +615,44 @@ static int dsi_phy_get_id(struct msm_dsi_phy *phy)
 	return -EINVAL;
 }
 
+static int tcl_dsi_phy_check_resources(struct platform_device *pdev)
+{
+#ifdef CONFIG_ACPI
+	static const struct {
+		const char *name;
+		resource_size_t start, size;
+	} windows[] = {
+		{ "dsi_phy", 0xae94400, 0x200 },
+		{ "dsi_phy_lane", 0xae94600, 0x280 },
+		{ "dsi_pll", 0xae94a00, 0x1e0 },
+	};
+	struct device *dev = &pdev->dev;
+	acpi_handle gpu;
+	int i;
+
+	if (acpi_disabled || !dev->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent)) != gpu ||
+	    !acpi_match_acpi_device((const struct acpi_device_id[]) {
+		{ "QCOM083A" }, { } }, acpi_companion_or_self(dev->parent)))
+		return -ENODEV;
+	for (i = 0; i < ARRAY_SIZE(windows); i++) {
+		struct resource *r = platform_get_resource_byname(pdev,
+			IORESOURCE_MEM, windows[i].name);
+
+		if (!r || r->start != windows[i].start ||
+		    resource_size(r) != windows[i].size)
+			return -EINVAL;
+	}
+	return 0;
+#else
+	return -ENODEV;
+#endif
+}
+
 static int dsi_phy_driver_probe(struct platform_device *pdev)
 {
 	struct msm_dsi_phy *phy;
@@ -630,6 +673,16 @@ static int dsi_phy_driver_probe(struct platform_device *pdev)
 	phy->provided_clocks->num = NUM_PROVIDED_CLKS;
 
 	phy->cfg = of_device_get_match_data(&pdev->dev);
+	if (!dev->of_node) {
+		const struct platform_device_id *id = platform_get_device_id(pdev);
+
+		ret = tcl_dsi_phy_check_resources(pdev);
+		if (ret)
+			return ret;
+		if (!id)
+			return -ENODEV;
+		phy->cfg = (const void *)id->driver_data;
+	}
 	if (!phy->cfg)
 		return -ENODEV;
 
@@ -640,9 +693,9 @@ static int dsi_phy_driver_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, phy->id,
 				     "Couldn't identify PHY index\n");
 
-	phy->regulator_ldo_mode = of_property_read_bool(dev->of_node,
+	phy->regulator_ldo_mode = device_property_read_bool(dev,
 				"qcom,dsi-phy-regulator-ldo-mode");
-	if (!of_property_read_u32(dev->of_node, "phy-type", &phy_type))
+	if (!device_property_read_u32(dev, "phy-type", &phy_type))
 		phy->cphy_mode = (phy_type == PHY_TYPE_CPHY);
 
 	phy->base = msm_ioremap_size(pdev, "dsi_phy", &phy->base_size);
@@ -681,6 +734,16 @@ static int dsi_phy_driver_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (!dev->of_node) {
+		struct clk *ref = devm_clk_get(dev, "ref");
+
+		if (IS_ERR(ref))
+			return PTR_ERR(ref);
+		if (clk_get_rate(ref) != 19200000 || phy->cfg->num_regulators != 1 ||
+		    regulator_get_voltage(phy->supplies[0].consumer) != 880000)
+			return -EINVAL;
+	}
+
 	platform_set_drvdata(pdev, phy);
 
 	ret = devm_pm_runtime_enable(dev);
@@ -696,12 +759,35 @@ static int dsi_phy_driver_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, ret, "Unable to get iface clk\n");
 
 	if (phy->cfg->ops.pll_init) {
+		/* PLL registration/save reads PHY registers; power iface first. */
+		if (!dev->of_node) {
+			ret = pm_runtime_resume_and_get(dev);
+			if (ret < 0)
+				return ret;
+		}
 		ret = phy->cfg->ops.pll_init(phy);
+		if (!dev->of_node)
+			pm_runtime_put_sync(dev);
 		if (ret)
 			return dev_err_probe(dev, ret,
 					     "PLL init failed; need separate clk driver\n");
 	}
 
+	if (!dev->of_node) {
+		int i;
+
+		for (i = 0; i < phy->provided_clocks->num; i++) {
+			struct clk_hw *hw = phy->provided_clocks->hws[i];
+
+			if (IS_ERR_OR_NULL(hw))
+				return hw ? PTR_ERR(hw) : -ENODEV;
+			ret = qcom_tcl_devm_clkdev(dev, hw,
+					clk_hw_get_name(hw), dev_name(dev));
+			if (ret)
+				return ret;
+		}
+		return 0;
+	}
 	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
 				     phy->provided_clocks);
 	if (ret)
@@ -715,8 +801,17 @@ static const struct dev_pm_ops dsi_phy_pm_ops = {
 	SET_RUNTIME_PM_OPS(pm_clk_suspend, pm_clk_resume, NULL)
 };
 
+static const struct platform_device_id dsi_phy_platform_ids[] = {
+#ifdef CONFIG_DRM_MSM_DSI_10NM_PHY
+	{ "tcl-sc7180-dsi-phy", (kernel_ulong_t)&dsi_phy_10nm_cfgs },
+#endif
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, dsi_phy_platform_ids);
+
 static struct platform_driver dsi_phy_platform_driver = {
 	.probe      = dsi_phy_driver_probe,
+	.id_table   = dsi_phy_platform_ids,
 	.driver     = {
 		.name   = "msm_dsi_phy",
 		.of_match_table = dsi_phy_dt_match,

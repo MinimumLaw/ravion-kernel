@@ -11,6 +11,7 @@
 #include <linux/mfd/syscon.h>
 #include <linux/of.h>
 #include <linux/of_graph.h>
+#include <linux/property.h>
 #include <linux/of_irq.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm_opp.h>
@@ -211,10 +212,12 @@ dsi_get_config(struct msm_dsi_host *msm_host)
 	if (IS_ERR(ahb_clk)) {
 		dev_err_probe(dev, PTR_ERR(ahb_clk), "%s: cannot get interface clock\n",
 			      __func__);
-		goto exit;
+		return ERR_CAST(ahb_clk);
 	}
 
-	pm_runtime_get_sync(dev);
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret < 0)
+		return ERR_PTR(ret);
 
 	ret = clk_prepare_enable(ahb_clk);
 	if (ret) {
@@ -229,6 +232,8 @@ dsi_get_config(struct msm_dsi_host *msm_host)
 	}
 
 	cfg_hnd = msm_dsi_cfg_get(major, minor);
+	if (!cfg_hnd)
+		ret = -EINVAL;
 
 	DBG("%s: Version %x:%x\n", __func__, major, minor);
 
@@ -236,8 +241,7 @@ disable_clks:
 	clk_disable_unprepare(ahb_clk);
 runtime_put:
 	pm_runtime_put_sync(dev);
-exit:
-	return cfg_hnd;
+	return ret ? ERR_PTR(ret) : cfg_hnd;
 }
 
 static inline struct msm_dsi_host *to_msm_dsi_host(struct mipi_dsi_host *host)
@@ -1802,15 +1806,15 @@ static const int supported_data_lane_swaps[][4] = {
 };
 
 static int dsi_host_parse_lane_data(struct msm_dsi_host *msm_host,
-				    struct device_node *ep)
+				    struct fwnode_handle *ep)
 {
 	struct device *dev = &msm_host->pdev->dev;
-	struct property *prop;
 	u32 lane_map[4];
-	int ret, i, len, num_lanes;
+	int ret, i, num_lanes;
 
-	prop = of_find_property(ep, "data-lanes", &len);
-	if (!prop) {
+	if (!fwnode_property_present(ep, "data-lanes")) {
+		if (!dev->of_node)
+			return -EINVAL;
 		DRM_DEV_DEBUG(dev,
 			"failed to find data lane mapping, using default\n");
 		/* Set the number of date lanes to 4 by default. */
@@ -1818,15 +1822,15 @@ static int dsi_host_parse_lane_data(struct msm_dsi_host *msm_host,
 		return 0;
 	}
 
-	num_lanes = drm_of_get_data_lanes_count(ep, 1, 4);
-	if (num_lanes < 0) {
+	num_lanes = fwnode_property_count_u32(ep, "data-lanes");
+	if (num_lanes < 1 || num_lanes > 4) {
 		DRM_DEV_ERROR(dev, "bad number of data lanes\n");
-		return num_lanes;
+		return num_lanes < 0 ? num_lanes : -EINVAL;
 	}
 
 	msm_host->num_data_lanes = num_lanes;
 
-	ret = of_property_read_u32_array(ep, "data-lanes", lane_map,
+	ret = fwnode_property_read_u32_array(ep, "data-lanes", lane_map,
 					 num_lanes);
 	if (ret) {
 		DRM_DEV_ERROR(dev, "failed to read lane data\n");
@@ -1849,9 +1853,11 @@ static int dsi_host_parse_lane_data(struct msm_dsi_host *msm_host,
 		 * configuration that works.
 		 */
 		for (j = 0; j < num_lanes; j++) {
-			if (lane_map[j] < 0 || lane_map[j] > 3)
+			if (lane_map[j] > 3) {
 				DRM_DEV_ERROR(dev, "bad physical lane entry %u\n",
 					lane_map[j]);
+				return -EINVAL;
+			}
 
 			if (swap[lane_map[j]] != j)
 				break;
@@ -1912,12 +1918,12 @@ static int dsi_populate_dsc_params(struct msm_dsi_host *msm_host, struct drm_dsc
 	return drm_dsc_compute_rc_parameters(dsc);
 }
 
-static int dsi_host_parse_dt(struct msm_dsi_host *msm_host)
+static int dsi_host_parse_firmware(struct msm_dsi_host *msm_host)
 {
 	struct msm_dsi *msm_dsi = platform_get_drvdata(msm_host->pdev);
 	struct device *dev = &msm_host->pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct device_node *endpoint;
+	struct fwnode_handle *endpoint;
 	const char *te_source;
 	int ret = 0;
 
@@ -1927,10 +1933,11 @@ static int dsi_host_parse_dt(struct msm_dsi_host *msm_host)
 	 * the remote endpoint isn't defined. It's possible that there is
 	 * nothing connected to the dsi output.
 	 */
-	endpoint = of_graph_get_endpoint_by_regs(np, 1, -1);
+	endpoint = np ? of_fwnode_handle(of_graph_get_endpoint_by_regs(np, 1, -1)) :
+		fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), 1, 0, 0);
 	if (!endpoint) {
 		DRM_DEV_DEBUG(dev, "%s: no endpoint\n", __func__);
-		return 0;
+		return np ? 0 : -EINVAL;
 	}
 
 	ret = dsi_host_parse_lane_data(msm_host, endpoint);
@@ -1941,24 +1948,19 @@ static int dsi_host_parse_dt(struct msm_dsi_host *msm_host)
 		goto err;
 	}
 
-	ret = of_property_read_string(endpoint, "qcom,te-source", &te_source);
-	if (ret && ret != -EINVAL) {
-		DRM_DEV_ERROR(dev, "%s: invalid TE source configuration %d\n",
-			__func__, ret);
-		goto err;
-	}
-	if (!ret) {
+	if (fwnode_property_present(endpoint, "qcom,te-source")) {
+		ret = fwnode_property_read_string(endpoint, "qcom,te-source", &te_source);
+		if (ret)
+			goto err;
 		msm_dsi->te_source = devm_kstrdup(dev, te_source, GFP_KERNEL);
 		if (!msm_dsi->te_source) {
-			DRM_DEV_ERROR(dev, "%s: failed to allocate te_source\n",
-				__func__);
 			ret = -ENOMEM;
 			goto err;
 		}
 	}
 	ret = 0;
 
-	if (of_property_present(np, "syscon-sfpb")) {
+	if (np && of_property_present(np, "syscon-sfpb")) {
 		msm_host->sfpb = syscon_regmap_lookup_by_phandle(np,
 					"syscon-sfpb");
 		if (IS_ERR(msm_host->sfpb)) {
@@ -1969,7 +1971,7 @@ static int dsi_host_parse_dt(struct msm_dsi_host *msm_host)
 	}
 
 err:
-	of_node_put(endpoint);
+	fwnode_handle_put(endpoint);
 
 	return ret;
 }
@@ -1993,6 +1995,37 @@ static int dsi_host_get_id(struct msm_dsi_host *msm_host)
 	return -EINVAL;
 }
 
+static void tcl_dsi_remove_opps(void *data)
+{
+	dev_pm_opp_remove_all_dynamic(data);
+}
+
+static int tcl_dsi_add_opps(struct device *dev)
+{
+	/* SC7180 DSI byte-clock OPPs; levels are not uV. */
+	struct dev_pm_opp_data opps[] = {
+		{ .freq = 187500000, .level = 64 },
+		{ .freq = 300000000, .level = 128 },
+		{ .freq = 358000000, .level = 192 },
+	};
+	unsigned int i;
+	int ret;
+
+	ret = dev_pm_opp_get_opp_count(dev);
+	if (ret > 0)
+		return -EEXIST;
+	if (ret < 0 && ret != -ENODEV)
+		return ret;
+	for (i = 0; i < ARRAY_SIZE(opps); i++) {
+		ret = dev_pm_opp_add_dynamic(dev, &opps[i]);
+		if (ret) {
+			tcl_dsi_remove_opps(dev);
+			return ret;
+		}
+	}
+	return devm_add_action_or_reset(dev, tcl_dsi_remove_opps, dev);
+}
+
 int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 {
 	struct msm_dsi_host *msm_host = NULL;
@@ -2004,12 +2037,14 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 	if (!msm_host)
 		return -ENOMEM;
 
+	mutex_init(&msm_host->dev_mutex);
+	mutex_init(&msm_host->cmd_mutex);
 	msm_host->pdev = pdev;
 	msm_dsi->host = &msm_host->base;
 
-	ret = dsi_host_parse_dt(msm_host);
+	ret = dsi_host_parse_firmware(msm_host);
 	if (ret)
-		return dev_err_probe(&pdev->dev, ret, "%s: failed to parse dt\n",
+		return dev_err_probe(&pdev->dev, ret, "%s: failed to parse firmware\n",
 				     __func__);
 
 	msm_host->ctrl_base = msm_ioremap_size(pdev, "dsi_ctrl", &msm_host->ctrl_size);
@@ -2020,9 +2055,12 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 	pm_runtime_enable(&pdev->dev);
 
 	msm_host->cfg_hnd = dsi_get_config(msm_host);
-	if (!msm_host->cfg_hnd)
-		return dev_err_probe(&pdev->dev, -EINVAL,
+	if (IS_ERR(msm_host->cfg_hnd)) {
+		ret = PTR_ERR(msm_host->cfg_hnd);
+		msm_host->cfg_hnd = NULL;
+		return dev_err_probe(&pdev->dev, ret,
 				     "%s: get config failed\n", __func__);
+	}
 	cfg = msm_host->cfg_hnd->cfg;
 
 	msm_host->id = dsi_host_get_id(msm_host);
@@ -2052,14 +2090,21 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 	ret = devm_pm_opp_set_clkname(&pdev->dev, "byte");
 	if (ret)
 		return ret;
-	/* OPP table is optional */
-	ret = devm_pm_opp_of_add_table(&pdev->dev);
-	if (ret && ret != -ENODEV)
-		return dev_err_probe(&pdev->dev, ret, "invalid OPP table in device tree\n");
+	if (pdev->dev.of_node) {
+		/* OPP table is optional for existing DT platforms. */
+		ret = devm_pm_opp_of_add_table(&pdev->dev);
+		if (ret && ret != -ENODEV)
+			return dev_err_probe(&pdev->dev, ret, "invalid OPP table in device tree\n");
+	} else {
+		ret = tcl_dsi_add_opps(&pdev->dev);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret, "failed to add DSI byte OPPs\n");
+	}
 
-	msm_host->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
-	if (!msm_host->irq)
-		return dev_err_probe(&pdev->dev, -EINVAL, "failed to get irq\n");
+	ret = platform_get_irq(pdev, 0);
+	if (ret < 0)
+		return dev_err_probe(&pdev->dev, ret, "failed to get irq\n");
+	msm_host->irq = ret;
 
 	/* do not autoenable, will be enabled later */
 	ret = devm_request_irq(&pdev->dev, msm_host->irq, dsi_host_irq,
@@ -2071,8 +2116,6 @@ int msm_dsi_host_init(struct msm_dsi *msm_dsi)
 
 	init_completion(&msm_host->dma_comp);
 	init_completion(&msm_host->video_comp);
-	mutex_init(&msm_host->dev_mutex);
-	mutex_init(&msm_host->cmd_mutex);
 	spin_lock_init(&msm_host->intr_lock);
 
 	/* setup workqueue */
