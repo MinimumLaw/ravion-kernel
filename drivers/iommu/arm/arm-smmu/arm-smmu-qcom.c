@@ -385,6 +385,8 @@ static int qcom_adreno_smmu_init_context(struct arm_smmu_domain *smmu_domain,
 	 */
 
 	priv = dev_get_drvdata(dev);
+	if (!priv)
+		return -EINVAL;
 	priv->cookie = smmu_domain;
 	priv->get_ttbr1_cfg = qcom_adreno_smmu_get_ttbr1_cfg;
 	priv->set_ttbr0_cfg = qcom_adreno_smmu_set_ttbr0_cfg;
@@ -585,6 +587,15 @@ static int qcom_smmu_def_domain_type(struct device *dev)
 	const struct of_device_id *match =
 		of_match_device(qcom_smmu_client_of_match, dev);
 
+	/* Match the DT GPU/GMU identity default: MSM installs its own domain
+	 * after creating the private Adreno SMMU interface. A DMA domain here
+	 * would enter init_context before that interface exists.
+	 */
+	if (!dev->of_node && dev_name(dev) &&
+	    device_property_read_bool(dev, "qcom,tcl-acpi-gpu") &&
+	    (!strcmp(dev_name(dev), "tcl-sc7180-adreno") ||
+	     !strcmp(dev_name(dev), "tcl-sc7180-gmu")))
+		return IOMMU_DOMAIN_IDENTITY;
 	return match ? IOMMU_DOMAIN_IDENTITY : 0;
 }
 
@@ -769,6 +780,33 @@ static const struct of_device_id __maybe_unused qcom_smmu_impl_of_match[] = {
 };
 
 #ifdef CONFIG_ACPI
+/* ACPI has no OF adreno-smmu compatible: select the GPU implementation directly. */
+static const struct qcom_smmu_match_data sc7180_acpi_adreno_data = {
+	.impl = &qcom_adreno_smmu_v2_impl,
+};
+
+static struct acpi_platform_list sc7180_acpi_platlist[] = {
+	{ "QCOM  ", "QCOMEDK2", 0x7180, ACPI_SIG_IORT, equal, "SC7180 SMMU" },
+	{ }
+};
+
+static struct arm_smmu_device *sc7180_acpi_smmu_create(struct arm_smmu_device *smmu)
+{
+	/* numpage still holds the MMIO resource size at implementation selection. */
+	if (smmu->version == ARM_SMMU_V2 &&
+	    smmu->model == ARM_MMU500 && smmu->ioaddr == 0x15000000 &&
+	    smmu->numpage == 0x100000)
+		return qcom_smmu_create(smmu, &qcom_smmu_500_impl0_data);
+
+	if (smmu->version == ARM_SMMU_V2 &&
+	    smmu->model == GENERIC_SMMU && smmu->ioaddr == 0x05040000 &&
+	    smmu->numpage == 0x10000)
+		return qcom_smmu_create(smmu, &sc7180_acpi_adreno_data);
+
+	return ERR_PTR(dev_err_probe(smmu->dev, -ENODEV,
+				     "Unsupported SC7180 ACPI SMMU resource/model\n"));
+}
+
 static struct acpi_platform_list qcom_acpi_platlist[] = {
 	{ "LENOVO", "CB-01   ", 0x8180, ACPI_SIG_IORT, equal, "QCOM SMMU" },
 	{ "QCOM  ", "QCOMEDK2", 0x8180, ACPI_SIG_IORT, equal, "QCOM SMMU" },
@@ -816,6 +854,9 @@ struct arm_smmu_device *qcom_smmu_impl_init(struct arm_smmu_device *smmu)
 
 #ifdef CONFIG_ACPI
 	if (np == NULL) {
+		if (acpi_match_platform_list(sc7180_acpi_platlist) >= 0)
+			return sc7180_acpi_smmu_create(smmu);
+
 		/* Match platform for ACPI boot */
 		if (acpi_match_platform_list(qcom_acpi_platlist) >= 0)
 			return qcom_smmu_create(smmu, &qcom_smmu_500_impl0_data);
