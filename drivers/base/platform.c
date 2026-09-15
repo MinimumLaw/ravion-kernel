@@ -1480,7 +1480,12 @@ static int platform_dma_configure(struct device *dev)
 		ret = of_dma_configure(dev, to_of_node(fwnode), true);
 	} else if (is_acpi_device_node(fwnode)) {
 		attr = acpi_get_dma_attr(to_acpi_device_node(fwnode));
-		ret = acpi_dma_configure(dev, attr);
+		if (!strcmp(acpi_device_hid(to_acpi_device_node(fwnode)), "QCOM24A5")) {
+			u32 input_id = 0x81030000;
+			ret = acpi_dma_configure_id(dev, attr, &input_id);
+		} else {
+			ret = acpi_dma_configure(dev, attr);
+		}
 	} else if (dev_name(dev) && !strcmp(dev_name(dev), "tcl-sc7180-dpu") &&
 		   device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
 		struct acpi_device *adev;
