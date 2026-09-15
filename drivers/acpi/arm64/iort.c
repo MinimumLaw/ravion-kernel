@@ -339,6 +339,26 @@ out:
 	return status;
 }
 
+/* TCL B220G firmware names the UFS component without the underscore that
+ * ACPICA adds to the resolved namespace path (IORT: \_SB.UFS0, ACPI:
+ * \_SB_.UFS0).  Match the known component explicitly so its stream ID can
+ * reach the Apps SMMU just as it does in the DT description. */
+static acpi_status iort_tcl_ufs_match(struct acpi_iort_node *node, void *context)
+{
+	struct device *dev = context;
+	struct acpi_device *adev = acpi_companion_or_self(dev);
+	struct acpi_iort_named_component *nc;
+
+	if (!adev || dev->of_node || node->type != ACPI_IORT_NODE_NAMED_COMPONENT ||
+	    strcmp(acpi_device_hid(adev), "QCOM24A5") ||
+	    node->length < sizeof(*node) + sizeof(*nc) + sizeof("\\_SB.UFS0"))
+		return AE_NOT_FOUND;
+
+	nc = (struct acpi_iort_named_component *)node->node_data;
+	return !memcmp(nc->device_name, "\\_SB.UFS0", sizeof("\\_SB.UFS0")) ?
+		AE_OK : AE_NOT_FOUND;
+}
+
 static acpi_status iort_match_iwb_callback(struct acpi_iort_node *node, void *context)
 {
 	struct acpi_iort_iwb *iwb;
@@ -1850,7 +1870,10 @@ int iort_iommu_configure_id(struct device *dev, const u32 *id_in)
 	} else {
 		node = iort_scan_node(ACPI_IORT_NODE_NAMED_COMPONENT,
 				      iort_tcl_audio_device(dev) ? iort_tcl_audio_match :
-				      iort_match_node_callback, dev);
+				      (!dev->of_node && dev_name(dev) &&
+				       ACPI_COMPANION(dev) &&
+				       !strcmp(acpi_device_hid(ACPI_COMPANION(dev)), "QCOM24A5")) ?
+				      iort_tcl_ufs_match : iort_match_node_callback, dev);
 		if (!node)
 			return -ENODEV;
 		if (iort_tcl_audio_device(dev))
