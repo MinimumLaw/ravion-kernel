@@ -1306,7 +1306,7 @@ static u32 ufs_qcom_get_ufs_hci_version(struct ufs_hba *hba)
  */
 static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
 {
-	const struct ufs_qcom_drvdata *drvdata = of_device_get_match_data(hba->dev);
+	const struct ufs_qcom_drvdata *drvdata = device_get_match_data(hba->dev);
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
 	if (host->hw_ver.major == 0x2)
@@ -1527,6 +1527,12 @@ static int ufs_qcom_icc_init(struct ufs_qcom_host *host)
 	struct device *dev = host->hba->dev;
 	int ret;
 
+	/* Interconnect paths are described by OF bindings on Qualcomm DT
+	 * platforms.  The ACPI firmware does not expose equivalent paths;
+	 * leave bandwidth voting to firmware rather than failing probe. */
+	if (has_acpi_companion(dev))
+		return 0;
+
 	host->icc_ddr = devm_of_icc_get(dev, "ufs-ddr");
 	if (IS_ERR(host->icc_ddr))
 		return dev_err_probe(dev, PTR_ERR(host->icc_ddr),
@@ -1566,7 +1572,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	struct device *dev = hba->dev;
 	struct ufs_qcom_host *host;
 	struct ufs_clk_info *clki;
-	const struct ufs_qcom_drvdata *drvdata = of_device_get_match_data(hba->dev);
+	const struct ufs_qcom_drvdata *drvdata = device_get_match_data(hba->dev);
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
 	if (!host)
@@ -1584,14 +1590,19 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		goto out_variant_clear;
 	}
 
-	/* Fire up the reset controller. Failure here is non-fatal. */
-	host->rcdev.of_node = dev->of_node;
-	host->rcdev.ops = &ufs_qcom_reset_ops;
-	host->rcdev.owner = dev->driver->owner;
-	host->rcdev.nr_resets = 1;
-	err = devm_reset_controller_register(dev, &host->rcdev);
-	if (err)
-		dev_warn(dev, "Failed to register reset controller\n");
+	/* The reset-provider registration is an OF-only interface.  ACPI
+	 * firmware has no reset-controller node, and registering one with a
+	 * NULL of_node makes reset_controller_register() dereference NULL.
+	 */
+	if (dev->of_node) {
+		host->rcdev.of_node = dev->of_node;
+		host->rcdev.ops = &ufs_qcom_reset_ops;
+		host->rcdev.owner = dev->driver->owner;
+		host->rcdev.nr_resets = 1;
+		err = devm_reset_controller_register(dev, &host->rcdev);
+		if (err)
+			dev_warn(dev, "Failed to register reset controller\n");
+	}
 
 	if (!has_acpi_companion(dev)) {
 		host->generic_phy = devm_phy_get(dev, "ufsphy");
@@ -3004,6 +3015,13 @@ static const struct ufs_qcom_drvdata ufs_qcom_sa8255p_drvdata = {
 	.vops = &ufs_hba_qcom_sa8255p_vops
 };
 
+/* TCL B220G exposes the UFS controller through ACPI.  The PHY and its
+ * power sequencing remain firmware-managed, so use the corresponding
+ * firmware-managed variant operations instead of the OF PHY path. */
+static const struct ufs_qcom_drvdata ufs_qcom_acpi_drvdata = {
+	.vops = &ufs_hba_qcom_sa8255p_vops,
+};
+
 static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
 	{ .compatible = "qcom,ufshc" },
 	{ .compatible = "qcom,sm8550-ufshc", .data = &ufs_qcom_sm8550_drvdata },
@@ -3015,7 +3033,7 @@ MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
 
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id ufs_qcom_acpi_match[] = {
-	{ "QCOM24A5" },
+	{ "QCOM24A5", (kernel_ulong_t)&ufs_qcom_acpi_drvdata },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, ufs_qcom_acpi_match);
