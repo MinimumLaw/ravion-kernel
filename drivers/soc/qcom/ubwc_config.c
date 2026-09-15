@@ -3,6 +3,8 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
 #include <linux/debugfs.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -300,9 +302,37 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
 	{ }
 };
 
+/* OEM ACPI describes B220G hardware but has no DT root compatible. */
+static const struct qcom_ubwc_cfg_data *qcom_ubwc_config_get_acpi_data(void)
+{
+#ifdef CONFIG_ACPI
+	struct acpi_device *adev;
+	acpi_handle handle;
+	bool match;
+
+	if (acpi_disabled ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &handle)))
+		return ERR_PTR(-ENODEV);
+
+	adev = acpi_dev_get_first_match_dev("QCOM083A", NULL, -1);
+	if (!adev)
+		return ERR_PTR(-ENODEV);
+	match = adev->handle == handle;
+	acpi_dev_put(adev);
+	if (match)
+		return &sc7180_data;
+#endif
+	return ERR_PTR(-ENODEV);
+}
+
 const struct qcom_ubwc_cfg_data *qcom_ubwc_config_get_data(void)
 {
 	const struct qcom_ubwc_cfg_data *data;
+
+	if (!of_root)
+		return qcom_ubwc_config_get_acpi_data();
 
 	data = of_machine_get_match_data(qcom_ubwc_configs);
 	if (!data) {
