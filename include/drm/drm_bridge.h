@@ -1108,6 +1108,8 @@ struct drm_bridge {
 	struct list_head chain_node;
 	/** @of_node: device node pointer to the bridge */
 	struct device_node *of_node;
+	/** @fwnode: optional firmware node, kept alive by the bridge provider */
+	struct fwnode_handle *fwnode;
 	/** @list: to keep track of all added bridges */
 	struct list_head list;
 	/**
@@ -1319,6 +1321,7 @@ void *__devm_drm_bridge_alloc(struct device *dev, size_t size, size_t offset,
 
 void drm_bridge_add(struct drm_bridge *bridge);
 int devm_drm_bridge_add(struct device *dev, struct drm_bridge *bridge);
+struct drm_bridge *drm_fwnode_find_and_get_bridge(struct fwnode_handle *node);
 void drm_bridge_remove(struct drm_bridge *bridge);
 int drm_bridge_attach(struct drm_encoder *encoder, struct drm_bridge *bridge,
 		      struct drm_bridge *previous,

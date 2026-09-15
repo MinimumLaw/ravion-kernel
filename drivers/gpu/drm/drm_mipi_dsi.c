@@ -328,6 +328,22 @@ struct mipi_dsi_host *of_find_mipi_dsi_host_by_node(struct device_node *node)
 }
 EXPORT_SYMBOL(of_find_mipi_dsi_host_by_node);
 
+/* Like the OF lookup, the caller must keep the host registered while in use. */
+struct mipi_dsi_host *fwnode_find_mipi_dsi_host(struct fwnode_handle *node)
+{
+	struct mipi_dsi_host *host;
+
+	if (!node)
+		return NULL;
+	scoped_guard(mutex, &host_lock) {
+		list_for_each_entry(host, &host_list, list)
+			if (dev_fwnode(host->dev) == node)
+				return host;
+	}
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(fwnode_find_mipi_dsi_host);
+
 int mipi_dsi_host_register(struct mipi_dsi_host *host)
 {
 	struct device_node *node;

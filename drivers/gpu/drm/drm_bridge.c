@@ -1515,6 +1515,22 @@ void drm_bridge_hpd_notify(struct drm_bridge *bridge,
 }
 EXPORT_SYMBOL_GPL(drm_bridge_hpd_notify);
 
+/* Return an owned bridge reference; callers release it with drm_bridge_put(). */
+struct drm_bridge *drm_fwnode_find_and_get_bridge(struct fwnode_handle *node)
+{
+	struct drm_bridge *bridge;
+
+	if (!node)
+		return NULL;
+	scoped_guard(mutex, &bridge_lock) {
+		list_for_each_entry(bridge, &bridge_list, list)
+			if (bridge->fwnode == node)
+				return drm_bridge_get(bridge);
+	}
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(drm_fwnode_find_and_get_bridge);
+
 #ifdef CONFIG_OF
 /**
  * of_drm_find_and_get_bridge - find the bridge corresponding to the device
