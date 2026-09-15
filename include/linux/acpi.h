@@ -741,6 +741,8 @@ extern int acpi_nvs_register(__u64 start, __u64 size);
 extern int acpi_nvs_for_each_region(int (*func)(__u64, __u64, void *),
 				    void *data);
 
+struct acpi_device *acpi_companion_or_self(struct device *dev);
+
 const struct acpi_device_id *acpi_match_acpi_device(const struct acpi_device_id *ids,
 						    const struct acpi_device *adev);
 
@@ -979,6 +981,11 @@ static inline int acpi_nvs_for_each_region(int (*func)(__u64, __u64, void *),
 }
 
 struct acpi_device_id;
+
+static inline struct acpi_device *acpi_companion_or_self(struct device *dev)
+{
+	return NULL;
+}
 
 static inline const struct acpi_device_id *acpi_match_acpi_device(
 	const struct acpi_device_id *ids, const struct acpi_device *adev)

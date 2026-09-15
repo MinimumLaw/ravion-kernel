@@ -1043,6 +1043,24 @@ out_acpi_match:
 }
 
 /**
+ * acpi_companion_or_self - Find the ACPI object represented by a device
+ * @dev: Firmware device or physical device, or NULL.
+ *
+ * Return the device itself for an ACPI bus object, otherwise its companion.
+ * The returned pointer is borrowed; callers must keep @dev alive. This does
+ * not perform the primary-physical-device check used for driver matching.
+ */
+struct acpi_device *acpi_companion_or_self(struct device *dev)
+{
+	if (!dev)
+		return NULL;
+	if (dev->bus == &acpi_bus_type)
+		return to_acpi_device(dev);
+	return ACPI_COMPANION(dev);
+}
+EXPORT_SYMBOL_GPL(acpi_companion_or_self);
+
+/**
  * acpi_match_acpi_device - Match an ACPI device against a given list of ACPI IDs
  * @ids: Array of struct acpi_device_id objects to match against.
  * @adev: The ACPI device pointer to match.
