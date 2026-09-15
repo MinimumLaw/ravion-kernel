@@ -645,8 +645,16 @@ struct qcom_sysmon *qcom_add_sysmon_subdev(struct rproc *rproc,
 	mutex_init(&sysmon->lock);
 	mutex_init(&sysmon->state_lock);
 
-	sysmon->shutdown_irq = of_irq_get_byname(sysmon->dev->of_node,
-						 "shutdown-ack");
+	if (sysmon->dev->of_node)
+		sysmon->shutdown_irq = of_irq_get_byname(sysmon->dev->of_node,
+							 "shutdown-ack");
+	else if (!platform_get_resource_byname(to_platform_device(sysmon->dev),
+					      IORESOURCE_IRQ, "shutdown-ack"))
+		/* This interrupt is optional, just as it is for OF consumers. */
+		sysmon->shutdown_irq = -ENODATA;
+	else
+		sysmon->shutdown_irq = platform_get_irq_byname(
+				to_platform_device(sysmon->dev), "shutdown-ack");
 	if (sysmon->shutdown_irq < 0) {
 		if (sysmon->shutdown_irq != -ENODATA) {
 			dev_err(sysmon->dev,

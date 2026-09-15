@@ -8,6 +8,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/interconnect.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -346,7 +347,12 @@ int qcom_q6v5_init(struct qcom_q6v5 *q6v5, struct platform_device *pdev,
 		return load_state ? -ENOMEM : -EINVAL;
 	}
 
-	q6v5->path = devm_of_icc_get(&pdev->dev, NULL);
+	/* The TCL SC7180 MPSS DT has no interconnect path to vote on. */
+	if (!pdev->dev.of_node &&
+	    device_property_read_bool(&pdev->dev, "qcom,tcl-no-interconnect"))
+		q6v5->path = NULL;
+	else
+		q6v5->path = devm_of_icc_get(&pdev->dev, NULL);
 	if (IS_ERR(q6v5->path))
 		return dev_err_probe(&pdev->dev, PTR_ERR(q6v5->path),
 				     "failed to acquire interconnect path\n");

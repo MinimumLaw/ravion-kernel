@@ -5,6 +5,7 @@
  * Copyright (c) 2023 Linaro Ltd.
  */
 
+#include <linux/acpi.h>
 #include <linux/auxiliary_bus.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -648,12 +649,25 @@ static struct qcom_pdm_data *qcom_pdm_start(void)
 	int ret, i;
 
 	match = of_machine_get_match(qcom_pdm_domains);
-	if (!match) {
-		pr_notice("PDM: no support for the platform, userspace daemon might be required.\n");
+	if (match) {
+		domains = match->data;
+	} else if (!of_root) {
+		struct acpi_table_header *table;
+		bool tcl;
+
+		if (acpi_disabled ||
+		    ACPI_FAILURE(acpi_get_table(ACPI_SIG_IORT, 0, &table)))
+			return ERR_PTR(-ENODEV);
+		tcl = !memcmp(table->oem_id, "QCOM  ", ACPI_OEM_ID_SIZE) &&
+			!memcmp(table->oem_table_id, "QCOMEDK2", ACPI_OEM_TABLE_ID_SIZE) &&
+			table->oem_revision == 0x7180;
+		acpi_put_table(table);
+		if (!tcl)
+			return ERR_PTR(-ENODEV);
+		domains = sc7180_domains;
+	} else {
 		return ERR_PTR(-ENODEV);
 	}
-
-	domains = match->data;
 	if (!domains) {
 		pr_debug("PDM: no domains\n");
 		return ERR_PTR(-ENODEV);

@@ -7,6 +7,7 @@
 #include <linux/soc/qcom/qmi.h>
 
 struct qcom_glink_smem;
+struct fwnode_handle;
 struct qcom_sysmon;
 
 struct qcom_rproc_glink {
@@ -17,6 +18,8 @@ struct qcom_rproc_glink {
 	struct device *dev;
 	struct device_node *node;
 	struct qcom_glink_smem *edge;
+	struct fwnode_handle *fwnode;
+	int irq;
 };
 
 struct qcom_rproc_subdev {
@@ -48,6 +51,10 @@ void qcom_minidump(struct rproc *rproc, unsigned int minidump_id,
 
 void qcom_add_glink_subdev(struct rproc *rproc, struct qcom_rproc_glink *glink,
 			   const char *ssr_name);
+int qcom_add_glink_subdev_fwnode(struct rproc *rproc,
+			       struct qcom_rproc_glink *glink,
+			       const char *ssr_name,
+			       struct fwnode_handle *fwnode, int irq);
 void qcom_remove_glink_subdev(struct rproc *rproc, struct qcom_rproc_glink *glink);
 
 int qcom_register_dump_segments(struct rproc *rproc, const struct firmware *fw);

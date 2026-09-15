@@ -7,6 +7,7 @@
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/property.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/firmware.h>
@@ -18,6 +19,7 @@
 #include <linux/of_address.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/qcom-tcl-acpi.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/firmware/qcom/qcom_scm.h>
@@ -77,6 +79,7 @@ struct qcom_pas {
 	struct device *proxy_pds[3];
 
 	int proxy_pd_count;
+	bool board_proxy_pds;
 
 	const char *dtb_firmware_name;
 	int pas_id;
@@ -573,6 +576,16 @@ static int qcom_pas_pds_attach(struct device *dev, struct device **devs, char **
 	int ret;
 	int i;
 
+	if (!dev->of_node) {
+		const struct qcom_tcl_pas_data *data = dev_get_platdata(dev);
+
+		if (!data || !data->proxy_pds[0] || !data->proxy_pds[1])
+			return -EINVAL;
+		devs[0] = data->proxy_pds[0];
+		devs[1] = data->proxy_pds[1];
+		return 2;
+	}
+
 	if (!pd_names)
 		return 0;
 
@@ -608,6 +621,9 @@ static void qcom_pas_pds_detach(struct qcom_pas *pas, struct device **pds, size_
 	struct device *dev = pas->dev;
 	int i;
 
+	if (pas->board_proxy_pds)
+		return;
+
 	/* Handle single power domain */
 	if (pd_count == 1 && dev->pm_domain) {
 		pm_runtime_disable(dev);
@@ -622,6 +638,22 @@ static int qcom_pas_alloc_memory_region(struct qcom_pas *pas)
 {
 	struct resource res;
 	int ret;
+	struct resource *acpi_res;
+
+	if (!pas->dev->of_node) {
+		if (pas->dtb_pas_id)
+			return -EOPNOTSUPP;
+		acpi_res = platform_get_resource_byname(to_platform_device(pas->dev),
+						   IORESOURCE_MEM, "firmware");
+		if (!acpi_res || !resource_size(acpi_res))
+			return -EINVAL;
+		pas->mem_phys = pas->mem_reloc = acpi_res->start;
+		pas->mem_size = resource_size(acpi_res);
+		pas->mem_region = devm_ioremap_wc(pas->dev, acpi_res->start,
+						pas->mem_size);
+		return pas->mem_region ? 0 : -ENOMEM;
+	}
+
 
 	ret = of_reserved_mem_region_to_resource(pas->dev->of_node, 0, &res);
 	if (ret) {
@@ -739,7 +771,9 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	const struct rproc_ops *ops = &qcom_pas_ops;
 	int ret;
 
-	desc = of_device_get_match_data(&pdev->dev);
+	desc = device_get_match_data(&pdev->dev);
+	if (!desc && platform_get_device_id(pdev))
+		desc = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!desc)
 		return -EINVAL;
 
@@ -747,7 +781,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 
 	fw_name = desc->firmware_name;
-	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
+	ret = device_property_read_string(&pdev->dev, "firmware-name",
 				      &fw_name);
 	if (ret < 0 && ret != -EINVAL)
 		return ret;
@@ -776,6 +810,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	pas = rproc->priv;
 	pas->dev = &pdev->dev;
+	pas->board_proxy_pds = !pdev->dev.of_node;
 	pas->rproc = rproc;
 	pas->minidump_id = desc->minidump_id;
 	pas->pas_id = desc->pas_id;
@@ -824,7 +859,19 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (ret)
 		goto detach_proxy_pds;
 
-	qcom_add_glink_subdev(rproc, &pas->glink_subdev, desc->ssr_name);
+	if (pas->board_proxy_pds) {
+		const struct qcom_tcl_pas_data *data = dev_get_platdata(&pdev->dev);
+
+		ret = qcom_add_glink_subdev_fwnode(rproc, &pas->glink_subdev,
+						   desc->ssr_name, data->glink_node,
+						   data->glink_irq);
+		if (ret) {
+			qcom_q6v5_deinit(&pas->q6v5);
+			goto detach_proxy_pds;
+		}
+	} else {
+		qcom_add_glink_subdev(rproc, &pas->glink_subdev, desc->ssr_name);
+	}
 	qcom_add_smd_subdev(rproc, &pas->smd_subdev);
 	qcom_add_pdm_subdev(rproc, &pas->pdm_subdev);
 	pas->sysmon = qcom_add_sysmon_subdev(rproc, desc->sysmon_name, desc->ssctl_id);
@@ -1653,7 +1700,33 @@ static const struct of_device_id qcom_pas_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, qcom_pas_of_match);
 
+/* TCL ACPI registers resources before explicitly starting the audio DSP. */
+static const struct qcom_pas_data tcl_sc7180_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "qcom/sc7180/tcl/b220g/qcadsp7180.mbn",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.auto_boot = false,
+	.proxy_pd_names = (char*[]){
+		"lcx",
+		"lmx",
+		NULL
+	},
+	.load_state = "adsp",
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct platform_device_id qcom_pas_platform_ids[] = {
+	{ "tcl-sc7180-adsp", (kernel_ulong_t)&tcl_sc7180_adsp_resource },
+	{ "tcl-sc7180-mpss", (kernel_ulong_t)&mpss_resource_init },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, qcom_pas_platform_ids);
+
 static struct platform_driver qcom_pas_driver = {
+	.id_table = qcom_pas_platform_ids,
 	.probe = qcom_pas_probe,
 	.remove = qcom_pas_remove,
 	.driver = {

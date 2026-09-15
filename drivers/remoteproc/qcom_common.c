@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/remoteproc.h>
+#include <linux/property.h>
 #include <linux/remoteproc/qcom_rproc.h>
 #include <linux/auxiliary_bus.h>
 #include <linux/rpmsg/qcom_glink.h>
@@ -217,7 +218,11 @@ static int glink_subdev_start(struct rproc_subdev *subdev)
 {
 	struct qcom_rproc_glink *glink = to_glink_subdev(subdev);
 
-	glink->edge = qcom_glink_smem_register(glink->dev, glink->node);
+	if (glink->fwnode)
+		glink->edge = qcom_glink_smem_register_fwnode(glink->dev,
+							    glink->fwnode, glink->irq);
+	else
+		glink->edge = qcom_glink_smem_register(glink->dev, glink->node);
 
 	return PTR_ERR_OR_ZERO(glink->edge);
 }
@@ -225,6 +230,12 @@ static int glink_subdev_start(struct rproc_subdev *subdev)
 static void glink_subdev_stop(struct rproc_subdev *subdev, bool crashed)
 {
 	struct qcom_rproc_glink *glink = to_glink_subdev(subdev);
+
+	/* The subdevice may not have started, or may already have been stopped. */
+	if (IS_ERR_OR_NULL(glink->edge)) {
+		glink->edge = NULL;
+		return;
+	}
 
 	qcom_glink_smem_unregister(glink->edge);
 	glink->edge = NULL;
@@ -266,18 +277,61 @@ void qcom_add_glink_subdev(struct rproc *rproc, struct qcom_rproc_glink *glink,
 EXPORT_SYMBOL_GPL(qcom_add_glink_subdev);
 
 /**
+ * qcom_add_glink_subdev_fwnode() - add an explicitly described GLINK edge
+ * @rproc: remote processor
+ * @glink: zero-initialized, unused subdevice context
+ * @ssr_name: subsystem restart identifier
+ * @fwnode: edge properties and mailbox reference
+ * @irq: Linux IRQ whose mapping must outlive the subdevice
+ *
+ * The caller resolves the IRQ from platform/ACPI resources. An owned firmware
+ * node reference is kept until qcom_remove_glink_subdev().
+ *
+ * Return: 0 on success, a negative error code on failure.
+ */
+int qcom_add_glink_subdev_fwnode(struct rproc *rproc,
+			       struct qcom_rproc_glink *glink,
+			       const char *ssr_name,
+			       struct fwnode_handle *fwnode, int irq)
+{
+	if (!fwnode || !ssr_name || irq <= 0)
+		return irq < 0 ? irq : -EINVAL;
+	if (glink->node || glink->fwnode)
+		return -EBUSY;
+
+	glink->ssr_name = kstrdup_const(ssr_name, GFP_KERNEL);
+	if (!glink->ssr_name)
+		return -ENOMEM;
+
+	glink->fwnode = fwnode_handle_get(fwnode);
+	glink->irq = irq;
+	glink->dev = &rproc->dev;
+	glink->subdev.start = glink_subdev_start;
+	glink->subdev.stop = glink_subdev_stop;
+	glink->subdev.unprepare = glink_subdev_unprepare;
+	rproc_add_subdev(rproc, &glink->subdev);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qcom_add_glink_subdev_fwnode);
+
+/**
  * qcom_remove_glink_subdev() - remove a GLINK subdevice from rproc
  * @rproc:	rproc handle
  * @glink:	reference to a GLINK subdev context
  */
 void qcom_remove_glink_subdev(struct rproc *rproc, struct qcom_rproc_glink *glink)
 {
-	if (!glink->node)
+	if (!glink->node && !glink->fwnode)
 		return;
 
 	rproc_remove_subdev(rproc, &glink->subdev);
 	kfree_const(glink->ssr_name);
 	of_node_put(glink->node);
+	fwnode_handle_put(glink->fwnode);
+	glink->node = NULL;
+	glink->fwnode = NULL;
+	glink->ssr_name = NULL;
 }
 EXPORT_SYMBOL_GPL(qcom_remove_glink_subdev);
 
