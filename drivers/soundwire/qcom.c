@@ -10,6 +10,7 @@
 #include <linux/debugfs.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/property.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
@@ -1413,18 +1414,48 @@ static int qcom_swrm_register_dais(struct qcom_swrm_ctrl *ctrl)
 						dais, num_dais);
 }
 
+static int qcom_swrm_read_u8(struct device *dev, const char *name,
+			     unsigned int index, u8 *value)
+{
+	u8 values[SDW_MAX_PORTS];
+	int ret;
+
+	if (index >= ARRAY_SIZE(values))
+		return -EINVAL;
+	ret = device_property_read_u8_array(dev, name, values, index + 1);
+	if (!ret)
+		*value = values[index];
+	return ret;
+}
+
+static int qcom_swrm_read_u16(struct device *dev, const char *name,
+			      unsigned int index, u16 *value)
+{
+	u16 values[SDW_MAX_PORTS];
+	int ret;
+
+	if (index >= ARRAY_SIZE(values))
+		return -EINVAL;
+	ret = device_property_read_u16_array(dev, name, values, index + 1);
+	if (!ret)
+		*value = values[index];
+	return ret;
+}
+
 static int qcom_swrm_get_port_config(struct qcom_swrm_ctrl *ctrl)
 {
-	struct device_node *np = ctrl->dev->of_node;
+	struct device *dev = ctrl->dev;
 	struct qcom_swrm_port_config *pcfg;
 	int i, ret, val;
 
-	ctrl->reg_read(ctrl, SWRM_COMP_PARAMS, &val);
+	ret = ctrl->reg_read(ctrl, SWRM_COMP_PARAMS, &val);
+	if (ret)
+		return ret;
 
 	ctrl->num_dout_ports = FIELD_GET(SWRM_COMP_PARAMS_DOUT_PORTS_MASK, val);
 	ctrl->num_din_ports = FIELD_GET(SWRM_COMP_PARAMS_DIN_PORTS_MASK, val);
 
-	ret = of_property_read_u32(np, "qcom,din-ports", &val);
+	ret = device_property_read_u32(dev, "qcom,din-ports", &val);
 	if (!ret) { /* only if present */
 		if (val != ctrl->num_din_ports) {
 			dev_err(ctrl->dev, "din-ports (%d) mismatch with controller (%d)",
@@ -1434,7 +1465,7 @@ static int qcom_swrm_get_port_config(struct qcom_swrm_ctrl *ctrl)
 		ctrl->num_din_ports = val;
 	}
 
-	ret = of_property_read_u32(np, "qcom,dout-ports", &val);
+	ret = device_property_read_u32(dev, "qcom,dout-ports", &val);
 	if (!ret) { /* only if present */
 		if (val != ctrl->num_dout_ports) {
 			dev_err(ctrl->dev, "dout-ports (%d) mismatch with controller (%d)",
@@ -1444,6 +1475,10 @@ static int qcom_swrm_get_port_config(struct qcom_swrm_ctrl *ctrl)
 		ctrl->num_dout_ports = val;
 	}
 
+	if (ctrl->num_dout_ports > SDW_MAX_PORTS ||
+	    ctrl->num_din_ports > SDW_MAX_PORTS ||
+	    ctrl->num_dout_ports + ctrl->num_din_ports > SDW_MAX_PORTS)
+		return -EINVAL;
 	ctrl->nports = ctrl->num_dout_ports + ctrl->num_din_ports;
 
 	ctrl->pconfig = devm_kcalloc(ctrl->dev, ctrl->nports + 1,
@@ -1456,22 +1491,22 @@ static int qcom_swrm_get_port_config(struct qcom_swrm_ctrl *ctrl)
 	for (i = 0; i < ctrl->nports; i++) {
 		pcfg = &ctrl->pconfig[i + 1];
 
-		ret = of_property_read_u8_index(np, "qcom,ports-offset1", i, &pcfg->off1);
+		ret = qcom_swrm_read_u8(dev, "qcom,ports-offset1", i, &pcfg->off1);
 		if (ret)
 			return ret;
 
-		ret = of_property_read_u8_index(np, "qcom,ports-offset2", i, &pcfg->off2);
+		ret = qcom_swrm_read_u8(dev, "qcom,ports-offset2", i, &pcfg->off2);
 		if (ret)
 			return ret;
 
-		ret = of_property_read_u8_index(np, "qcom,ports-sinterval-low", i, (u8 *)&pcfg->si);
+		ret = qcom_swrm_read_u8(dev, "qcom,ports-sinterval-low", i, (u8 *)&pcfg->si);
 		if (ret) {
-			ret = of_property_read_u16_index(np, "qcom,ports-sinterval", i, &pcfg->si);
+			ret = qcom_swrm_read_u16(dev, "qcom,ports-sinterval", i, &pcfg->si);
 			if (ret)
 				return ret;
 		}
 
-		ret = of_property_read_u8_index(np, "qcom,ports-block-pack-mode",
+		ret = qcom_swrm_read_u8(dev, "qcom,ports-block-pack-mode",
 						i, &pcfg->bp_mode);
 		if (ret) {
 			if (ctrl->version <= SWRM_VERSION_1_3_0)
@@ -1487,16 +1522,16 @@ static int qcom_swrm_get_port_config(struct qcom_swrm_ctrl *ctrl)
 		pcfg->blk_group_count = SWR_INVALID_PARAM;
 		pcfg->lane_control = SWR_INVALID_PARAM;
 
-		of_property_read_u8_index(np, "qcom,ports-hstart", i, &pcfg->hstart);
+		qcom_swrm_read_u8(dev, "qcom,ports-hstart", i, &pcfg->hstart);
 
-		of_property_read_u8_index(np, "qcom,ports-hstop", i, &pcfg->hstop);
+		qcom_swrm_read_u8(dev, "qcom,ports-hstop", i, &pcfg->hstop);
 
-		of_property_read_u8_index(np, "qcom,ports-word-length", i, &pcfg->word_length);
+		qcom_swrm_read_u8(dev, "qcom,ports-word-length", i, &pcfg->word_length);
 
-		of_property_read_u8_index(np, "qcom,ports-block-group-count",
+		qcom_swrm_read_u8(dev, "qcom,ports-block-group-count",
 					i, &pcfg->blk_group_count);
 
-		of_property_read_u8_index(np, "qcom,ports-lane-control", i, &pcfg->lane_control);
+		qcom_swrm_read_u8(dev, "qcom,ports-lane-control", i, &pcfg->lane_control);
 	}
 
 	return 0;
@@ -1540,11 +1575,22 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 	int ret;
 	u32 val;
 
+	/* Keep runtime-PM state balanced across live module replacement. */
+	if (pm_runtime_enabled(dev)) {
+		dev_info(dev, "TCL: disabling inherited runtime PM before probe\n");
+		pm_runtime_disable(dev);
+		pm_runtime_set_suspended(dev);
+	}
+
 	ctrl = devm_kzalloc(dev, sizeof(*ctrl), GFP_KERNEL);
 	if (!ctrl)
 		return -ENOMEM;
 
-	data = of_device_get_match_data(dev);
+	data = device_get_match_data(dev);
+	if (!data && platform_get_device_id(pdev))
+		data = (const void *)platform_get_device_id(pdev)->driver_data;
+	if (!data)
+		return dev_err_probe(dev, -EINVAL, "Missing SoundWire controller data\n");
 	ctrl->max_reg = data->max_reg;
 	ctrl->reg_layout = data->reg_layout;
 	ctrl->rows_index = sdw_find_row_index(data->default_rows);
@@ -1576,7 +1622,8 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 		}
 	}
 
-	ctrl->irq = of_irq_get(dev->of_node, 0);
+	ctrl->irq = dev->of_node ? of_irq_get(dev->of_node, 0) :
+		platform_get_irq(pdev, 0);
 	if (ctrl->irq < 0) {
 		ret = ctrl->irq;
 		goto err_init;
@@ -1634,7 +1681,12 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	ctrl->wake_irq = of_irq_get(dev->of_node, 1);
+	ctrl->wake_irq = dev->of_node ? of_irq_get(dev->of_node, 1) :
+		platform_get_irq_optional(pdev, 1);
+	if (ctrl->wake_irq == -EPROBE_DEFER) {
+		ret = ctrl->wake_irq;
+		goto err_clk;
+	}
 	if (ctrl->wake_irq > 0) {
 		ret = devm_request_threaded_irq(dev, ctrl->wake_irq, NULL,
 						qcom_swrm_wake_irq_handler,
@@ -1697,6 +1749,7 @@ static void qcom_swrm_remove(struct platform_device *pdev)
 {
 	struct qcom_swrm_ctrl *ctrl = dev_get_drvdata(&pdev->dev);
 
+	pm_runtime_disable(&pdev->dev);
 	sdw_bus_master_delete(&ctrl->bus);
 	clk_disable_unprepare(ctrl->hclk);
 }
@@ -1714,6 +1767,7 @@ static int __maybe_unused swrm_runtime_resume(struct device *dev)
 	clk_prepare_enable(ctrl->hclk);
 
 	if (ctrl->clock_stop_not_supported) {
+		dev_info(dev, "TCL: using reset/re-enumeration resume path\n");
 		reinit_completion(&ctrl->enumeration);
 		ctrl->reg_write(ctrl, SWRM_COMP_SW_RESET, 0x01);
 		usleep_range(100, 105);
@@ -1789,6 +1843,11 @@ static int __maybe_unused swrm_runtime_suspend(struct device *dev)
 		}
 
 		ret = sdw_bus_clk_stop(&ctrl->bus);
+		/* Software-node slaves may exist without any attached hardware. */
+		if (ret == -ENODATA && !ctrl->slave_status) {
+			dev_info(dev, "TCL: empty physical bus; reset on next resume\n");
+			ctrl->clock_stop_not_supported = true;
+		}
 		if (ret < 0 && ret != -ENODATA) {
 			dev_err(dev, "bus clock stop failed %d", ret);
 			return ret;
@@ -1823,7 +1882,16 @@ static const struct of_device_id qcom_swrm_of_match[] = {
 
 MODULE_DEVICE_TABLE(of, qcom_swrm_of_match);
 
+static const struct platform_device_id qcom_swrm_platform_ids[] = {
+	{ "tcl-swr-v1.5", (kernel_ulong_t)&swrm_v1_5_data },
+	{ "tcl-swr-rx", (kernel_ulong_t)&swrm_v1_5_data },
+	{ "tcl-swr-tx", (kernel_ulong_t)&swrm_v1_5_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, qcom_swrm_platform_ids);
+
 static struct platform_driver qcom_swrm_driver = {
+	.id_table = qcom_swrm_platform_ids,
 	.probe	= &qcom_swrm_probe,
 	.remove = qcom_swrm_remove,
 	.driver = {

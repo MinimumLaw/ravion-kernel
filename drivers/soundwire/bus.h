@@ -19,6 +19,7 @@ static inline int sdw_acpi_find_slaves(struct sdw_bus *bus)
 #endif
 
 int sdw_of_find_slaves(struct sdw_bus *bus);
+int sdw_software_find_slaves(struct sdw_bus *bus);
 void sdw_extract_slave_id(struct sdw_bus *bus,
 			  u64 addr, struct sdw_slave_id *id);
 int sdw_slave_add(struct sdw_bus *bus, struct sdw_slave_id *id,

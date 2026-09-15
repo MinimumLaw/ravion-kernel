@@ -3,6 +3,7 @@
 
 #include <linux/acpi.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/soundwire/sdw.h>
 #include <linux/soundwire/sdw_type.h>
 #include <sound/sdca.h>
@@ -13,7 +14,7 @@ static void sdw_slave_release(struct device *dev)
 {
 	struct sdw_slave *slave = dev_to_sdw_dev(dev);
 
-	of_node_put(slave->dev.of_node);
+	fwnode_handle_put(dev_fwnode(dev));
 	mutex_destroy(&slave->sdw_dev_lock);
 	kfree(slave);
 }
@@ -39,7 +40,7 @@ int sdw_slave_add(struct sdw_bus *bus,
 	/* Initialize data structure */
 	memcpy(&slave->id, id, sizeof(*id));
 	slave->dev.parent = bus->dev;
-	slave->dev.fwnode = fwnode;
+	device_set_node(&slave->dev, fwnode_handle_get(fwnode));
 
 	if (id->unique_id == SDW_IGNORED_UNIQUE_ID) {
 		/* name shall be sdw:ctrl:link:mfg:part:class */
@@ -54,7 +55,6 @@ int sdw_slave_add(struct sdw_bus *bus,
 	}
 
 	slave->dev.bus = &sdw_bus_type;
-	slave->dev.of_node = of_node_get(to_of_node(fwnode));
 	slave->dev.type = &sdw_slave_type;
 	slave->dev.groups = sdw_slave_status_attr_groups;
 	slave->bus = bus;
@@ -104,6 +104,59 @@ int sdw_slave_add(struct sdw_bus *bus,
 	return ret;
 }
 EXPORT_SYMBOL(sdw_slave_add);
+
+/* Board software nodes use the same 52-bit identity layout as DisCo _ADR. */
+int sdw_software_find_slaves(struct sdw_bus *bus)
+{
+	struct fwnode_handle *nodes[SDW_MAX_DEVICES] = { };
+	struct sdw_slave_id ids[SDW_MAX_DEVICES];
+	u64 addresses[SDW_MAX_DEVICES];
+	unsigned int count = 0, i;
+	int ret = 0;
+
+	/* Validate all declarations before any codec driver can probe. */
+	device_for_each_child_node_scoped(bus->dev, node) {
+		u64 address;
+
+		if (!is_software_node(node) ||
+		    !fwnode_property_present(node, "mipi-sdw-address"))
+			continue;
+		ret = fwnode_property_read_u64(node, "mipi-sdw-address", &address);
+		if (ret)
+			goto out;
+		if (address >> 52 || !SDW_VERSION(address) ||
+		    !SDW_MFG_ID(address) || !SDW_PART_ID(address)) {
+			ret = -EINVAL;
+			goto out;
+		}
+		if (SDW_DISCO_LINK_ID(address) != bus->link_id)
+			continue;
+		if (count == ARRAY_SIZE(nodes)) {
+			ret = -E2BIG;
+			goto out;
+		}
+		for (i = 0; i < count; i++) {
+			if (addresses[i] == address) {
+				ret = -EEXIST;
+				goto out;
+			}
+		}
+		addresses[count] = address;
+		sdw_extract_slave_id(bus, address, &ids[count]);
+		nodes[count++] = fwnode_handle_get(node);
+	}
+
+	for (i = 0; i < count; i++) {
+		ret = sdw_slave_add(bus, &ids[i], nodes[i]);
+		if (ret)
+			break;
+	}
+	/* The master-add error path removes any partially registered slaves. */
+out:
+	for (i = 0; i < count; i++)
+		fwnode_handle_put(nodes[i]);
+	return ret;
+}
 
 #if IS_ENABLED(CONFIG_ACPI)
 

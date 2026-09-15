@@ -29,6 +29,8 @@ static int sdw_get_id(struct sdw_bus *bus)
 	return 0;
 }
 
+static int sdw_delete_slave(struct device *dev, void *data);
+
 /**
  * sdw_bus_master_add() - add a bus Master instance
  * @bus: bus instance
@@ -138,11 +140,14 @@ int sdw_bus_master_add(struct sdw_bus *bus, struct device *parent,
 		ret = sdw_acpi_find_slaves(bus);
 	else if (IS_ENABLED(CONFIG_OF) && bus->dev->of_node)
 		ret = sdw_of_find_slaves(bus);
+	else if (is_software_node(dev_fwnode(bus->dev)))
+		ret = sdw_software_find_slaves(bus);
 	else
-		ret = -ENOTSUPP; /* No ACPI/DT so error out */
+		ret = -ENOTSUPP; /* No supported firmware description */
 
 	if (ret < 0) {
 		dev_err(bus->dev, "Finding slaves failed:%d\n", ret);
+		device_for_each_child(bus->dev, NULL, sdw_delete_slave);
 		sdw_irq_delete(bus);
 		return ret;
 	}
