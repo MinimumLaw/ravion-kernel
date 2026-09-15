@@ -20,6 +20,8 @@
 #include <sound/soc-dapm.h>
 #include <linux/mux/consumer.h>
 #include <linux/regulator/consumer.h>
+#include <linux/soundwire/sdw.h>
+#include <linux/soundwire/sdw_type.h>
 
 #include "wcd-clsh-v2.h"
 #include "wcd-common.h"
@@ -149,6 +151,7 @@ struct wcd938x_priv {
 	struct device *txdev;
 	struct device *rxdev;
 	struct device_node *rxnode, *txnode;
+	struct fwnode_handle *rx_fwnode, *tx_fwnode;
 	struct regmap *regmap;
 	struct mutex micb_lock;
 	/* mbhc module */
@@ -158,6 +161,7 @@ struct wcd938x_priv {
 	struct wcd_clsh_ctrl *clsh_info;
 	struct wcd_common common;
 	struct irq_domain *virq;
+	int virq_irq;
 	struct regmap_irq_chip_data *irq_chip;
 	struct snd_soc_jack *jack;
 	unsigned long status_mask;
@@ -2998,8 +3002,40 @@ static const struct irq_domain_ops wcd_domain_ops = {
 	.map = wcd_irq_chip_map,
 };
 
+static void wcd938x_irq_domain_remove(void *data)
+{
+	struct wcd938x_priv *wcd = data;
+
+	if (wcd->virq_irq) {
+		irq_dispose_mapping(wcd->virq_irq);
+		wcd->virq_irq = 0;
+	}
+
+	if (wcd->virq) {
+		irq_domain_remove(wcd->virq);
+		wcd->virq = NULL;
+	}
+}
+
+static void wcd938x_irq_cleanup(struct device *dev, struct wcd938x_priv *wcd)
+{
+	if (wcd->sdw_priv[AIF1_PB])
+		wcd->sdw_priv[AIF1_PB]->slave_irq = 0;
+	if (wcd->sdw_priv[AIF1_CAP])
+		wcd->sdw_priv[AIF1_CAP]->slave_irq = 0;
+
+	if (wcd->irq_chip) {
+		devm_regmap_del_irq_chip(dev, wcd->virq_irq, wcd->irq_chip);
+		wcd->irq_chip = NULL;
+	}
+
+	devm_remove_action(dev, wcd938x_irq_domain_remove, wcd);
+	wcd938x_irq_domain_remove(wcd);
+}
+
 static int wcd938x_irq_init(struct wcd938x_priv *wcd, struct device *dev)
 {
+	int ret;
 
 	wcd->virq = irq_domain_create_linear(NULL, 1, &wcd_domain_ops, NULL);
 	if (!(wcd->virq)) {
@@ -3007,10 +3043,23 @@ static int wcd938x_irq_init(struct wcd938x_priv *wcd, struct device *dev)
 		return -EINVAL;
 	}
 
-	return devm_regmap_add_irq_chip(dev, wcd->regmap,
-					irq_create_mapping(wcd->virq, 0),
-					IRQF_ONESHOT, 0, &wcd938x_regmap_irq_chip,
-					&wcd->irq_chip);
+	ret = devm_add_action_or_reset(dev, wcd938x_irq_domain_remove, wcd);
+	if (ret)
+		return ret;
+
+	wcd->virq_irq = irq_create_mapping(wcd->virq, 0);
+	if (!wcd->virq_irq) {
+		wcd938x_irq_cleanup(dev, wcd);
+		return -EINVAL;
+	}
+
+	ret = devm_regmap_add_irq_chip(dev, wcd->regmap, wcd->virq_irq,
+				       IRQF_ONESHOT, 0,
+				       &wcd938x_regmap_irq_chip, &wcd->irq_chip);
+	if (ret)
+		wcd938x_irq_cleanup(dev, wcd);
+
+	return ret;
 }
 
 static int wcd938x_soc_codec_probe(struct snd_soc_component *component)
@@ -3198,17 +3247,26 @@ static bool wcd938x_swap_gnd_mic(struct snd_soc_component *component)
 }
 
 
+static bool wcd938x_acpi_test_device(struct device *dev)
+{
+	return !dev->of_node && !strcmp(dev_name(dev), "wcd938x_codec") &&
+		is_software_node(dev_fwnode(dev));
+}
+
 static int wcd938x_populate_dt_data(struct wcd938x_priv *wcd938x, struct device *dev)
 {
 	struct wcd_mbhc_config *cfg = &wcd938x->mbhc_cfg;
+	bool acpi_test = wcd938x_acpi_test_device(dev);
 	int ret;
 
-	wcd938x->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-	if (IS_ERR(wcd938x->reset_gpio))
-		return dev_err_probe(dev, PTR_ERR(wcd938x->reset_gpio),
-				     "Failed to get reset gpio\n");
+	if (!acpi_test) {
+		wcd938x->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
+		if (IS_ERR(wcd938x->reset_gpio))
+			return dev_err_probe(dev, PTR_ERR(wcd938x->reset_gpio),
+					     "Failed to get reset gpio\n");
+	}
 
-	if (of_property_present(dev->of_node, "mux-controls")) {
+	if (device_property_present(dev, "mux-controls")) {
 		wcd938x->us_euro_mux = devm_mux_control_get(dev, NULL);
 		if (IS_ERR(wcd938x->us_euro_mux)) {
 			ret = PTR_ERR(wcd938x->us_euro_mux);
@@ -3230,14 +3288,18 @@ static int wcd938x_populate_dt_data(struct wcd938x_priv *wcd938x, struct device 
 
 	cfg->swap_gnd_mic = wcd938x_swap_gnd_mic;
 
-	ret = devm_regulator_bulk_get_enable(dev, ARRAY_SIZE(wcd938x_supplies),
-					     wcd938x_supplies);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to get and enable supplies\n");
+	if (!acpi_test) {
+		ret = devm_regulator_bulk_get_enable(dev, ARRAY_SIZE(wcd938x_supplies),
+						     wcd938x_supplies);
+		if (ret)
+			return dev_err_probe(dev, ret, "Failed to get and enable supplies\n");
+	}
 
-	ret = wcd_dt_parse_micbias_info(&wcd938x->common);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to get and enable supplies\n");
+	if (!acpi_test) {
+		ret = wcd_dt_parse_micbias_info(&wcd938x->common);
+		if (ret)
+			return dev_err_probe(dev, ret, "Failed to get and enable supplies\n");
+	}
 
 	cfg->mbhc_micbias = MIC_BIAS_2;
 	cfg->anc_micbias = MIC_BIAS_2;
@@ -3255,6 +3317,9 @@ static int wcd938x_populate_dt_data(struct wcd938x_priv *wcd938x, struct device 
 
 static int wcd938x_reset(struct wcd938x_priv *wcd938x)
 {
+	if (!wcd938x->reset_gpio)
+		return 0;
+
 	gpiod_set_value(wcd938x->reset_gpio, 1);
 	/* 20us sleep required after pulling the reset gpio to LOW */
 	usleep_range(20, 30);
@@ -3329,9 +3394,20 @@ static struct snd_soc_dai_driver wcd938x_dais[] = {
 	},
 };
 
+static int wcd938x_compare_fwnode(struct device *dev, const void *data)
+{
+	return dev_fwnode(dev) == data;
+}
+
+static int wcd938x_component_compare_fwnode(struct device *dev, void *data)
+{
+	return wcd938x_compare_fwnode(dev, data);
+}
+
 static int wcd938x_bind(struct device *dev)
 {
 	struct wcd938x_priv *wcd938x = dev_get_drvdata(dev);
+	bool irq_initialized = false;
 	int ret;
 
 	ret = component_bind_all(dev, wcd938x);
@@ -3341,7 +3417,12 @@ static int wcd938x_bind(struct device *dev)
 		return ret;
 	}
 
-	wcd938x->rxdev = of_sdw_find_device_by_node(wcd938x->rxnode);
+	if (wcd938x->rx_fwnode)
+		wcd938x->rxdev = bus_find_device(&sdw_bus_type, NULL,
+						 wcd938x->rx_fwnode,
+						 wcd938x_compare_fwnode);
+	else
+		wcd938x->rxdev = of_sdw_find_device_by_node(wcd938x->rxnode);
 	if (!wcd938x->rxdev) {
 		dev_err(dev, "could not find slave with matching of node\n");
 		ret = -EINVAL;
@@ -3350,7 +3431,12 @@ static int wcd938x_bind(struct device *dev)
 	wcd938x->sdw_priv[AIF1_PB] = dev_get_drvdata(wcd938x->rxdev);
 	wcd938x->sdw_priv[AIF1_PB]->wcd938x = wcd938x;
 
-	wcd938x->txdev = of_sdw_find_device_by_node(wcd938x->txnode);
+	if (wcd938x->tx_fwnode)
+		wcd938x->txdev = bus_find_device(&sdw_bus_type, NULL,
+						 wcd938x->tx_fwnode,
+						 wcd938x_compare_fwnode);
+	else
+		wcd938x->txdev = of_sdw_find_device_by_node(wcd938x->txnode);
 	if (!wcd938x->txdev) {
 		dev_err(dev, "could not find txslave with matching of node\n");
 		ret = -EINVAL;
@@ -3395,6 +3481,7 @@ static int wcd938x_bind(struct device *dev)
 		dev_err(dev, "%s: IRQ init failed: %d\n", __func__, ret);
 		goto err_remove_rx_link;
 	}
+	irq_initialized = true;
 
 	wcd938x->sdw_priv[AIF1_PB]->slave_irq = wcd938x->virq;
 	wcd938x->sdw_priv[AIF1_CAP]->slave_irq = wcd938x->virq;
@@ -3412,6 +3499,8 @@ static int wcd938x_bind(struct device *dev)
 	return 0;
 
 err_remove_rx_link:
+	if (irq_initialized)
+		wcd938x_irq_cleanup(dev, wcd938x);
 	device_link_remove(dev, wcd938x->rxdev);
 err_remove_tx_link:
 	device_link_remove(dev, wcd938x->txdev);
@@ -3432,6 +3521,10 @@ static void wcd938x_unbind(struct device *dev)
 	struct wcd938x_priv *wcd938x = dev_get_drvdata(dev);
 
 	snd_soc_unregister_component(dev);
+	if (wcd938x->sdw_priv[AIF1_PB])
+		wcd938x->sdw_priv[AIF1_PB]->slave_irq = 0;
+	if (wcd938x->sdw_priv[AIF1_CAP])
+		wcd938x->sdw_priv[AIF1_CAP]->slave_irq = 0;
 	device_link_remove(dev, wcd938x->txdev);
 	device_link_remove(dev, wcd938x->rxdev);
 	device_link_remove(wcd938x->rxdev, wcd938x->txdev);
@@ -3450,6 +3543,36 @@ static int wcd938x_add_slave_components(struct wcd938x_priv *wcd938x,
 					struct component_match **matchptr)
 {
 	struct device_node *np;
+	int ret;
+
+	if (wcd938x_acpi_test_device(dev)) {
+		wcd938x->rx_fwnode = fwnode_find_reference(dev_fwnode(dev),
+								 "qcom,rx-device", 0);
+		if (IS_ERR(wcd938x->rx_fwnode))
+			return dev_err_probe(dev, PTR_ERR(wcd938x->rx_fwnode),
+					     "RX software-node reference missing\n");
+		ret = devm_add_action_or_reset(dev,
+					       (void (*)(void *))fwnode_handle_put,
+					       wcd938x->rx_fwnode);
+		if (ret)
+			return ret;
+		component_match_add(dev, matchptr, wcd938x_component_compare_fwnode,
+				    wcd938x->rx_fwnode);
+
+		wcd938x->tx_fwnode = fwnode_find_reference(dev_fwnode(dev),
+								 "qcom,tx-device", 0);
+		if (IS_ERR(wcd938x->tx_fwnode))
+			return dev_err_probe(dev, PTR_ERR(wcd938x->tx_fwnode),
+					     "TX software-node reference missing\n");
+		ret = devm_add_action_or_reset(dev,
+					       (void (*)(void *))fwnode_handle_put,
+					       wcd938x->tx_fwnode);
+		if (ret)
+			return ret;
+		component_match_add(dev, matchptr, wcd938x_component_compare_fwnode,
+				    wcd938x->tx_fwnode);
+		return 0;
+	}
 
 	np = dev->of_node;
 

@@ -2,6 +2,7 @@
 // Copyright (c) 2021, Linaro Limited
 
 #include <linux/module.h>
+#include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/device.h>
@@ -1164,19 +1165,39 @@ static int wcd9380_probe(struct sdw_slave *pdev,
 	 * Port map index starts with 0, however the data port for this codec
 	 * are from index 1
 	 */
-	if (of_property_present(dev->of_node, "qcom,tx-port-mapping")) {
+	if (device_property_present(dev, "qcom,tx-port-mapping")) {
 		wcd->is_tx = true;
-		ret = of_property_read_u32_array(dev->of_node, "qcom,tx-port-mapping",
+		ret = device_property_read_u32_array(dev, "qcom,tx-port-mapping",
 						 &pdev->m_port_map[1],
 						 WCD938X_MAX_TX_SWR_PORTS);
 	} else {
-		ret = of_property_read_u32_array(dev->of_node, "qcom,rx-port-mapping",
+		ret = device_property_read_u32_array(dev, "qcom,rx-port-mapping",
 						 &pdev->m_port_map[1],
 						 WCD938X_MAX_SWR_PORTS);
 	}
 
-	if (ret < 0)
+	if (is_software_node(dev_fwnode(dev))) {
+		const char *property = wcd->is_tx ? "qcom,tx-port-mapping" :
+						 "qcom,rx-port-mapping";
+		unsigned int nports = wcd->is_tx ? WCD938X_MAX_TX_SWR_PORTS :
+						 WCD938X_MAX_SWR_PORTS;
+		unsigned long used = 0;
+		unsigned int i;
+
+		if (ret < 0)
+			return dev_err_probe(dev, ret, "Missing board port mapping\n");
+		if (device_property_count_u32(dev, property) != nports ||
+		    (wcd->is_tx && device_property_present(dev, "qcom,rx-port-mapping")))
+			return -EINVAL;
+		for (i = 1; i <= nports; i++) {
+			unsigned int port = pdev->m_port_map[i];
+
+			if (!SDW_VALID_PORT_RANGE(port) || test_and_set_bit(port, &used))
+				return dev_err_probe(dev, -EINVAL, "Invalid board port mapping\n");
+		}
+	} else if (ret < 0) {
 		dev_info(dev, "Static Port mapping not specified\n");
+	}
 
 	wcd->sdev = pdev;
 	dev_set_drvdata(dev, wcd);
