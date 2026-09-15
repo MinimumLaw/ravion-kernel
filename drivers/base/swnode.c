@@ -598,7 +598,8 @@ swnode_graph_find_next_port(const struct fwnode_handle *parent,
 		 * fwnode ports have naming style "port@", so we search for any
 		 * children that follow that convention.
 		 */
-		if (!strncmp(to_swnode(port)->node->name, "port@",
+		if (to_swnode(port)->node->name &&
+		    !strncmp(to_swnode(port)->node->name, "port@",
 			     strlen("port@")))
 			return port;
 		old = port;
@@ -669,8 +670,11 @@ software_node_graph_get_port_parent(struct fwnode_handle *fwnode)
 {
 	struct swnode *swnode = to_swnode(fwnode);
 
+	if (!swnode)
+		return NULL;
 	swnode = swnode->parent;
-	if (swnode && !strcmp(swnode->node->name, "ports"))
+	if (swnode && swnode->node->name &&
+	    !strcmp(swnode->node->name, "ports"))
 		swnode = swnode->parent;
 
 	return swnode ? software_node_get(&swnode->fwnode) : NULL;
@@ -681,9 +685,12 @@ software_node_graph_parse_endpoint(const struct fwnode_handle *fwnode,
 				   struct fwnode_endpoint *endpoint)
 {
 	struct swnode *swnode = to_swnode(fwnode);
-	const char *parent_name = swnode->parent->node->name;
+	const char *parent_name;
 	int ret;
 
+	if (!swnode || !swnode->parent || !swnode->parent->node->name)
+		return -EINVAL;
+	parent_name = swnode->parent->node->name;
 	if (strlen("port@") >= strlen(parent_name) ||
 	    strncmp(parent_name, "port@", strlen("port@")))
 		return -EINVAL;
