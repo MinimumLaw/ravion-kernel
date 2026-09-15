@@ -453,7 +453,7 @@ static void msm_iommu_tlb_flush_all(void *cookie)
 	struct msm_iommu_pagetable *pagetable = cookie;
 	struct adreno_smmu_priv *adreno_smmu;
 
-	if (!pm_runtime_get_if_in_use(pagetable->iommu_dev))
+	if (pm_runtime_get_if_in_use(pagetable->iommu_dev) <= 0)
 		return;
 
 	adreno_smmu = dev_get_drvdata(pagetable->parent->dev);
@@ -469,7 +469,7 @@ static void msm_iommu_tlb_flush_walk(unsigned long iova, size_t size,
 	struct msm_iommu_pagetable *pagetable = cookie;
 	struct adreno_smmu_priv *adreno_smmu;
 
-	if (!pm_runtime_get_if_in_use(pagetable->iommu_dev))
+	if (pm_runtime_get_if_in_use(pagetable->iommu_dev) <= 0)
 		return;
 
 	adreno_smmu = dev_get_drvdata(pagetable->parent->dev);
@@ -567,6 +567,9 @@ struct msm_mmu *msm_iommu_pagetable_create(struct msm_mmu *parent, bool kernel_m
 		ttbr0_cfg.pgsize_bitmap = PAGE_SIZE;
 	}
 
+	/* alloc/free_io_pgtable_ops can invoke TLB callbacks on error paths. */
+	pagetable->parent = parent;
+	pagetable->tlb = ttbr1_cfg->tlb;
 	pagetable->iommu_dev = ttbr1_cfg->iommu_dev;
 	pagetable->pgtbl_ops = alloc_io_pgtable_ops(ARM_64_LPAE_S1,
 		&ttbr0_cfg, pagetable);
@@ -612,9 +615,6 @@ struct msm_mmu *msm_iommu_pagetable_create(struct msm_mmu *parent, bool kernel_m
 	}
 	mutex_unlock(&iommu->init_lock);
 
-	/* Needed later for TLB flush */
-	pagetable->parent = parent;
-	pagetable->tlb = ttbr1_cfg->tlb;
 	pagetable->pgsize_bitmap = ttbr0_cfg.pgsize_bitmap;
 	pagetable->ttbr = ttbr0_cfg.arm_lpae_s1_cfg.ttbr;
 
