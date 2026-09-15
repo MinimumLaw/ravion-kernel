@@ -107,7 +107,14 @@ static const struct of_device_id q6afe_clock_device_id[] = {
 MODULE_DEVICE_TABLE(of, q6afe_clock_device_id);
 #endif
 
+static const struct platform_device_id q6afe_clock_platform_ids[] = {
+	{ "q6afe-clock", (kernel_ulong_t)&q6dsp_clk_q6afe },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, q6afe_clock_platform_ids);
+
 static struct platform_driver q6afe_clock_platform_driver = {
+	.id_table = q6afe_clock_platform_ids,
 	.driver = {
 		.name = "q6afe-clock",
 		.of_match_table = of_match_ptr(q6afe_clock_device_id),

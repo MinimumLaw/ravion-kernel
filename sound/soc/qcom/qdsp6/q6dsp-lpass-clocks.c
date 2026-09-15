@@ -4,9 +4,13 @@
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
+#include <linux/property.h>
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
+#include <linux/string.h>
 #include <linux/of.h>
 #include <linux/slab.h>
 #include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
@@ -132,15 +136,27 @@ int q6dsp_clock_dev_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	const struct q6dsp_clk_init *q6dsp_clks;
 	const struct q6dsp_clk_desc *desc;
+	u32 attributes = LPASS_CLK_ATTRIBUTE_COUPLE_NO;
 	int i, ret;
 
 	cc = devm_kzalloc(dev, sizeof(*cc), GFP_KERNEL);
 	if (!cc)
 		return -ENOMEM;
 
-	desc = of_device_get_match_data(&pdev->dev);
+	desc = device_get_match_data(dev);
+	if (!desc && platform_get_device_id(pdev))
+		desc = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!desc)
 		return -EINVAL;
+
+	if (!dev->of_node && device_property_present(dev, "qcom,clock-attribute")) {
+		ret = device_property_read_u32(dev, "qcom,clock-attribute", &attributes);
+		if (ret)
+			return ret;
+		if (attributes < LPASS_CLK_ATTRIBUTE_COUPLE_NO ||
+		    attributes > LPASS_CLK_ATTRIBUTE_COUPLE_DIVISOR)
+			return -EINVAL;
+	}
 
 	cc->desc = desc;
 	cc->dev = dev;
@@ -153,11 +169,16 @@ int q6dsp_clock_dev_probe(struct platform_device *pdev)
 		};
 		struct q6dsp_clk *clk;
 
+		if (id >= Q6DSP_MAX_CLK_ID || cc->clks[id])
+			return -EINVAL;
+
 		clk = devm_kzalloc(dev, sizeof(*clk), GFP_KERNEL);
 		if (!clk)
 			return -ENOMEM;
 
 		clk->dev = dev;
+		if (!dev->of_node)
+			clk->attributes = attributes;
 		clk->q6dsp_clk_id = q6dsp_clks[i].q6dsp_clk_id;
 		clk->rate = q6dsp_clks[i].rate;
 		clk->hw.init = &init;
@@ -172,11 +193,57 @@ int q6dsp_clock_dev_probe(struct platform_device *pdev)
 		ret = devm_clk_hw_register(dev, &clk->hw);
 		if (ret)
 			return ret;
+		/* clkdev stores connection IDs in a 16-byte field.  Long Q6AFE
+		 * clock names cannot be looked up by this mechanism; software-node
+		 * consumers use the explicit short aliases below instead.
+		 */
+		if (!dev->of_node && strlen(q6dsp_clks[i].name) < 16) {
+			ret = devm_clk_hw_register_clkdev(dev, &clk->hw,
+						 q6dsp_clks[i].name, dev_name(dev));
+			if (ret)
+				return ret;
+		}
 	}
 
-	ret = devm_of_clk_add_hw_provider(dev, q6dsp_of_clk_hw_get, cc);
-	if (ret)
-		return ret;
+	/* Software-node users cannot express a DT clock phandle.  Allow the
+	 * provider node to declare explicit clkdev aliases as triples
+	 * (provider-clock-name, consumer-device-name, consumer-clock-name).
+	 * This keeps aliases attached to the APR/Q6AFE provider and avoids
+	 * guessing a platform-device number from outside the APR bus. */
+	if (!dev->of_node) {
+		int n = device_property_read_string_array(dev, "qcom,clock-aliases",
+								NULL, 0);
+		const char *aliases[48];
+
+		if (n < 0 && n != -EINVAL)
+			return n;
+		if (n % 3 || n > ARRAY_SIZE(aliases))
+			return -EINVAL;
+		if (n && device_property_read_string_array(dev, "qcom,clock-aliases",
+								aliases, n) != n)
+			return -EINVAL;
+		for (i = 0; i < n; i += 3) {
+			int j;
+			struct q6dsp_clk *match = NULL;
+			for (j = 0; j < desc->num_clks; j++)
+				if (!strcmp(desc->clks[j].name, aliases[i])) {
+					match = cc->clks[desc->clks[j].clk_id];
+					break;
+				}
+			if (!match)
+				return -ENOENT;
+			ret = devm_clk_hw_register_clkdev(dev, &match->hw,
+							  aliases[i + 2], aliases[i + 1]);
+			if (ret)
+				return ret;
+		}
+	}
+
+	if (dev->of_node) {
+		ret = devm_of_clk_add_hw_provider(dev, q6dsp_of_clk_hw_get, cc);
+		if (ret)
+			return ret;
+	}
 
 	dev_set_drvdata(dev, cc);
 

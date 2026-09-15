@@ -10,6 +10,9 @@
 #include <linux/soc/qcom/apr.h>
 #include <linux/device.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/property.h>
+#include <linux/dma-mapping.h>
 #include <linux/spinlock.h>
 #include <linux/kref.h>
 #include <linux/of.h>
@@ -1645,6 +1648,38 @@ int q6asm_cmd_nowait(struct audio_client *ac, uint32_t stream_id, int cmd)
 }
 EXPORT_SYMBOL_GPL(q6asm_cmd_nowait);
 
+static void q6asm_unregister_child(void *data)
+{
+	platform_device_unregister(data);
+}
+
+static int q6asm_populate_software_dai(struct device *dev)
+{
+	struct fwnode_handle *node;
+	struct platform_device *child;
+	struct platform_device_info info = {
+		.name = "tcl-q6asm-dai", .id = PLATFORM_DEVID_NONE,
+		.parent = dev,
+		/* q6asm_dai packs the SID into bits 35:32 of this address. */
+		.dma_mask = DMA_BIT_MASK(32),
+	};
+
+	node = device_get_named_child_node(dev, "dais");
+	if (!node)
+		return 0;
+	if (!is_software_node(node) ||
+	    !fwnode_property_read_bool(node, "qcom,tcl-acpi-audio")) {
+		fwnode_handle_put(node);
+		return -EINVAL;
+	}
+	info.fwnode = node;
+	child = platform_device_register_full(&info);
+	fwnode_handle_put(node);
+	if (IS_ERR(child))
+		return PTR_ERR(child);
+	return devm_add_action_or_reset(dev, q6asm_unregister_child, child);
+}
+
 static int q6asm_probe(struct apr_device *adev)
 {
 	struct device *dev = &adev->dev;
@@ -1662,7 +1697,8 @@ static int q6asm_probe(struct apr_device *adev)
 	spin_lock_init(&q6asm->slock);
 	dev_set_drvdata(dev, q6asm);
 
-	return devm_of_platform_populate(dev);
+	return dev->of_node ? devm_of_platform_populate(dev) :
+		q6asm_populate_software_dai(dev);
 }
 
 #ifdef CONFIG_OF

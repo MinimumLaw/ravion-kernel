@@ -584,7 +584,8 @@ static int q6adm_probe(struct apr_device *adev)
 	INIT_LIST_HEAD(&adm->copps_list);
 	spin_lock_init(&adm->copps_list_lock);
 
-	return devm_of_platform_populate(dev);
+	/* ACPI board wiring registers the DAI/clock children separately. */
+	return dev->of_node ? devm_of_platform_populate(dev) : 0;
 }
 
 #ifdef CONFIG_OF

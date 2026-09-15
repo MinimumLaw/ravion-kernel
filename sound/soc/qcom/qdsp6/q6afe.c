@@ -13,6 +13,7 @@
 #include <linux/kref.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/property.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/soc/qcom/apr.h>
@@ -1904,6 +1905,76 @@ int q6afe_vote_lpass_core_hw(struct device *dev, uint32_t hw_block_id,
 }
 EXPORT_SYMBOL(q6afe_vote_lpass_core_hw);
 
+static void q6afe_unregister_child(void *data)
+{
+	platform_device_unregister(data);
+}
+
+static int q6afe_populate_software_children(struct device *dev)
+{
+	int ret;
+
+	device_for_each_child_node_scoped(dev, node) {
+		struct platform_device_info info = {
+			.id = PLATFORM_DEVID_AUTO,
+			.parent = dev,
+			.fwnode = node,
+		};
+		struct resource res[2];
+		u64 base, size;
+		struct platform_device *child;
+
+		if (!is_software_node(node))
+			continue;
+		if (fwnode_property_match_string(node, "compatible", "qcom,q6afe-clocks") >= 0)
+			info.name = "q6afe-clock";
+		else if (fwnode_property_match_string(node, "compatible", "qcom,q6afe-dais") >= 0)
+			info.name = "q6afe-dai";
+		else if (fwnode_property_match_string(node, "compatible",
+							      "qcom,sc7280-lpass-va-macro") >= 0)
+			info.name = "tcl-sc7280-va";
+		else if (fwnode_property_match_string(node, "compatible",
+							      "qcom,sc7280-lpass-rx-macro") >= 0)
+			info.name = "tcl-sc7280-rx";
+		else if (fwnode_property_match_string(node, "compatible",
+							      "qcom,sc7280-lpass-tx-macro") >= 0)
+			info.name = "tcl-sc7280-tx";
+		else if (fwnode_property_match_string(node, "compatible",
+							      "qcom,soundwire-v1.5.1") >= 0)
+			info.name = fwnode_property_match_string(node, "label", "RX") >= 0 ?
+				"tcl-swr-rx" : "tcl-swr-tx";
+		else
+			continue;
+
+		if (info.name[0] == 't') {
+			if (fwnode_property_read_u64(node, "reg-base", &base) ||
+			    fwnode_property_read_u64(node, "reg-size", &size) ||
+			    !size || base > U64_MAX - size)
+				return -EINVAL;
+			res[0] = DEFINE_RES_MEM(base, size);
+			info.id = PLATFORM_DEVID_NONE;
+			info.res = res;
+			info.num_res = 1;
+		}
+		if (!strncmp(info.name, "tcl-swr-", 8)) {
+			u32 irq;
+
+			if (fwnode_property_read_u32(node, "irq", &irq))
+				return -EINVAL;
+			res[1] = DEFINE_RES_IRQ(irq);
+			info.num_res = 2;
+		}
+
+		child = platform_device_register_full(&info);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+		ret = devm_add_action_or_reset(dev, q6afe_unregister_child, child);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
 static int q6afe_probe(struct apr_device *adev)
 {
 	struct q6afe *afe;
@@ -1923,7 +1994,9 @@ static int q6afe_probe(struct apr_device *adev)
 
 	dev_set_drvdata(dev, afe);
 
-	return devm_of_platform_populate(dev);
+	/* Keep Q6AFE as the parent required by DSP clock and port commands. */
+	return dev->of_node ? devm_of_platform_populate(dev) :
+		q6afe_populate_software_children(dev);
 }
 
 #ifdef CONFIG_OF

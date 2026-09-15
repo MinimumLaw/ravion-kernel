@@ -7,6 +7,8 @@
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/property.h>
+#include <linux/iommu.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <sound/soc.h>
@@ -1248,18 +1250,19 @@ static const struct snd_soc_dai_ops q6asm_dai_ops = {
 	.compress_new = snd_soc_new_compress,
 };
 
-static int of_q6asm_parse_dai_data(struct device *dev,
+static int q6asm_parse_dai_data(struct device *dev,
 				    struct q6asm_dai_data *pdata)
 {
 	struct snd_soc_dai_driver *dai_drv;
 	struct snd_soc_pcm_stream empty_stream;
-	struct device_node *node;
-	int ret, id, dir, idx = 0;
+	DECLARE_BITMAP(seen, MAX_SESSIONS) = { 0 };
+	u32 id, dir;
+	int ret, idx = 0;
 
 
-	pdata->num_dais = of_get_child_count(dev->of_node);
+	pdata->num_dais = device_get_child_node_count(dev);
 	if (!pdata->num_dais) {
-		dev_err(dev, "No dais found in DT\n");
+		dev_err(dev, "No DAIs found in firmware properties\n");
 		return -EINVAL;
 	}
 
@@ -1270,17 +1273,19 @@ static int of_q6asm_parse_dai_data(struct device *dev,
 
 	memset(&empty_stream, 0, sizeof(empty_stream));
 
-	for_each_child_of_node(dev->of_node, node) {
-		ret = of_property_read_u32(node, "reg", &id);
-		if (ret || id >= MAX_SESSIONS || id < 0) {
-			dev_err(dev, "valid dai id not found:%d\n", ret);
-			continue;
+	device_for_each_child_node_scoped(dev, node) {
+		ret = fwnode_property_read_u32(node, "reg", &id);
+		if (ret || id >= MAX_SESSIONS) {
+			return dev_err_probe(dev, ret ? ret : -EINVAL, "Invalid DAI ID\n");
 		}
+
+		if (test_and_set_bit(id, seen))
+			return dev_err_probe(dev, -EINVAL, "Duplicate DAI ID %u\n", id);
 
 		dai_drv = &pdata->dais[idx++];
 		*dai_drv = q6asm_fe_dais_template[id];
 
-		ret = of_property_read_u32(node, "direction", &dir);
+		ret = fwnode_property_read_u32(node, "direction", &dir);
 		if (ret)
 			continue;
 
@@ -1289,7 +1294,7 @@ static int of_q6asm_parse_dai_data(struct device *dev,
 		else if (dir == Q6ASM_DAI_TX)
 			dai_drv->playback = empty_stream;
 
-		if (of_property_read_bool(node, "is-compress-dai"))
+		if (fwnode_property_read_bool(node, "is-compress-dai"))
 			dai_drv->ops = &q6asm_dai_ops;
 	}
 
@@ -1308,15 +1313,29 @@ static int q6asm_dai_probe(struct platform_device *pdev)
 	if (!pdata)
 		return -ENOMEM;
 
-	rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
-	if (rc < 0)
-		pdata->sid = -1;
-	else
-		pdata->sid = args.args[0] & SID_MASK_DEFAULT;
+	if (node) {
+		rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
+		if (rc < 0) {
+			pdata->sid = -1;
+		} else {
+			pdata->sid = args.args[0] & SID_MASK_DEFAULT;
+			of_node_put(args.np);
+		}
+	} else {
+		struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+		struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+
+		/* Board wiring must attach the audio DMA stream before probing. */
+		if (!fwspec || !domain)
+			return dev_err_probe(dev, -EPROBE_DEFER, "Audio IOMMU not attached\n");
+		if (fwspec->num_ids != 1 || !(domain->type & __IOMMU_DOMAIN_PAGING))
+			return dev_err_probe(dev, -EINVAL, "Invalid audio IOMMU configuration\n");
+		pdata->sid = fwspec->ids[0] & SID_MASK_DEFAULT;
+	}
 
 	dev_set_drvdata(dev, pdata);
 
-	rc = of_q6asm_parse_dai_data(dev, pdata);
+	rc = q6asm_parse_dai_data(dev, pdata);
 	if (rc)
 		return rc;
 
@@ -1332,7 +1351,14 @@ static const struct of_device_id q6asm_dai_device_id[] = {
 MODULE_DEVICE_TABLE(of, q6asm_dai_device_id);
 #endif
 
+static const struct platform_device_id q6asm_dai_platform_ids[] = {
+	{ "tcl-q6asm-dai" },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, q6asm_dai_platform_ids);
+
 static struct platform_driver q6asm_dai_platform_driver = {
+	.id_table = q6asm_dai_platform_ids,
 	.driver = {
 		.name = "q6asm-dai",
 		.of_match_table = of_match_ptr(q6asm_dai_device_id),
