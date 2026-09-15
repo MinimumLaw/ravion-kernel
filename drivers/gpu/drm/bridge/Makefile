@@ -53,3 +53,5 @@ obj-y += analogix/
 obj-y += cadence/
 obj-y += imx/
 obj-y += synopsys/
+
+obj-$(CONFIG_DRM_TCL_LT8911_HANDOFF) += tcl-lt8911-handoff.o

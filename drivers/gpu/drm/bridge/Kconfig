@@ -514,3 +514,10 @@ source "drivers/gpu/drm/bridge/imx/Kconfig"
 source "drivers/gpu/drm/bridge/synopsys/Kconfig"
 
 endmenu
+
+config DRM_TCL_LT8911_HANDOFF
+	tristate "TCL B220G LT8911EXB firmware handoff"
+	depends on DRM && I2C
+	select DRM_MIPI_DSI
+	help
+	  Reuse validated firmware timings; no cold-start or link recovery.
