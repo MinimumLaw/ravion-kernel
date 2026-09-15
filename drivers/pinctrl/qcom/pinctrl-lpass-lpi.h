@@ -12,6 +12,7 @@
 #include "../core.h"
 
 struct platform_device;
+struct device;
 
 struct pinctrl_pin_desc;
 
@@ -124,6 +125,9 @@ struct lpi_pinctrl_variant_data {
 	int nfunctions;
 	unsigned int flags;
 };
+
+int lpi_pinctrl_runtime_suspend(struct device *dev);
+int lpi_pinctrl_runtime_resume(struct device *dev);
 
 int lpi_pinctrl_probe(struct platform_device *pdev);
 void lpi_pinctrl_remove(struct platform_device *pdev);

@@ -28,6 +28,8 @@
 
 struct lpi_pinctrl {
 	struct device *dev;
+	struct clk_bulk_data acpi_clks[2];
+	bool acpi_pm;
 	struct pinctrl_dev *ctrl;
 	struct gpio_chip chip;
 	struct pinctrl_desc desc;
@@ -38,6 +40,39 @@ struct lpi_pinctrl {
 	DECLARE_BITMAP(ever_gpio, MAX_NR_GPIO);
 	const struct lpi_pinctrl_variant_data *data;
 };
+
+int lpi_pinctrl_runtime_suspend(struct device *dev)
+{
+	struct lpi_pinctrl *pctrl = dev_get_drvdata(dev);
+
+	if (!pctrl->acpi_pm)
+		return pm_clk_suspend(dev);
+
+	clk_bulk_disable_unprepare(ARRAY_SIZE(pctrl->acpi_clks), pctrl->acpi_clks);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(lpi_pinctrl_runtime_suspend);
+
+int lpi_pinctrl_runtime_resume(struct device *dev)
+{
+	struct lpi_pinctrl *pctrl = dev_get_drvdata(dev);
+
+	if (!pctrl->acpi_pm)
+		return pm_clk_resume(dev);
+
+	return clk_bulk_prepare_enable(ARRAY_SIZE(pctrl->acpi_clks),
+				       pctrl->acpi_clks);
+}
+EXPORT_SYMBOL_GPL(lpi_pinctrl_runtime_resume);
+
+static void lpi_pinctrl_pm_cleanup(void *data)
+{
+	struct device *dev = data;
+
+	/* Registered before devm_pm_runtime_enable: PM is disabled first. */
+	if (!pm_runtime_status_suspended(dev))
+		lpi_pinctrl_runtime_suspend(dev);
+}
 
 static void __iomem *lpi_gpio_reg(struct lpi_pinctrl *state,
 				  unsigned int pin, unsigned int addr)
@@ -552,6 +587,20 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 			dev_err(dev, "TCL LPI clock lookup failed: %d\n", ret);
 			return ret;
 		}
+	}
+
+	if (!dev->of_node &&
+	    device_property_read_bool(dev, "qcom,tcl-acpi-lpi-soundwire")) {
+		pctrl->acpi_clks[0].id = "core";
+		pctrl->acpi_clks[1].id = "audio";
+		ret = devm_clk_bulk_get(dev, ARRAY_SIZE(pctrl->acpi_clks),
+					pctrl->acpi_clks);
+		if (ret)
+			return dev_err_probe(dev, ret, "LPI clocks unavailable\n");
+		pctrl->acpi_pm = true;
+		ret = devm_add_action_or_reset(dev, lpi_pinctrl_pm_cleanup, dev);
+		if (ret)
+			return ret;
 	}
 
 	pm_runtime_set_autosuspend_delay(dev, 100);

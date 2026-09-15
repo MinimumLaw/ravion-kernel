@@ -148,7 +148,7 @@ static const struct platform_device_id lpi_pinctrl_ids[] = {
 MODULE_DEVICE_TABLE(platform, lpi_pinctrl_ids);
 
 static const struct dev_pm_ops lpi_pinctrl_pm_ops = {
-	RUNTIME_PM_OPS(pm_clk_suspend, pm_clk_resume, NULL)
+	RUNTIME_PM_OPS(lpi_pinctrl_runtime_suspend, lpi_pinctrl_runtime_resume, NULL)
 };
 
 static struct platform_driver lpi_pinctrl_driver = {
