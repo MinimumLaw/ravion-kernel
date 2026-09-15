@@ -86,6 +86,7 @@ struct gdsc_desc {
 	struct gdsc **scs;
 	size_t num;
 	struct dev_pm_domain_list *pd_list;
+	bool platform_domains;
 };
 
 #ifdef CONFIG_QCOM_GDSC

@@ -594,6 +594,26 @@ int gdsc_register(struct gdsc_desc *desc,
 	struct gdsc **scs = desc->scs;
 	size_t num = desc->num;
 
+	/* Board glue attaches standalone domains explicitly, without an OF provider. */
+	if (desc->platform_domains) {
+		if (dev->of_node || !num || desc->pd_list || dev->pm_domain)
+			return -EINVAL;
+		for (i = 0; i < num; i++)
+			if (!scs[i] || scs[i]->parent || scs[i]->supply || scs[i]->needs_icc)
+				return -EINVAL;
+		for (i = 0; i < num; i++) {
+			scs[i]->regmap = regmap;
+			scs[i]->rcdev = rcdev;
+			ret = gdsc_init(scs[i]);
+			if (ret) {
+				while (i--)
+					WARN_ON(pm_genpd_remove(&scs[i]->pd));
+				return ret;
+			}
+		}
+		return 0;
+	}
+
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -671,6 +691,11 @@ void gdsc_unregister(struct gdsc_desc *desc)
 	struct device *dev = desc->dev;
 	size_t num = desc->num;
 
+	if (desc->platform_domains) {
+		while (num--)
+			WARN_ON(pm_genpd_remove(&desc->scs[num]->pd));
+		return;
+	}
 	gdsc_pm_subdomain_remove(desc, num);
 	of_genpd_del_provider(dev->of_node);
 }

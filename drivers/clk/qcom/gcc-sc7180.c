@@ -3,6 +3,10 @@
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi.h>
+#include <linux/clk.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
 #include <linux/clk-provider.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
@@ -2426,10 +2430,197 @@ static const struct of_device_id gcc_sc7180_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, gcc_sc7180_match_table);
 
+/* Firmware keeps GPLL0 running for other clients. Never retune or gate it. */
+static unsigned long tcl_gpll0_recalc(struct clk_hw *hw, unsigned long rate)
+{
+	return clk_alpha_pll_fixed_fabia_ops.recalc_rate(hw, rate);
+}
+
+static int tcl_gpll0_is_enabled(struct clk_hw *hw)
+{
+	return clk_alpha_pll_fixed_fabia_ops.is_enabled(hw);
+}
+
+static int tcl_gpll0_ready(struct clk_hw *hw)
+{
+	int ret = clk_alpha_pll_fixed_fabia_ops.is_enabled(hw);
+
+	return ret < 0 ? ret : ret ? 0 : -EIO;
+}
+
+static const struct clk_ops tcl_gpll0_ops = {
+	.enable = tcl_gpll0_ready,
+	.is_enabled = tcl_gpll0_is_enabled,
+	.recalc_rate = tcl_gpll0_recalc,
+};
+
+static struct clk_alpha_pll tcl_gpll0 = {
+	.offset = 0,
+	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_FABIA],
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "tcl_display_gpll0",
+		.parent_data = &(const struct clk_parent_data) { .fw_name = "bi_tcxo" },
+		.num_parents = 1,
+		.ops = &tcl_gpll0_ops,
+	},
+};
+
+static struct clk_branch tcl_disp_gpll0 = {
+	.halt_check = BRANCH_HALT_DELAY,
+	.clkr = {
+		.enable_reg = 0x52000, .enable_mask = BIT(18),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_disp_gpll0_clk_src",
+			.parent_hws = (const struct clk_hw *[]) { &tcl_gpll0.clkr.hw },
+			.num_parents = 1, .ops = &clk_branch2_aon_ops,
+		},
+	},
+};
+
+static struct clk_branch tcl_disp_ahb = {
+	.halt_reg = 0xb00c, .halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0xb00c, .enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_disp_ahb_clk", .ops = &clk_branch2_aon_ops,
+		},
+	},
+};
+
+static struct clk_branch tcl_disp_xo = {
+	.halt_reg = 0xb030, .halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0xb030, .enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "gcc_disp_xo_clk", .ops = &clk_branch2_aon_ops,
+		},
+	},
+};
+
+static struct clk_fixed_factor tcl_gpu_div = {
+	.mult = 1, .div = 2,
+	.hw.init = &(struct clk_init_data) {
+		.name = "tcl_gpu_gpll0_div",
+		.parent_hws = (const struct clk_hw *[]) { &tcl_gpll0.clkr.hw },
+		.num_parents = 1, .ops = &clk_fixed_factor_ops,
+	},
+};
+
+static struct clk_branch tcl_gpu_gpll0 = {
+	.halt_check = BRANCH_HALT_DELAY,
+	.clkr = {
+		.enable_reg = 0x52000, .enable_mask = BIT(15),
+		.hw.init = &(struct clk_init_data) {
+			.name = "gcc_gpu_gpll0_clk_src",
+			.parent_hws = (const struct clk_hw *[]) { &tcl_gpll0.clkr.hw },
+			.num_parents = 1, .ops = &clk_branch2_ops,
+		},
+	},
+};
+static struct clk_branch tcl_gpu_gpll0_div = {
+	.halt_check = BRANCH_HALT_DELAY,
+	.clkr = {
+		.enable_reg = 0x52000, .enable_mask = BIT(16),
+		.hw.init = &(struct clk_init_data) {
+			.name = "gcc_gpu_gpll0_div_clk_src",
+			.parent_hws = (const struct clk_hw *[]) { &tcl_gpu_div.hw },
+			.num_parents = 1, .ops = &clk_branch2_ops,
+		},
+	},
+};
+static struct clk_branch tcl_gpu_cfg = {
+	.halt_reg = 0x71004, .halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x71004, .enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data) {
+			.name = "gcc_gpu_cfg_ahb_clk", .ops = &clk_branch2_ops,
+		},
+	},
+};
+static struct clk_hw *tcl_gpu_gcc_hws[] = { &tcl_gpu_div.hw };
+
+static struct clk_regmap *tcl_display_gcc_clocks[] = {
+	&tcl_gpll0.clkr, &tcl_disp_gpll0.clkr, &tcl_disp_ahb.clkr,
+	&tcl_disp_xo.clkr, &gcc_disp_hf_axi_clk.clkr,
+	&tcl_gpu_gpll0.clkr, &tcl_gpu_gpll0_div.clkr, &tcl_gpu_cfg.clkr,
+	&gcc_ddrss_gpu_axi_clk.clkr, &gcc_gpu_memnoc_gfx_clk.clkr,
+};
+
+/* Only display/GPU branches; never retune GPLL0 or touch USB/Wi-Fi clocks. */
+static const struct regmap_range tcl_gcc_write_ranges[] = {
+	regmap_reg_range(0xb00c, 0xb00c),
+	regmap_reg_range(0xb024, 0xb024),
+	regmap_reg_range(0xb030, 0xb030),
+	regmap_reg_range(0x4452c, 0x4452c),
+	regmap_reg_range(0x52000, 0x52000),
+	regmap_reg_range(0x71004, 0x71004),
+	regmap_reg_range(0x7100c, 0x7100c),
+};
+static const struct regmap_access_table tcl_gcc_write_table = {
+	.yes_ranges = tcl_gcc_write_ranges,
+	.n_yes_ranges = ARRAY_SIZE(tcl_gcc_write_ranges),
+};
+static const struct regmap_config tcl_gcc_regmap = {
+	.reg_bits = 32, .val_bits = 32, .reg_stride = 4,
+	.max_register = 0x7100c, .fast_io = true,
+	.wr_table = &tcl_gcc_write_table,
+};
+static const struct qcom_cc_desc tcl_display_gcc_desc __maybe_unused = {
+	.config = &tcl_gcc_regmap,
+	.clks = tcl_display_gcc_clocks,
+	.num_clks = ARRAY_SIZE(tcl_display_gcc_clocks),
+	.clk_hws = tcl_gpu_gcc_hws,
+	.num_clk_hws = ARRAY_SIZE(tcl_gpu_gcc_hws),
+	.platform_clocks = true,
+	.use_rpm = true,
+};
+
+static int tcl_display_gcc_probe(struct platform_device *pdev)
+{
+#ifdef CONFIG_ACPI
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	struct regmap *regmap;
+	struct clk *xo;
+	acpi_handle gpu;
+
+	if (acpi_disabled || dev->of_node || !dev->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent)) != gpu ||
+	    !acpi_match_acpi_device((const struct acpi_device_id[]) {
+		{ "QCOM083A" }, { } }, acpi_companion_or_self(dev->parent)))
+		return -ENODEV;
+	/* Supplemental SC7180 resource, not GPU0._CRS or TREE reserved RAM. */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res || res->start != 0x100000 || resource_size(res) != 0x1f0000)
+		return -EINVAL;
+	/* Board glue must attach the real RPMh CX domain before registering us. */
+	if (!dev->pm_domain)
+		return -EPROBE_DEFER;
+	xo = devm_clk_get(dev, "bi_tcxo");
+	if (IS_ERR(xo))
+		return PTR_ERR(xo);
+	if (clk_get_rate(xo) != 19200000)
+		return -EINVAL;
+	regmap = qcom_cc_map(pdev, &tcl_display_gcc_desc);
+	if (IS_ERR(regmap))
+		return PTR_ERR(regmap);
+	return qcom_cc_really_probe(dev, &tcl_display_gcc_desc, regmap);
+#else
+	return -ENODEV;
+#endif
+}
+
 static int gcc_sc7180_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
 	int ret;
+
+	if (!pdev->dev.of_node)
+		return tcl_display_gcc_probe(pdev);
 
 	regmap = qcom_cc_map(pdev, &gcc_sc7180_desc);
 	if (IS_ERR(regmap))
@@ -2461,8 +2652,14 @@ static int gcc_sc7180_probe(struct platform_device *pdev)
 	return qcom_cc_really_probe(&pdev->dev, &gcc_sc7180_desc, regmap);
 }
 
+static const struct platform_device_id tcl_gcc_platform_ids[] = {
+	{ "tcl-display-gcc" }, { }
+};
+MODULE_DEVICE_TABLE(platform, tcl_gcc_platform_ids);
+
 static struct platform_driver gcc_sc7180_driver = {
 	.probe = gcc_sc7180_probe,
+	.id_table = tcl_gcc_platform_ids,
 	.driver = {
 		.name = "gcc-sc7180",
 		.of_match_table = gcc_sc7180_match_table,

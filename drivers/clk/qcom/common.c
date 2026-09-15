@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
+#include <linux/platform_data/qcom-tcl-clkdev.h>
 /*
  * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  */
@@ -8,6 +9,7 @@
 #include <linux/regmap.h>
 #include <linux/platform_device.h>
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
 #include <linux/interconnect-clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset-controller.h>
@@ -333,6 +335,9 @@ int qcom_cc_really_probe(struct device *dev,
 	size_t num_clk_hws = desc->num_clk_hws;
 	struct clk_hw **clk_hws = desc->clk_hws;
 
+	if (!dev->of_node && !desc->platform_clocks)
+		return -ENODEV;
+
 	cc = devm_kzalloc(dev, sizeof(*cc), GFP_KERNEL);
 	if (!cc)
 		return -ENOMEM;
@@ -360,6 +365,7 @@ int qcom_cc_really_probe(struct device *dev,
 	}
 
 	reset = &cc->reset;
+	reset->rcdev.dev = dev;
 	reset->rcdev.of_node = dev->of_node;
 	reset->rcdev.ops = &qcom_reset_ops;
 	reset->rcdev.owner = dev->driver->owner;
@@ -381,6 +387,7 @@ int qcom_cc_really_probe(struct device *dev,
 		scd->scs = desc->gdscs;
 		scd->num = desc->num_gdscs;
 		scd->pd_list = cc->pd_list;
+		scd->platform_domains = !dev->of_node;
 		ret = gdsc_register(scd, &reset->rcdev, regmap);
 		if (ret)
 			goto put_rpm;
@@ -420,9 +427,27 @@ int qcom_cc_really_probe(struct device *dev,
 			goto put_rpm;
 	}
 
-	ret = devm_of_clk_add_hw_provider(dev, qcom_cc_clk_hw_get, cc);
-	if (ret)
-		goto put_rpm;
+	if (dev->of_node) {
+		ret = devm_of_clk_add_hw_provider(dev, qcom_cc_clk_hw_get, cc);
+		if (ret)
+			goto put_rpm;
+	} else {
+		/* Provider-scoped names; board glue adds consumer connections. */
+		for (i = 0; i < num_clks; i++) {
+			if (!rclks[i])
+				continue;
+			ret = qcom_tcl_devm_clkdev(dev, &rclks[i]->hw,
+				clk_hw_get_name(&rclks[i]->hw), dev_name(dev));
+			if (ret)
+				goto put_rpm;
+		}
+		for (i = 0; i < num_clk_hws; i++) {
+			ret = qcom_tcl_devm_clkdev(dev, clk_hws[i],
+				clk_hw_get_name(clk_hws[i]), dev_name(dev));
+			if (ret)
+				goto put_rpm;
+		}
+	}
 
 	ret = qcom_cc_icc_register(dev, desc);
 

@@ -3,6 +3,10 @@
  * Copyright (c) 2019, 2022, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi.h>
+#include <linux/clk.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
 #include <linux/clk-provider.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -100,7 +104,8 @@ static const struct parent_map disp_cc_parent_map_2[] = {
 
 static const struct clk_parent_data disp_cc_parent_data_2[] = {
 	{ .fw_name = "bi_tcxo" },
-	{ .fw_name = "dsi0_phy_pll_out_byteclk" },
+	{ .fw_name = "dsi0_phy_pll_out_byteclk",
+	  .name = "dsi0_phy_pll_out_byteclk" },
 };
 
 static const struct parent_map disp_cc_parent_map_3[] = {
@@ -134,7 +139,8 @@ static const struct parent_map disp_cc_parent_map_5[] = {
 
 static const struct clk_parent_data disp_cc_parent_data_5[] = {
 	{ .fw_name = "bi_tcxo" },
-	{ .fw_name = "dsi0_phy_pll_out_dsiclk" },
+	{ .fw_name = "dsi0_phy_pll_out_dsiclk",
+	  .name = "dsi0_phy_pll_out_dsiclk" },
 };
 
 static const struct freq_tbl ftbl_disp_cc_mdss_ahb_clk_src[] = {
@@ -704,10 +710,62 @@ static const struct of_device_id disp_cc_sc7180_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, disp_cc_sc7180_match_table);
 
+/* XO/GCC precede DISPCC; DSI parents register later to avoid a PHY cycle. */
+static int disp_cc_sc7180_platform_prepare(struct platform_device *pdev)
+{
+#ifdef CONFIG_ACPI
+	static const char * const parents[] = {
+		"bi_tcxo", "gcc_disp_gpll0_clk_src",
+	};
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	struct clk *clk;
+	acpi_handle gpu;
+	int i;
+
+	if (acpi_disabled || !dev->parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GPU0", &gpu)) ||
+	    acpi_device_handle(acpi_companion_or_self(dev->parent)) != gpu)
+		return -ENODEV;
+	if (!acpi_match_acpi_device((const struct acpi_device_id[]) {
+		{ "QCOM083A" }, { } }, acpi_companion_or_self(dev->parent)))
+		return -ENODEV;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res || res->start != 0xaf00000 || resource_size(res) != 0x20000)
+		return -EINVAL;
+	for (i = 0; i < ARRAY_SIZE(parents); i++) {
+		clk = devm_clk_get(dev, parents[i]);
+		if (IS_ERR(clk))
+			return dev_err_probe(dev, PTR_ERR(clk), "missing clock %s\n", parents[i]);
+		if (!i && clk_get_rate(clk) != 19200000)
+			return -EINVAL;
+	}
+	clk = devm_clk_get_enabled(dev, "iface");
+	return PTR_ERR_OR_ZERO(clk);
+#else
+	return -ENODEV;
+#endif
+}
+
 static int disp_cc_sc7180_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
 	struct alpha_pll_config disp_cc_pll_config = {};
+	struct qcom_cc_desc platform_desc = disp_cc_sc7180_desc;
+	const struct qcom_cc_desc *desc = &disp_cc_sc7180_desc;
+	int ret;
+
+	if (!pdev->dev.of_node) {
+		ret = disp_cc_sc7180_platform_prepare(pdev);
+		if (ret)
+			return ret;
+		platform_desc.platform_clocks = true;
+		desc = &platform_desc;
+	}
 
 	regmap = qcom_cc_map(pdev, &disp_cc_sc7180_desc);
 	if (IS_ERR(regmap))
@@ -721,11 +779,20 @@ static int disp_cc_sc7180_probe(struct platform_device *pdev)
 
 	clk_fabia_pll_configure(&disp_cc_pll0, regmap, &disp_cc_pll_config);
 
-	return qcom_cc_really_probe(&pdev->dev, &disp_cc_sc7180_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, desc, regmap);
+	if (!ret && !pdev->dev.of_node)
+		platform_set_drvdata(pdev, &mdss_gdsc.pd);
+	return ret;
 }
+
+static const struct platform_device_id disp_cc_sc7180_platform_ids[] = {
+	{ "tcl-sc7180-dispcc" }, { }
+};
+MODULE_DEVICE_TABLE(platform, disp_cc_sc7180_platform_ids);
 
 static struct platform_driver disp_cc_sc7180_driver = {
 	.probe = disp_cc_sc7180_probe,
+	.id_table = disp_cc_sc7180_platform_ids,
 	.driver = {
 		.name = "sc7180-dispcc",
 		.of_match_table = disp_cc_sc7180_match_table,

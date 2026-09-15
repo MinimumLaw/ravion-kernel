@@ -35,6 +35,7 @@ struct qcom_cc_driver_data {
 	void (*clk_regs_configure)(struct device *dev, struct regmap *regmap);
 };
 
+/* Explicit opt-in for platform devices whose clocks use clkdev lookup. */
 struct qcom_cc_desc {
 	const struct regmap_config *config;
 	struct clk_regmap **clks;
@@ -49,6 +50,7 @@ struct qcom_cc_desc {
 	size_t num_icc_hws;
 	unsigned int icc_first_node_id;
 	bool use_rpm;
+	bool platform_clocks;
 	const struct qcom_cc_driver_data *driver_data;
 };
 
