@@ -14,6 +14,7 @@
 #include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
+#include <linux/acpi.h>
 
 #include <ufs/ufshcd.h>
 #include "ufshcd-pltfrm.h"
@@ -199,6 +200,13 @@ static void ufshcd_init_lanes_per_dir(struct ufs_hba *hba)
 {
 	struct device *dev = hba->dev;
 	int ret;
+
+	/* The B220G ACPI firmware omits the DT lanes-per-direction property;
+	 * its UFS wiring has one lane per direction. */
+	if (has_acpi_companion(dev)) {
+		hba->lanes_per_direction = 1;
+		return;
+	}
 
 	ret = of_property_read_u32(dev->of_node, "lanes-per-direction",
 		&hba->lanes_per_direction);

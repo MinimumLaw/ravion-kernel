@@ -1382,6 +1382,11 @@ static void ufs_qcom_set_host_params(struct ufs_hba *hba)
 	struct ufs_host_params *host_params = &host->host_params;
 
 	ufshcd_init_host_params(host_params);
+	/* B220G is wired for a single UFS lane.  The ACPI description does not
+	 * carry the DT lane-count property, so override the generic two-lane
+	 * default for this firmware path. */
+	if (has_acpi_companion(hba->dev))
+		host_params->tx_lanes = host_params->rx_lanes = 1;
 
 	/* This driver only supports symmetic gear setting i.e., hs_tx_gear == hs_rx_gear */
 	host_params->hs_tx_gear = host_params->hs_rx_gear = ufs_qcom_get_hs_gear(hba);
