@@ -1358,9 +1358,9 @@ static void ath10k_snoc_quirks_init(struct ath10k *ar)
 	struct device *dev = &ar_snoc->dev->dev;
 
 	/* ignore errors, keep NULL if there is no property */
-	of_property_read_string(dev->of_node, "firmware-name", &ar->board_name);
+	device_property_read_string(dev, "firmware-name", &ar->board_name);
 
-	if (of_property_read_bool(dev->of_node, "qcom,snoc-host-cap-8bit-quirk"))
+	if (device_property_read_bool(dev, "qcom,snoc-host-cap-8bit-quirk"))
 		set_bit(ATH10K_SNOC_FLAG_8BIT_HOST_CAP_QUIRK, &ar_snoc->flags);
 
 	if (of_property_read_bool(dev->of_node, "qcom,snoc-host-cap-skip-quirk"))
@@ -1578,10 +1578,19 @@ static void ath10k_modem_deinit(struct ath10k *ar)
 static int ath10k_setup_msa_resources(struct ath10k *ar, u32 msa_size)
 {
 	struct device *dev = ar->dev;
-	struct resource r;
+	struct resource r, *res;
 	int ret;
 
-	ret = of_reserved_mem_region_to_resource(dev->of_node, 0, &r);
+	if (dev->of_node) {
+		ret = of_reserved_mem_region_to_resource(dev->of_node, 0, &r);
+	} else {
+		res = platform_get_resource_byname(to_platform_device(dev),
+						   IORESOURCE_MEM, "msa");
+		if (!res || resource_size(res) < msa_size)
+			return -EINVAL;
+		r = *res;
+		ret = 0;
+	}
 	if (!ret) {
 		ar->msa.paddr = r.start;
 		ar->msa.mem_size = resource_size(&r);
@@ -1736,9 +1745,21 @@ static int ath10k_snoc_probe(struct platform_device *pdev)
 
 	dev = &pdev->dev;
 	drv_data = device_get_match_data(dev);
+	if (!drv_data && platform_get_device_id(pdev))
+		drv_data = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!drv_data) {
 		dev_err(dev, "failed to find matching device tree id\n");
 		return -EINVAL;
+	}
+
+	if (!dev->of_node) {
+		struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+
+		if (!fwspec || fwspec->num_ids != 2 ||
+		    fwspec->ids[0] != 0xc0 || fwspec->ids[1] != 0xc1 ||
+		    !iommu_get_domain_for_dev(dev))
+			return dev_err_probe(dev, -ENODEV,
+					     "TCL WLAN requires both IORT stream IDs and a DMA domain\n");
 	}
 
 	ret = dma_set_mask_and_coherent(dev, drv_data->dma_mask);
@@ -1929,7 +1950,14 @@ static void ath10k_snoc_shutdown(struct platform_device *pdev)
 	ath10k_snoc_free_resources(ar);
 }
 
+static const struct platform_device_id ath10k_snoc_platform_ids[] = {
+	{ "tcl-wcn3990", (kernel_ulong_t)&drv_priv },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, ath10k_snoc_platform_ids);
+
 static struct platform_driver ath10k_snoc_driver = {
+	.id_table = ath10k_snoc_platform_ids,
 	.probe = ath10k_snoc_probe,
 	.remove = ath10k_snoc_remove,
 	.shutdown = ath10k_snoc_shutdown,

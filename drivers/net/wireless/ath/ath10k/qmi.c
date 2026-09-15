@@ -4,6 +4,7 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <linux/property.h>
 #include <linux/completion.h>
 #include <linux/device.h>
 #include <linux/debugfs.h>
@@ -1089,10 +1090,10 @@ int ath10k_qmi_init(struct ath10k *ar, u32 msa_size)
 	qmi->ar = ar;
 	ar_snoc->qmi = qmi;
 
-	if (of_property_read_bool(dev->of_node, "qcom,msa-fixed-perm"))
+	if (device_property_read_bool(dev, "qcom,msa-fixed-perm"))
 		qmi->msa_fixed_perm = true;
 
-	if (of_property_read_bool(dev->of_node, "qcom,no-msa-ready-indicator"))
+	if (device_property_read_bool(dev, "qcom,no-msa-ready-indicator"))
 		qmi->no_msa_ready_indicator = true;
 
 	ret = qmi_handle_init(&qmi->qmi_hdl,
