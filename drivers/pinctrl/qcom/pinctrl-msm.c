@@ -773,6 +773,18 @@ static int msm_gpio_init_valid_mask(struct gpio_chip *gc,
 	for (i = 0; i < len; i++)
 		set_bit(tmp[i], valid_mask);
 
+	/* Some board GPIOs are not described as input devices in ACPI. */
+	for (i = 0; i < pctrl->soc->nadditional_valid_gpios; i++) {
+		unsigned int gpio = pctrl->soc->additional_valid_gpios[i];
+
+		if (gpio >= ngpios) {
+			dev_err(pctrl->dev, "invalid additional GPIO %u\n", gpio);
+			ret = -EINVAL;
+			goto out;
+		}
+		set_bit(gpio, valid_mask);
+	}
+
 out:
 	kfree(tmp);
 	return ret;
@@ -1561,7 +1573,19 @@ int msm_pinctrl_probe(struct platform_device *pdev,
 
 	raw_spin_lock_init(&pctrl->lock);
 
-	if (soc_data->tiles) {
+	if (soc_data->acpi_tile_offsets) {
+		void __iomem *base;
+
+		base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
+		if (IS_ERR(base))
+			return PTR_ERR(base);
+		for (i = 0; i < soc_data->ntiles; i++) {
+			if (soc_data->acpi_tile_offsets[i] >= resource_size(res))
+				return -EINVAL;
+			pctrl->regs[i] = base + soc_data->acpi_tile_offsets[i];
+			pctrl->phys_base[i] = res->start + soc_data->acpi_tile_offsets[i];
+		}
+	} else if (soc_data->tiles) {
 		for (i = 0; i < soc_data->ntiles; i++) {
 			res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							   soc_data->tiles[i]);

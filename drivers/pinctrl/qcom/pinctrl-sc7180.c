@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2019, The Linux Foundation. All rights reserved.
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -1139,8 +1142,81 @@ static const struct msm_pinctrl_soc_data sc7180_pinctrl = {
 	.wakeirq_dual_edge_errata = true,
 };
 
+#ifdef CONFIG_ACPI
+/* ACPI GIO0 covers all three tiles; DT keeps named resources. */
+static const u32 sc7180_acpi_tile_offsets[] = {
+	[NORTH] = 0x500000, [SOUTH] = 0x900000, [WEST] = 0x100000,
+};
+
+/* TCL B220G speaker PA enable lines; DT audio testing confirmed GPIO46/47. */
+static const unsigned int tcl_b220g_speaker_pa_gpios[] = { 46, 47 };
+
+static int sc7180_pinctrl_acpi_probe(struct platform_device *pdev)
+{
+	struct msm_pinctrl_soc_data *soc;
+	struct resource *res;
+	struct irq_data *irqdata;
+	acpi_handle handle;
+	static const u16 keyboard_pins[] = { 32, 33, 115, 116 };
+	static const u16 display_pins[] = { 32, 33, 86, 87, 115, 116 };
+	static const u16 touchpad_pins[] = { 32, 33, 86, 87, 94, 115, 116 };
+	const u16 *expected;
+	u16 pins[ARRAY_SIZE(touchpad_pins)];
+	int irq, count;
+
+	if (!dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !device_property_read_bool(&pdev->dev, "qcom,tcl-acpi-input") ||
+	    ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GIO0", &handle)) ||
+	    handle != ACPI_HANDLE(&pdev->dev))
+		return -ENODEV;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res || res->start != 0x3400000 || resource_size(res) != 0xc00000)
+		return -EINVAL;
+	/* Exact sets preserve earlier boots; TCPD uses GPIO94 as level-low IRQ. */
+	count = device_property_count_u16(&pdev->dev, "gpios");
+	if (count == ARRAY_SIZE(keyboard_pins))
+		expected = keyboard_pins;
+	else if (count == ARRAY_SIZE(display_pins))
+		expected = display_pins;
+	else if (count == ARRAY_SIZE(touchpad_pins))
+		expected = touchpad_pins;
+	else
+		return -EINVAL;
+	if (device_property_read_u16_array(&pdev->dev, "gpios", pins, count) ||
+	    memcmp(pins, expected, count * sizeof(pins[0])))
+		return -EINVAL;
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return irq;
+	irqdata = irq_get_irq_data(irq);
+	if (!irqdata || irqd_to_hwirq(irqdata) != 240)
+		return -EINVAL;
+	soc = devm_kmemdup(&pdev->dev, &sc7180_pinctrl, sizeof(*soc), GFP_KERNEL);
+	if (!soc)
+		return -ENOMEM;
+	soc->acpi_tile_offsets = sc7180_acpi_tile_offsets;
+	/* Normal input uses the TLMM summary IRQ; PDC wake is not described. */
+	soc->wakeirq_map = NULL;
+	soc->nwakeirq_map = 0;
+	soc->additional_valid_gpios = tcl_b220g_speaker_pa_gpios;
+	soc->nadditional_valid_gpios = ARRAY_SIZE(tcl_b220g_speaker_pa_gpios);
+	dev_info(&pdev->dev, "TCL ACPI input GPIO whitelist: %d pins; summary GSI240\n", count);
+	return msm_pinctrl_probe(pdev, soc);
+}
+
+static const struct acpi_device_id sc7180_pinctrl_acpi_match[] = {
+	{ "QCOM080D" }, { }
+};
+MODULE_DEVICE_TABLE(acpi, sc7180_pinctrl_acpi_match);
+#endif
+
 static int sc7180_pinctrl_probe(struct platform_device *pdev)
 {
+#ifdef CONFIG_ACPI
+	if (has_acpi_companion(&pdev->dev))
+		return sc7180_pinctrl_acpi_probe(pdev);
+#endif
 	return msm_pinctrl_probe(pdev, &sc7180_pinctrl);
 }
 
@@ -1155,6 +1231,7 @@ static struct platform_driver sc7180_pinctrl_driver = {
 		.name = "sc7180-pinctrl",
 		.pm = &msm_pinctrl_dev_pm_ops,
 		.of_match_table = sc7180_pinctrl_of_match,
+		.acpi_match_table = ACPI_PTR(sc7180_pinctrl_acpi_match),
 	},
 	.probe = sc7180_pinctrl_probe,
 };

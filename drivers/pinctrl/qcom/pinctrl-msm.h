@@ -178,10 +178,15 @@ struct msm_pinctrl_soc_data {
 	bool pull_no_keeper;
 	const char *const *tiles;
 	unsigned int ntiles;
+	/* Optional tile offsets within one ACPI MMIO resource. */
+	const u32 *acpi_tile_offsets;
 	const int *reserved_gpios;
 	const struct msm_gpio_wakeirq_map *wakeirq_map;
 	unsigned int nwakeirq_map;
 	bool wakeirq_dual_edge_errata;
+	/* Additional GPIOs allowed by a board-specific ACPI whitelist. */
+	const unsigned int *additional_valid_gpios;
+	unsigned int nadditional_valid_gpios;
 	unsigned int gpio_func;
 	unsigned int egpio_func;
 };
