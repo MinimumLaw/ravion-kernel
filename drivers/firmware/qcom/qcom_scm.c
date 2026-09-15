@@ -3,6 +3,7 @@
  * Copyright (C) 2015 Linaro Ltd.
  */
 
+#include <linux/acpi.h>
 #include <linux/arm-smccc.h>
 #include <linux/bitfield.h>
 #include <linux/bits.h>
@@ -2746,16 +2747,23 @@ static int qcom_scm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	scm->dev = &pdev->dev;
+	if (has_acpi_companion(scm->dev) &&
+	    !acpi_dma_supported(ACPI_COMPANION(scm->dev)))
+		return dev_err_probe(scm->dev, -EINVAL,
+				     "ACPI SCM requires a valid _CCA for DMA buffers\n");
+
 	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
 	if (ret < 0)
 		return ret;
 
 	mutex_init(&scm->scm_bw_lock);
 
-	scm->path = devm_of_icc_get(&pdev->dev, NULL);
-	if (IS_ERR(scm->path))
-		return dev_err_probe(&pdev->dev, PTR_ERR(scm->path),
-				     "failed to acquire interconnect path\n");
+	if (pdev->dev.of_node) {
+		scm->path = devm_of_icc_get(&pdev->dev, NULL);
+		if (IS_ERR(scm->path))
+			return dev_err_probe(&pdev->dev, PTR_ERR(scm->path),
+					     "failed to acquire interconnect path\n");
+	}
 
 	scm->core_clk = devm_clk_get_optional(&pdev->dev, "core");
 	if (IS_ERR(scm->core_clk))
@@ -2769,6 +2777,7 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (IS_ERR(scm->bus_clk))
 		return PTR_ERR(scm->bus_clk);
 
+	scm->reset.dev = &pdev->dev;
 	scm->reset.ops = &qcom_scm_pas_reset_ops;
 	scm->reset.nr_resets = 1;
 	scm->reset.of_node = pdev->dev.of_node;
@@ -2781,10 +2790,12 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = of_reserved_mem_device_init(scm->dev);
-	if (ret && ret != -ENODEV)
-		return dev_err_probe(scm->dev, ret,
-				     "Failed to setup the reserved memory region for TZ mem\n");
+	if (scm->dev->of_node) {
+		ret = of_reserved_mem_device_init(scm->dev);
+		if (ret && ret != -ENODEV)
+			return dev_err_probe(scm->dev, ret,
+					     "Failed to setup the reserved memory region for TZ mem\n");
+	}
 
 	ret = qcom_tzmem_enable(scm->dev);
 	if (ret)
@@ -2792,7 +2803,7 @@ static int qcom_scm_probe(struct platform_device *pdev)
 				     "Failed to enable the TrustZone memory allocator\n");
 
 	memset(&pool_config, 0, sizeof(pool_config));
-	pool_config.initial_size = 0;
+	pool_config.initial_size = has_acpi_companion(scm->dev) ? PAGE_SIZE : 0;
 	pool_config.policy = QCOM_TZMEM_POLICY_ON_DEMAND;
 	pool_config.max_size = SZ_256K;
 
@@ -2869,6 +2880,9 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	/* Initialize the Gunyah watchdog platform device. */
 	qcom_scm_gunyah_wdt_init(scm);
 
+	if (has_acpi_companion(scm->dev))
+		acpi_dev_clear_dependencies(ACPI_COMPANION(scm->dev));
+
 	return 0;
 }
 
@@ -2892,10 +2906,17 @@ static const struct of_device_id qcom_scm_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, qcom_scm_dt_match);
 
+static const struct acpi_device_id qcom_scm_acpi_match[] = {
+	{ "QCOM080B" },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, qcom_scm_acpi_match);
+
 static struct platform_driver qcom_scm_driver = {
 	.driver = {
 		.name	= "qcom_scm",
 		.of_match_table = qcom_scm_dt_match,
+		.acpi_match_table = ACPI_PTR(qcom_scm_acpi_match),
 		.suppress_bind_attrs = true,
 	},
 	.probe = qcom_scm_probe,
