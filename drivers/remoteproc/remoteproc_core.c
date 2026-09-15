@@ -1099,6 +1099,8 @@ static int rproc_start_subdevices(struct rproc *rproc)
 		}
 	}
 
+	rproc->subdevs_started = true;
+
 	return 0;
 
 unroll_registration:
@@ -1114,10 +1116,15 @@ static void rproc_stop_subdevices(struct rproc *rproc, bool crashed)
 {
 	struct rproc_subdev *subdev;
 
+	if (!rproc->subdevs_started)
+		return;
+
 	list_for_each_entry_reverse(subdev, &rproc->subdevs, node) {
 		if (subdev->stop)
 			subdev->stop(subdev, crashed);
 	}
+
+	rproc->subdevs_started = false;
 }
 
 static void rproc_unprepare_subdevices(struct rproc *rproc)
@@ -1828,6 +1835,11 @@ int rproc_trigger_recovery(struct rproc *rproc)
 	if (ret)
 		return ret;
 
+	if (READ_ONCE(rproc->deleting)) {
+		ret = -ENODEV;
+		goto unlock_mutex;
+	}
+
 	/* State could have changed before we got the mutex */
 	if (rproc->state != RPROC_CRASHED)
 		goto unlock_mutex;
@@ -1859,6 +1871,11 @@ static void rproc_crash_handler_work(struct work_struct *work)
 	dev_dbg(dev, "enter %s\n", __func__);
 
 	mutex_lock(&rproc->lock);
+
+	if (READ_ONCE(rproc->deleting)) {
+		mutex_unlock(&rproc->lock);
+		goto out;
+	}
 
 	if (rproc->state == RPROC_CRASHED) {
 		/* handle only the first crash detected */
@@ -1913,6 +1930,12 @@ int rproc_boot(struct rproc *rproc)
 	if (ret) {
 		dev_err(dev, "can't lock rproc %s: %d\n", rproc->name, ret);
 		return ret;
+	}
+
+	if (READ_ONCE(rproc->deleting)) {
+		ret = -ENODEV;
+		dev_err(dev, "can't boot deleting rproc %s\n", rproc->name);
+		goto unlock_mutex;
 	}
 
 	if (rproc->state == RPROC_DELETED) {
@@ -1976,9 +1999,10 @@ EXPORT_SYMBOL(rproc_boot);
  *
  * Return: 0 on success, and an appropriate error value otherwise
  */
-int rproc_shutdown(struct rproc *rproc)
+static int __rproc_shutdown(struct rproc *rproc, bool force)
 {
 	struct device *dev = &rproc->dev;
+	bool crashed;
 	int ret;
 
 	ret = mutex_lock_interruptible(&rproc->lock);
@@ -1988,16 +2012,18 @@ int rproc_shutdown(struct rproc *rproc)
 	}
 
 	if (rproc->state != RPROC_RUNNING &&
-	    rproc->state != RPROC_ATTACHED) {
+	    rproc->state != RPROC_ATTACHED &&
+	    rproc->state != RPROC_CRASHED) {
 		ret = -EINVAL;
 		goto out;
 	}
+	crashed = rproc->state == RPROC_CRASHED;
 
 	/* if the remote proc is still needed, bail out */
-	if (!atomic_dec_and_test(&rproc->power))
+	if (!atomic_dec_and_test(&rproc->power) && !force)
 		goto out;
 
-	ret = rproc_stop(rproc, false);
+	ret = rproc_stop(rproc, crashed);
 	if (ret) {
 		atomic_inc(&rproc->power);
 		goto out;
@@ -2018,6 +2044,11 @@ int rproc_shutdown(struct rproc *rproc)
 out:
 	mutex_unlock(&rproc->lock);
 	return ret;
+}
+
+int rproc_shutdown(struct rproc *rproc)
+{
+	return __rproc_shutdown(rproc, false);
 }
 EXPORT_SYMBOL(rproc_shutdown);
 
@@ -2317,6 +2348,8 @@ int rproc_add(struct rproc *rproc)
 	return 0;
 
 rproc_remove_dev:
+	if (cancel_work_sync(&rproc->crash_handler))
+		pm_relax(rproc->dev.parent);
 	rproc_delete_debug_dir(rproc);
 	device_del(dev);
 rproc_remove_cdev:
@@ -2507,6 +2540,7 @@ struct rproc *rproc_alloc(struct device *dev, const char *name,
 	INIT_LIST_HEAD(&rproc->dump_segments);
 
 	INIT_WORK(&rproc->crash_handler, rproc_crash_handler_work);
+	spin_lock_init(&rproc->crash_handler_lock);
 
 	rproc->state = RPROC_OFFLINE;
 
@@ -2570,11 +2604,20 @@ EXPORT_SYMBOL(rproc_put);
  */
 int rproc_del(struct rproc *rproc)
 {
+	unsigned long flags;
+
 	if (!rproc)
 		return -EINVAL;
 
-	/* TODO: make sure this works with rproc->power > 1 */
-	rproc_shutdown(rproc);
+	spin_lock_irqsave(&rproc->crash_handler_lock, flags);
+	WRITE_ONCE(rproc->deleting, true);
+	spin_unlock_irqrestore(&rproc->crash_handler_lock, flags);
+
+	if (cancel_work_sync(&rproc->crash_handler))
+		pm_relax(rproc->dev.parent);
+
+	/* Removal must stop a crashed remoteproc even if users hold references. */
+	__rproc_shutdown(rproc, true);
 
 	mutex_lock(&rproc->lock);
 	rproc->state = RPROC_DELETED;
@@ -2691,8 +2734,16 @@ EXPORT_SYMBOL(rproc_get_by_child);
  */
 void rproc_report_crash(struct rproc *rproc, enum rproc_crash_type type)
 {
+	unsigned long flags;
+
 	if (!rproc) {
 		pr_err("NULL rproc pointer\n");
+		return;
+	}
+
+	spin_lock_irqsave(&rproc->crash_handler_lock, flags);
+	if (READ_ONCE(rproc->deleting)) {
+		spin_unlock_irqrestore(&rproc->crash_handler_lock, flags);
 		return;
 	}
 
@@ -2703,6 +2754,7 @@ void rproc_report_crash(struct rproc *rproc, enum rproc_crash_type type)
 		rproc->name, rproc_crash_to_string(type));
 
 	queue_work(rproc_recovery_wq, &rproc->crash_handler);
+	spin_unlock_irqrestore(&rproc->crash_handler_lock, flags);
 }
 EXPORT_SYMBOL(rproc_report_crash);
 

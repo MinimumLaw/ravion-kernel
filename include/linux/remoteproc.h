@@ -43,6 +43,8 @@
 #include <linux/idr.h>
 #include <linux/of.h>
 #include <linux/rsc_table.h>
+#include <linux/spinlock.h>
+#include <linux/workqueue.h>
 
 struct rproc;
 
@@ -302,8 +304,12 @@ struct rproc {
 	struct idr notifyids;
 	int index;
 	struct work_struct crash_handler;
+	/* Serializes crash reports against the start of rproc removal. */
+	spinlock_t crash_handler_lock;
 	unsigned int crash_cnt;
 	bool recovery_disabled;
+	bool deleting;
+	bool subdevs_started;
 	int max_notifyid;
 	struct resource_table *table_ptr;
 	struct resource_table *clean_table;
