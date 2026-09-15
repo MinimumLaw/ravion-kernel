@@ -15,6 +15,7 @@
 #include <sound/tlv.h>
 #include <linux/of_clk.h>
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
 
 #include "lpass-macro-common.h"
 
@@ -3746,6 +3747,12 @@ static int rx_macro_register_mclk_output(struct rx_macro *rx)
 	if (ret)
 		return ret;
 
+	if (!dev->of_node) {
+		ret = devm_clk_hw_register_clkdev(dev, hw, "swr", dev_name(dev));
+		if (ret)
+			return ret;
+		return devm_clk_hw_register_clkdev(dev, hw, "iface", "tcl-swr-rx");
+	}
 	return devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, hw);
 }
 
@@ -3769,6 +3776,11 @@ static int rx_macro_probe(struct platform_device *pdev)
 	int ret, def_count;
 
 	flags = (kernel_ulong_t)device_get_match_data(dev);
+	if (!dev->of_node) {
+		if (!platform_get_device_id(pdev))
+			return -EINVAL;
+		flags = platform_get_device_id(pdev)->driver_data;
+	}
 
 	rx = devm_kzalloc(dev, sizeof(*rx), GFP_KERNEL);
 	if (!rx)
@@ -4018,7 +4030,14 @@ static const struct dev_pm_ops rx_macro_pm_ops = {
 	RUNTIME_PM_OPS(rx_macro_runtime_suspend, rx_macro_runtime_resume, NULL)
 };
 
+static const struct platform_device_id rx_macro_platform_ids[] = {
+	{ "tcl-sc7280-rx", LPASS_MACRO_FLAG_HAS_NPL_CLOCK },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, rx_macro_platform_ids);
+
 static struct platform_driver rx_macro_driver = {
+	.id_table = rx_macro_platform_ids,
 	.driver = {
 		.name = "rx_macro",
 		.of_match_table = rx_macro_dt_match,

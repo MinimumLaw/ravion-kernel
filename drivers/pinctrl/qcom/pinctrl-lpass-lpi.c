@@ -510,8 +510,15 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, pctrl);
 
 	data = of_device_get_match_data(dev);
-	if (!data)
+	if (!data && platform_get_device_id(pdev))
+		data = (const void *)platform_get_device_id(pdev)->driver_data;
+	if (!data) {
+		dev_err(dev, "no variant data (OF node=%p, platform id=%s)\n",
+			dev->of_node, platform_get_device_id(pdev) ?
+			platform_get_device_id(pdev)->name : "none");
 		return -EINVAL;
+	}
+	dev_info(dev, "TCL LPI variant data selected: %u pins\n", data->npins);
 
 	if (WARN_ON(data->npins > MAX_NR_GPIO))
 		return -EINVAL;
@@ -523,6 +530,7 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 	if (IS_ERR(pctrl->tlmm_base))
 		return dev_err_probe(dev, PTR_ERR(pctrl->tlmm_base),
 				     "TLMM resource not provided\n");
+	dev_info(dev, "TCL LPI main register window mapped\n");
 
 	if (!(data->flags & LPI_FLAG_SLEW_RATE_SAME_REG)) {
 		pctrl->slew_base = devm_platform_ioremap_resource(pdev, 1);
@@ -532,18 +540,27 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_pm_clk_create(dev);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "TCL LPI PM clock list setup failed: %d\n", ret);
 		return ret;
+	}
 
-	ret = of_pm_clk_add_clks(dev);
-	if (ret < 0 && ret != -ENODEV)
-		return ret;
+	/* ACPI software nodes have no OF clock table to inspect. */
+	if (dev->of_node) {
+		ret = of_pm_clk_add_clks(dev);
+		if (ret < 0 && ret != -ENODEV) {
+			dev_err(dev, "TCL LPI clock lookup failed: %d\n", ret);
+			return ret;
+		}
+	}
 
 	pm_runtime_set_autosuspend_delay(dev, 100);
 	pm_runtime_use_autosuspend(dev);
 	ret = devm_pm_runtime_enable(dev);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "TCL LPI runtime PM setup failed: %d\n", ret);
 		return ret;
+	}
 
 	pctrl->desc.pctlops = &lpi_gpio_pinctrl_ops;
 	pctrl->desc.pmxops = &lpi_gpio_pinmux_ops;
@@ -567,10 +584,56 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to add pin controller\n");
 		goto err_pinctrl;
 	}
+	dev_info(dev, "TCL LPI pinctrl registered\n");
 
 	ret = lpi_build_pin_desc_groups(pctrl);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "TCL LPI group construction failed: %d\n", ret);
 		goto err_pinctrl;
+	}
+	dev_info(dev, "TCL LPI groups registered\n");
+
+	/* ACPI diagnostic node: reproduce the previously verified TCL SWR pin mux. */
+	if (device_property_read_bool(dev, "qcom,tcl-acpi-lpi-soundwire")) {
+		static const struct {
+			unsigned int pin;
+			unsigned int function;
+			unsigned int bias;
+		} swr_pins[] = {
+			{ 0, 17, PIN_CONFIG_BIAS_DISABLE },
+			{ 1, 18, PIN_CONFIG_BIAS_BUS_HOLD },
+			{ 2, 18, PIN_CONFIG_BIAS_BUS_HOLD },
+			{ 3, 15, PIN_CONFIG_BIAS_DISABLE },
+			{ 4, 16, PIN_CONFIG_BIAS_BUS_HOLD },
+			{ 5, 16, PIN_CONFIG_BIAS_BUS_HOLD },
+			{ 14, 18, PIN_CONFIG_BIAS_BUS_HOLD },
+		};
+		unsigned int i;
+
+		for (i = 0; i < ARRAY_SIZE(swr_pins); i++) {
+			unsigned long configs[] = {
+				pinconf_to_config_packed(PIN_CONFIG_DRIVE_STRENGTH, 10),
+				pinconf_to_config_packed(PIN_CONFIG_SLEW_RATE, 3),
+				pinconf_to_config_packed(swr_pins[i].bias, 1),
+			};
+
+			ret = lpi_gpio_set_mux(pctrl->ctrl, swr_pins[i].function,
+					       swr_pins[i].pin);
+			if (ret) {
+				dev_err(dev, "TCL LPI mux pin %u function %u failed: %d\n",
+					swr_pins[i].pin, swr_pins[i].function, ret);
+				goto err_pinctrl;
+			}
+			ret = lpi_config_set(pctrl->ctrl, swr_pins[i].pin, configs,
+					     ARRAY_SIZE(configs));
+			if (ret) {
+				dev_err(dev, "TCL LPI config pin %u failed: %d\n",
+					swr_pins[i].pin, ret);
+				goto err_pinctrl;
+			}
+		}
+		dev_info(dev, "TCL ACPI SoundWire LPI pinmux configured\n");
+	}
 
 	ret = devm_gpiochip_add_data(dev, &pctrl->chip, pctrl);
 	if (ret) {

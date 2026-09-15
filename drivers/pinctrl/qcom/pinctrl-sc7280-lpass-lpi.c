@@ -141,6 +141,12 @@ static const struct of_device_id lpi_pinctrl_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, lpi_pinctrl_of_match);
 
+static const struct platform_device_id lpi_pinctrl_ids[] = {
+	{ "tcl-lpi-provider", (kernel_ulong_t)&sc7280_lpi_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, lpi_pinctrl_ids);
+
 static const struct dev_pm_ops lpi_pinctrl_pm_ops = {
 	RUNTIME_PM_OPS(pm_clk_suspend, pm_clk_resume, NULL)
 };
@@ -151,6 +157,7 @@ static struct platform_driver lpi_pinctrl_driver = {
 		.of_match_table = lpi_pinctrl_of_match,
 		.pm = pm_ptr(&lpi_pinctrl_pm_ops),
 	},
+	.id_table = lpi_pinctrl_ids,
 	.probe = lpi_pinctrl_probe,
 	.remove = lpi_pinctrl_remove,
 };

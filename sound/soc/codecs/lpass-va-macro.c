@@ -8,6 +8,8 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of_clk.h>
+#include <linux/property.h>
+#include <linux/clkdev.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -1401,7 +1403,6 @@ static int va_macro_register_fsgen_output(struct va_macro *va)
 {
 	struct clk *parent = va->mclk;
 	struct device *dev = va->dev;
-	struct device_node *np = dev->of_node;
 	const char *parent_clk_name;
 	const char *clk_name = "fsgen";
 	struct clk_init_data init;
@@ -1412,7 +1413,7 @@ static int va_macro_register_fsgen_output(struct va_macro *va)
 
 	parent_clk_name = __clk_get_name(parent);
 
-	of_property_read_string(np, "clock-output-names", &clk_name);
+	device_property_read_string(dev, "clock-output-names", &clk_name);
 
 	init.name = clk_name;
 	init.ops = &fsgen_gate_ops;
@@ -1424,6 +1425,21 @@ static int va_macro_register_fsgen_output(struct va_macro *va)
 	if (ret)
 		return ret;
 
+	if (!dev->of_node) {
+		ret = devm_clk_hw_register_clkdev(dev, &va->hw, "fsgen",
+						  dev_name(dev));
+		if (ret)
+			return ret;
+
+		/* RX and TX macros consume this shared gate by their device names. */
+		ret = devm_clk_hw_register_clkdev(dev, &va->hw, "fsgen",
+						  "tcl-sc7280-rx");
+		if (ret)
+			return ret;
+
+		return devm_clk_hw_register_clkdev(dev, &va->hw, "fsgen",
+						   "tcl-sc7280-tx");
+	}
 	return devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &va->hw);
 }
 
@@ -1562,8 +1578,8 @@ static int va_macro_probe(struct platform_device *pdev)
 	if (IS_ERR(va->pds))
 		return PTR_ERR(va->pds);
 
-	ret = of_property_read_u32(dev->of_node, "qcom,dmic-sample-rate",
-				   &sample_rate);
+	ret = device_property_read_u32(dev, "qcom,dmic-sample-rate",
+				       &sample_rate);
 	if (ret) {
 		dev_err(dev, "qcom,dmic-sample-rate dt entry missing\n");
 		va->dmic_clk_div = VA_MACRO_CLK_DIV_2;
@@ -1589,12 +1605,20 @@ static int va_macro_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(dev, va);
 
-	data = of_device_get_match_data(dev);
+	data = device_get_match_data(dev);
+	if (!data && platform_get_device_id(pdev))
+		data = (const void *)platform_get_device_id(pdev)->driver_data;
+	if (!data) {
+		ret = -EINVAL;
+		goto err;
+	}
 	va->has_swr_master = data->has_swr_master;
 	va->has_npl_clk = data->has_npl_clk;
 
 	/* mclk rate */
-	clk_set_rate(va->mclk, 2 * VA_MACRO_MCLK_FREQ);
+	ret = clk_set_rate(va->mclk, 2 * VA_MACRO_MCLK_FREQ);
+	if (ret)
+		goto err;
 
 	if (va->has_npl_clk) {
 		va->npl = devm_clk_get(dev, "npl");
@@ -1603,7 +1627,9 @@ static int va_macro_probe(struct platform_device *pdev)
 			goto err;
 		}
 
-		clk_set_rate(va->npl, 2 * VA_MACRO_MCLK_FREQ);
+		ret = clk_set_rate(va->npl, 2 * VA_MACRO_MCLK_FREQ);
+		if (ret)
+			goto err;
 	}
 
 	ret = clk_prepare_enable(va->macro);
@@ -1770,7 +1796,15 @@ static const struct of_device_id va_macro_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, va_macro_dt_match);
 
+static const struct platform_device_id va_macro_platform_ids[] = {
+	/* B220G's DT identifies this VA macro as sm7180 with sm8250 fallback. */
+	{ "tcl-sc7280-va", (kernel_ulong_t)&sm8250_va_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, va_macro_platform_ids);
+
 static struct platform_driver va_macro_driver = {
+	.id_table = va_macro_platform_ids,
 	.driver = {
 		.name = "va_macro",
 		.of_match_table = va_macro_dt_match,

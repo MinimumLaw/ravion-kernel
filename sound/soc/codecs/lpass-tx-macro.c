@@ -13,6 +13,7 @@
 #include <sound/tlv.h>
 #include <linux/of_clk.h>
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
 
 #include "lpass-macro-common.h"
 
@@ -2225,6 +2226,12 @@ static int tx_macro_register_mclk_output(struct tx_macro *tx)
 	if (ret)
 		return ret;
 
+	if (!dev->of_node) {
+		ret = devm_clk_hw_register_clkdev(dev, hw, "swr", dev_name(dev));
+		if (ret)
+			return ret;
+		return devm_clk_hw_register_clkdev(dev, hw, "iface", "tcl-swr-tx");
+	}
 	return devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, hw);
 }
 
@@ -2252,6 +2259,11 @@ static int tx_macro_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	tx->data = device_get_match_data(dev);
+	if (!tx->data && platform_get_device_id(pdev))
+		tx->data = (const struct tx_macro_data *)
+			platform_get_device_id(pdev)->driver_data;
+	if (!tx->data)
+		return -EINVAL;
 
 	tx->macro = devm_clk_get_optional(dev, "macro");
 	if (IS_ERR(tx->macro))
@@ -2526,7 +2538,13 @@ static const struct of_device_id tx_macro_dt_match[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tx_macro_dt_match);
+static const struct platform_device_id tx_macro_platform_ids[] = {
+	{ "tcl-sc7280-tx", (kernel_ulong_t)&lpass_ver_9 },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, tx_macro_platform_ids);
 static struct platform_driver tx_macro_driver = {
+	.id_table = tx_macro_platform_ids,
 	.driver = {
 		.name = "tx_macro",
 		.of_match_table = tx_macro_dt_match,
