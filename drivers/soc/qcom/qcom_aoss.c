@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/thermal.h>
 #include <linux/slab.h>
 #include <linux/string_choices.h>
@@ -447,26 +448,25 @@ static void qmp_cooling_devices_remove(struct qmp *qmp)
  */
 struct qmp *qmp_get(struct device *dev)
 {
-	struct platform_device *pdev;
-	struct device_node *np;
+	struct fwnode_handle *node;
+	struct device *provider;
 	struct qmp *qmp;
 
-	if (!dev || !dev->of_node)
+	if (!dev)
 		return ERR_PTR(-EINVAL);
 
-	np = of_parse_phandle(dev->of_node, "qcom,qmp", 0);
-	if (!np)
-		return ERR_PTR(-ENODEV);
+	node = fwnode_find_reference(dev_fwnode(dev), "qcom,qmp", 0);
+	if (IS_ERR(node))
+		return ERR_PTR(PTR_ERR(node) == -ENOENT ? -ENODEV : PTR_ERR(node));
 
-	pdev = of_find_device_by_node(np);
-	of_node_put(np);
-	if (!pdev)
-		return ERR_PTR(-EINVAL);
+	provider = bus_find_device_by_fwnode(&platform_bus_type, node);
+	fwnode_handle_put(node);
+	if (!provider)
+		return ERR_PTR(-EPROBE_DEFER);
 
-	qmp = platform_get_drvdata(pdev);
-
+	qmp = dev_get_drvdata(provider);
 	if (!qmp) {
-		put_device(&pdev->dev);
+		put_device(provider);
 		return ERR_PTR(-EPROBE_DEFER);
 	}
 	return qmp;
@@ -600,6 +600,10 @@ static int qmp_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		ret = irq;
+		goto err_free_mbox;
+	}
 	ret = devm_request_irq(&pdev->dev, irq, qmp_intr, 0,
 			       "aoss-qmp", qmp);
 	if (ret < 0) {
@@ -611,11 +615,11 @@ static int qmp_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_free_mbox;
 
-	ret = qmp_qdss_clk_add(qmp);
+	ret = pdev->dev.of_node ? qmp_qdss_clk_add(qmp) : 0;
 	if (ret)
 		goto err_close_qmp;
 
-	ret = qmp_cooling_devices_register(qmp);
+	ret = pdev->dev.of_node ? qmp_cooling_devices_register(qmp) : 0;
 	if (ret)
 		dev_err(&pdev->dev, "failed to register aoss cooling devices\n");
 
@@ -639,7 +643,8 @@ static void qmp_remove(struct platform_device *pdev)
 
 	debugfs_remove_recursive(qmp->debugfs_root);
 
-	qmp_qdss_clk_remove(qmp);
+	if (pdev->dev.of_node)
+		qmp_qdss_clk_remove(qmp);
 	qmp_cooling_devices_remove(qmp);
 
 	qmp_close(qmp);

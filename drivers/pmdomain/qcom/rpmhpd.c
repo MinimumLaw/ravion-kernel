@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/pm_opp.h>
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/rpmh.h>
@@ -1130,7 +1131,9 @@ static int rpmhpd_probe(struct platform_device *pdev)
 	struct rpmhpd **rpmhpds;
 	const struct rpmhpd_desc *desc;
 
-	desc = of_device_get_match_data(dev);
+	desc = device_get_match_data(dev);
+	if (!desc && platform_get_device_id(pdev))
+		desc = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!desc)
 		return -EINVAL;
 
@@ -1187,18 +1190,27 @@ static int rpmhpd_probe(struct platform_device *pdev)
 					       &rpmhpds[i]->pd);
 	}
 
+	/* Non-DT board glue attaches explicit consumers with pm_genpd_add_device. */
+	platform_set_drvdata(pdev, data);
+	if (!pdev->dev.of_node)
+		return 0;
+
 	return of_genpd_add_provider_onecell(pdev->dev.of_node, data);
 }
 
 static void rpmhpd_sync_state(struct device *dev)
 {
-	const struct rpmhpd_desc *desc = of_device_get_match_data(dev);
-	struct rpmhpd **rpmhpds = desc->rpmhpds;
+	const struct rpmhpd_desc *desc = device_get_match_data(dev);
+	struct rpmhpd **rpmhpds;
 	unsigned int corner;
 	struct rpmhpd *pd;
 	unsigned int i;
 	int ret;
 
+	/* Preserve boot votes until all non-DT consumers have been described. */
+	if (!dev->of_node || !desc)
+		return;
+	rpmhpds = desc->rpmhpds;
 	of_genpd_sync_state(dev->of_node);
 
 	mutex_lock(&rpmhpd_lock);
@@ -1220,7 +1232,14 @@ static void rpmhpd_sync_state(struct device *dev)
 	mutex_unlock(&rpmhpd_lock);
 }
 
+static const struct platform_device_id rpmhpd_platform_ids[] = {
+	{ "qcom-sc7180-rpmhpd", (kernel_ulong_t)&sc7180_desc },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, rpmhpd_platform_ids);
+
 static struct platform_driver rpmhpd_driver = {
+	.id_table = rpmhpd_platform_ids,
 	.driver = {
 		.name = "qcom-rpmhpd",
 		.of_match_table = rpmhpd_match_table,

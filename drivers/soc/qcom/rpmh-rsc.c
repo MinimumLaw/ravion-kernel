@@ -21,6 +21,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
@@ -963,12 +964,12 @@ static int rpmh_probe_tcs_config(struct platform_device *pdev, struct rsc_drv *d
 		u32 type;
 		u32 n;
 	} tcs_cfg[TCS_TYPE_NR] = { { 0 } };
-	struct device_node *dn = pdev->dev.of_node;
 	u32 config, max_tcs, ncpt, offset;
+	u32 values[2 * TCS_TYPE_NR];
 	int i, ret, n, st = 0;
 	struct tcs_group *tcs;
 
-	ret = of_property_read_u32(dn, "qcom,tcs-offset", &offset);
+	ret = device_property_read_u32(&pdev->dev, "qcom,tcs-offset", &offset);
 	if (ret)
 		return ret;
 	drv->tcs_base = drv->base + offset;
@@ -982,22 +983,21 @@ static int rpmh_probe_tcs_config(struct platform_device *pdev, struct rsc_drv *d
 	ncpt = config & (DRV_NCPT_MASK << DRV_NCPT_SHIFT);
 	ncpt = ncpt >> DRV_NCPT_SHIFT;
 
-	n = of_property_count_u32_elems(dn, "qcom,tcs-config");
+	n = device_property_count_u32(&pdev->dev, "qcom,tcs-config");
 	if (n != 2 * TCS_TYPE_NR)
 		return -EINVAL;
 
+	ret = device_property_read_u32_array(&pdev->dev, "qcom,tcs-config",
+					     values, ARRAY_SIZE(values));
+	if (ret)
+		return ret;
+
 	for (i = 0; i < TCS_TYPE_NR; i++) {
-		ret = of_property_read_u32_index(dn, "qcom,tcs-config",
-						 i * 2, &tcs_cfg[i].type);
-		if (ret)
-			return ret;
+		tcs_cfg[i].type = values[i * 2];
 		if (tcs_cfg[i].type >= TCS_TYPE_NR)
 			return -EINVAL;
 
-		ret = of_property_read_u32_index(dn, "qcom,tcs-config",
-						 i * 2 + 1, &tcs_cfg[i].n);
-		if (ret)
-			return ret;
+		tcs_cfg[i].n = values[i * 2 + 1];
 		if (tcs_cfg[i].n > MAX_TCS_PER_TYPE)
 			return -EINVAL;
 	}
@@ -1030,7 +1030,6 @@ static int rpmh_probe_tcs_config(struct platform_device *pdev, struct rsc_drv *d
 
 static int rpmh_rsc_probe(struct platform_device *pdev)
 {
-	struct device_node *dn = pdev->dev.of_node;
 	struct rsc_drv *drv;
 	char drv_id[10] = {0};
 	int ret, irq;
@@ -1050,11 +1049,13 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 	if (!drv)
 		return -ENOMEM;
 
-	ret = of_property_read_u32(dn, "qcom,drv-id", &drv->id);
+	ret = device_property_read_u32(&pdev->dev, "qcom,drv-id", &drv->id);
 	if (ret)
 		return ret;
+	if (drv->id > 4)
+		return -EINVAL;
 
-	drv->name = of_get_property(dn, "label", NULL);
+	device_property_read_string(&pdev->dev, "label", &drv->name);
 	if (!drv->name)
 		drv->name = dev_name(&pdev->dev);
 
@@ -1082,7 +1083,8 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 	init_waitqueue_head(&drv->tcs_wait);
 	bitmap_zero(drv->tcs_in_use, MAX_TCS_NR);
 
-	irq = platform_get_irq(pdev, drv->id);
+	irq = pdev->dev.of_node ? platform_get_irq(pdev, drv->id) :
+		platform_get_irq_byname(pdev, drv_id);
 	if (irq < 0)
 		return irq;
 
@@ -1122,7 +1124,7 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, drv);
 	drv->dev = &pdev->dev;
 
-	ret = devm_of_platform_populate(&pdev->dev);
+	ret = pdev->dev.of_node ? devm_of_platform_populate(&pdev->dev) : 0;
 	if (ret && pdev->dev.pm_domain) {
 		dev_pm_genpd_remove_notifier(&pdev->dev);
 		pm_runtime_disable(&pdev->dev);

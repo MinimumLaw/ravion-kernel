@@ -10,6 +10,7 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/property.h>
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -171,6 +172,9 @@ static void qcom_rmtfs_mem_release_device(struct device *dev)
 static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
+	struct resource *res;
+	phys_addr_t base;
+	size_t size;
 	struct qcom_scm_vmperm perms[NUM_MAX_VMIDS + 1];
 	struct reserved_mem *rmem;
 	struct qcom_rmtfs_mem *rmtfs_mem;
@@ -179,13 +183,21 @@ static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 	int num_vmids;
 	int ret, i;
 
-	rmem = of_reserved_mem_lookup(node);
-	if (!rmem) {
-		dev_err(&pdev->dev, "failed to acquire memory region\n");
-		return -EINVAL;
+	if (node) {
+		rmem = of_reserved_mem_lookup(node);
+		if (!rmem)
+			return -EINVAL;
+		base = rmem->base;
+		size = rmem->size;
+	} else {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res || !resource_size(res))
+			return -EINVAL;
+		base = res->start;
+		size = resource_size(res);
 	}
 
-	ret = of_property_read_u32(node, "qcom,client-id", &client_id);
+	ret = device_property_read_u32(&pdev->dev, "qcom,client-id", &client_id);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to parse \"qcom,client-id\"\n");
 		return ret;
@@ -196,15 +208,15 @@ static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 	if (!rmtfs_mem)
 		return -ENOMEM;
 
-	rmtfs_mem->addr = rmem->base;
+	rmtfs_mem->addr = base;
 	rmtfs_mem->client_id = client_id;
-	rmtfs_mem->size = rmem->size;
+	rmtfs_mem->size = size;
 
 	/*
 	 * If requested, discard the first and last 4k block in order to ensure
 	 * that the rmtfs region isn't adjacent to other protected regions.
 	 */
-	if (of_property_read_bool(node, "qcom,use-guard-pages")) {
+	if (device_property_read_bool(&pdev->dev, "qcom,use-guard-pages")) {
 		rmtfs_mem->addr += SZ_4K;
 		rmtfs_mem->size -= 2 * SZ_4K;
 	}
@@ -236,7 +248,7 @@ static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 		goto put_device;
 	}
 
-	num_vmids = of_property_count_u32_elems(node, "qcom,vmid");
+	num_vmids = device_property_count_u32(&pdev->dev, "qcom,vmid");
 	if (num_vmids == -EINVAL) {
 		/* qcom,vmid is optional */
 		num_vmids = 0;
@@ -251,7 +263,8 @@ static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 		num_vmids = NUM_MAX_VMIDS;
 	}
 
-	ret = of_property_read_u32_array(node, "qcom,vmid", vmid, num_vmids);
+	ret = num_vmids ? device_property_read_u32_array(&pdev->dev, "qcom,vmid",
+						      vmid, num_vmids) : -EINVAL;
 	if (ret < 0 && ret != -EINVAL) {
 		dev_err(&pdev->dev, "failed to parse qcom,vmid\n");
 		goto remove_cdev;

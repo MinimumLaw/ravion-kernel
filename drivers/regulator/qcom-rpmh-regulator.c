@@ -9,6 +9,8 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/qcom-tcl-acpi.h>
+#include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/regulator/driver.h>
@@ -443,11 +445,14 @@ static const struct regulator_ops rpmh_regulator_xob_ops = {
  * @pmic_rpmh_data:	Pointer to a null-terminated array of rpmh-regulator
  *			resources defined for the top level PMIC device
  *
+ * @board: optional non-DT regulator name and constraints
+ *
  * Return: 0 on success, or a negative error number on failure
  */
 static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 			struct device_node *node, const char *pmic_id,
-			const struct rpmh_vreg_init_data *pmic_rpmh_data)
+			const struct rpmh_vreg_init_data *pmic_rpmh_data,
+			const struct qcom_tcl_regulator *board)
 {
 	struct regulator_config reg_config = {};
 	char rpmh_resource_name[20] = "";
@@ -460,7 +465,8 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 	vreg->dev = dev;
 
 	for (rpmh_data = pmic_rpmh_data; rpmh_data->name; rpmh_data++)
-		if (of_node_name_eq(node, rpmh_data->name))
+		if (node ? of_node_name_eq(node, rpmh_data->name) :
+		    board && !strcmp(board->name, rpmh_data->name))
 			break;
 
 	if (!rpmh_data->name) {
@@ -487,7 +493,12 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 	}
 
 	vreg->rdesc.name = rpmh_data->name;
-	vreg->rdesc.supply_name = rpmh_data->supply_name;
+	/* The working TCL DT leaves these input rails without a provider. */
+	vreg->rdesc.supply_name = board && board->firmware_supply ?
+		NULL : rpmh_data->supply_name;
+	if (board && board->firmware_supply)
+		dev_info(dev, "%s: input supply remains firmware-managed\n",
+			 board->name);
 	vreg->hw_data = rpmh_data->hw_data;
 
 	vreg->enabled = -EINVAL;
@@ -508,7 +519,8 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 	vreg->rdesc.ops		= vreg->hw_data->ops;
 	vreg->rdesc.of_map_mode	= vreg->hw_data->of_map_mode;
 
-	init_data = of_get_regulator_init_data(dev, node, &vreg->rdesc);
+	init_data = board ? board->init_data :
+		of_get_regulator_init_data(dev, node, &vreg->rdesc);
 	if (!init_data)
 		return -ENOMEM;
 
@@ -1820,9 +1832,31 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 	const char *pmic_id;
 	int ret;
 
-	vreg_data = of_device_get_match_data(dev);
+	vreg_data = device_get_match_data(dev);
+	if (!vreg_data && platform_get_device_id(pdev))
+		vreg_data = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!vreg_data)
 		return -ENODEV;
+
+	if (!dev->of_node) {
+		const struct qcom_tcl_regulator_data *data = dev_get_platdata(dev);
+		unsigned int i;
+
+		if (!data || !data->pmic_id || !data->regulators || !data->count)
+			return -EINVAL;
+		for (i = 0; i < data->count; i++) {
+			if (!data->regulators[i].name || !data->regulators[i].init_data)
+				return -EINVAL;
+			vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
+			if (!vreg)
+				return -ENOMEM;
+			ret = rpmh_regulator_init_vreg(vreg, dev, NULL,
+					data->pmic_id, vreg_data, &data->regulators[i]);
+			if (ret)
+				return ret;
+		}
+		return 0;
+	}
 
 	ret = of_property_read_string(dev->of_node, "qcom,pmic-id", &pmic_id);
 	if (ret < 0) {
@@ -1836,7 +1870,7 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 			return -ENOMEM;
 
 		ret = rpmh_regulator_init_vreg(vreg, dev, node, pmic_id,
-						vreg_data);
+						vreg_data, NULL);
 		if (ret < 0)
 			return ret;
 	}
@@ -2005,7 +2039,15 @@ static const struct of_device_id __maybe_unused rpmh_regulator_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, rpmh_regulator_match_table);
 
+static const struct platform_device_id rpmh_regulator_platform_ids[] = {
+	{ "tcl-pm6150-reg", (kernel_ulong_t)pm6150_vreg_data },
+	{ "tcl-pm6150l-reg", (kernel_ulong_t)pm6150l_vreg_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, rpmh_regulator_platform_ids);
+
 static struct platform_driver rpmh_regulator_driver = {
+	.id_table = rpmh_regulator_platform_ids,
 	.driver = {
 		.name = "qcom-rpmh-regulator",
 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,

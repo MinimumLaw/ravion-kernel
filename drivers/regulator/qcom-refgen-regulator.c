@@ -2,6 +2,8 @@
 // Copyright (c) 2017, 2019-2020, The Linux Foundation. All rights reserved.
 // Copyright (c) 2023, Linaro Limited
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
 #include <linux/bitfield.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -107,6 +109,18 @@ static int qcom_refgen_probe(struct platform_device *pdev)
 	void __iomem *base;
 
 	rdesc = of_device_get_match_data(dev);
+	if (!dev->of_node) {
+		struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+		if (acpi_disabled ||
+		    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+		    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+		    !device_property_read_bool(dev, "qcom,tcl-acpi-display") ||
+		    !res || res->start != 0xff1000 || resource_size(res) != 0x60 ||
+		    !dev_get_platdata(dev))
+			return -ENODEV;
+		rdesc = &sdm845_refgen_desc;
+	}
 	if (!rdesc)
 		return -ENODATA;
 
@@ -118,7 +132,8 @@ static int qcom_refgen_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	init_data = of_get_regulator_init_data(dev, dev->of_node, rdesc);
+	init_data = dev->of_node ? of_get_regulator_init_data(dev, dev->of_node, rdesc) :
+		dev_get_platdata(dev);
 	if (!init_data)
 		return -ENOMEM;
 
@@ -141,7 +156,13 @@ static const struct of_device_id qcom_refgen_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, qcom_refgen_match_table);
 
+static const struct platform_device_id qcom_refgen_ids[] = {
+	{ "tcl-sc7180-refgen" }, { }
+};
+MODULE_DEVICE_TABLE(platform, qcom_refgen_ids);
+
 static struct platform_driver qcom_refgen_driver = {
+	.id_table = qcom_refgen_ids,
 	.probe = qcom_refgen_probe,
 	.driver = {
 		.name = "qcom-refgen-regulator",

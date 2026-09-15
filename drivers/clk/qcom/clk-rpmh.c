@@ -4,6 +4,8 @@
  */
 
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
+#include <linux/property.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -1032,7 +1034,9 @@ static int clk_rpmh_probe(struct platform_device *pdev)
 	const struct clk_rpmh_desc *desc;
 	int ret, i;
 
-	desc = of_device_get_match_data(&pdev->dev);
+	desc = device_get_match_data(&pdev->dev);
+	if (!desc && platform_get_device_id(pdev))
+		desc = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!desc)
 		return -ENODEV;
 
@@ -1083,7 +1087,16 @@ static int clk_rpmh_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "failed to register %s\n", name);
 			return ret;
 		}
+		if (!pdev->dev.of_node) {
+			ret = devm_clk_hw_register_clkdev(&pdev->dev, hw_clks[i],
+							name, dev_name(&pdev->dev));
+			if (ret)
+				return ret;
+		}
 	}
+
+	if (!pdev->dev.of_node)
+		return 0;
 
 	/* typecast to silence compiler warning */
 	ret = devm_of_clk_add_hw_provider(&pdev->dev, of_clk_rpmh_hw_get,
@@ -1132,7 +1145,14 @@ static const struct of_device_id clk_rpmh_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, clk_rpmh_match_table);
 
+static const struct platform_device_id clk_rpmh_platform_ids[] = {
+	{ "qcom-sc7180-rpmhcc", (kernel_ulong_t)&clk_rpmh_sc7180 },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, clk_rpmh_platform_ids);
+
 static struct platform_driver clk_rpmh_driver = {
+	.id_table = clk_rpmh_platform_ids,
 	.probe		= clk_rpmh_probe,
 	.driver		= {
 		.name	= "clk-rpmh",

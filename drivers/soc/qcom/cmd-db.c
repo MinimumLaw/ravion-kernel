@@ -341,15 +341,26 @@ static const struct file_operations cmd_db_debugfs_ops = {
 static int cmd_db_dev_probe(struct platform_device *pdev)
 {
 	struct reserved_mem *rmem;
+	struct resource *res;
+	phys_addr_t base;
+	size_t size;
 	int ret = 0;
 
-	rmem = of_reserved_mem_lookup(pdev->dev.of_node);
-	if (!rmem) {
-		dev_err(&pdev->dev, "failed to acquire memory region\n");
-		return -EINVAL;
+	if (pdev->dev.of_node) {
+		rmem = of_reserved_mem_lookup(pdev->dev.of_node);
+		if (!rmem)
+			return -EINVAL;
+		base = rmem->base;
+		size = rmem->size;
+	} else {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res || resource_size(res) < sizeof(*cmd_db_header))
+			return -EINVAL;
+		base = res->start;
+		size = resource_size(res);
 	}
 
-	cmd_db_header = devm_memremap(&pdev->dev, rmem->base, rmem->size, MEMREMAP_WC);
+	cmd_db_header = devm_memremap(&pdev->dev, base, size, MEMREMAP_WC);
 	if (IS_ERR(cmd_db_header)) {
 		ret = PTR_ERR(cmd_db_header);
 		cmd_db_header = NULL;
