@@ -624,6 +624,9 @@ struct icc_path *icc_get(struct device *dev, const char *src, const char *dst)
 	struct icc_node *src_node, *dst_node;
 	struct icc_path *path = ERR_PTR(-EPROBE_DEFER);
 
+	if (!src || !*src || !dst || !*dst)
+		return ERR_PTR(-EINVAL);
+
 	mutex_lock(&icc_lock);
 
 	src_node = node_find_by_name(src);
@@ -654,6 +657,7 @@ out:
 	mutex_unlock(&icc_lock);
 	return path;
 }
+EXPORT_SYMBOL_GPL(icc_get);
 
 /**
  * icc_set_tag() - set an optional tag on a path
