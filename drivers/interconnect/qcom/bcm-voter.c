@@ -4,6 +4,9 @@
  */
 
 #include <asm/div64.h>
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
 #include <linux/interconnect-provider.h>
 #include <linux/list_sort.h>
 #include <linux/module.h>
@@ -228,7 +231,7 @@ struct bcm_voter *of_bcm_voter_get(struct device *dev, const char *name)
 
 	mutex_lock(&bcm_voter_lock);
 	list_for_each_entry(temp, &bcm_voters, voter_node) {
-		if (temp->np == node) {
+		if (temp->np && temp->np == node) {
 			voter = temp;
 			break;
 		}
@@ -239,6 +242,41 @@ struct bcm_voter *of_bcm_voter_get(struct device *dev, const char *name)
 	return voter;
 }
 EXPORT_SYMBOL_GPL(of_bcm_voter_get);
+
+/* Firmware-node reference lookup for explicit non-OF consumers.
+ * The board must establish a supplier link and retain the voter lifetime.
+ */
+struct bcm_voter *qcom_bcm_voter_get(struct device *dev, const char *name)
+{
+	struct bcm_voter *voter = ERR_PTR(-EPROBE_DEFER), *candidate;
+	struct fwnode_handle *node;
+	int idx = 0;
+
+	if (!dev)
+		return ERR_PTR(-EINVAL);
+	if (dev->of_node)
+		return of_bcm_voter_get(dev, name);
+	if (name) {
+		idx = device_property_match_string(dev, "qcom,bcm-voter-names", name);
+		if (idx < 0)
+			return ERR_PTR(idx);
+	}
+	node = fwnode_find_reference(dev_fwnode(dev), "qcom,bcm-voters", idx);
+	if (IS_ERR(node))
+		return ERR_CAST(node);
+	mutex_lock(&bcm_voter_lock);
+	list_for_each_entry(candidate, &bcm_voters, voter_node) {
+		if (dev_fwnode(candidate->dev) == node &&
+		    device_is_bound(candidate->dev)) {
+			voter = candidate;
+			break;
+		}
+	}
+	mutex_unlock(&bcm_voter_lock);
+	fwnode_handle_put(node);
+	return voter;
+}
+EXPORT_SYMBOL_GPL(qcom_bcm_voter_get);
 
 /**
  * qcom_icc_bcm_voter_add - queues up the bcm nodes that require updates
@@ -367,10 +405,27 @@ out:
 }
 EXPORT_SYMBOL_GPL(qcom_icc_bcm_voter_commit);
 
+static void qcom_bcm_voter_unlist(void *data)
+{
+	struct bcm_voter *voter = data;
+
+	mutex_lock(&bcm_voter_lock);
+	list_del(&voter->voter_node);
+	mutex_unlock(&bcm_voter_lock);
+}
+
 static int qcom_icc_bcm_voter_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct bcm_voter *voter;
+
+	if (!np && (acpi_disabled || !pdev->dev.parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !dev_name(pdev->dev.parent) ||
+	    strcmp(dev_name(pdev->dev.parent), "rpmh") ||
+	    !device_property_read_bool(&pdev->dev, "qcom,tcl-acpi-display")))
+		return -ENODEV;
 
 	voter = devm_kzalloc(&pdev->dev, sizeof(*voter), GFP_KERNEL);
 	if (!voter)
@@ -379,7 +434,7 @@ static int qcom_icc_bcm_voter_probe(struct platform_device *pdev)
 	voter->dev = &pdev->dev;
 	voter->np = np;
 
-	if (of_property_read_u32(np, "qcom,tcs-wait", &voter->tcs_wait))
+	if (device_property_read_u32(&pdev->dev, "qcom,tcs-wait", &voter->tcs_wait))
 		voter->tcs_wait = QCOM_ICC_TAG_ACTIVE_ONLY;
 
 	mutex_init(&voter->lock);
@@ -390,7 +445,7 @@ static int qcom_icc_bcm_voter_probe(struct platform_device *pdev)
 	list_add_tail(&voter->voter_node, &bcm_voters);
 	mutex_unlock(&bcm_voter_lock);
 
-	return 0;
+	return devm_add_action_or_reset(&pdev->dev, qcom_bcm_voter_unlist, voter);
 }
 
 static const struct of_device_id bcm_voter_of_match[] = {
@@ -399,7 +454,13 @@ static const struct of_device_id bcm_voter_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, bcm_voter_of_match);
 
+static const struct platform_device_id tcl_bcm_voter_ids[] = {
+	{ "tcl-bcm-voter" }, { }
+};
+MODULE_DEVICE_TABLE(platform, tcl_bcm_voter_ids);
+
 static struct platform_driver qcom_icc_bcm_voter_driver = {
+	.id_table = tcl_bcm_voter_ids,
 	.probe = qcom_icc_bcm_voter_probe,
 	.driver = {
 		.name		= "bcm_voter",

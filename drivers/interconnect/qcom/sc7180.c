@@ -5,6 +5,9 @@
  */
 
 #include <linux/device.h>
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/property.h>
 #include <linux/interconnect.h>
 #include <linux/interconnect-provider.h>
 #include <linux/module.h>
@@ -1790,13 +1793,45 @@ static const struct of_device_id qnoc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, qnoc_of_match);
 
+static const struct platform_device_id tcl_qnoc_ids[] = {
+	{ "tcl-sc7180-mnoc", (kernel_ulong_t)&sc7180_mmss_noc },
+	{ "tcl-sc7180-gnoc", (kernel_ulong_t)&sc7180_gem_noc },
+	{ "tcl-sc7180-mc", (kernel_ulong_t)&sc7180_mc_virt },
+	{ "tcl-sc7180-snoc", (kernel_ulong_t)&sc7180_system_noc },
+	{ "tcl-sc7180-cnoc", (kernel_ulong_t)&sc7180_config_noc },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, tcl_qnoc_ids);
+
+static int sc7180_noc_probe(struct platform_device *pdev)
+{
+	if (!pdev->dev.of_node && (acpi_disabled || !pdev->dev.parent ||
+	    !dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") ||
+	    !dev_name(pdev->dev.parent) ||
+	    strcmp(dev_name(pdev->dev.parent), "rpmh") ||
+	    !device_property_read_bool(&pdev->dev, "qcom,tcl-acpi-display")))
+		return -ENODEV;
+	return qcom_icc_rpmh_probe(pdev);
+}
+
+static void sc7180_noc_sync_state(struct device *dev)
+{
+	/* Non-OF enumeration is incomplete: keep the ICC bootstrap floor.
+	 * This is not firmware bandwidth readback or final power management.
+	 */
+	if (dev->of_node)
+		icc_sync_state(dev);
+}
+
 static struct platform_driver qnoc_driver = {
-	.probe = qcom_icc_rpmh_probe,
+	.probe = sc7180_noc_probe,
+	.id_table = tcl_qnoc_ids,
 	.remove = qcom_icc_rpmh_remove,
 	.driver = {
 		.name = "qnoc-sc7180",
 		.of_match_table = qnoc_of_match,
-		.sync_state = icc_sync_state,
+		.sync_state = sc7180_noc_sync_state,
 	},
 };
 module_platform_driver(qnoc_driver);

@@ -246,7 +246,9 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 	size_t num_nodes, i, j;
 	int ret;
 
-	desc = of_device_get_match_data(dev);
+	desc = device_get_match_data(dev);
+	if (!desc && !dev->of_node && platform_get_device_id(pdev))
+		desc = (const void *)platform_get_device_id(pdev)->driver_data;
 	if (!desc)
 		return -EINVAL;
 
@@ -278,7 +280,7 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 	qp->num_bcms = desc->num_bcms;
 	qp->num_nodes = desc->num_nodes;
 
-	qp->voter = of_bcm_voter_get(qp->dev, NULL);
+	qp->voter = qcom_bcm_voter_get(qp->dev, NULL);
 	if (IS_ERR(qp->voter))
 		return PTR_ERR(qp->voter);
 
