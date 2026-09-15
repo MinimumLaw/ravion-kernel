@@ -2987,8 +2987,7 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 	 * ID used by the DT node so the Apps SMMU attaches this client. */
 	if (has_acpi_companion(dev)) {
 		u32 input_id = 0x81030000;
-		acpi_dma_configure_id(dev, acpi_get_dma_attr(to_acpi_device_node(dev_fwnode(dev))),
-				      &input_id);
+		acpi_dma_configure_id(dev, DEV_DMA_COHERENT, &input_id);
 	}
 
 	if (drvdata && drvdata->vops)
