@@ -1481,10 +1481,48 @@ static int platform_dma_configure(struct device *dev)
 	} else if (is_acpi_device_node(fwnode)) {
 		attr = acpi_get_dma_attr(to_acpi_device_node(fwnode));
 		ret = acpi_dma_configure(dev, attr);
+	} else if (dev_name(dev) && !strcmp(dev_name(dev), "tcl-sc7180-dpu") &&
+		   device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
+		struct acpi_device *adev;
+
+		/* Supplemental DPU keeps its software node and MDSS parent. */
+		if (!dev->parent || !dev->parent->parent)
+			return -ENODEV;
+		adev = acpi_companion_or_self(dev->parent->parent);
+		if (!adev)
+			return -ENODEV;
+		attr = acpi_get_dma_attr(adev);
+		ret = acpi_dma_configure(dev, attr);
+	}
+	if (!is_of_node(fwnode) && !is_acpi_device_node(fwnode) && dev_name(dev) &&
+	    (!strcmp(dev_name(dev), "tcl-sc7180-adreno") ||
+	     !strcmp(dev_name(dev), "tcl-sc7180-gmu")) &&
+	    device_property_read_bool(dev, "qcom,tcl-acpi-gpu")) {
+		struct acpi_device *adev = acpi_companion_or_self(dev->parent);
+
+		if (!adev)
+			return -ENODEV;
+		ret = acpi_dma_configure(dev, acpi_get_dma_attr(adev));
 	}
 	/* @dev->driver may not be valid when we're called from the IOMMU layer */
+	if (is_software_node(fwnode) && !strcmp(dev_name(dev), "tcl-q6asm-dai") &&
+	    device_property_read_bool(dev, "qcom,tcl-acpi-audio"))
+		/* OEM ADCM stream is non-coherent; IORT validates board and mapping. */
+		ret = acpi_dma_configure(dev, DEV_DMA_NON_COHERENT);
+
 	if (ret || !drv || to_platform_driver(drv)->driver_managed_dma)
 		return ret;
+
+	if (dev_name(dev) && !strcmp(dev_name(dev), "tcl-sc7180-dpu") &&
+	    device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
+		struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+
+		/* A valid fwspec alone does not prove successful SMMU attach. */
+		if (!dev->iommu_group || !domain)
+			return -EPROBE_DEFER;
+		if (!(domain->type & __IOMMU_DOMAIN_PAGING))
+			return -EINVAL;
+	}
 
 	ret = iommu_device_use_default_domain(dev);
 	if (ret)

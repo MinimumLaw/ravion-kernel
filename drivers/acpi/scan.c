@@ -1599,6 +1599,15 @@ int acpi_dma_get_range(struct device *dev, const struct bus_dma_region **map)
 	return ret >= 0 ? 0 : ret;
 }
 
+static bool acpi_tcl_dpu_strict_dma(struct device *dev)
+{
+	/* IORT configures SMMU DMA before platform_device_add() assigns a name. */
+	const char *name = dev_name(dev);
+
+	return name && !dev->of_node && !strcmp(name, "tcl-sc7180-dpu") &&
+		device_property_read_bool(dev, "qcom,tcl-acpi-display");
+}
+
 #ifdef CONFIG_IOMMU_API
 int acpi_iommu_fwspec_init(struct device *dev, u32 id,
 			   struct fwnode_handle *fwnode)
@@ -1614,22 +1623,32 @@ int acpi_iommu_fwspec_init(struct device *dev, u32 id,
 
 static int acpi_iommu_configure_id(struct device *dev, const u32 *id_in)
 {
+	bool strict = acpi_tcl_dpu_strict_dma(dev);
 	int err;
 
 	/* Serialise to make dev->iommu stable under our potential fwspec */
 	mutex_lock(&iommu_probe_device_lock);
 	/* If we already translated the fwspec there is nothing left to do */
 	if (dev_iommu_fwspec_get(dev)) {
-		mutex_unlock(&iommu_probe_device_lock);
-		return 0;
+		err = 0;
+		goto validate;
 	}
 
 	err = iort_iommu_configure_id(dev, id_in);
-	if (err && err != -EPROBE_DEFER)
+	if (!strict && err && err != -EPROBE_DEFER)
 		err = rimt_iommu_configure_id(dev, id_in);
-	if (err && err != -EPROBE_DEFER)
+	if (!strict && err && err != -EPROBE_DEFER)
 		err = viot_iommu_configure(dev);
 
+validate:
+	if (!err && strict) {
+		struct iommu_fwspec *spec = dev_iommu_fwspec_get(dev);
+
+		if (id_in || !spec || spec->num_ids != 3 ||
+		    spec->ids[0] != 0x800 || spec->ids[1] != 0x802 ||
+		    spec->ids[2] != 0x801)
+			err = -EINVAL;
+	}
 	mutex_unlock(&iommu_probe_device_lock);
 
 	return err;
@@ -1662,6 +1681,8 @@ int acpi_dma_configure_id(struct device *dev, enum dev_dma_attr attr,
 	int ret;
 
 	if (attr == DEV_DMA_NOT_SUPPORTED) {
+		if (acpi_tcl_dpu_strict_dma(dev))
+			return -ENODEV;
 		set_dma_ops(dev, &dma_dummy_ops);
 		return 0;
 	}
@@ -1670,8 +1691,8 @@ int acpi_dma_configure_id(struct device *dev, enum dev_dma_attr attr,
 
 	/* Ignore all other errors apart from EPROBE_DEFER */
 	ret = acpi_iommu_configure_id(dev, input_id);
-	if (ret == -EPROBE_DEFER)
-		return -EPROBE_DEFER;
+	if (ret == -EPROBE_DEFER || (ret && acpi_tcl_dpu_strict_dma(dev)))
+		return ret;
 	if (ret)
 		dev_dbg(dev, "Adding to IOMMU failed: %d\n", ret);
 
