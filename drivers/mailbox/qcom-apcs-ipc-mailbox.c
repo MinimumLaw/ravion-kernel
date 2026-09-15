@@ -94,7 +94,15 @@ static int qcom_apcs_ipc_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	apcs_data = of_device_get_match_data(&pdev->dev);
+	apcs_data = device_get_match_data(&pdev->dev);
+	if (!apcs_data) {
+		const struct platform_device_id *id = platform_get_device_id(pdev);
+
+		if (id)
+			apcs_data = (const void *)id->driver_data;
+	}
+	if (!apcs_data)
+		return -EINVAL;
 
 	apcs->regmap = regmap;
 	apcs->offset = apcs_data->offset;
@@ -173,8 +181,15 @@ static const struct of_device_id qcom_apcs_ipc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, qcom_apcs_ipc_of_match);
 
+static const struct platform_device_id qcom_apcs_ipc_platform_ids[] = {
+	{ "qcom-apss-shared", (kernel_ulong_t)&apps_shared_apcs_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, qcom_apcs_ipc_platform_ids);
+
 static struct platform_driver qcom_apcs_ipc_driver = {
 	.probe = qcom_apcs_ipc_probe,
+	.id_table = qcom_apcs_ipc_platform_ids,
 	.remove = qcom_apcs_ipc_remove,
 	.driver = {
 		.name = "qcom_apcs_ipc",

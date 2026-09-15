@@ -4,7 +4,9 @@
 
 #include <linux/err.h>
 
+struct device;
 struct device_node;
+struct fwnode_handle;
 struct qcom_smem_state;
 
 struct qcom_smem_state_ops {
@@ -18,6 +20,8 @@ struct qcom_smem_state *devm_qcom_smem_state_get(struct device *dev, const char 
 void qcom_smem_state_put(struct qcom_smem_state *);
 
 int qcom_smem_state_update_bits(struct qcom_smem_state *state, u32 mask, u32 value);
+
+struct qcom_smem_state *qcom_smem_state_register_fwnode(struct fwnode_handle *fwnode, const struct qcom_smem_state_ops *ops, void *data);
 
 struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node, const struct qcom_smem_state_ops *ops, void *data);
 void qcom_smem_state_unregister(struct qcom_smem_state *state);
@@ -45,6 +49,12 @@ static inline int qcom_smem_state_update_bits(struct qcom_smem_state *state,
 	u32 mask, u32 value)
 {
 	return -EINVAL;
+}
+
+static inline struct qcom_smem_state *qcom_smem_state_register_fwnode(
+	struct fwnode_handle *fwnode, const struct qcom_smem_state_ops *ops, void *data)
+{
+	return ERR_PTR(-EINVAL);
 }
 
 static inline struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node,

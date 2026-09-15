@@ -185,8 +185,14 @@ static struct regmap *qcom_hwspinlock_probe_mmio(struct platform_device *pdev,
 	struct device *dev = &pdev->dev;
 	void __iomem *base;
 
-	data = of_device_get_match_data(dev);
-	if (!data->regmap_config)
+	data = device_get_match_data(dev);
+	if (!data) {
+		const struct platform_device_id *id = platform_get_device_id(pdev);
+
+		if (id)
+			data = (const void *)id->driver_data;
+	}
+	if (!data || !data->regmap_config)
 		return ERR_PTR(-EINVAL);
 
 	*offset = data->offset;
@@ -235,8 +241,16 @@ static int qcom_hwspinlock_probe(struct platform_device *pdev)
 					 0, QCOM_MUTEX_NUM_LOCKS);
 }
 
+/* Used by firmware-specific board code providing the MMIO resource. */
+static const struct platform_device_id qcom_hwspinlock_platform_ids[] = {
+	{ "qcom-tcsr-mutex", (kernel_ulong_t)&of_tcsr_mutex },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, qcom_hwspinlock_platform_ids);
+
 static struct platform_driver qcom_hwspinlock_driver = {
 	.probe		= qcom_hwspinlock_probe,
+	.id_table	= qcom_hwspinlock_platform_ids,
 	.driver		= {
 		.name	= "qcom_hwspinlock",
 		.of_match_table = qcom_hwspinlock_of_match,

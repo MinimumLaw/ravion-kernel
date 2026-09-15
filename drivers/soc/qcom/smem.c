@@ -4,6 +4,7 @@
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/property.h>
 #include <linux/hwspinlock.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -1133,7 +1134,7 @@ static int qcom_smem_probe(struct platform_device *pdev)
 	struct qcom_smem *smem;
 	unsigned long flags;
 	int num_regions;
-	int hwlock_id;
+	int hwlock_id = -EINVAL;
 	u32 version;
 	u32 size;
 	int ret;
@@ -1151,8 +1152,26 @@ static int qcom_smem_probe(struct platform_device *pdev)
 	smem->dev = &pdev->dev;
 	smem->num_regions = num_regions;
 
-	rmem = of_reserved_mem_lookup(pdev->dev.of_node);
-	if (rmem) {
+	rmem = pdev->dev.of_node ?
+		of_reserved_mem_lookup(pdev->dev.of_node) : NULL;
+	if (!pdev->dev.of_node) {
+		struct resource *res;
+		u32 lock_id;
+
+		/* Firmware-specific board code supplies a reserved SMEM window
+		 * and the hardware lock ID, after registering the lock provider.
+		 */
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res || resource_size(res) < SZ_4K)
+			return -EINVAL;
+		ret = device_property_read_u32(&pdev->dev, "qcom,hwlock-id",
+					      &lock_id);
+		if (ret || lock_id > INT_MAX)
+			return -EINVAL;
+		hwlock_id = lock_id;
+		smem->regions[0].aux_base = res->start;
+		smem->regions[0].size = resource_size(res);
+	} else if (rmem) {
 		smem->regions[0].aux_base = rmem->base;
 		smem->regions[0].size = rmem->size;
 	} else {
@@ -1193,14 +1212,15 @@ static int qcom_smem_probe(struct platform_device *pdev)
 		return dev_err_probe(&pdev->dev, PTR_ERR(__smem), "SMEM is not initialized by SBL\n");
 	}
 
-	hwlock_id = of_hwspin_lock_get_id(pdev->dev.of_node, 0);
+	if (pdev->dev.of_node)
+		hwlock_id = of_hwspin_lock_get_id(pdev->dev.of_node, 0);
 	if (hwlock_id < 0)
 		return dev_err_probe(&pdev->dev, hwlock_id,
 				     "failed to retrieve hwlock\n");
 
 	smem->hwlock = devm_hwspin_lock_request_specific(&pdev->dev, hwlock_id);
 	if (!smem->hwlock)
-		return -ENXIO;
+		return pdev->dev.of_node ? -ENXIO : -EPROBE_DEFER;
 
 	ret = hwspin_lock_timeout_irqsave(smem->hwlock, HWSPINLOCK_TIMEOUT, &flags);
 	if (ret)

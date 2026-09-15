@@ -4,6 +4,7 @@
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/property.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
 #include <linux/io.h>
@@ -475,13 +476,14 @@ static int smp2p_irq_map(struct irq_domain *d,
 static const struct irq_domain_ops smp2p_irq_ops = {
 	.map = smp2p_irq_map,
 	.xlate = irq_domain_xlate_twocell,
+	.translate = irq_domain_translate_twocell,
 };
 
 static int qcom_smp2p_inbound_entry(struct qcom_smp2p *smp2p,
 				    struct smp2p_entry *entry,
-				    struct device_node *node)
+				    struct fwnode_handle *node)
 {
-	entry->domain = irq_domain_create_linear(of_fwnode_handle(node), 32, &smp2p_irq_ops, entry);
+	entry->domain = irq_domain_create_linear(node, 32, &smp2p_irq_ops, entry);
 	if (!entry->domain) {
 		dev_err(smp2p->dev, "failed to add irq_domain\n");
 		return -ENOMEM;
@@ -518,7 +520,7 @@ static const struct qcom_smem_state_ops smp2p_state_ops = {
 
 static int qcom_smp2p_outbound_entry(struct qcom_smp2p *smp2p,
 				     struct smp2p_entry *entry,
-				     struct device_node *node)
+				     struct fwnode_handle *node)
 {
 	struct smp2p_smem_item *out = smp2p->out;
 	char buf[SMP2P_MAX_ENTRY_NAME] = {};
@@ -532,7 +534,7 @@ static int qcom_smp2p_outbound_entry(struct qcom_smp2p *smp2p,
 
 	out->valid_entries++;
 
-	entry->state = qcom_smem_state_register(node, &smp2p_state_ops, entry);
+	entry->state = qcom_smem_state_register_fwnode(node, &smp2p_state_ops, entry);
 	if (IS_ERR(entry->state)) {
 		dev_err(smp2p->dev, "failed to register qcom_smem_state\n");
 		return PTR_ERR(entry->state);
@@ -644,18 +646,18 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, smp2p);
 
 	key = "qcom,smem";
-	ret = of_property_read_u32_array(pdev->dev.of_node, key,
+	ret = device_property_read_u32_array(&pdev->dev, key,
 					 smp2p->smem_items, 2);
 	if (ret)
 		return ret;
 
 	key = "qcom,local-pid";
-	ret = of_property_read_u32(pdev->dev.of_node, key, &smp2p->local_pid);
+	ret = device_property_read_u32(&pdev->dev, key, &smp2p->local_pid);
 	if (ret)
 		goto report_read_failure;
 
 	key = "qcom,remote-pid";
-	ret = of_property_read_u32(pdev->dev.of_node, key, &smp2p->remote_pid);
+	ret = device_property_read_u32(&pdev->dev, key, &smp2p->remote_pid);
 	if (ret)
 		goto report_read_failure;
 
@@ -681,7 +683,9 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto release_mbox;
 
-	for_each_available_child_of_node_scoped(pdev->dev.of_node, node) {
+	device_for_each_child_node_scoped(&pdev->dev, node) {
+		if (!fwnode_device_is_available(node))
+			continue;
 		entry = devm_kzalloc(&pdev->dev, sizeof(*entry), GFP_KERNEL);
 		if (!entry) {
 			ret = -ENOMEM;
@@ -691,11 +695,11 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		entry->smp2p = smp2p;
 		spin_lock_init(&entry->lock);
 
-		ret = of_property_read_string(node, "qcom,entry-name", &entry->name);
+		ret = fwnode_property_read_string(node, "qcom,entry-name", &entry->name);
 		if (ret < 0)
 			goto unwind_interfaces;
 
-		if (of_property_read_bool(node, "interrupt-controller")) {
+		if (fwnode_property_read_bool(node, "interrupt-controller")) {
 			ret = qcom_smp2p_inbound_entry(smp2p, entry, node);
 			if (ret < 0)
 				goto unwind_interfaces;

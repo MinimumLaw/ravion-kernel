@@ -8,6 +8,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/soc/qcom/smem_state.h>
 
@@ -19,7 +20,7 @@ static DEFINE_MUTEX(list_lock);
  * @refcount:	refcount for the state
  * @orphan:	boolean indicator that this state has been unregistered
  * @list:	entry in smem_states list
- * @of_node:	of_node to use for matching the state in DT
+ * @fwnode:	firmware node used for matching the state
  * @priv:	implementation private data
  * @ops:	ops for the state
  */
@@ -28,7 +29,7 @@ struct qcom_smem_state {
 	bool orphan;
 
 	struct list_head list;
-	struct device_node *of_node;
+	struct fwnode_handle *fwnode;
 
 	void *priv;
 
@@ -57,14 +58,14 @@ int qcom_smem_state_update_bits(struct qcom_smem_state *state,
 }
 EXPORT_SYMBOL_GPL(qcom_smem_state_update_bits);
 
-static struct qcom_smem_state *of_node_to_state(struct device_node *np)
+static struct qcom_smem_state *fwnode_to_state(struct fwnode_handle *fwnode)
 {
 	struct qcom_smem_state *state;
 
 	guard(mutex)(&list_lock);
 
 	list_for_each_entry(state, &smem_states, list) {
-		if (state->of_node == np) {
+		if (state->fwnode == fwnode) {
 			kref_get(&state->refcount);
 			return state;
 		}
@@ -86,12 +87,12 @@ struct qcom_smem_state *qcom_smem_state_get(struct device *dev,
 					    unsigned *bit)
 {
 	struct qcom_smem_state *state;
-	struct of_phandle_args args;
+	struct fwnode_reference_args args;
 	int index = 0;
 	int ret;
 
 	if (con_id) {
-		index = of_property_match_string(dev->of_node,
+		index = device_property_match_string(dev,
 						 "qcom,smem-state-names",
 						 con_id);
 		if (index < 0) {
@@ -100,30 +101,29 @@ struct qcom_smem_state *qcom_smem_state_get(struct device *dev,
 		}
 	}
 
-	ret = of_parse_phandle_with_args(dev->of_node,
-					 "qcom,smem-states",
-					 "#qcom,smem-state-cells",
-					 index,
-					 &args);
+	ret = fwnode_property_get_reference_args(dev_fwnode(dev),
+						 "qcom,smem-states",
+						 "#qcom,smem-state-cells",
+						 0, index, &args);
 	if (ret) {
 		dev_err(dev, "failed to parse qcom,smem-states property\n");
 		return ERR_PTR(ret);
 	}
 
-	if (args.args_count != 1) {
+	if (args.nargs != 1) {
 		dev_err(dev, "invalid #qcom,smem-state-cells\n");
 		state = ERR_PTR(-EINVAL);
 		goto put;
 	}
 
-	state = of_node_to_state(args.np);
+	state = fwnode_to_state(args.fwnode);
 	if (IS_ERR(state))
 		goto put;
 
 	*bit = args.args[0];
 
 put:
-	of_node_put(args.np);
+	fwnode_handle_put(args.fwnode);
 	return state;
 }
 EXPORT_SYMBOL_GPL(qcom_smem_state_get);
@@ -133,7 +133,7 @@ static void qcom_smem_state_release(struct kref *ref)
 	struct qcom_smem_state *state = container_of(ref, struct qcom_smem_state, refcount);
 
 	list_del(&state->list);
-	of_node_put(state->of_node);
+	fwnode_handle_put(state->fwnode);
 	kfree(state);
 }
 
@@ -186,12 +186,12 @@ struct qcom_smem_state *devm_qcom_smem_state_get(struct device *dev,
 EXPORT_SYMBOL_GPL(devm_qcom_smem_state_get);
 
 /**
- * qcom_smem_state_register() - register a new state
- * @of_node:	of_node used for matching client lookups
+ * qcom_smem_state_register_fwnode() - register a new state
+ * @fwnode:	firmware node used for matching client lookups
  * @ops:	implementation ops
  * @priv:	implementation specific private data
  */
-struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node,
+struct qcom_smem_state *qcom_smem_state_register_fwnode(struct fwnode_handle *fwnode,
 						 const struct qcom_smem_state_ops *ops,
 						 void *priv)
 {
@@ -203,7 +203,7 @@ struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node,
 
 	kref_init(&state->refcount);
 
-	state->of_node = of_node_get(of_node);
+	state->fwnode = fwnode_handle_get(fwnode);
 	state->ops = *ops;
 	state->priv = priv;
 
@@ -212,6 +212,13 @@ struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node,
 	mutex_unlock(&list_lock);
 
 	return state;
+}
+EXPORT_SYMBOL_GPL(qcom_smem_state_register_fwnode);
+
+struct qcom_smem_state *qcom_smem_state_register(struct device_node *of_node,
+				 const struct qcom_smem_state_ops *ops, void *priv)
+{
+	return qcom_smem_state_register_fwnode(of_fwnode_handle(of_node), ops, priv);
 }
 EXPORT_SYMBOL_GPL(qcom_smem_state_register);
 
