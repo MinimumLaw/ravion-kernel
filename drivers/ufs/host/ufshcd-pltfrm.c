@@ -505,6 +505,15 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
 	int irq, err;
 	struct device *dev = &pdev->dev;
 
+	/* ACPI IORT names the B220G UFS stream with input ID 0x81030000.
+	 * Apply it at the point where the UFS host is actually initialised;
+	 * OEM platform enumeration may have run before the final driver name
+	 * and otherwise leaves this client outside the Apps SMMU domain. */
+	if (has_acpi_companion(dev)) {
+		u32 input_id = 0x81030000;
+		acpi_dma_configure_id(dev, DEV_DMA_COHERENT, &input_id);
+	}
+
 	mmio_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(mmio_base))
 		return PTR_ERR(mmio_base);
