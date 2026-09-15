@@ -148,14 +148,15 @@ int qcom_icc_bcm_init(struct qcom_icc_bcm *bcm, struct device *dev)
 	struct qcom_icc_node *qn;
 	const struct bcm_db *data;
 	size_t data_count;
-	int i;
+	size_t i;
+	u32 addr;
 
 	/* BCM is already initialised*/
 	if (bcm->addr)
 		return 0;
 
-	bcm->addr = cmd_db_read_addr(bcm->name);
-	if (!bcm->addr) {
+	addr = cmd_db_read_addr(bcm->name);
+	if (!addr) {
 		dev_err(dev, "%s could not find RPMh address\n",
 			bcm->name);
 		return -EINVAL;
@@ -167,10 +168,17 @@ int qcom_icc_bcm_init(struct qcom_icc_bcm *bcm, struct device *dev)
 			bcm->name, PTR_ERR(data));
 		return PTR_ERR(data);
 	}
-	if (!data_count) {
+	if (data_count < sizeof(*data)) {
 		dev_err(dev, "%s command db missing or partial aux data\n",
 			bcm->name);
 		return -EINVAL;
+	}
+
+	/* Validate all links before changing shared BCM/node state. */
+	for (i = 0; i < bcm->num_nodes; i++) {
+		qn = bcm->nodes[i];
+		if (qn->num_bcms >= ARRAY_SIZE(qn->bcms))
+			return -ENOSPC;
 	}
 
 	bcm->aux_data.unit = le32_to_cpu(data->unit);
@@ -190,6 +198,8 @@ int qcom_icc_bcm_init(struct qcom_icc_bcm *bcm, struct device *dev)
 		qn->num_bcms++;
 	}
 
+	/* A nonzero address denotes a fully initialized BCM. */
+	bcm->addr = addr;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qcom_icc_bcm_init);
@@ -272,8 +282,12 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 	if (IS_ERR(qp->voter))
 		return PTR_ERR(qp->voter);
 
-	for (i = 0; i < qp->num_bcms; i++)
-		qcom_icc_bcm_init(qp->bcms[i], dev);
+	for (i = 0; i < qp->num_bcms; i++) {
+		ret = qcom_icc_bcm_init(qp->bcms[i], dev);
+		if (ret)
+			return dev_err_probe(dev, ret, "Failed to initialize BCM %s\n",
+					     qp->bcms[i]->name);
+	}
 
 	for (i = 0; i < num_nodes; i++) {
 		qn = qnodes[i];
