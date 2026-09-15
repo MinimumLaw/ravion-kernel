@@ -10,7 +10,9 @@
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/of_address.h>
+#include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/rpmsg.h>
@@ -1585,19 +1587,19 @@ static int qcom_glink_trysendto(struct rpmsg_endpoint *ept, const void *data,
 }
 
 /*
- * Finds the device_node for the glink child interested in this channel.
+ * Finds the firmware node for the GLINK child interested in this channel.
  */
-static struct device_node *qcom_glink_match_channel(struct device_node *node,
+static struct fwnode_handle *qcom_glink_match_channel(struct fwnode_handle *node,
 						    const char *channel)
 {
-	struct device_node *child;
+	struct fwnode_handle *child;
 	const char *name;
 	const char *key;
 	int ret;
 
-	for_each_available_child_of_node(node, child) {
+	fwnode_for_each_available_child_node(node, child) {
 		key = "qcom,glink-channels";
-		ret = of_property_read_string(child, key, &name);
+		ret = fwnode_property_read_string(child, key, &name);
 		if (ret)
 			continue;
 
@@ -1626,6 +1628,7 @@ static void qcom_glink_rpdev_release(struct device *dev)
 {
 	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
 
+	fwnode_handle_put(dev_fwnode(dev));
 	kfree(rpdev);
 }
 
@@ -1635,7 +1638,7 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 	struct glink_channel *channel;
 	struct rpmsg_device *rpdev;
 	bool create_device = false;
-	struct device_node *node;
+	struct fwnode_handle *node;
 	int lcid;
 	int ret;
 	unsigned long flags;
@@ -1683,8 +1686,8 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 		rpdev->dst = RPMSG_ADDR_ANY;
 		rpdev->ops = &glink_device_ops;
 
-		node = qcom_glink_match_channel(glink->dev->of_node, name);
-		rpdev->dev.of_node = node;
+		node = qcom_glink_match_channel(dev_fwnode(glink->dev), name);
+		device_set_node(&rpdev->dev, node);
 		rpdev->dev.parent = glink->dev;
 		rpdev->dev.release = qcom_glink_rpdev_release;
 
@@ -1840,9 +1843,9 @@ static ssize_t rpmsg_name_show(struct device *dev,
 	int ret = 0;
 	const char *name;
 
-	ret = of_property_read_string(dev->of_node, "label", &name);
+	ret = device_property_read_string(dev, "label", &name);
 	if (ret < 0)
-		name = dev->of_node->name;
+		name = dev->of_node ? dev->of_node->name : dev_name(dev);
 
 	return sysfs_emit(buf, "%s\n", name);
 }
@@ -1918,9 +1921,9 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 	idr_init(&glink->lcids);
 	idr_init(&glink->rcids);
 
-	ret = of_property_read_string(dev->of_node, "label", &glink->label);
+	ret = device_property_read_string(dev, "label", &glink->label);
 	if (ret < 0)
-		glink->label = dev->of_node->name;
+		glink->label = dev->of_node ? dev->of_node->name : dev_name(dev);
 
 	glink->dev->groups = qcom_glink_groups;
 

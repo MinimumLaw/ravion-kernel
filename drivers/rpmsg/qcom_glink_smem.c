@@ -6,6 +6,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
@@ -221,11 +222,21 @@ static void qcom_glink_smem_release(struct device *dev)
 {
 	struct qcom_glink_smem *smem = container_of(dev, struct qcom_glink_smem, dev);
 
+	fwnode_handle_put(dev_fwnode(dev));
 	kfree(smem);
 }
 
-struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
-						 struct device_node *node)
+/**
+ * qcom_glink_smem_register_fwnode() - register an SMEM edge
+ * @parent: remote processor device
+ * @fwnode: edge properties and mailbox reference (a reference is retained)
+ * @irq: Linux IRQ, mapped and kept valid by the caller until unregistration
+ *
+ * This function does not map or dispose the interrupt controller mapping.
+ */
+struct qcom_glink_smem *
+qcom_glink_smem_register_fwnode(struct device *parent,
+			      struct fwnode_handle *fwnode, int irq)
 {
 	struct glink_smem_pipe *rx_pipe;
 	struct glink_smem_pipe *tx_pipe;
@@ -237,6 +248,11 @@ struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
 	size_t size;
 	int ret;
 
+	if (!parent || !parent->parent || !fwnode)
+		return ERR_PTR(-EINVAL);
+	if (irq <= 0)
+		return ERR_PTR(irq ? irq : -EINVAL);
+
 	smem = kzalloc_obj(*smem);
 	if (!smem)
 		return ERR_PTR(-ENOMEM);
@@ -244,18 +260,20 @@ struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
 	dev = &smem->dev;
 
 	dev->parent = parent;
-	dev->of_node = node;
+	device_set_node(dev, fwnode_handle_get(fwnode));
 	dev->release = qcom_glink_smem_release;
-	dev_set_name(dev, "%s:%pOFn", dev_name(parent->parent), node);
-	ret = device_register(dev);
+	device_initialize(dev);
+	ret = dev_set_name(dev, "%s:%s", dev_name(parent->parent),
+			   fwnode_get_name(fwnode));
+	if (!ret)
+		ret = device_add(dev);
 	if (ret) {
 		pr_err("failed to register glink edge\n");
 		put_device(dev);
 		return ERR_PTR(ret);
 	}
 
-	ret = of_property_read_u32(dev->of_node, "qcom,remote-pid",
-				   &remote_pid);
+	ret = device_property_read_u32(dev, "qcom,remote-pid", &remote_pid);
 	if (ret) {
 		dev_err(dev, "failed to parse qcom,remote-pid\n");
 		goto err_put_dev;
@@ -311,7 +329,7 @@ struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
 		goto err_put_dev;
 	}
 
-	smem->irq = of_irq_get(smem->dev.of_node, 0);
+	smem->irq = irq;
 	ret = devm_request_irq(&smem->dev, smem->irq, qcom_glink_smem_intr,
 			       IRQF_NO_SUSPEND | IRQF_NO_AUTOEN,
 			       "glink-smem", smem);
@@ -364,6 +382,17 @@ err_put_dev:
 	device_unregister(dev);
 
 	return ERR_PTR(ret);
+}
+EXPORT_SYMBOL_GPL(qcom_glink_smem_register_fwnode);
+
+struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
+					     struct device_node *node)
+{
+	if (!node)
+		return ERR_PTR(-EINVAL);
+
+	return qcom_glink_smem_register_fwnode(parent, of_fwnode_handle(node),
+					     of_irq_get(node, 0));
 }
 EXPORT_SYMBOL_GPL(qcom_glink_smem_register);
 

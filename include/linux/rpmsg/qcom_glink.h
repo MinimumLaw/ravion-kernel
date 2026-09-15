@@ -6,6 +6,7 @@
 #include <linux/device.h>
 
 struct qcom_glink_smem;
+struct fwnode_handle;
 
 #if IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK)
 void qcom_glink_ssr_notify(const char *ssr_name);
@@ -15,11 +16,22 @@ static inline void qcom_glink_ssr_notify(const char *ssr_name) {}
 
 #if IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_SMEM)
 
+struct qcom_glink_smem *
+qcom_glink_smem_register_fwnode(struct device *parent,
+			      struct fwnode_handle *fwnode, int irq);
+
 struct qcom_glink_smem *qcom_glink_smem_register(struct device *parent,
 						 struct device_node *node);
 void qcom_glink_smem_unregister(struct qcom_glink_smem *glink);
 
 #else
+
+static inline struct qcom_glink_smem *
+qcom_glink_smem_register_fwnode(struct device *parent,
+			      struct fwnode_handle *fwnode, int irq)
+{
+	return NULL;
+}
 
 static inline struct qcom_glink_smem *
 qcom_glink_smem_register(struct device *parent,
