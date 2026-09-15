@@ -304,3 +304,16 @@ config QCOM_UBWC_CONFIG
 	  (UBWC) engines across various IP blocks, which need to be initialized
 	  with coherent configuration data. This module functions as a single
 	  source of truth for that information.
+
+config QCOM_TCL_ACPI_SMEM
+	tristate "TCL diagnostic ACPI SMEM board glue"
+	depends on ACPI && EFI && ARCH_QCOM
+	depends on QCOM_SMEM && HWSPINLOCK_QCOM
+	help
+	  Experimental board glue for the verified TCL SC7180 firmware.
+	  Registers reserved SMEM and TCSR resources. No unload support.
+
+config QCOM_TCL_ACPI_WIFI
+	tristate "TCL SC7180 diagnostic ACPI WiFi wiring"
+	depends on ACPI && EFI && ARCH_QCOM && QCOM_RPMH && QCOM_SMEM
+	depends on QCOM_RPMHPD && COMMON_CLK_QCOM && REGULATOR

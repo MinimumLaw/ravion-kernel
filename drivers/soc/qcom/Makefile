@@ -40,3 +40,7 @@ qcom_ice-objs			+= ice.o
 obj-$(CONFIG_QCOM_INLINE_CRYPTO_ENGINE)	+= qcom_ice.o
 obj-$(CONFIG_QCOM_PBS) +=	qcom-pbs.o
 obj-$(CONFIG_QCOM_UBWC_CONFIG) += ubwc_config.o
+
+obj-$(CONFIG_QCOM_TCL_ACPI_SMEM) += tcl_acpi_smem.o
+
+obj-$(CONFIG_QCOM_TCL_ACPI_WIFI) += tcl_acpi_wifi.o
