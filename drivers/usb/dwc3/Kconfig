@@ -234,4 +234,13 @@ config USB_DWC3_GOOGLE
 	  To compile this driver as a module, choose M here: the
 	  module will be called dwc3-google.ko.
 
+config USB_DWC3_TCL_ACPI
+	tristate "TCL SC7180 diagnostic ACPI USB glue"
+	depends on ACPI && ARCH_QCOM
+	depends on USB_DWC3
+	help
+	  Experimental QCOM0897 glue for TCL URS0. Requires the matching
+	  IORT quirk and firmware-initialized clocks, regulators and PHYs.
+	  Suspend and wake support are intentionally unavailable.
+
 endif
