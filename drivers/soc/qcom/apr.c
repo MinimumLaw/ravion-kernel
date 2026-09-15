@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/of_device.h>
+#include <linux/property.h>
 #include <linux/soc/qcom/apr.h>
 #include <linux/soc/qcom/pdr.h>
 #include <linux/rpmsg.h>
@@ -155,6 +156,7 @@ static void apr_dev_release(struct device *dev)
 {
 	struct apr_device *adev = to_apr_device(dev);
 
+	fwnode_handle_put(dev_fwnode(dev));
 	kfree(adev);
 }
 
@@ -348,6 +350,16 @@ static int apr_device_match(struct device *dev, const struct device_driver *drv)
 	if (of_driver_match_device(dev, drv))
 		return 1;
 
+	/* Software nodes describe ACPI board services using the same compatibles. */
+	if (is_software_node(dev_fwnode(dev)) && drv->of_match_table) {
+		const struct of_device_id *match;
+
+		for (match = drv->of_match_table; match->compatible[0]; match++)
+			if (device_property_match_string(dev, "compatible",
+						 match->compatible) >= 0)
+				return 1;
+	}
+
 	if (!id)
 		return 0;
 
@@ -408,94 +420,101 @@ const struct bus_type aprbus = {
 };
 EXPORT_SYMBOL_GPL(aprbus);
 
-static int apr_add_device(struct device *dev, struct device_node *np,
+/* APR bindings define at most two protection-domain strings. */
+static int apr_read_pd_string(const struct fwnode_handle *node,
+			      unsigned int index, const char **value)
+{
+	const char *strings[2];
+	int ret;
+
+	if (index >= ARRAY_SIZE(strings))
+		return -EINVAL;
+	ret = fwnode_property_read_string_array(node, "qcom,protection-domain",
+					       strings, index + 1);
+	if (ret < 0)
+		return ret;
+	if (ret <= index)
+		return -EINVAL;
+	*value = strings[index];
+	return 0;
+}
+
+static int apr_add_device(struct device *dev, struct fwnode_handle *node,
 			  u32 svc_id, u32 domain_id)
 {
 	struct packet_router *apr = dev_get_drvdata(dev);
-	struct apr_device *adev = NULL;
+	struct apr_device *adev;
 	struct pkt_router_svc *svc;
+	const char *node_name;
 	int ret;
 
 	adev = kzalloc_obj(*adev);
 	if (!adev)
 		return -ENOMEM;
 
+	device_initialize(&adev->dev);
+	adev->dev.bus = &aprbus;
+	adev->dev.parent = dev;
+	adev->dev.release = apr_dev_release;
+	device_set_node(&adev->dev, fwnode_handle_get(node));
 	adev->svc_id = svc_id;
+	adev->domain_id = domain_id;
 	svc = &adev->svc;
-
 	svc->id = svc_id;
 	svc->pr = apr;
 	svc->priv = adev;
 	svc->dev = dev;
 	spin_lock_init(&svc->lock);
 
-	adev->domain_id = domain_id;
-
-	if (np)
-		snprintf(adev->name, APR_NAME_SIZE, "%pOFn", np);
-
-	switch (apr->type) {
-	case PR_TYPE_APR:
-		dev_set_name(&adev->dev, "aprsvc:%s:%x:%x", adev->name,
-			     domain_id, svc_id);
-		break;
-	case PR_TYPE_GPR:
-		dev_set_name(&adev->dev, "gprsvc:%s:%x:%x", adev->name,
-			     domain_id, svc_id);
-		break;
-	default:
-		break;
+	node_name = fwnode_get_name(node);
+	if (node_name)
+		strscpy(adev->name, node_name, sizeof(adev->name));
+	if (apr->type != PR_TYPE_APR && apr->type != PR_TYPE_GPR) {
+		ret = -EINVAL;
+		goto put_device;
 	}
+	ret = dev_set_name(&adev->dev, "%ssvc:%s:%x:%x",
+			   apr->type == PR_TYPE_APR ? "apr" : "gpr",
+			   adev->name, domain_id, svc_id);
+	if (ret)
+		goto put_device;
 
-	adev->dev.bus = &aprbus;
-	adev->dev.parent = dev;
-	adev->dev.of_node = np;
-	adev->dev.release = apr_dev_release;
-	adev->dev.driver = NULL;
-
+	if (fwnode_property_present(node, "qcom,protection-domain")) {
+		ret = apr_read_pd_string(node, 1, &adev->service_path);
+		if (ret)
+			goto put_device;
+	}
 	spin_lock(&apr->svcs_lock);
 	ret = idr_alloc(&apr->svcs_idr, svc, svc_id, svc_id + 1, GFP_ATOMIC);
 	spin_unlock(&apr->svcs_lock);
-	if (ret < 0) {
-		dev_err(dev, "idr_alloc failed: %d\n", ret);
-		goto out;
-	}
-
-	/* Protection domain is optional, it does not exist on older platforms */
-	ret = of_property_read_string_index(np, "qcom,protection-domain",
-					    1, &adev->service_path);
-	if (ret < 0 && ret != -EINVAL) {
-		dev_err(dev, "Failed to read second value of qcom,protection-domain\n");
-		goto out;
-	}
+	if (ret < 0)
+		goto put_device;
 
 	dev_info(dev, "Adding APR/GPR dev: %s\n", dev_name(&adev->dev));
-
-	ret = device_register(&adev->dev);
-	if (ret) {
-		dev_err(dev, "device_register failed: %d\n", ret);
-		put_device(&adev->dev);
-	}
-
-out:
+	ret = device_add(&adev->dev);
+	if (!ret)
+		return 0;
+	spin_lock(&apr->svcs_lock);
+	idr_remove(&apr->svcs_idr, svc_id);
+	spin_unlock(&apr->svcs_lock);
+put_device:
+	put_device(&adev->dev);
 	return ret;
 }
 
-static int of_apr_add_pd_lookups(struct device *dev)
+static int apr_add_pd_lookups(struct device *dev)
 {
 	const char *service_name, *service_path;
 	struct packet_router *apr = dev_get_drvdata(dev);
 	struct pdr_service *pds;
 	int ret;
 
-	for_each_child_of_node_scoped(dev->of_node, node) {
-		ret = of_property_read_string_index(node, "qcom,protection-domain",
-						    0, &service_name);
+	device_for_each_child_node_scoped(dev, node) {
+		ret = apr_read_pd_string(node, 0, &service_name);
 		if (ret < 0)
 			continue;
 
-		ret = of_property_read_string_index(node, "qcom,protection-domain",
-						    1, &service_path);
+		ret = apr_read_pd_string(node, 1, &service_path);
 		if (ret < 0) {
 			dev_err(dev, "pdr service path missing: %d\n", ret);
 			return ret;
@@ -511,14 +530,13 @@ static int of_apr_add_pd_lookups(struct device *dev)
 	return 0;
 }
 
-static void of_register_apr_devices(struct device *dev, const char *svc_path)
+static void register_apr_devices(struct device *dev, const char *svc_path)
 {
 	struct packet_router *apr = dev_get_drvdata(dev);
-	struct device_node *node;
 	const char *service_path;
 	int ret;
 
-	for_each_child_of_node(dev->of_node, node) {
+	device_for_each_child_node_scoped(dev, node) {
 		u32 svc_id;
 		u32 domain_id;
 
@@ -534,8 +552,7 @@ static void of_register_apr_devices(struct device *dev, const char *svc_path)
 		 * qcom,protection-domain.
 		 */
 
-		ret = of_property_read_string_index(node, "qcom,protection-domain",
-						    1, &service_path);
+		ret = apr_read_pd_string(node, 1, &service_path);
 		if (svc_path) {
 			/* skip APR services that are PD independent */
 			if (ret)
@@ -550,7 +567,7 @@ static void of_register_apr_devices(struct device *dev, const char *svc_path)
 				continue;
 		}
 
-		if (of_property_read_u32(node, "reg", &svc_id))
+		if (fwnode_property_read_u32(node, "reg", &svc_id))
 			continue;
 
 		domain_id = apr->dest_domain_id;
@@ -580,7 +597,7 @@ static void apr_pd_status(int state, char *svc_path, void *priv)
 
 	switch (state) {
 	case SERVREG_SERVICE_STATE_UP:
-		of_register_apr_devices(apr->dev, svc_path);
+		register_apr_devices(apr->dev, svc_path);
 		break;
 	case SERVREG_SERVICE_STATE_DOWN:
 		device_for_each_child(apr->dev, svc_path, apr_remove_device);
@@ -598,19 +615,19 @@ static int apr_probe(struct rpmsg_device *rpdev)
 	if (!apr)
 		return -ENOMEM;
 
-	ret = of_property_read_u32(dev->of_node, "qcom,domain", &apr->dest_domain_id);
+	ret = device_property_read_u32(dev, "qcom,domain", &apr->dest_domain_id);
 
-	if (of_device_is_compatible(dev->of_node, "qcom,gpr")) {
+	if (device_property_match_string(dev, "compatible", "qcom,gpr") >= 0) {
 		apr->type = PR_TYPE_GPR;
 	} else {
 		if (ret) /* try deprecated apr-domain property */
-			ret = of_property_read_u32(dev->of_node, "qcom,apr-domain",
+			ret = device_property_read_u32(dev, "qcom,apr-domain",
 						   &apr->dest_domain_id);
 		apr->type = PR_TYPE_APR;
 	}
 
 	if (ret) {
-		dev_err(dev, "Domain ID not specified in DT\n");
+		dev_err(dev, "Domain ID not specified in firmware properties\n");
 		return ret;
 	}
 
@@ -636,11 +653,11 @@ static int apr_probe(struct rpmsg_device *rpdev)
 	spin_lock_init(&apr->svcs_lock);
 	idr_init(&apr->svcs_idr);
 
-	ret = of_apr_add_pd_lookups(dev);
+	ret = apr_add_pd_lookups(dev);
 	if (ret)
 		goto handle_release;
 
-	of_register_apr_devices(dev, NULL);
+	register_apr_devices(dev, NULL);
 
 	return 0;
 
@@ -697,7 +714,14 @@ static const struct of_device_id pkt_router_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, pkt_router_of_match);
 
+static const struct rpmsg_device_id pkt_router_rpmsg_match[] = {
+	{ "apr_audio_svc" },
+	{ }
+};
+MODULE_DEVICE_TABLE(rpmsg, pkt_router_rpmsg_match);
+
 static struct rpmsg_driver packet_router_driver = {
+	.id_table = pkt_router_rpmsg_match,
 	.probe = apr_probe,
 	.remove = apr_remove,
 	.callback = apr_callback,
