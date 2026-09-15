@@ -3,6 +3,11 @@
 
 #include <linux/acpi.h>
 #include <linux/clk.h>
+#include <linux/dmi.h>
+#include <linux/irq.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/pinctrl/machine.h>
+#include <linux/pinctrl/pinconf-generic.h>
 #include <linux/dmaengine.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma/qcom-gpi-dma.h>
@@ -944,10 +949,29 @@ static const struct i2c_algorithm geni_i2c_algo = {
 	.functionality = geni_i2c_func,
 };
 
+/*
+ * ACPI I2C5 has no Linux QUP wrapper. Accept only depths for which the
+ * two upstream HW_PARAM_0 layouts agree; never guess a wrapper version.
+ */
+static int tcl_i2c_fifo_depth(u32 param)
+{
+	u32 depth = (param & TX_FIFO_DEPTH_MSK) >> TX_FIFO_DEPTH_SHFT;
+	u32 extended = (param & TX_FIFO_DEPTH_MSK_256_BYTES) >> TX_FIFO_DEPTH_SHFT;
+
+	if (!depth || depth != extended)
+		return -EINVAL;
+	return depth;
+}
+
+static const struct geni_i2c_desc tcl_sc7180_i2c_desc = {
+	.no_dma_support = true,
+};
+
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id geni_i2c_acpi_match[] = {
 	{ "QCOM0220"},
 	{ "QCOM0411" },
+	{ "QCOM0811", (kernel_ulong_t)&tcl_sc7180_i2c_desc },
 	{ }
 };
 MODULE_DEVICE_TABLE(acpi, geni_i2c_acpi_match);
@@ -990,6 +1014,107 @@ err_tx:
 	return ret;
 }
 
+
+#ifdef CONFIG_ACPI
+static unsigned long tcl_i2c_pin_config[] = {
+	PIN_CONF_PACKED(PIN_CONFIG_DRIVE_STRENGTH, 2),
+	PIN_CONF_PACKED(PIN_CONFIG_BIAS_DISABLE, 1),
+};
+
+static unsigned long tcl_keyboard_enable_config[] = {
+	PIN_CONF_PACKED(PIN_CONFIG_DRIVE_STRENGTH, 2),
+	PIN_CONF_PACKED(PIN_CONFIG_BIAS_DISABLE, 1),
+	PIN_CONF_PACKED(PIN_CONFIG_LEVEL, 1),
+};
+
+static void tcl_i2c_unregister_maps(void *data)
+{
+	pinctrl_unregister_mappings(data);
+}
+
+static int tcl_i2c_acpi_prepare(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev, *gpio;
+	struct acpi_device *adev;
+	struct pinctrl_map *maps;
+	struct pinctrl *pins;
+	struct resource *res;
+	acpi_handle handle;
+	const char *path, *pin0, *pin1, *function;
+	resource_size_t expected_base;
+	int ret;
+
+	if (!dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G"))
+		return -ENODEV;
+	if (device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
+		path = "\\_SB.IC11";
+		expected_base = 0xa90000;
+		pin0 = "gpio86"; pin1 = "gpio87"; function = "qup14";
+	} else if (device_property_read_bool(dev, "qcom,tcl-acpi-input")) {
+		path = "\\_SB.I2C5";
+		expected_base = 0x890000;
+		pin0 = "gpio115"; pin1 = "gpio116"; function = "qup04_i2c";
+	} else {
+		return -ENODEV;
+	}
+	if (ACPI_FAILURE(acpi_get_handle(NULL, (char *)path, &handle)) ||
+	    handle != ACPI_HANDLE(dev))
+		return -ENODEV;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res || res->start != expected_base || resource_size(res) != 0x4000)
+		return -EINVAL;
+	if (ACPI_FAILURE(acpi_get_handle(NULL, "\\_SB.GIO0", &handle)))
+		return -ENODEV;
+	adev = acpi_get_acpi_dev(handle);
+	if (!adev)
+		return -EPROBE_DEFER;
+	gpio = bus_find_device_by_fwnode(&platform_bus_type, acpi_fwnode_handle(adev));
+	acpi_dev_put(adev);
+	if (!gpio)
+		return -EPROBE_DEFER;
+	if (!device_is_bound(gpio)) {
+		put_device(gpio);
+		return -EPROBE_DEFER;
+	}
+	maps = devm_kcalloc(dev, 5, sizeof(*maps), GFP_KERNEL);
+	if (!maps) {
+		put_device(gpio);
+		return -ENOMEM;
+	}
+	maps[0] = (struct pinctrl_map)PIN_MAP_MUX_GROUP_DEFAULT(dev_name(dev),
+		dev_name(gpio), pin0, function);
+	maps[1] = (struct pinctrl_map)PIN_MAP_MUX_GROUP_DEFAULT(dev_name(dev),
+		dev_name(gpio), pin1, function);
+	maps[2] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
+		dev_name(gpio), pin0, tcl_i2c_pin_config);
+	maps[3] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
+		dev_name(gpio), pin1, tcl_i2c_pin_config);
+	/* OEM GpioIo uses IoRestrictionNone; establish output direction as in DT. */
+	maps[4] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
+		dev_name(gpio), "gpio32", tcl_keyboard_enable_config);
+	if (!device_link_add(dev, gpio, DL_FLAG_AUTOREMOVE_CONSUMER)) {
+		put_device(gpio);
+		return -ENOMEM;
+	}
+	ret = pinctrl_register_mappings(maps, 5);
+	put_device(gpio);
+	if (ret)
+		return ret;
+	ret = devm_add_action_or_reset(dev, tcl_i2c_unregister_maps, maps);
+	if (ret)
+		return ret;
+	pins = devm_pinctrl_get_select_default(dev);
+	return PTR_ERR_OR_ZERO(pins);
+}
+
+#else
+static int tcl_i2c_acpi_prepare(struct platform_device *pdev)
+{
+	return -ENODEV;
+}
+#endif
+
 static int geni_i2c_probe(struct platform_device *pdev)
 {
 	struct geni_i2c_dev *gi2c;
@@ -997,6 +1122,13 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	const struct geni_i2c_desc *desc = NULL;
+
+	desc = device_get_match_data(dev);
+	if (desc == &tcl_sc7180_i2c_desc) {
+		ret = tcl_i2c_acpi_prepare(pdev);
+		if (ret)
+			return dev_err_probe(dev, ret, "TCL I2C GPIO/pin setup unavailable\n");
+	}
 
 	gi2c = devm_kzalloc(dev, sizeof(*gi2c), GFP_KERNEL);
 	if (!gi2c)
@@ -1008,7 +1140,6 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	if (IS_ERR(gi2c->se.base))
 		return PTR_ERR(gi2c->se.base);
 
-	desc = device_get_match_data(&pdev->dev);
 
 	if (desc && desc->has_core_clk) {
 		gi2c->core_clk = devm_clk_get(dev, "core");
@@ -1033,6 +1164,17 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	gi2c->irq = platform_get_irq(pdev, 0);
 	if (gi2c->irq < 0)
 		return gi2c->irq;
+	if (desc == &tcl_sc7180_i2c_desc) {
+		struct irq_data *irqdata = irq_get_irq_data(gi2c->irq);
+
+		bool display = device_property_read_bool(dev, "qcom,tcl-acpi-display");
+
+		if (!irqdata || irqd_to_hwirq(irqdata) != (display ? 389 : 637) ||
+		    gi2c->clk_freq_out != (display ? 100000 : 400000))
+			return -EINVAL;
+		if (IS_ERR(gi2c->se.clk))
+			gi2c->se.clk = NULL;
+	}
 
 	ret = geni_i2c_clk_map_idx(gi2c);
 	if (ret)
@@ -1083,6 +1225,12 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 	proto = geni_se_read_proto(&gi2c->se);
+	if (desc == &tcl_sc7180_i2c_desc &&
+	    (proto != GENI_SE_I2C ||
+	     (readl_relaxed(gi2c->se.base + GENI_IF_DISABLE_RO) & FIFO_IF_DISABLE))) {
+		ret = dev_err_probe(dev, -ENODEV, "TCL I2C5 requires firmware-enabled I2C FIFO mode\n");
+		goto err_resources;
+	}
 	if (proto == GENI_SE_INVALID_PROTO) {
 		ret = geni_load_se_firmware(&gi2c->se, GENI_SE_I2C);
 		if (ret) {
@@ -1111,7 +1259,20 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		dev_dbg(dev, "Using GPI DMA mode for I2C\n");
 	} else {
 		gi2c->gpi_mode = false;
-		tx_depth = geni_se_get_tx_fifo_depth(&gi2c->se);
+		if (desc == &tcl_sc7180_i2c_desc) {
+			u32 param = readl_relaxed(gi2c->se.base + SE_HW_PARAM_0);
+
+			ret = tcl_i2c_fifo_depth(param);
+			if (ret < 0) {
+				dev_err_probe(dev, ret, "Unsupported TCL FIFO geometry %#x\n", param);
+				goto err_resources;
+			}
+			tx_depth = ret;
+			dev_info(dev, "TCL I2C5 FIFO depth %u, HW_PARAM_0=%#x\n",
+				 tx_depth, param);
+		} else {
+			tx_depth = geni_se_get_tx_fifo_depth(&gi2c->se);
+		}
 
 		/* I2C Master Hub Serial Elements doesn't have the HW_PARAM_0 register */
 		if (!tx_depth && desc)
@@ -1154,6 +1315,8 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		goto err_dma;
 	}
 
+	if (desc == &tcl_sc7180_i2c_desc)
+		dev_info(dev, "TCL ACPI I2C5: 400kHz FIFO; clocks remain firmware-managed\n");
 	dev_dbg(dev, "Geni-I2C adaptor successfully added\n");
 
 	return ret;
