@@ -27,4 +27,11 @@ struct qcom_tcl_regulator_data {
 	unsigned int count;
 };
 
+/* Board-owned proxy devices must outlive the Venus consumer. */
+struct qcom_tcl_venus_data {
+	struct device *venus_pd;
+	struct device *vcodec0_pd;
+	struct device *cx_pd;
+};
+
 #endif

@@ -92,7 +92,19 @@ static int venus_load_fw(struct venus_core *core, const char *fwname,
 	*mem_size = 0;
 
 	dev = core->dev;
-	ret = of_reserved_mem_region_to_resource(dev->of_node, 0, &res);
+	if (dev->of_node) {
+		ret = of_reserved_mem_region_to_resource(dev->of_node, 0, &res);
+	} else {
+		struct resource *fw = platform_get_resource_byname(to_platform_device(dev),
+								 IORESOURCE_MEM, "firmware");
+
+		if (fw) {
+			res = *fw;
+			ret = 0;
+		} else {
+			ret = -ENOENT;
+		}
+	}
 	if (ret) {
 		dev_err(dev, "failed to lookup reserved memory-region\n");
 		return -EINVAL;

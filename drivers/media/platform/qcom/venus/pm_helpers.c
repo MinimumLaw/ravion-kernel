@@ -11,6 +11,8 @@
 #include <linux/pm_domain.h>
 #include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
+#include <linux/platform_data/qcom-tcl-acpi.h>
+#include <linux/property.h>
 #include <linux/reset.h>
 #include <linux/types.h>
 #include <media/v4l2-mem2mem.h>
@@ -1026,6 +1028,29 @@ static int vcodec_domains_get_v4(struct venus_core *core)
 		.num_pd_names = res->opp_pmdomain_num,
 		.pd_flags = PD_FLAG_DEV_LINK_ON | PD_FLAG_REQUIRED_OPP,
 	};
+	const struct qcom_tcl_venus_data *tcl = dev_get_platdata(dev);
+
+	if (device_property_read_bool(dev, "qcom,tcl-acpi-video")) {
+		if (!tcl || !tcl->venus_pd || !tcl->vcodec0_pd || !tcl->cx_pd)
+			return -EINVAL;
+		core->pmdomains = devm_kzalloc(dev, sizeof(*core->pmdomains), GFP_KERNEL);
+		core->opp_pmdomain = devm_kzalloc(dev, sizeof(*core->opp_pmdomain), GFP_KERNEL);
+		if (!core->pmdomains || !core->opp_pmdomain)
+			return -ENOMEM;
+		core->pmdomains->pd_devs = devm_kcalloc(dev, 2,
+							sizeof(struct device *),
+							GFP_KERNEL);
+		core->opp_pmdomain->pd_devs =
+			devm_kcalloc(dev, 1, sizeof(struct device *), GFP_KERNEL);
+		if (!core->pmdomains->pd_devs || !core->opp_pmdomain->pd_devs)
+			return -ENOMEM;
+		core->pmdomains->pd_devs[0] = tcl->venus_pd;
+		core->pmdomains->pd_devs[1] = tcl->vcodec0_pd;
+		core->pmdomains->num_pds = 2;
+		core->opp_pmdomain->pd_devs[0] = tcl->cx_pd;
+		core->opp_pmdomain->num_pds = 1;
+		return 0;
+	}
 
 	if (!res->vcodec_pmdomains_num)
 		goto skip_pmdomains;
