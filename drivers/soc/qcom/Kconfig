@@ -332,3 +332,17 @@ config QCOM_TCL_ACPI_DISPLAY
 	  suppliers and the OEM GPU0 namespace. This enables neither DPU nor
 	  scanout. The coordinator retains resources for the diagnostic boot;
 	  unloading and manual supplier unbinding are not supported.
+
+config QCOM_TCL_ACPI_VIDEO
+	tristate "TCL B220G diagnostic ACPI Venus wiring"
+	depends on ACPI && ARCH_QCOM && PM_GENERIC_DOMAINS
+	depends on QCOM_TCL_ACPI_DISPLAY=m
+	depends on SC_VIDEOCC_7180=y && VIDEO_QCOM_VENUS=m
+	depends on m
+	help
+	  Register the SC7180 VIDEOCC and Venus devices from the resources
+	  validated on the TCL B220G. The coordinator retains its provider and
+	  power-domain proxy devices for the lifetime of the boot.
+
+	  This is board-specific glue for systems where the OEM ACPI tables do
+	  not enumerate the Venus device and its suppliers as Linux devices.

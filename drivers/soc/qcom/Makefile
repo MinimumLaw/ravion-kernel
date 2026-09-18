@@ -46,3 +46,4 @@ obj-$(CONFIG_QCOM_TCL_ACPI_SMEM) += tcl_acpi_smem.o
 obj-$(CONFIG_QCOM_TCL_ACPI_WIFI) += tcl_acpi_wifi.o
 obj-$(CONFIG_QCOM_TCL_ACPI_DISPLAY) += tcl_acpi_display.o
 obj-$(CONFIG_QCOM_TCL_ACPI_DISPLAY) += tcl_acpi_gpu.o
+obj-$(CONFIG_QCOM_TCL_ACPI_VIDEO) += tcl_acpi_venus.o
