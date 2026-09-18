@@ -1821,6 +1821,49 @@ static bool iort_tcl_audio_device(struct device *dev)
 		device_property_read_bool(dev, "qcom,tcl-acpi-audio");
 }
 
+static bool iort_tcl_venus_device(struct device *dev)
+{
+	const char *name = dev_name(dev);
+
+	return !dev->of_node && name && !strcmp(name, "tcl-sc7180-venus") &&
+		device_property_read_bool(dev, "qcom,tcl-acpi-video");
+}
+
+/*
+ * The OEM IORT does not enumerate Venus as an ACPI namespace device. Validate
+ * the exact board table and Apps SMMU before reproducing the DT stream match
+ * 0xc00/0x60. The ARM SMMU fwspec packs the SMR mask in the high 16 bits.
+ */
+static int iort_tcl_venus_map(struct device *dev)
+{
+	struct acpi_iort_node *parent;
+	struct acpi_iort_smmu *smmu;
+	u32 parent_min = sizeof(*parent) + sizeof(*smmu);
+	u32 fwid = 0x0c00 | (0x60 << 16);
+	int ret;
+
+	if (!dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
+	    !dmi_match(DMI_PRODUCT_NAME, "B220G") || !iort_table ||
+	    memcmp(iort_table->oem_id, "QCOM  ", ACPI_OEM_ID_SIZE) ||
+	    memcmp(iort_table->oem_table_id, "QCOMEDK2", ACPI_OEM_TABLE_ID_SIZE) ||
+	    iort_table->oem_revision != 0x7180 ||
+	    iort_table->length < parent_min || 48 > iort_table->length - parent_min)
+		return -ENODEV;
+	parent = ACPI_ADD_PTR(struct acpi_iort_node, iort_table, 48);
+	if (parent->type != ACPI_IORT_NODE_SMMU || parent->length < parent_min ||
+	    parent->length > iort_table->length - 48)
+		return -EINVAL;
+	smmu = (void *)parent->node_data;
+	if (smmu->base_address != 0x15000000 || smmu->span != 0x100000 ||
+	    smmu->model != ACPI_IORT_SMMU_CORELINK_MMU500 ||
+	    dev_iommu_fwspec_get(dev))
+		return -EINVAL;
+	ret = iort_iommu_xlate(dev, parent, fwid);
+	if (ret)
+		iommu_fwspec_free(dev);
+	return ret;
+}
+
 static acpi_status iort_tcl_audio_match(struct acpi_iort_node *node, void *context)
 {
 	struct acpi_iort_named_component *nc;
@@ -1868,6 +1911,8 @@ int iort_iommu_configure_id(struct device *dev, const u32 *id_in)
 		if (fwspec && iort_pci_rc_supports_canwbs(node))
 			fwspec->flags |= IOMMU_FWSPEC_PCI_RC_CANWBS;
 	} else {
+		if (iort_tcl_venus_device(dev))
+			return id_in ? -EINVAL : iort_tcl_venus_map(dev);
 		node = iort_scan_node(ACPI_IORT_NODE_NAMED_COMPONENT,
 				      iort_tcl_audio_device(dev) ? iort_tcl_audio_match :
 				      (!dev->of_node && dev_name(dev) &&
