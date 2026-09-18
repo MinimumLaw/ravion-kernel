@@ -70,6 +70,8 @@ static int acpi_ac_get_state(struct acpi_ac *ac)
 				"Error reading AC Adapter state: %s\n",
 				acpi_format_exception(status));
 		ac->state = ACPI_AC_STATUS_UNKNOWN;
+		if (status == AE_NOT_EXIST)
+			return -EPROBE_DEFER;
 		return -ENODEV;
 	}
 
