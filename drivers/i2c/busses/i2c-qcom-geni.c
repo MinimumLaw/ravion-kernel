@@ -1042,12 +1042,17 @@ static int tcl_i2c_acpi_prepare(struct platform_device *pdev)
 	acpi_handle handle;
 	const char *path, *pin0, *pin1, *function;
 	resource_size_t expected_base;
-	int ret;
+	int map_count = 5, ret;
 
 	if (!dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
 	    !dmi_match(DMI_PRODUCT_NAME, "B220G"))
 		return -ENODEV;
-	if (device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
+	if (device_property_read_bool(dev, "qcom,tcl-acpi-ec")) {
+		path = "\\_SB.I2C3";
+		expected_base = 0x888000;
+		pin0 = "gpio15"; pin1 = "gpio16"; function = "qup02_i2c";
+		map_count = 4;
+	} else if (device_property_read_bool(dev, "qcom,tcl-acpi-display")) {
 		path = "\\_SB.IC11";
 		expected_base = 0xa90000;
 		pin0 = "gpio86"; pin1 = "gpio87"; function = "qup14";
@@ -1077,7 +1082,7 @@ static int tcl_i2c_acpi_prepare(struct platform_device *pdev)
 		put_device(gpio);
 		return -EPROBE_DEFER;
 	}
-	maps = devm_kcalloc(dev, 5, sizeof(*maps), GFP_KERNEL);
+	maps = devm_kcalloc(dev, map_count, sizeof(*maps), GFP_KERNEL);
 	if (!maps) {
 		put_device(gpio);
 		return -ENOMEM;
@@ -1090,14 +1095,16 @@ static int tcl_i2c_acpi_prepare(struct platform_device *pdev)
 		dev_name(gpio), pin0, tcl_i2c_pin_config);
 	maps[3] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
 		dev_name(gpio), pin1, tcl_i2c_pin_config);
-	/* OEM GpioIo uses IoRestrictionNone; establish output direction as in DT. */
-	maps[4] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
-		dev_name(gpio), "gpio32", tcl_keyboard_enable_config);
+	if (map_count == 5) {
+		/* OEM GpioIo uses IoRestrictionNone; establish output direction as in DT. */
+		maps[4] = (struct pinctrl_map)PIN_MAP_CONFIGS_GROUP_DEFAULT(dev_name(dev),
+			dev_name(gpio), "gpio32", tcl_keyboard_enable_config);
+	}
 	if (!device_link_add(dev, gpio, DL_FLAG_AUTOREMOVE_CONSUMER)) {
 		put_device(gpio);
 		return -ENOMEM;
 	}
-	ret = pinctrl_register_mappings(maps, 5);
+	ret = pinctrl_register_mappings(maps, map_count);
 	put_device(gpio);
 	if (ret)
 		return ret;
@@ -1122,6 +1129,7 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	const struct geni_i2c_desc *desc = NULL;
+	const char *tcl_bus_name = NULL;
 
 	desc = device_get_match_data(dev);
 	if (desc == &tcl_sc7180_i2c_desc) {
@@ -1166,11 +1174,15 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		return gi2c->irq;
 	if (desc == &tcl_sc7180_i2c_desc) {
 		struct irq_data *irqdata = irq_get_irq_data(gi2c->irq);
-
+		bool ec = device_property_read_bool(dev, "qcom,tcl-acpi-ec");
 		bool display = device_property_read_bool(dev, "qcom,tcl-acpi-display");
+		u32 expected_irq = display ? 389 : ec ? 635 : 637;
+		u32 expected_freq = display ? 100000 : 400000;
 
-		if (!irqdata || irqd_to_hwirq(irqdata) != (display ? 389 : 637) ||
-		    gi2c->clk_freq_out != (display ? 100000 : 400000))
+		tcl_bus_name = display ? "IC11" : ec ? "I2C3" : "I2C5";
+
+		if (!irqdata || irqd_to_hwirq(irqdata) != expected_irq ||
+		    gi2c->clk_freq_out != expected_freq)
 			return -EINVAL;
 		if (IS_ERR(gi2c->se.clk))
 			gi2c->se.clk = NULL;
@@ -1228,7 +1240,8 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	if (desc == &tcl_sc7180_i2c_desc &&
 	    (proto != GENI_SE_I2C ||
 	     (readl_relaxed(gi2c->se.base + GENI_IF_DISABLE_RO) & FIFO_IF_DISABLE))) {
-		ret = dev_err_probe(dev, -ENODEV, "TCL I2C5 requires firmware-enabled I2C FIFO mode\n");
+		ret = dev_err_probe(dev, -ENODEV,
+				    "TCL ACPI I2C requires firmware-enabled FIFO mode\n");
 		goto err_resources;
 	}
 	if (proto == GENI_SE_INVALID_PROTO) {
@@ -1268,7 +1281,7 @@ static int geni_i2c_probe(struct platform_device *pdev)
 				goto err_resources;
 			}
 			tx_depth = ret;
-			dev_info(dev, "TCL I2C5 FIFO depth %u, HW_PARAM_0=%#x\n",
+			dev_info(dev, "TCL ACPI I2C FIFO depth %u, HW_PARAM_0=%#x\n",
 				 tx_depth, param);
 		} else {
 			tx_depth = geni_se_get_tx_fifo_depth(&gi2c->se);
@@ -1316,7 +1329,8 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	}
 
 	if (desc == &tcl_sc7180_i2c_desc)
-		dev_info(dev, "TCL ACPI I2C5: 400kHz FIFO; clocks remain firmware-managed\n");
+		dev_info(dev, "TCL ACPI %s: %ukHz FIFO; clocks remain firmware-managed\n",
+			 tcl_bus_name, gi2c->clk_freq_out / 1000);
 	dev_dbg(dev, "Geni-I2C adaptor successfully added\n");
 
 	return ret;

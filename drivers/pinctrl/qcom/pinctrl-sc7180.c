@@ -1160,8 +1160,9 @@ static int sc7180_pinctrl_acpi_probe(struct platform_device *pdev)
 	static const u16 keyboard_pins[] = { 32, 33, 115, 116 };
 	static const u16 display_pins[] = { 32, 33, 86, 87, 115, 116 };
 	static const u16 touchpad_pins[] = { 32, 33, 86, 87, 94, 115, 116 };
+	static const u16 ec_pins[] = { 15, 16, 31, 32, 33, 86, 87, 94, 115, 116, 117 };
 	const u16 *expected;
-	u16 pins[ARRAY_SIZE(touchpad_pins)];
+	u16 pins[ARRAY_SIZE(ec_pins)];
 	int irq, count;
 
 	if (!dmi_match(DMI_SYS_VENDOR, "TCL Communication Ltd.") ||
@@ -1181,6 +1182,8 @@ static int sc7180_pinctrl_acpi_probe(struct platform_device *pdev)
 		expected = display_pins;
 	else if (count == ARRAY_SIZE(touchpad_pins))
 		expected = touchpad_pins;
+	else if (count == ARRAY_SIZE(ec_pins))
+		expected = ec_pins;
 	else
 		return -EINVAL;
 	if (device_property_read_u16_array(&pdev->dev, "gpios", pins, count) ||
