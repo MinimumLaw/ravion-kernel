@@ -166,30 +166,20 @@ static int match_adreno_smmu(struct device *dev, const void *unused)
 	return res && res->start == 0x5040000 && resource_size(res) == 0x10000;
 }
 
-static int attach_smmu_domain(struct generic_pm_domain *domain)
+static int verify_adreno_smmu(void)
 {
 	struct device *smmu = bus_find_device(&platform_bus_type, NULL, NULL,
 					    match_adreno_smmu);
-	int ret;
 
 	if (!smmu)
 		return -EPROBE_DEFER;
-	if (smmu->pm_domain || pm_runtime_enabled(smmu)) {
-		put_device(smmu);
-		return -EBUSY;
-	}
-	ret = pm_genpd_add_device(domain, smmu);
-	if (ret) {
-		put_device(smmu);
-		return ret;
-	}
-	/* CX and the bus clocks are already held on by the coordinator. */
-	ret = pm_runtime_set_active(smmu);
-	if (ret)
-		return ret; /* Retain the attached device, as with other staged failures. */
-	pm_runtime_enable(smmu);
-	/* Keep the IORT supplier active throughout this initial bring-up. */
-	pm_runtime_get_noresume(smmu);
+	/* match_adreno_smmu() deliberately selects an already-bound IORT device.
+	 * Changing its PM domain now violates the driver core lifetime rules and
+	 * triggers dev_pm_domain_set()'s bound-device warning.  The coordinator
+	 * already holds CX and gcc_gpu_memnoc_gfx_clk for the entire boot, so only
+	 * verify that the expected SMMU has completed probe here.
+	 */
+	put_device(smmu);
 	return 0;
 }
 
@@ -225,7 +215,7 @@ static int prepare_domains(void)
 	ret = clk_prepare_enable(smmu_bus);
 	if (ret)
 		return ret;
-	return attach_smmu_domain(pd->domains[CX_GDSC]);
+	return verify_adreno_smmu();
 }
 
 static int gmu_dma_probe(struct platform_device *pdev)
