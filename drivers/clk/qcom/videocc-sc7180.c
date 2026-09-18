@@ -4,8 +4,10 @@
  */
 
 #include <linux/clk-provider.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 
 #include <dt-bindings/clock/qcom,videocc-sc7180.h>
@@ -211,6 +213,22 @@ static int video_cc_sc7180_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
 	struct alpha_pll_config video_pll0_config = {};
+	struct qcom_cc_desc platform_desc = video_cc_sc7180_desc;
+	const struct qcom_cc_desc *desc = &video_cc_sc7180_desc;
+	struct clk *xo;
+	int ret;
+
+	if (!pdev->dev.of_node) {
+		if (!device_property_read_bool(&pdev->dev, "qcom,tcl-acpi-video"))
+			return -ENODEV;
+		xo = devm_clk_get(&pdev->dev, "bi_tcxo");
+		if (IS_ERR(xo))
+			return dev_err_probe(&pdev->dev, PTR_ERR(xo), "missing bi_tcxo\n");
+		if (clk_get_rate(xo) != 19200000)
+			return -EINVAL;
+		platform_desc.platform_clocks = true;
+		desc = &platform_desc;
+	}
 
 	regmap = qcom_cc_map(pdev, &video_cc_sc7180_desc);
 	if (IS_ERR(regmap))
@@ -226,11 +244,19 @@ static int video_cc_sc7180_probe(struct platform_device *pdev)
 	/* Keep VIDEO_CC_XO_CLK ALWAYS-ON */
 	regmap_update_bits(regmap, 0x984, 0x1, 0x1);
 
-	return qcom_cc_really_probe(&pdev->dev, &video_cc_sc7180_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, desc, regmap);
+	return ret;
 }
+
+static const struct platform_device_id video_cc_sc7180_id[] = {
+	{ "tcl-sc7180-videocc" },
+	{ }
+};
+MODULE_DEVICE_TABLE(platform, video_cc_sc7180_id);
 
 static struct platform_driver video_cc_sc7180_driver = {
 	.probe = video_cc_sc7180_probe,
+	.id_table = video_cc_sc7180_id,
 	.driver = {
 		.name = "sc7180-videocc",
 		.of_match_table = video_cc_sc7180_match_table,
