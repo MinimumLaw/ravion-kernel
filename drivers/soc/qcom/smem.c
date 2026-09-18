@@ -4,6 +4,8 @@
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi.h>
+#include <linux/efi.h>
 #include <linux/property.h>
 #include <linux/hwspinlock.h>
 #include <linux/io.h>
@@ -1127,6 +1129,32 @@ static int qcom_smem_resolve_mem(struct qcom_smem *smem, const char *name,
 	return 0;
 }
 
+static int qcom_smem_validate_acpi_resource(struct device *dev,
+					    const struct resource *res)
+{
+#if IS_ENABLED(CONFIG_ACPI) && IS_ENABLED(CONFIG_EFI)
+	efi_memory_desc_t md;
+	u64 size;
+
+	if (!is_acpi_device_node(dev_fwnode(dev)))
+		return 0;
+
+	if (!efi_enabled(EFI_MEMMAP) || efi_mem_desc_lookup(res->start, &md) ||
+	    md.type != EFI_RESERVED_TYPE)
+		return -EINVAL;
+
+	if (md.num_pages > (U64_MAX >> EFI_PAGE_SHIFT))
+		return -EOVERFLOW;
+
+	size = md.num_pages << EFI_PAGE_SHIFT;
+	if (md.phys_addr > res->start || size < resource_size(res) ||
+	    res->start - md.phys_addr > size - resource_size(res))
+		return -EINVAL;
+#endif
+
+	return 0;
+}
+
 static int qcom_smem_probe(struct platform_device *pdev)
 {
 	struct smem_header *header;
@@ -1164,6 +1192,10 @@ static int qcom_smem_probe(struct platform_device *pdev)
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		if (!res || resource_size(res) < SZ_4K)
 			return -EINVAL;
+		ret = qcom_smem_validate_acpi_resource(&pdev->dev, res);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret,
+					     "ACPI SMEM resource is not UEFI-reserved\n");
 		ret = device_property_read_u32(&pdev->dev, "qcom,hwlock-id",
 					      &lock_id);
 		if (ret || lock_id > INT_MAX)
