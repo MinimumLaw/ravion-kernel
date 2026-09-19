@@ -23,6 +23,8 @@
 #include <linux/sched.h>
 #include <linux/units.h>
 
+#include <acpi/cppc_acpi.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/hw_pressure.h>
 
@@ -431,10 +433,11 @@ static int __init register_cpufreq_notifier(void)
 	int ret;
 
 	/*
-	 * On ACPI-based systems skip registering cpufreq notifier as cpufreq
-	 * information is not needed for cpu capacity initialization.
+	 * ACPI systems with valid CPPC data initialize the frequency reference
+	 * from _CPC.  Other ACPI systems may still use a regular cpufreq driver
+	 * and need the policy notifier just like Device Tree systems do.
 	 */
-	if (!acpi_disabled)
+	if (!acpi_disabled && acpi_cpc_valid())
 		return -EINVAL;
 
 	if (!alloc_cpumask_var(&cpus_to_visit, GFP_KERNEL))
