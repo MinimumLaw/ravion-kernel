@@ -16,6 +16,7 @@
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/export.h>
+#include <linux/irqdomain.h>
 
 #include "internal.h"
 
@@ -1725,14 +1726,45 @@ static int acpi_fwnode_graph_parse_endpoint(const struct fwnode_handle *fwnode,
 static int acpi_fwnode_irq_get(const struct fwnode_handle *fwnode,
 			       unsigned int index)
 {
+	struct fwnode_reference_args args;
+	struct irq_fwspec fwspec = {};
 	struct resource res;
+	unsigned int native_irqs;
 	int ret;
+	int i;
 
-	ret = acpi_irq_get(ACPI_HANDLE_FWNODE(fwnode), index, &res);
+	for (native_irqs = 0; native_irqs <= index; native_irqs++) {
+		ret = acpi_irq_get(ACPI_HANDLE_FWNODE(fwnode), native_irqs,
+				   &res);
+		if (ret)
+			break;
+		if (native_irqs == index)
+			return res.start;
+	}
+
+	ret = fwnode_property_get_reference_args(fwnode,
+						 "interrupts-extended",
+						 "#interrupt-cells", 0,
+						 index - native_irqs, &args);
 	if (ret)
 		return ret;
+	if (!args.nargs || args.nargs > ARRAY_SIZE(fwspec.param)) {
+		ret = -EINVAL;
+		goto put;
+	}
 
-	return res.start;
+	fwspec.fwnode = args.fwnode;
+	fwspec.param_count = args.nargs;
+	for (i = 0; i < args.nargs; i++)
+		fwspec.param[i] = args.args[i];
+
+	ret = irq_create_fwspec_mapping(&fwspec);
+	if (!ret)
+		ret = -EINVAL;
+
+put:
+	fwnode_handle_put(args.fwnode);
+	return ret;
 }
 
 #define DECLARE_ACPI_FWNODE_OPS(ops) \
