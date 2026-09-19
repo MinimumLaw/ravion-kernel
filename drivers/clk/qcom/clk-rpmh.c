@@ -4,6 +4,7 @@
  */
 
 #include <linux/clk-provider.h>
+#include <linux/clkdev.h>
 #include <linux/property.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
@@ -1108,12 +1109,20 @@ static int clk_rpmh_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "failed to register %s\n", name);
 			return ret;
 		}
+		if (!pdev->dev.of_node && !dev_fwnode(&pdev->dev)) {
+			ret = devm_clk_hw_register_clkdev(&pdev->dev, hw_clks[i],
+							  name, dev_name(&pdev->dev));
+			if (ret)
+				return ret;
+		}
 	}
 
-	if (!pdev->dev.of_node)
+	if (!pdev->dev.of_node && dev_fwnode(&pdev->dev))
 		return devm_fwnode_clk_add_hw_provider(&pdev->dev,
 							 &fwnode_clk_rpmh_ops,
 							 (void *)desc);
+	if (!pdev->dev.of_node)
+		return 0;
 
 	/* typecast to silence compiler warning */
 	ret = devm_of_clk_add_hw_provider(&pdev->dev, of_clk_rpmh_hw_get,

@@ -1191,8 +1191,10 @@ static int rpmhpd_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, data);
-	if (!pdev->dev.of_node)
+	if (!pdev->dev.of_node && dev_fwnode(dev))
 		return fwnode_genpd_add_provider_onecell(dev_fwnode(dev), data);
+	if (!pdev->dev.of_node)
+		return 0;
 
 	return of_genpd_add_provider_onecell(pdev->dev.of_node, data);
 }
@@ -1206,7 +1208,7 @@ static void rpmhpd_sync_state(struct device *dev)
 	unsigned int i;
 	int ret;
 
-	if (!desc)
+	if (!desc || (!dev->of_node && !dev_fwnode(dev)))
 		return;
 	rpmhpds = desc->rpmhpds;
 	if (dev->of_node)
