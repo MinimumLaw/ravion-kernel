@@ -3,8 +3,10 @@
  * Copyright (c) 2017 Linaro Ltd.
  */
 
+#include <linux/acpi.h>
 #include <linux/kernel.h>
 #include <linux/cdev.h>
+#include <linux/efi.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -34,6 +36,29 @@ struct qcom_rmtfs_mem {
 
 	u64 perms;
 };
+
+static int qcom_rmtfs_validate_acpi_resource(struct device *dev,
+					      const struct resource *res)
+{
+#if IS_ENABLED(CONFIG_ACPI) && IS_ENABLED(CONFIG_EFI)
+	efi_memory_desc_t md;
+	u64 size;
+
+	if (!is_acpi_device_node(dev_fwnode(dev)))
+		return 0;
+	if (!efi_enabled(EFI_MEMMAP) || efi_mem_desc_lookup(res->start, &md) ||
+	    md.type != EFI_RESERVED_TYPE ||
+	    md.num_pages > (U64_MAX >> EFI_PAGE_SHIFT))
+		return -EINVAL;
+
+	size = md.num_pages << EFI_PAGE_SHIFT;
+	if (md.phys_addr > res->start || size < resource_size(res) ||
+	    res->start - md.phys_addr > size - resource_size(res))
+		return -EINVAL;
+#endif
+
+	return 0;
+}
 
 static ssize_t qcom_rmtfs_mem_show(struct device *dev,
 			      struct device_attribute *attr,
@@ -193,6 +218,10 @@ static int qcom_rmtfs_mem_probe(struct platform_device *pdev)
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		if (!res || !resource_size(res))
 			return -EINVAL;
+		ret = qcom_rmtfs_validate_acpi_resource(&pdev->dev, res);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret,
+					     "ACPI RMTFS resource is not UEFI-reserved\n");
 		base = res->start;
 		size = resource_size(res);
 	}

@@ -1060,7 +1060,9 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 		drv->name = dev_name(&pdev->dev);
 
 	snprintf(drv_id, ARRAY_SIZE(drv_id), "drv-%d", drv->id);
-	drv->base = devm_platform_ioremap_resource_byname(pdev, drv_id);
+	drv->base = pdev->dev.of_node ?
+		devm_platform_ioremap_resource_byname(pdev, drv_id) :
+		devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(drv->base))
 		return PTR_ERR(drv->base);
 
@@ -1084,7 +1086,7 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 	bitmap_zero(drv->tcs_in_use, MAX_TCS_NR);
 
 	irq = pdev->dev.of_node ? platform_get_irq(pdev, drv->id) :
-		platform_get_irq_byname(pdev, drv_id);
+		platform_get_irq(pdev, 0);
 	if (irq < 0)
 		return irq;
 

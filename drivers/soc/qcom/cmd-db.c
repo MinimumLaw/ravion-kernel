@@ -4,8 +4,10 @@
  * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/acpi.h>
 #include <linux/bitfield.h>
 #include <linux/debugfs.h>
+#include <linux/efi.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -23,6 +25,29 @@
 #define SLAVE_ID_SHIFT		16
 #define SLAVE_ID(addr)		FIELD_GET(GENMASK(19, 16), addr)
 #define VRM_ADDR(addr)		FIELD_GET(GENMASK(19, 4), addr)
+
+static int cmd_db_validate_acpi_resource(struct device *dev,
+					 const struct resource *res)
+{
+#if IS_ENABLED(CONFIG_ACPI) && IS_ENABLED(CONFIG_EFI)
+	efi_memory_desc_t md;
+	u64 size;
+
+	if (!is_acpi_device_node(dev_fwnode(dev)))
+		return 0;
+	if (!efi_enabled(EFI_MEMMAP) || efi_mem_desc_lookup(res->start, &md) ||
+	    md.type != EFI_RESERVED_TYPE ||
+	    md.num_pages > (U64_MAX >> EFI_PAGE_SHIFT))
+		return -EINVAL;
+
+	size = md.num_pages << EFI_PAGE_SHIFT;
+	if (md.phys_addr > res->start || size < resource_size(res) ||
+	    res->start - md.phys_addr > size - resource_size(res))
+		return -EINVAL;
+#endif
+
+	return 0;
+}
 
 /**
  * struct entry_header: header for each entry in cmddb
@@ -356,6 +381,10 @@ static int cmd_db_dev_probe(struct platform_device *pdev)
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		if (!res || resource_size(res) < sizeof(*cmd_db_header))
 			return -EINVAL;
+		ret = cmd_db_validate_acpi_resource(&pdev->dev, res);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret,
+					     "ACPI command DB resource is not UEFI-reserved\n");
 		base = res->start;
 		size = resource_size(res);
 	}
