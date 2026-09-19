@@ -314,8 +314,14 @@ static int qmp_qdss_clk_add(struct qmp *qmp)
 		return ret;
 	}
 
-	ret = of_clk_add_hw_provider(qmp->dev->of_node, of_clk_hw_simple_get,
-				     &qmp->qdss_clk);
+	if (qmp->dev->of_node)
+		ret = of_clk_add_hw_provider(qmp->dev->of_node,
+					     of_clk_hw_simple_get,
+					     &qmp->qdss_clk);
+	else
+		ret = fwnode_clk_add_hw_provider(dev_fwnode(qmp->dev),
+						 &fwnode_clk_hw_simple_ops,
+						 &qmp->qdss_clk);
 	if (ret < 0) {
 		dev_err(qmp->dev, "unable to register of clk hw provider\n");
 		clk_hw_unregister(&qmp->qdss_clk);
@@ -326,7 +332,10 @@ static int qmp_qdss_clk_add(struct qmp *qmp)
 
 static void qmp_qdss_clk_remove(struct qmp *qmp)
 {
-	of_clk_del_provider(qmp->dev->of_node);
+	if (qmp->dev->of_node)
+		of_clk_del_provider(qmp->dev->of_node);
+	else
+		fwnode_clk_del_provider(dev_fwnode(qmp->dev));
 	clk_hw_unregister(&qmp->qdss_clk);
 }
 
@@ -615,7 +624,7 @@ static int qmp_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_free_mbox;
 
-	ret = pdev->dev.of_node ? qmp_qdss_clk_add(qmp) : 0;
+	ret = qmp_qdss_clk_add(qmp);
 	if (ret)
 		goto err_close_qmp;
 
@@ -643,8 +652,7 @@ static void qmp_remove(struct platform_device *pdev)
 
 	debugfs_remove_recursive(qmp->debugfs_root);
 
-	if (pdev->dev.of_node)
-		qmp_qdss_clk_remove(qmp);
+	qmp_qdss_clk_remove(qmp);
 	qmp_cooling_devices_remove(qmp);
 
 	qmp_close(qmp);

@@ -37,6 +37,8 @@ struct clk;
 struct clk_hw;
 struct clk_core;
 struct dentry;
+struct fwnode_handle;
+struct fwnode_reference_args;
 
 /**
  * struct clk_rate_request - Structure encoding the clk constraints that
@@ -1458,6 +1460,11 @@ struct clk_hw_onecell_data {
 	struct clk_hw *hws[] __counted_by(num);
 };
 
+struct fwnode_clk_provider_ops {
+	struct clk_hw *(*get)(const struct fwnode_reference_args *clkspec,
+			      void *data);
+};
+
 #define CLK_OF_DECLARE(name, compat, fn) \
 	static void __init __##name##_of_clk_init_declare(struct device_node *np) \
 	{								\
@@ -1619,6 +1626,14 @@ int devm_of_clk_add_hw_provider(struct device *dev,
 						 void *data),
 			   void *data);
 void of_clk_del_provider(struct device_node *np);
+int fwnode_clk_add_hw_provider(struct fwnode_handle *fwnode,
+			       const struct fwnode_clk_provider_ops *ops,
+			       void *data);
+int devm_fwnode_clk_add_hw_provider(struct device *dev,
+				    const struct fwnode_clk_provider_ops *ops,
+				    void *data);
+void fwnode_clk_del_provider(struct fwnode_handle *fwnode);
+extern const struct fwnode_clk_provider_ops fwnode_clk_hw_simple_ops;
 
 struct clk *of_clk_src_simple_get(struct of_phandle_args *clkspec,
 				  void *data);
@@ -1633,6 +1648,8 @@ int of_clk_detect_critical(struct device_node *np, int index,
 			    unsigned long *flags);
 
 #else /* !CONFIG_OF */
+
+static const struct fwnode_clk_provider_ops fwnode_clk_hw_simple_ops;
 
 static inline int of_clk_add_provider(struct device_node *np,
 			struct clk *(*clk_src_get)(struct of_phandle_args *args,
@@ -1656,6 +1673,24 @@ static inline int devm_of_clk_add_hw_provider(struct device *dev,
 	return 0;
 }
 static inline void of_clk_del_provider(struct device_node *np) {}
+
+static inline int
+fwnode_clk_add_hw_provider(struct fwnode_handle *fwnode,
+			   const struct fwnode_clk_provider_ops *ops,
+			   void *data)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int
+devm_fwnode_clk_add_hw_provider(struct device *dev,
+				const struct fwnode_clk_provider_ops *ops,
+				void *data)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline void fwnode_clk_del_provider(struct fwnode_handle *fwnode) {}
 
 static inline struct clk *of_clk_src_simple_get(
 	struct of_phandle_args *clkspec, void *data)

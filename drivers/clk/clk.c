@@ -425,6 +425,11 @@ static int of_parse_clkspec(const struct device_node *np, int index,
 			    const char *name, struct of_phandle_args *out_args);
 static struct clk_hw *
 of_clk_get_hw_from_clkspec(struct of_phandle_args *clkspec);
+static int fwnode_parse_clkspec(struct fwnode_handle *fwnode, int index,
+				const char *name,
+				struct fwnode_reference_args *out_args);
+static struct clk_hw *
+fwnode_clk_get_hw_from_fwspec(const struct fwnode_reference_args *clkspec);
 #else
 static inline int of_parse_clkspec(const struct device_node *np, int index,
 				   const char *name,
@@ -434,6 +439,19 @@ static inline int of_parse_clkspec(const struct device_node *np, int index,
 }
 static inline struct clk_hw *
 of_clk_get_hw_from_clkspec(struct of_phandle_args *clkspec)
+{
+	return ERR_PTR(-ENOENT);
+}
+
+static inline int fwnode_parse_clkspec(struct fwnode_handle *fwnode, int index,
+				       const char *name,
+				       struct fwnode_reference_args *out_args)
+{
+	return -ENOENT;
+}
+
+static inline struct clk_hw *
+fwnode_clk_get_hw_from_fwspec(const struct fwnode_reference_args *clkspec)
 {
 	return ERR_PTR(-ENOENT);
 }
@@ -484,11 +502,16 @@ static struct clk_core *clk_core_get(struct clk_core *core, u8 p_index)
 	const char *dev_id = dev ? dev_name(dev) : NULL;
 	struct device_node *np = core->of_node;
 	struct of_phandle_args clkspec;
+	struct fwnode_reference_args fwspec;
 
 	if (np && (name || index >= 0) &&
 	    !of_parse_clkspec(np, index, name, &clkspec)) {
 		hw = of_clk_get_hw_from_clkspec(&clkspec);
 		of_node_put(clkspec.np);
+	} else if (!np && dev && (name || index >= 0) &&
+		   !fwnode_parse_clkspec(dev_fwnode(dev), index, name, &fwspec)) {
+		hw = fwnode_clk_get_hw_from_fwspec(&fwspec);
+		fwnode_handle_put(fwspec.fwnode);
 	} else if (name) {
 		/*
 		 * If the DT search above couldn't find the provider fallback to
@@ -4936,6 +4959,31 @@ static const struct of_device_id __clk_of_table_sentinel
 static LIST_HEAD(of_clk_providers);
 static DEFINE_MUTEX(of_clk_mutex);
 
+struct fwnode_clk_provider {
+	struct list_head link;
+	struct fwnode_handle *fwnode;
+	const struct fwnode_clk_provider_ops *ops;
+	void *data;
+};
+
+static LIST_HEAD(fwnode_clk_providers);
+static DEFINE_MUTEX(fwnode_clk_mutex);
+
+static struct clk_hw *
+fwnode_clk_hw_simple_get(const struct fwnode_reference_args *clkspec,
+			 void *data)
+{
+	if (clkspec->nargs)
+		return ERR_PTR(-EINVAL);
+
+	return data;
+}
+
+const struct fwnode_clk_provider_ops fwnode_clk_hw_simple_ops = {
+	.get = fwnode_clk_hw_simple_get,
+};
+EXPORT_SYMBOL_GPL(fwnode_clk_hw_simple_ops);
+
 struct clk *of_clk_src_simple_get(struct of_phandle_args *clkspec,
 				     void *data)
 {
@@ -5152,6 +5200,156 @@ void of_clk_del_provider(struct device_node *np)
 	mutex_unlock(&of_clk_mutex);
 }
 EXPORT_SYMBOL_GPL(of_clk_del_provider);
+
+/**
+ * fwnode_clk_add_hw_provider() - Register a generic firmware clock provider
+ * @fwnode: Firmware node associated with the provider
+ * @ops: Provider operations including the specifier decoder
+ * @data: Context pointer passed to @ops callbacks
+ */
+int fwnode_clk_add_hw_provider(struct fwnode_handle *fwnode,
+			       const struct fwnode_clk_provider_ops *ops,
+			       void *data)
+{
+	struct fwnode_clk_provider *provider;
+
+	if (!fwnode || !ops || !ops->get)
+		return -EINVAL;
+
+	provider = kzalloc_obj(*provider);
+	if (!provider)
+		return -ENOMEM;
+
+	provider->fwnode = fwnode_handle_get(fwnode);
+	provider->ops = ops;
+	provider->data = data;
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_add(&provider->link, &fwnode_clk_providers);
+	mutex_unlock(&fwnode_clk_mutex);
+
+	fwnode_dev_initialized(fwnode, true);
+	clk_core_reparent_orphans();
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_add_hw_provider);
+
+/**
+ * fwnode_clk_del_provider() - Remove a generic firmware clock provider
+ * @fwnode: Firmware node used to register the provider
+ */
+void fwnode_clk_del_provider(struct fwnode_handle *fwnode)
+{
+	struct fwnode_clk_provider *provider;
+
+	if (!fwnode)
+		return;
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_for_each_entry(provider, &fwnode_clk_providers, link) {
+		if (provider->fwnode != fwnode)
+			continue;
+
+		list_del(&provider->link);
+		fwnode_dev_initialized(fwnode, false);
+		fwnode_handle_put(provider->fwnode);
+		kfree(provider);
+		break;
+	}
+	mutex_unlock(&fwnode_clk_mutex);
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_del_provider);
+
+static void devm_fwnode_clk_release_provider(struct device *dev, void *res)
+{
+	fwnode_clk_del_provider(*(struct fwnode_handle **)res);
+}
+
+int devm_fwnode_clk_add_hw_provider(struct device *dev,
+				    const struct fwnode_clk_provider_ops *ops,
+				    void *data)
+{
+	struct fwnode_handle **ptr;
+	struct fwnode_handle *fwnode = dev_fwnode(dev);
+	int ret;
+
+	ptr = devres_alloc(devm_fwnode_clk_release_provider, sizeof(*ptr),
+			   GFP_KERNEL);
+	if (!ptr)
+		return -ENOMEM;
+
+	ret = fwnode_clk_add_hw_provider(fwnode, ops, data);
+	if (!ret) {
+		*ptr = fwnode;
+		devres_add(dev, ptr);
+	} else {
+		devres_free(ptr);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(devm_fwnode_clk_add_hw_provider);
+
+static int fwnode_parse_clkspec(struct fwnode_handle *fwnode, int index,
+				const char *name,
+				struct fwnode_reference_args *out_args)
+{
+	if (!fwnode)
+		return -ENOENT;
+
+	if (name) {
+		index = fwnode_property_match_string(fwnode, "clock-names", name);
+		if (index < 0)
+			return index;
+	}
+
+	return fwnode_property_get_reference_args(fwnode, "clocks",
+						  "#clock-cells", 0, index,
+						  out_args);
+}
+
+static struct clk_hw *
+fwnode_clk_get_hw_from_fwspec(const struct fwnode_reference_args *clkspec)
+{
+	struct fwnode_clk_provider *provider;
+	struct clk_hw *hw = ERR_PTR(-EPROBE_DEFER);
+
+	if (!clkspec)
+		return ERR_PTR(-EINVAL);
+	if (!fwnode_device_is_available(clkspec->fwnode))
+		return ERR_PTR(-ENOENT);
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_for_each_entry(provider, &fwnode_clk_providers, link) {
+		if (provider->fwnode != clkspec->fwnode)
+			continue;
+
+		hw = provider->ops->get(clkspec, provider->data);
+		if (!IS_ERR(hw))
+			break;
+	}
+	mutex_unlock(&fwnode_clk_mutex);
+
+	return hw;
+}
+
+struct clk_hw *fwnode_clk_get_hw(struct fwnode_handle *fwnode, int index,
+				 const char *con_id)
+{
+	struct fwnode_reference_args clkspec;
+	struct clk_hw *hw;
+	int ret;
+
+	ret = fwnode_parse_clkspec(fwnode, index, con_id, &clkspec);
+	if (ret)
+		return ERR_PTR(ret);
+
+	hw = fwnode_clk_get_hw_from_fwspec(&clkspec);
+	fwnode_handle_put(clkspec.fwnode);
+
+	return hw;
+}
 
 /**
  * of_parse_clkspec() - Parse a DT clock specifier for a given device node

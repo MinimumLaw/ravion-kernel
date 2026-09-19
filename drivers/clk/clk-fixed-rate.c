@@ -186,6 +186,35 @@ static struct clk_hw *_of_fixed_clk_setup(struct device_node *node)
 	return hw;
 }
 
+static struct clk_hw *fwnode_fixed_clk_setup(struct device *dev)
+{
+	const char *clk_name = fwnode_get_name(dev_fwnode(dev));
+	struct clk_hw *hw;
+	u32 accuracy = 0;
+	u32 rate;
+	int ret;
+
+	if (device_property_read_u32(dev, "clock-frequency", &rate))
+		return ERR_PTR(-EIO);
+
+	device_property_read_u32(dev, "clock-accuracy", &accuracy);
+	device_property_read_string(dev, "clock-output-names", &clk_name);
+
+	hw = clk_hw_register_fixed_rate_with_accuracy(dev, clk_name, NULL, 0,
+						      rate, accuracy);
+	if (IS_ERR(hw))
+		return hw;
+
+	ret = fwnode_clk_add_hw_provider(dev_fwnode(dev),
+					 &fwnode_clk_hw_simple_ops, hw);
+	if (ret) {
+		clk_hw_unregister_fixed_rate(hw);
+		return ERR_PTR(ret);
+	}
+
+	return hw;
+}
+
 /**
  * of_fixed_clk_setup() - Setup function for simple fixed rate clock
  * @node:	device node for the clock
@@ -200,7 +229,10 @@ static void of_fixed_clk_remove(struct platform_device *pdev)
 {
 	struct clk_hw *hw = platform_get_drvdata(pdev);
 
-	of_clk_del_provider(pdev->dev.of_node);
+	if (pdev->dev.of_node)
+		of_clk_del_provider(pdev->dev.of_node);
+	else
+		fwnode_clk_del_provider(dev_fwnode(&pdev->dev));
 	clk_hw_unregister_fixed_rate(hw);
 }
 
@@ -212,7 +244,10 @@ static int of_fixed_clk_probe(struct platform_device *pdev)
 	 * This function is not executed when of_fixed_clk_setup
 	 * succeeded.
 	 */
-	hw = _of_fixed_clk_setup(pdev->dev.of_node);
+	if (pdev->dev.of_node)
+		hw = _of_fixed_clk_setup(pdev->dev.of_node);
+	else
+		hw = fwnode_fixed_clk_setup(&pdev->dev);
 	if (IS_ERR(hw))
 		return PTR_ERR(hw);
 

@@ -4,7 +4,6 @@
  */
 
 #include <linux/clk-provider.h>
-#include <linux/clkdev.h>
 #include <linux/property.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
@@ -1027,6 +1026,28 @@ static struct clk_hw *of_clk_rpmh_hw_get(struct of_phandle_args *clkspec,
 	return rpmh->clks[idx];
 }
 
+static struct clk_hw *
+fwnode_clk_rpmh_hw_get(const struct fwnode_reference_args *clkspec, void *data)
+{
+	const struct clk_rpmh_desc *rpmh = data;
+	unsigned int idx;
+
+	if (clkspec->nargs != 1)
+		return ERR_PTR(-EINVAL);
+
+	idx = clkspec->args[0];
+	if (idx >= rpmh->num_clks) {
+		pr_err("%s: invalid index %u\n", __func__, idx);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return rpmh->clks[idx];
+}
+
+static const struct fwnode_clk_provider_ops fwnode_clk_rpmh_ops = {
+	.get = fwnode_clk_rpmh_hw_get,
+};
+
 static int clk_rpmh_probe(struct platform_device *pdev)
 {
 	struct clk_hw **hw_clks;
@@ -1087,16 +1108,12 @@ static int clk_rpmh_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "failed to register %s\n", name);
 			return ret;
 		}
-		if (!pdev->dev.of_node) {
-			ret = devm_clk_hw_register_clkdev(&pdev->dev, hw_clks[i],
-							name, dev_name(&pdev->dev));
-			if (ret)
-				return ret;
-		}
 	}
 
 	if (!pdev->dev.of_node)
-		return 0;
+		return devm_fwnode_clk_add_hw_provider(&pdev->dev,
+							 &fwnode_clk_rpmh_ops,
+							 (void *)desc);
 
 	/* typecast to silence compiler warning */
 	ret = devm_of_clk_add_hw_provider(&pdev->dev, of_clk_rpmh_hw_get,
