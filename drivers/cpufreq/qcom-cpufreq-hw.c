@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_opp.h>
+#include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/units.h>
@@ -66,10 +67,47 @@ struct qcom_cpufreq_data {
 static struct {
 	struct qcom_cpufreq_data *data;
 	const struct qcom_cpufreq_soc_data *soc_data;
+	unsigned int num_domains;
 } qcom_cpufreq;
 
 static unsigned long cpu_hw_rate, xo_rate;
 static bool icc_scaling_enabled;
+
+static int qcom_cpufreq_hw_get_domain(unsigned int cpu, unsigned int *index)
+{
+	struct device *cpu_dev = get_cpu_device(cpu);
+	struct fwnode_reference_args args;
+	struct device_node *cpu_np;
+	struct of_phandle_args of_args;
+	int ret;
+
+	if (!cpu_dev)
+		return -ENODEV;
+
+	cpu_np = of_cpu_device_node_get(cpu);
+	if (cpu_np) {
+		ret = of_parse_phandle_with_args(cpu_np, "qcom,freq-domain",
+						 "#freq-domain-cells", 0, &of_args);
+		of_node_put(cpu_np);
+		if (!ret)
+			*index = of_args.args[0];
+		return ret;
+	}
+
+	ret = fwnode_property_get_reference_args(dev_fwnode(cpu_dev),
+						 "qcom,freq-domain",
+						 "#freq-domain-cells",
+						 0, 0, &args);
+	if (!ret) {
+		if (args.nargs != 1)
+			ret = -EINVAL;
+		else
+			*index = args.args[0];
+		fwnode_handle_put(args.fwnode);
+	}
+
+	return ret;
+}
 
 static int qcom_cpufreq_set_bw(struct cpufreq_policy *policy,
 			       unsigned long freq_khz)
@@ -304,23 +342,14 @@ static int qcom_cpufreq_hw_read_lut(struct device *cpu_dev,
 
 static void qcom_get_related_cpus(int index, struct cpumask *m)
 {
-	struct device_node *cpu_np;
-	struct of_phandle_args args;
-	int cpu, ret;
+	unsigned int domain;
+	int cpu;
 
 	for_each_present_cpu(cpu) {
-		cpu_np = of_cpu_device_node_get(cpu);
-		if (!cpu_np)
+		if (qcom_cpufreq_hw_get_domain(cpu, &domain))
 			continue;
 
-		ret = of_parse_phandle_with_args(cpu_np, "qcom,freq-domain",
-						 "#freq-domain-cells", 0,
-						 &args);
-		of_node_put(cpu_np);
-		if (ret < 0)
-			continue;
-
-		if (index == args.args[0])
+		if (index == domain)
 			cpumask_set_cpu(cpu, m);
 	}
 }
@@ -530,11 +559,10 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 {
 	struct platform_device *pdev = cpufreq_get_driver_data();
 	struct device *dev = &pdev->dev;
-	struct of_phandle_args args;
-	struct device_node *cpu_np;
 	struct device *cpu_dev;
 	struct qcom_cpufreq_data *data;
-	int ret, index;
+	unsigned int index;
+	int ret;
 
 	cpu_dev = get_cpu_device(policy->cpu);
 	if (!cpu_dev) {
@@ -543,17 +571,13 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 		return -ENODEV;
 	}
 
-	cpu_np = of_cpu_device_node_get(policy->cpu);
-	if (!cpu_np)
-		return -EINVAL;
-
-	ret = of_parse_phandle_with_args(cpu_np, "qcom,freq-domain",
-					 "#freq-domain-cells", 0, &args);
-	of_node_put(cpu_np);
+	ret = qcom_cpufreq_hw_get_domain(policy->cpu, &index);
 	if (ret)
 		return ret;
 
-	index = args.args[0];
+	if (index >= qcom_cpufreq.num_domains)
+		return -EINVAL;
+
 	data = &qcom_cpufreq.data[index];
 
 	/* HW should be in enabled state to proceed */
@@ -647,6 +671,27 @@ static const struct clk_ops qcom_cpufreq_hw_clk_ops = {
 	.determine_rate = qcom_cpufreq_hw_determine_rate,
 };
 
+static struct clk_hw *
+qcom_cpufreq_hw_fwnode_get(const struct fwnode_reference_args *clkspec,
+			   void *data)
+{
+	struct clk_hw_onecell_data *clk_data = data;
+	unsigned int index;
+
+	if (clkspec->nargs != 1)
+		return ERR_PTR(-EINVAL);
+
+	index = clkspec->args[0];
+	if (index >= clk_data->num)
+		return ERR_PTR(-EINVAL);
+
+	return clk_data->hws[index];
+}
+
+static const struct fwnode_clk_provider_ops qcom_cpufreq_hw_fwnode_ops = {
+	.get = qcom_cpufreq_hw_fwnode_get,
+};
+
 static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 {
 	struct clk_hw_onecell_data *clk_data;
@@ -676,20 +721,26 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	if (!cpu_dev)
 		return -EPROBE_DEFER;
 
-	ret = dev_pm_opp_of_find_icc_paths(cpu_dev, NULL);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to find icc paths\n");
+	if (dev_of_node(cpu_dev)) {
+		ret = dev_pm_opp_of_find_icc_paths(cpu_dev, NULL);
+		if (ret)
+			return dev_err_probe(dev, ret, "Failed to find icc paths\n");
+	}
 
 	for (num_domains = 0; num_domains < MAX_FREQ_DOMAINS; num_domains++)
 		if (!platform_get_resource(pdev, IORESOURCE_MEM, num_domains))
 			break;
+	if (!num_domains)
+		return -ENODEV;
+
+	qcom_cpufreq.num_domains = num_domains;
 
 	qcom_cpufreq.data = devm_kzalloc(dev, sizeof(struct qcom_cpufreq_data) * num_domains,
 					 GFP_KERNEL);
 	if (!qcom_cpufreq.data)
 		return -ENOMEM;
 
-	qcom_cpufreq.soc_data = of_device_get_match_data(dev);
+	qcom_cpufreq.soc_data = device_get_match_data(dev);
 	if (!qcom_cpufreq.soc_data)
 		return -ENODEV;
 
@@ -732,7 +783,13 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		kfree(clk_init.name);
 	}
 
-	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, clk_data);
+	if (dev_of_node(dev))
+		ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
+						  clk_data);
+	else
+		ret = devm_fwnode_clk_add_hw_provider(dev,
+						      &qcom_cpufreq_hw_fwnode_ops,
+						      clk_data);
 	if (ret < 0) {
 		dev_err(dev, "Failed to add clock provider\n");
 		return ret;
