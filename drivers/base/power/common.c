@@ -107,9 +107,18 @@ int dev_pm_domain_attach(struct device *dev, u32 flags)
 	if (dev->pm_domain)
 		return 0;
 
-	ret = acpi_dev_pm_attach(dev, !!(flags & PD_FLAG_ATTACH_POWER_ON));
-	if (!ret)
+	/*
+	 * Firmware-node power-domain references describe a specific generic
+	 * power domain and take precedence over the catch-all ACPI PM domain.
+	 */
+	if (device_property_present(dev, "power-domains")) {
 		ret = genpd_dev_pm_attach(dev);
+	} else {
+		ret = acpi_dev_pm_attach(dev,
+					 !!(flags & PD_FLAG_ATTACH_POWER_ON));
+		if (!ret)
+			ret = genpd_dev_pm_attach(dev);
+	}
 
 	if (dev->pm_domain)
 		dev->power.detach_power_off = !!(flags & PD_FLAG_DETACH_POWER_OFF);
@@ -194,7 +203,6 @@ int dev_pm_domain_attach_list(struct device *dev,
 			      const struct dev_pm_domain_attach_data *data,
 			      struct dev_pm_domain_list **list)
 {
-	struct device_node *np = dev->of_node;
 	struct dev_pm_domain_list *pds;
 	struct device *pd_dev = NULL;
 	int ret, i, num_pds = 0;
@@ -207,16 +215,14 @@ int dev_pm_domain_attach_list(struct device *dev,
 	if (dev->pm_domain)
 		return -EEXIST;
 
-	/* For now this is limited to OF based platforms. */
-	if (!np)
+	if (!dev_fwnode(dev))
 		return 0;
 
 	if (data && data->pd_names) {
 		num_pds = data->num_pd_names;
 		by_id = false;
 	} else {
-		num_pds = of_count_phandle_with_args(np, "power-domains",
-						     "#power-domain-cells");
+		num_pds = genpd_dev_pm_count_domains(dev);
 	}
 
 	if (num_pds <= 0)

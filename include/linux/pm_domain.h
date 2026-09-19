@@ -458,6 +458,10 @@ int of_genpd_add_provider_simple(struct device_node *np,
 int of_genpd_add_provider_onecell(struct device_node *np,
 				  struct genpd_onecell_data *data);
 void of_genpd_del_provider(struct device_node *np);
+int fwnode_genpd_add_provider_onecell(struct fwnode_handle *fwnode,
+				      struct genpd_onecell_data *data);
+void fwnode_genpd_del_provider(struct fwnode_handle *fwnode);
+void fwnode_genpd_sync_state(struct fwnode_handle *fwnode);
 int of_genpd_add_device(const struct of_phandle_args *args, struct device *dev);
 int of_genpd_add_subdomain(const struct of_phandle_args *parent_spec,
 			   const struct of_phandle_args *subdomain_spec);
@@ -473,6 +477,7 @@ int of_genpd_remove_child_ids(struct device_node *np,
 			      struct genpd_onecell_data *data);
 
 int genpd_dev_pm_attach(struct device *dev);
+int genpd_dev_pm_count_domains(struct device *dev);
 struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 					 unsigned int index);
 struct device *genpd_dev_pm_attach_by_name(struct device *dev,
@@ -491,6 +496,19 @@ static inline int of_genpd_add_provider_onecell(struct device_node *np,
 }
 
 static inline void of_genpd_del_provider(struct device_node *np) {}
+
+static inline int
+fwnode_genpd_add_provider_onecell(struct fwnode_handle *fwnode,
+				  struct genpd_onecell_data *data)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline void
+fwnode_genpd_del_provider(struct fwnode_handle *fwnode) {}
+
+static inline void
+fwnode_genpd_sync_state(struct fwnode_handle *fwnode) {}
 
 static inline int of_genpd_add_device(const struct of_phandle_args *args,
 				      struct device *dev)
@@ -519,6 +537,11 @@ static inline int of_genpd_parse_idle_states(struct device_node *dn,
 static inline void of_genpd_sync_state(struct device_node *np) {}
 
 static inline int genpd_dev_pm_attach(struct device *dev)
+{
+	return 0;
+}
+
+static inline int genpd_dev_pm_count_domains(struct device *dev)
 {
 	return 0;
 }

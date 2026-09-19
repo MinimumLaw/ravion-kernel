@@ -2564,6 +2564,15 @@ static LIST_HEAD(of_genpd_providers);
 /* Mutex to protect the list above. */
 static DEFINE_MUTEX(of_genpd_mutex);
 
+struct fwnode_genpd_provider {
+	struct list_head link;
+	struct fwnode_handle *fwnode;
+	struct genpd_onecell_data *data;
+};
+
+static LIST_HEAD(fwnode_genpd_providers);
+static DEFINE_MUTEX(fwnode_genpd_mutex);
+
 /* The parent for genpd_provider devices. */
 static struct device *genpd_provider_bus;
 
@@ -2888,6 +2897,160 @@ void of_genpd_del_provider(struct device_node *np)
 	mutex_unlock(&gpd_list_lock);
 }
 EXPORT_SYMBOL_GPL(of_genpd_del_provider);
+
+/**
+ * fwnode_genpd_add_provider_onecell() - Register a fwnode PM domain provider
+ * @fwnode: Firmware node associated with the provider
+ * @data: Onecell domain table indexed by the firmware specifier
+ *
+ * Register a onecell provider for firmware descriptions which use the generic
+ * property API rather than an OF node, for example ACPI _DSD properties.
+ */
+int fwnode_genpd_add_provider_onecell(struct fwnode_handle *fwnode,
+				      struct genpd_onecell_data *data)
+{
+	struct fwnode_genpd_provider *provider;
+	struct generic_pm_domain *genpd;
+	unsigned int i;
+	int ret = -EINVAL;
+
+	if (!fwnode || !data || !data->domains)
+		return -EINVAL;
+
+	if (!genpd_bus_registered)
+		return -ENODEV;
+
+	provider = kzalloc_obj(*provider);
+	if (!provider)
+		return -ENOMEM;
+
+	for (i = 0; i < data->num_domains; i++) {
+		genpd = data->domains[i];
+		if (!genpd)
+			continue;
+		if (!genpd_present(genpd))
+			goto error;
+
+		genpd->dev.parent = genpd_provider_bus;
+		device_set_node(&genpd->dev, fwnode);
+		ret = device_add(&genpd->dev);
+		if (ret)
+			goto error;
+
+		genpd->provider = fwnode;
+		genpd->has_provider = true;
+	}
+
+	provider->fwnode = fwnode_handle_get(fwnode);
+	provider->data = data;
+	fwnode_dev_initialized(fwnode, true);
+
+	mutex_lock(&fwnode_genpd_mutex);
+	list_add(&provider->link, &fwnode_genpd_providers);
+	mutex_unlock(&fwnode_genpd_mutex);
+
+	return 0;
+
+error:
+	while (i--) {
+		genpd = data->domains[i];
+		if (!genpd)
+			continue;
+		genpd->provider = NULL;
+		genpd->has_provider = false;
+		device_del(&genpd->dev);
+	}
+	kfree(provider);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(fwnode_genpd_add_provider_onecell);
+
+/**
+ * fwnode_genpd_del_provider() - Remove a fwnode PM domain provider
+ * @fwnode: Firmware node used to register the provider
+ */
+void fwnode_genpd_del_provider(struct fwnode_handle *fwnode)
+{
+	struct fwnode_genpd_provider *provider, *tmp;
+	struct generic_pm_domain *genpd;
+
+	mutex_lock(&gpd_list_lock);
+	mutex_lock(&fwnode_genpd_mutex);
+	list_for_each_entry_safe(provider, tmp, &fwnode_genpd_providers, link) {
+		if (provider->fwnode != fwnode)
+			continue;
+
+		list_for_each_entry(genpd, &gpd_list, gpd_list_node) {
+			if (genpd->provider != fwnode)
+				continue;
+			genpd->has_provider = false;
+			genpd->provider = NULL;
+			device_del(&genpd->dev);
+		}
+
+		fwnode_dev_initialized(fwnode, false);
+		list_del(&provider->link);
+		fwnode_handle_put(provider->fwnode);
+		kfree(provider);
+		break;
+	}
+	mutex_unlock(&fwnode_genpd_mutex);
+	mutex_unlock(&gpd_list_lock);
+}
+EXPORT_SYMBOL_GPL(fwnode_genpd_del_provider);
+
+/**
+ * fwnode_genpd_sync_state() - Allow unused domains of a provider to power off
+ * @fwnode: Firmware node associated with the provider
+ */
+void fwnode_genpd_sync_state(struct fwnode_handle *fwnode)
+{
+	struct generic_pm_domain *genpd;
+
+	if (!fwnode)
+		return;
+
+	mutex_lock(&gpd_list_lock);
+	list_for_each_entry(genpd, &gpd_list, gpd_list_node) {
+		if (genpd->provider != fwnode)
+			continue;
+
+		genpd_lock(genpd);
+		genpd->stay_on = false;
+		genpd_power_off(genpd, false, 0);
+		genpd_unlock(genpd);
+	}
+	mutex_unlock(&gpd_list_lock);
+}
+EXPORT_SYMBOL_GPL(fwnode_genpd_sync_state);
+
+static struct generic_pm_domain *
+fwnode_genpd_get_from_provider(const struct fwnode_reference_args *args)
+{
+	struct generic_pm_domain *genpd = ERR_PTR(-ENOENT);
+	struct fwnode_genpd_provider *provider;
+	unsigned int index;
+
+	if (!args || args->nargs != 1)
+		return ERR_PTR(-EINVAL);
+
+	index = args->args[0];
+	mutex_lock(&fwnode_genpd_mutex);
+	list_for_each_entry(provider, &fwnode_genpd_providers, link) {
+		if (provider->fwnode != args->fwnode)
+			continue;
+		if (index >= provider->data->num_domains)
+			genpd = ERR_PTR(-EINVAL);
+		else if (!provider->data->domains[index])
+			genpd = ERR_PTR(-ENOENT);
+		else
+			genpd = provider->data->domains[index];
+		break;
+	}
+	mutex_unlock(&fwnode_genpd_mutex);
+
+	return genpd;
+}
 
 /**
  * genpd_get_from_provider() - Look-up PM domain
@@ -3237,7 +3400,10 @@ EXPORT_SYMBOL_GPL(of_genpd_remove_last);
 
 static void genpd_release_dev(struct device *dev)
 {
-	of_node_put(dev->of_node);
+	if (dev->of_node)
+		of_node_put(dev->of_node);
+	else
+		fwnode_handle_put(dev_fwnode(dev));
 	kfree(dev);
 }
 
@@ -3432,12 +3598,83 @@ err:
 	return ret;
 }
 
+static int fwnode_genpd_count_references(struct fwnode_handle *fwnode)
+{
+	struct fwnode_reference_args args;
+	unsigned int count;
+	int ret;
+
+	for (count = 0; ; count++) {
+		ret = fwnode_property_get_reference_args(fwnode, "power-domains",
+						     "#power-domain-cells", 0,
+						 count, &args);
+		if (ret)
+			return ret == -ENOENT ? count : ret;
+		fwnode_handle_put(args.fwnode);
+	}
+}
+
+int genpd_dev_pm_count_domains(struct device *dev)
+{
+	if (dev->of_node)
+		return of_count_phandle_with_args(dev->of_node, "power-domains",
+						  "#power-domain-cells");
+
+	return fwnode_genpd_count_references(dev_fwnode(dev));
+}
+EXPORT_SYMBOL_GPL(genpd_dev_pm_count_domains);
+
+static int __fwnode_genpd_dev_pm_attach(struct device *dev,
+					struct device *base_dev,
+					unsigned int index, bool power_on)
+{
+	struct fwnode_reference_args pd_args;
+	struct generic_pm_domain *pd;
+	int ret;
+
+	ret = fwnode_property_get_reference_args(dev_fwnode(dev), "power-domains",
+						 "#power-domain-cells", 0,
+						 index, &pd_args);
+	if (ret)
+		return ret;
+
+	mutex_lock(&gpd_list_lock);
+	pd = fwnode_genpd_get_from_provider(&pd_args);
+	fwnode_handle_put(pd_args.fwnode);
+	if (IS_ERR(pd)) {
+		mutex_unlock(&gpd_list_lock);
+		return driver_deferred_probe_check_state(base_dev);
+	}
+
+	ret = genpd_add_device(pd, dev, base_dev);
+	mutex_unlock(&gpd_list_lock);
+	if (ret < 0)
+		return dev_err_probe(dev, ret, "failed to add to PM domain %s\n",
+				     pd->name);
+
+	dev->pm_domain->detach = genpd_dev_pm_detach;
+	dev->pm_domain->sync = genpd_dev_pm_sync;
+
+	if (power_on) {
+		genpd_lock(pd);
+		ret = genpd_power_on(pd, 0);
+		genpd_unlock(pd);
+	}
+
+	if (ret) {
+		genpd_remove_device(pd, dev);
+		return -EPROBE_DEFER;
+	}
+
+	return 1;
+}
+
 /**
- * genpd_dev_pm_attach - Attach a device to its PM domain using DT.
+ * genpd_dev_pm_attach - Attach a device to its firmware-described PM domain.
  * @dev: Device to attach.
  *
- * Parse device's OF node to find a PM domain specifier. If such is found,
- * attaches the device to retrieved pm_domain ops.
+ * Parse the device's firmware node to find a PM domain specifier. If such is
+ * found, attach the device to the retrieved pm_domain ops.
  *
  * Returns 1 on successfully attached PM domain, 0 when the device don't need a
  * PM domain or when multiple power-domains exists for it, else a negative error
@@ -3447,18 +3684,23 @@ err:
  */
 int genpd_dev_pm_attach(struct device *dev)
 {
-	if (!dev->of_node)
+	int num_domains;
+
+	if (!dev_fwnode(dev))
 		return 0;
 
 	/*
 	 * Devices with multiple PM domains must be attached separately, as we
 	 * can only attach one PM domain per device.
 	 */
-	if (of_count_phandle_with_args(dev->of_node, "power-domains",
-				       "#power-domain-cells") != 1)
+	num_domains = genpd_dev_pm_count_domains(dev);
+	if (num_domains != 1)
 		return 0;
 
-	return __genpd_dev_pm_attach(dev, dev, 0, 1, true);
+	if (dev->of_node)
+		return __genpd_dev_pm_attach(dev, dev, 0, 1, true);
+
+	return __fwnode_genpd_dev_pm_attach(dev, dev, 0, true);
 }
 EXPORT_SYMBOL_GPL(genpd_dev_pm_attach);
 
@@ -3467,8 +3709,8 @@ EXPORT_SYMBOL_GPL(genpd_dev_pm_attach);
  * @dev: The device used to lookup the PM domain.
  * @index: The index of the PM domain.
  *
- * Parse device's OF node to find a PM domain specifier at the provided @index.
- * If such is found, creates a virtual device and attaches it to the retrieved
+ * Parse the device's firmware node to find a PM domain specifier at @index.
+ * If such is found, create a virtual device and attach it to the retrieved
  * pm_domain ops. To deal with detaching of the virtual device, the ->detach()
  * callback in the struct dev_pm_domain are assigned to genpd_dev_pm_detach().
  *
@@ -3485,12 +3727,11 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	int num_domains;
 	int ret;
 
-	if (!dev->of_node)
+	if (!dev_fwnode(dev))
 		return NULL;
 
 	/* Verify that the index is within a valid range. */
-	num_domains = of_count_phandle_with_args(dev->of_node, "power-domains",
-						 "#power-domain-cells");
+	num_domains = genpd_dev_pm_count_domains(dev);
 	if (num_domains < 0 || index >= num_domains)
 		return NULL;
 
@@ -3505,7 +3746,7 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	dev_set_name(virt_dev, "genpd:%u:%s", index, dev_name(dev));
 	virt_dev->bus = &genpd_bus_type;
 	virt_dev->release = genpd_release_dev;
-	virt_dev->of_node = of_node_get(dev->of_node);
+	device_set_node(virt_dev, fwnode_handle_get(dev_fwnode(dev)));
 
 	ret = device_register(virt_dev);
 	if (ret) {
@@ -3514,7 +3755,10 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	}
 
 	/* Try to attach the device to the PM domain at the specified index. */
-	ret = __genpd_dev_pm_attach(virt_dev, dev, index, num_domains, false);
+	if (dev->of_node)
+		ret = __genpd_dev_pm_attach(virt_dev, dev, index, num_domains, false);
+	else
+		ret = __fwnode_genpd_dev_pm_attach(virt_dev, dev, index, false);
 	if (ret < 1) {
 		device_unregister(virt_dev);
 		return ret ? ERR_PTR(ret) : NULL;
@@ -3532,19 +3776,18 @@ EXPORT_SYMBOL_GPL(genpd_dev_pm_attach_by_id);
  * @dev: The device used to lookup the PM domain.
  * @name: The name of the PM domain.
  *
- * Parse device's OF node to find a PM domain specifier using the
- * power-domain-names DT property. For further description see
+ * Parse the device's firmware node to find a PM domain specifier using the
+ * power-domain-names property. For further description see
  * genpd_dev_pm_attach_by_id().
  */
 struct device *genpd_dev_pm_attach_by_name(struct device *dev, const char *name)
 {
 	int index;
 
-	if (!dev->of_node)
+	if (!dev_fwnode(dev))
 		return NULL;
 
-	index = of_property_match_string(dev->of_node, "power-domain-names",
-					 name);
+	index = device_property_match_string(dev, "power-domain-names", name);
 	if (index < 0)
 		return NULL;
 

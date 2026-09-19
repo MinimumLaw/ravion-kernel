@@ -1190,10 +1190,9 @@ static int rpmhpd_probe(struct platform_device *pdev)
 					       &rpmhpds[i]->pd);
 	}
 
-	/* Non-DT board glue attaches explicit consumers with pm_genpd_add_device. */
 	platform_set_drvdata(pdev, data);
 	if (!pdev->dev.of_node)
-		return 0;
+		return fwnode_genpd_add_provider_onecell(dev_fwnode(dev), data);
 
 	return of_genpd_add_provider_onecell(pdev->dev.of_node, data);
 }
@@ -1207,11 +1206,13 @@ static void rpmhpd_sync_state(struct device *dev)
 	unsigned int i;
 	int ret;
 
-	/* Preserve boot votes until all non-DT consumers have been described. */
-	if (!dev->of_node || !desc)
+	if (!desc)
 		return;
 	rpmhpds = desc->rpmhpds;
-	of_genpd_sync_state(dev->of_node);
+	if (dev->of_node)
+		of_genpd_sync_state(dev->of_node);
+	else
+		fwnode_genpd_sync_state(dev_fwnode(dev));
 
 	mutex_lock(&rpmhpd_lock);
 	for (i = 0; i < desc->num_pds; i++) {
