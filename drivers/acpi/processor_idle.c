@@ -1184,7 +1184,11 @@ static void acpi_processor_setup_lpi_states(struct acpi_processor *pr)
 	if (!pr->flags.has_lpi)
 		return;
 
-	for (i = 0; i < pr->power.count && i < CPUIDLE_STATE_MAX; i++) {
+	if (max_cstate == 0)
+		max_cstate = 1;
+
+	for (i = 0; i < pr->power.count && i < CPUIDLE_STATE_MAX &&
+	     i <= max_cstate; i++) {
 		lpi = &pr->power.lpi_states[i];
 
 		state = &drv->states[i];
