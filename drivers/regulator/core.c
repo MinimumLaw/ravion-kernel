@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/reboot.h>
 #include <linux/regmap.h>
 #include <linux/regulator/of_regulator.h>
@@ -2114,6 +2115,36 @@ static struct regulator_dev *regulator_lookup_by_name(const char *name)
 	return dev ? dev_to_rdev(dev) : NULL;
 }
 
+static struct regulator_dev *regulator_fwnode_lookup(struct device *dev,
+						     const char *supply)
+{
+	struct fwnode_reference_args args;
+	struct device *rdev_dev;
+	char prop_name[64];
+	int ret;
+
+	if (!dev || !dev_fwnode(dev) || dev_of_node(dev))
+		return NULL;
+
+	ret = snprintf(prop_name, sizeof(prop_name), "%s-supply", supply);
+	if (ret >= sizeof(prop_name))
+		return ERR_PTR(-EINVAL);
+
+	ret = fwnode_property_get_reference_args(dev_fwnode(dev), prop_name,
+						 NULL, 0, 0, &args);
+	if (ret == -ENOENT)
+		return NULL;
+	if (ret)
+		return ERR_PTR(ret);
+
+	rdev_dev = class_find_device_by_fwnode(&regulator_class, args.fwnode);
+	fwnode_handle_put(args.fwnode);
+	if (!rdev_dev)
+		return ERR_PTR(-EPROBE_DEFER);
+
+	return dev_to_rdev(rdev_dev);
+}
+
 static struct regulator_dev *regulator_dt_lookup(struct device *dev,
 						 const char *supply)
 {
@@ -2151,8 +2182,11 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 
 	regulator_supply_alias(&dev, &supply);
 
-	/* first do a dt based lookup */
+	/* First resolve an explicit firmware description. */
 	r = regulator_dt_lookup(dev, supply);
+	if (r)
+		return r;
+	r = regulator_fwnode_lookup(dev, supply);
 	if (r)
 		return r;
 
@@ -2206,6 +2240,8 @@ static int regulator_resolve_supply(struct regulator_dev *rdev)
 	 * device.
 	 */
 	r = regulator_dt_lookup(&rdev->dev, rdev->supply_name);
+	if (!r)
+		r = regulator_fwnode_lookup(&rdev->dev, rdev->supply_name);
 
 	/* If regulator not found use usual search path in the parent
 	 * device.
@@ -5759,7 +5795,10 @@ static void regulator_dev_release(struct device *dev)
 
 	debugfs_remove_recursive(rdev->debugfs);
 	kfree(rdev->constraints);
-	of_node_put(rdev->dev.of_node);
+	if (rdev->dev.of_node)
+		of_node_put(rdev->dev.of_node);
+	else
+		fwnode_handle_put(dev_fwnode(&rdev->dev));
 	kfree(rdev);
 }
 
@@ -5986,6 +6025,87 @@ static struct regulator_coupler generic_regulator_coupler = {
 	.attach_regulator = generic_coupler_attach,
 };
 
+static struct regulator_init_data *
+regulator_fwnode_get_init_data(struct device *dev,
+			       struct fwnode_handle *fwnode,
+			       const struct regulator_desc *desc)
+{
+	struct regulator_init_data *init_data;
+	struct regulation_constraints *constraints;
+	unsigned int mode;
+	const char *name;
+	u32 *modes;
+	u32 value;
+	int count;
+	int i;
+
+	if (!fwnode || is_of_node(fwnode))
+		return NULL;
+
+	init_data = devm_kzalloc(dev, sizeof(*init_data), GFP_KERNEL);
+	if (!init_data)
+		return ERR_PTR(-ENOMEM);
+	constraints = &init_data->constraints;
+
+	if (!fwnode_property_read_string(fwnode, "regulator-name", &name))
+		constraints->name = name;
+	if (!fwnode_property_read_u32(fwnode, "regulator-min-microvolt",
+				      &value))
+		constraints->min_uV = value;
+	if (!fwnode_property_read_u32(fwnode, "regulator-max-microvolt",
+				      &value))
+		constraints->max_uV = value;
+
+	if (constraints->min_uV != constraints->max_uV)
+		constraints->valid_ops_mask |= REGULATOR_CHANGE_VOLTAGE;
+	if (constraints->min_uV && constraints->max_uV)
+		constraints->apply_uV = true;
+
+	constraints->boot_on = fwnode_property_read_bool(fwnode,
+							 "regulator-boot-on");
+	constraints->always_on = fwnode_property_read_bool(fwnode,
+							   "regulator-always-on");
+	if (!constraints->always_on)
+		constraints->valid_ops_mask |= REGULATOR_CHANGE_STATUS;
+	if (fwnode_property_read_bool(fwnode, "regulator-allow-set-load"))
+		constraints->valid_ops_mask |= REGULATOR_CHANGE_DRMS;
+	if (fwnode_property_read_bool(fwnode, "regulator-allow-bypass"))
+		constraints->valid_ops_mask |= REGULATOR_CHANGE_BYPASS;
+
+	if (!fwnode_property_read_u32(fwnode, "regulator-initial-mode",
+				      &value) && desc->of_map_mode) {
+		mode = desc->of_map_mode(value);
+		if (mode != REGULATOR_MODE_INVALID)
+			constraints->initial_mode = mode;
+		else
+			dev_err(dev, "%pfwP: invalid regulator mode %u\n",
+				fwnode, value);
+	}
+
+	count = fwnode_property_count_u32(fwnode, "regulator-allowed-modes");
+	if (desc->of_map_mode && count > 0) {
+		modes = devm_kcalloc(dev, count, sizeof(*modes), GFP_KERNEL);
+		if (!modes)
+			return ERR_PTR(-ENOMEM);
+		if (fwnode_property_read_u32_array(fwnode,
+						   "regulator-allowed-modes",
+						   modes, count))
+			return ERR_PTR(-EINVAL);
+	}
+	for (i = 0; desc->of_map_mode && i < count; i++) {
+		mode = desc->of_map_mode(modes[i]);
+		if (mode != REGULATOR_MODE_INVALID)
+			constraints->valid_modes_mask |= mode;
+		else
+			dev_err(dev, "%pfwP: invalid allowed regulator mode %u\n",
+				fwnode, modes[i]);
+	}
+	if (constraints->valid_modes_mask)
+		constraints->valid_ops_mask |= REGULATOR_CHANGE_MODE;
+
+	return init_data;
+}
+
 /**
  * regulator_register - register regulator
  * @dev: the device that drive the regulator
@@ -6077,6 +6197,9 @@ regulator_register(struct device *dev,
 	 */
 	init_data = regulator_of_get_init_data(dev, regulator_desc, config,
 					       &rdev->dev.of_node);
+	if (!init_data)
+		init_data = regulator_fwnode_get_init_data(dev, config->fwnode,
+							   regulator_desc);
 
 	/*
 	 * Sometimes not all resources are probed already so we need to take
@@ -6102,6 +6225,8 @@ regulator_register(struct device *dev,
 		init_data = config->init_data;
 		rdev->dev.of_node = of_node_get(config->of_node);
 	}
+	if (!rdev->dev.of_node && config->fwnode)
+		device_set_node(&rdev->dev, fwnode_handle_get(config->fwnode));
 
 	ww_mutex_init(&rdev->mutex, &regulator_ww_class);
 	rdev->reg_data = config->driver_data;

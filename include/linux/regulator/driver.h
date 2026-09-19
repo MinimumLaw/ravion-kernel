@@ -456,6 +456,7 @@ struct regulator_desc {
  * @driver_data: private regulator data
  * @of_node: OpenFirmware node to parse for device tree bindings (may be
  *           NULL).
+ * @fwnode: firmware node to parse when @of_node is NULL (may be NULL).
  * @regmap: regmap to use for core regmap helpers if dev_get_regmap() is
  *          insufficient.
  * @ena_gpiod: GPIO controlling regulator enable.
@@ -465,6 +466,7 @@ struct regulator_config {
 	const struct regulator_init_data *init_data;
 	void *driver_data;
 	struct device_node *of_node;
+	struct fwnode_handle *fwnode;
 	struct regmap *regmap;
 
 	struct gpio_desc *ena_gpiod;
