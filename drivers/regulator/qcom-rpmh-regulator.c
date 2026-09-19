@@ -438,8 +438,7 @@ static const struct regulator_ops rpmh_regulator_xob_ops = {
  * rpmh_regulator_init_vreg() - initialize all attributes of an rpmh-regulator
  * @vreg:		Pointer to the individual rpmh-regulator resource
  * @dev:			Pointer to the top level rpmh-regulator PMIC device
- * @node:		Pointer to the individual rpmh-regulator resource
- *			device node
+ * @fwnode:		Firmware node for the individual rpmh-regulator resource
  * @pmic_id:		String used to identify the top level rpmh-regulator
  *			PMIC device on the board
  * @pmic_rpmh_data:	Pointer to a null-terminated array of rpmh-regulator
@@ -450,27 +449,35 @@ static const struct regulator_ops rpmh_regulator_xob_ops = {
  * Return: 0 on success, or a negative error number on failure
  */
 static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
-			struct device_node *node, const char *pmic_id,
+			struct fwnode_handle *fwnode, const char *pmic_id,
 			const struct rpmh_vreg_init_data *pmic_rpmh_data,
 			const struct qcom_tcl_regulator *board)
 {
 	struct regulator_config reg_config = {};
+	struct device_node *node = to_of_node(fwnode);
 	char rpmh_resource_name[20] = "";
 	const char *rsc_name;
 	const struct rpmh_vreg_init_data *rpmh_data;
 	struct regulator_init_data *init_data;
 	struct regulator_dev *rdev;
+	const char *name = NULL;
 	int ret;
 
 	vreg->dev = dev;
 
+	if (node)
+		name = node->name;
+	else if (fwnode)
+		fwnode_property_read_string(fwnode, "regulator-compatible", &name);
+	else if (board)
+		name = board->name;
+
 	for (rpmh_data = pmic_rpmh_data; rpmh_data->name; rpmh_data++)
-		if (node ? of_node_name_eq(node, rpmh_data->name) :
-		    board && !strcmp(board->name, rpmh_data->name))
+		if (name && !strcmp(name, rpmh_data->name))
 			break;
 
 	if (!rpmh_data->name) {
-		dev_err(dev, "Unknown regulator %pOFn\n", node);
+		dev_err(dev, "Unknown regulator %pfwP\n", fwnode);
 		return -EINVAL;
 	}
 
@@ -487,8 +494,8 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 
 	vreg->addr = cmd_db_read_addr(rpmh_resource_name);
 	if (!vreg->addr) {
-		dev_err(dev, "%pOFn: could not find RPMh address for resource %s\n",
-			node, rpmh_resource_name);
+		dev_err(dev, "%pfwP: could not find RPMh address for resource %s\n",
+			fwnode, rpmh_resource_name);
 		return -ENODEV;
 	}
 
@@ -496,6 +503,14 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 	/* The working TCL DT leaves these input rails without a provider. */
 	vreg->rdesc.supply_name = board && board->firmware_supply ?
 		NULL : rpmh_data->supply_name;
+	if (fwnode && !node && vreg->rdesc.supply_name) {
+		char prop_name[64];
+
+		snprintf(prop_name, sizeof(prop_name), "%s-supply",
+			 vreg->rdesc.supply_name);
+		if (!fwnode_property_present(fwnode, prop_name))
+			vreg->rdesc.supply_name = NULL;
+	}
 	if (board && board->firmware_supply)
 		dev_info(dev, "%s: input supply remains firmware-managed\n",
 			 board->name);
@@ -511,20 +526,20 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 		vreg->rdesc.n_voltages = rpmh_data->hw_data->n_voltages;
 	}
 
-	vreg->always_wait_for_ack = of_property_read_bool(node,
-						"qcom,always-wait-for-ack");
+	vreg->always_wait_for_ack = fwnode_property_read_bool(fwnode,
+							      "qcom,always-wait-for-ack");
 
 	vreg->rdesc.owner	= THIS_MODULE;
 	vreg->rdesc.type	= REGULATOR_VOLTAGE;
 	vreg->rdesc.ops		= vreg->hw_data->ops;
 	vreg->rdesc.of_map_mode	= vreg->hw_data->of_map_mode;
 
-	init_data = board ? board->init_data :
-		of_get_regulator_init_data(dev, node, &vreg->rdesc);
-	if (!init_data)
+	init_data = board ? board->init_data : node ?
+		of_get_regulator_init_data(dev, node, &vreg->rdesc) : NULL;
+	if ((board || node) && !init_data)
 		return -ENOMEM;
 
-	if (rpmh_data->hw_data->regulator_type == XOB &&
+	if (init_data && rpmh_data->hw_data->regulator_type == XOB &&
 	    init_data->constraints.min_uV &&
 	    init_data->constraints.min_uV == init_data->constraints.max_uV) {
 		vreg->rdesc.fixed_uV = init_data->constraints.min_uV;
@@ -534,18 +549,19 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 	reg_config.dev		= dev;
 	reg_config.init_data	= init_data;
 	reg_config.of_node	= node;
+	reg_config.fwnode	= fwnode;
 	reg_config.driver_data	= vreg;
 
 	rdev = devm_regulator_register(dev, &vreg->rdesc, &reg_config);
 	if (IS_ERR(rdev)) {
 		ret = PTR_ERR(rdev);
-		dev_err(dev, "%pOFn: devm_regulator_register() failed, ret=%d\n",
-			node, ret);
+		dev_err(dev, "%pfwP: devm_regulator_register() failed, ret=%d\n",
+			fwnode, ret);
 		return ret;
 	}
 
-	dev_dbg(dev, "%pOFn regulator registered for RPMh resource %s @ 0x%05X\n",
-		node, rpmh_resource_name, vreg->addr);
+	dev_dbg(dev, "%pfwP regulator registered for RPMh resource %s @ 0x%05X\n",
+		fwnode, rpmh_resource_name, vreg->addr);
 
 	return 0;
 }
@@ -1838,7 +1854,7 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 	if (!vreg_data)
 		return -ENODEV;
 
-	if (!dev->of_node) {
+	if (!dev->of_node && dev_get_platdata(dev)) {
 		const struct qcom_tcl_regulator_data *data = dev_get_platdata(dev);
 		unsigned int i;
 
@@ -1858,19 +1874,21 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	ret = of_property_read_string(dev->of_node, "qcom,pmic-id", &pmic_id);
+	ret = device_property_read_string(dev, "qcom,pmic-id", &pmic_id);
 	if (ret < 0) {
-		dev_err(dev, "qcom,pmic-id missing in DT node\n");
+		dev_err(dev, "qcom,pmic-id missing in firmware node\n");
 		return ret;
 	}
 
-	for_each_available_child_of_node_scoped(dev->of_node, node) {
+	device_for_each_child_node_scoped(dev, child) {
+		if (!fwnode_device_is_available(child))
+			continue;
 		vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
 		if (!vreg)
 			return -ENOMEM;
 
-		ret = rpmh_regulator_init_vreg(vreg, dev, node, pmic_id,
-						vreg_data, NULL);
+		ret = rpmh_regulator_init_vreg(vreg, dev, child, pmic_id,
+					       vreg_data, NULL);
 		if (ret < 0)
 			return ret;
 	}
