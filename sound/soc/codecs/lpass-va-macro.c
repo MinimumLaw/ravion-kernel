@@ -1699,12 +1699,15 @@ static int va_macro_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 
 	ret = va_macro_register_fsgen_output(va);
-	if (ret)
+	if (ret) {
+		pm_runtime_disable(dev);
 		goto err_clkout;
+	}
 
 	va->fsgen = devm_clk_hw_get_clk(dev, &va->hw, "fsgen");
 	if (IS_ERR(va->fsgen)) {
 		ret = PTR_ERR(va->fsgen);
+		pm_runtime_disable(dev);
 		goto err_clkout;
 	}
 
@@ -1727,14 +1730,21 @@ err:
 
 static void va_macro_remove(struct platform_device *pdev)
 {
-	struct va_macro *va = dev_get_drvdata(&pdev->dev);
+	struct device *dev = &pdev->dev;
+	struct va_macro *va = dev_get_drvdata(dev);
+	bool suspended;
 
-	if (va->has_npl_clk)
-		clk_disable_unprepare(va->npl);
+	pm_runtime_disable(dev);
+	suspended = pm_runtime_status_suspended(dev);
+	if (!suspended) {
+		if (va->has_npl_clk)
+			clk_disable_unprepare(va->npl);
 
-	clk_disable_unprepare(va->mclk);
-	clk_disable_unprepare(va->dcodec);
-	clk_disable_unprepare(va->macro);
+		clk_disable_unprepare(va->mclk);
+		clk_disable_unprepare(va->dcodec);
+		clk_disable_unprepare(va->macro);
+	}
+	pm_runtime_set_suspended(dev);
 
 	lpass_macro_pds_exit(va->pds);
 }

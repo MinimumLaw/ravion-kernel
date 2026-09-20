@@ -3924,8 +3924,10 @@ static int rx_macro_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 
 	ret = rx_macro_register_mclk_output(rx);
-	if (ret)
+	if (ret) {
+		pm_runtime_disable(dev);
 		goto err_clkout;
+	}
 
 	return 0;
 
@@ -3945,13 +3947,20 @@ err_dcodec:
 
 static void rx_macro_remove(struct platform_device *pdev)
 {
-	struct rx_macro *rx = dev_get_drvdata(&pdev->dev);
+	struct device *dev = &pdev->dev;
+	struct rx_macro *rx = dev_get_drvdata(dev);
+	bool suspended;
 
-	clk_disable_unprepare(rx->mclk);
-	clk_disable_unprepare(rx->npl);
-	clk_disable_unprepare(rx->fsgen);
+	pm_runtime_disable(dev);
+	suspended = pm_runtime_status_suspended(dev);
+	if (!suspended) {
+		clk_disable_unprepare(rx->fsgen);
+		clk_disable_unprepare(rx->npl);
+		clk_disable_unprepare(rx->mclk);
+	}
 	clk_disable_unprepare(rx->macro);
 	clk_disable_unprepare(rx->dcodec);
+	pm_runtime_set_suspended(dev);
 }
 
 static const struct of_device_id rx_macro_dt_match[] = {

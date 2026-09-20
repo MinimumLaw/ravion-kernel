@@ -2377,8 +2377,10 @@ static int tx_macro_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 
 	ret = tx_macro_register_mclk_output(tx);
-	if (ret)
+	if (ret) {
+		pm_runtime_disable(dev);
 		goto err_clkout;
+	}
 
 	return 0;
 
@@ -2400,13 +2402,20 @@ err:
 
 static void tx_macro_remove(struct platform_device *pdev)
 {
-	struct tx_macro *tx = dev_get_drvdata(&pdev->dev);
+	struct device *dev = &pdev->dev;
+	struct tx_macro *tx = dev_get_drvdata(dev);
+	bool suspended;
 
+	pm_runtime_disable(dev);
+	suspended = pm_runtime_status_suspended(dev);
 	clk_disable_unprepare(tx->macro);
 	clk_disable_unprepare(tx->dcodec);
-	clk_disable_unprepare(tx->mclk);
-	clk_disable_unprepare(tx->npl);
-	clk_disable_unprepare(tx->fsgen);
+	if (!suspended) {
+		clk_disable_unprepare(tx->fsgen);
+		clk_disable_unprepare(tx->npl);
+		clk_disable_unprepare(tx->mclk);
+	}
+	pm_runtime_set_suspended(dev);
 
 	lpass_macro_pds_exit(tx->pds);
 }
