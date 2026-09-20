@@ -317,3 +317,18 @@ config QCOM_TCL_ACPI_WIFI
 	tristate "TCL SC7180 diagnostic ACPI WiFi wiring"
 	depends on ACPI && EFI && ARCH_QCOM && QCOM_RPMH && QCOM_SMEM
 	depends on QCOM_RPMHPD && COMMON_CLK_QCOM && REGULATOR
+
+config QCOM_TCL_ACPI_DISPLAY
+	tristate "TCL B220G diagnostic ACPI display clock wiring"
+	depends on ACPI && ARCH_QCOM && PM_GENERIC_DOMAINS
+	depends on QCOM_CLK_RPMH=y && QCOM_RPMHPD=y
+	depends on SC_GCC_7180=y && SC_DISPCC_7180=y
+	depends on REGULATOR_QCOM_RPMH=y && REGULATOR_QCOM_REFGEN=y
+	depends on DRM_MSM && DRM_MSM_DSI_10NM_PHY
+	depends on INTERCONNECT_QCOM_SC7180=y && INTERCONNECT_QCOM_BCM_VOTER=y
+	depends on m
+	help
+	  Explicit GCC/DISPCC clock providers using existing diagnostic RPMh
+	  suppliers and the OEM GPU0 namespace. This enables neither DPU nor
+	  scanout. The coordinator retains resources for the diagnostic boot;
+	  unloading and manual supplier unbinding are not supported.
