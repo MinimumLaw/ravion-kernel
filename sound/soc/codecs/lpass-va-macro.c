@@ -218,7 +218,6 @@ struct va_macro {
 	struct clk *npl;
 	struct clk *macro;
 	struct clk *dcodec;
-	struct clk *fsgen;
 	struct clk_hw hw;
 	struct lpass_macro *pds;
 
@@ -517,15 +516,25 @@ static int va_macro_mclk_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *comp = snd_soc_dapm_to_component(w->dapm);
 	struct va_macro *va = snd_soc_component_get_drvdata(comp);
+	struct clk *fsgen;
+	int ret = 0;
+
+	/* Avoid a permanent reference from this module to its own clock. */
+	fsgen = clk_hw_get_clk(&va->hw, "fsgen");
+	if (IS_ERR(fsgen))
+		return PTR_ERR(fsgen);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		return clk_prepare_enable(va->fsgen);
+		ret = clk_prepare_enable(fsgen);
+		break;
 	case SND_SOC_DAPM_POST_PMD:
-		clk_disable_unprepare(va->fsgen);
+		clk_disable_unprepare(fsgen);
+		break;
 	}
 
-	return 0;
+	clk_put(fsgen);
+	return ret;
 }
 
 static int va_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
@@ -1700,13 +1709,6 @@ static int va_macro_probe(struct platform_device *pdev)
 
 	ret = va_macro_register_fsgen_output(va);
 	if (ret) {
-		pm_runtime_disable(dev);
-		goto err_clkout;
-	}
-
-	va->fsgen = devm_clk_hw_get_clk(dev, &va->hw, "fsgen");
-	if (IS_ERR(va->fsgen)) {
-		ret = PTR_ERR(va->fsgen);
 		pm_runtime_disable(dev);
 		goto err_clkout;
 	}
