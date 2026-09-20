@@ -576,7 +576,7 @@ static int qcom_pas_pds_attach(struct device *dev, struct device **devs, char **
 	int ret;
 	int i;
 
-	if (!dev->of_node) {
+	if (dev_get_platdata(dev)) {
 		const struct qcom_tcl_pas_data *data = dev_get_platdata(dev);
 
 		if (!data || !data->proxy_pds[0] || !data->proxy_pds[1])
@@ -645,6 +645,9 @@ static int qcom_pas_alloc_memory_region(struct qcom_pas *pas)
 			return -EOPNOTSUPP;
 		acpi_res = platform_get_resource_byname(to_platform_device(pas->dev),
 						   IORESOURCE_MEM, "firmware");
+		if (!acpi_res)
+			acpi_res = platform_get_resource(to_platform_device(pas->dev),
+							 IORESOURCE_MEM, 0);
 		if (!acpi_res || !resource_size(acpi_res))
 			return -EINVAL;
 		pas->mem_phys = pas->mem_reloc = acpi_res->start;
@@ -804,13 +807,13 @@ static int qcom_pas_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
+	rproc->has_iommu = device_property_present(&pdev->dev, "iommus");
 	rproc->auto_boot = desc->auto_boot;
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
 	pas = rproc->priv;
 	pas->dev = &pdev->dev;
-	pas->board_proxy_pds = !pdev->dev.of_node;
+	pas->board_proxy_pds = !!dev_get_platdata(&pdev->dev);
 	pas->rproc = rproc;
 	pas->minidump_id = desc->minidump_id;
 	pas->pas_id = desc->pas_id;

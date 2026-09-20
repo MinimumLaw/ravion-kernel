@@ -258,10 +258,26 @@ void qcom_add_glink_subdev(struct rproc *rproc, struct qcom_rproc_glink *glink,
 			   const char *ssr_name)
 {
 	struct device *dev = &rproc->dev;
+	struct fwnode_handle *fwnode;
+	int irq;
 
-	glink->node = of_get_child_by_name(dev->parent->of_node, "glink-edge");
-	if (!glink->node)
-		return;
+	if (dev->parent->of_node) {
+		glink->node = of_get_child_by_name(dev->parent->of_node,
+						   "glink-edge");
+		if (!glink->node)
+			return;
+	} else {
+		fwnode = device_get_named_child_node(dev->parent, "glink-edge");
+		if (!fwnode)
+			return;
+		irq = fwnode_irq_get_byname(dev_fwnode(dev->parent), "glink");
+		if (irq < 0) {
+			fwnode_handle_put(fwnode);
+			return;
+		}
+		glink->fwnode = fwnode;
+		glink->irq = irq;
+	}
 
 	glink->ssr_name = kstrdup_const(ssr_name, GFP_KERNEL);
 	if (!glink->ssr_name)
@@ -290,9 +306,9 @@ EXPORT_SYMBOL_GPL(qcom_add_glink_subdev);
  * Return: 0 on success, a negative error code on failure.
  */
 int qcom_add_glink_subdev_fwnode(struct rproc *rproc,
-			       struct qcom_rproc_glink *glink,
-			       const char *ssr_name,
-			       struct fwnode_handle *fwnode, int irq)
+				 struct qcom_rproc_glink *glink,
+				 const char *ssr_name,
+				 struct fwnode_handle *fwnode, int irq)
 {
 	if (!fwnode || !ssr_name || irq <= 0)
 		return irq < 0 ? irq : -EINVAL;
