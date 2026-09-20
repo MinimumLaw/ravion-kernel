@@ -1319,8 +1319,10 @@ static int ath10k_snoc_resource_init(struct ath10k *ar)
 
 	pdev = ar_snoc->dev;
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "membase");
+	if (!res && !pdev->dev.of_node)
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		ath10k_err(ar, "Memory base not found in DT\n");
+		ath10k_err(ar, "memory base resource not found\n");
 		return -EINVAL;
 	}
 
@@ -1586,6 +1588,9 @@ static int ath10k_setup_msa_resources(struct ath10k *ar, u32 msa_size)
 	} else {
 		res = platform_get_resource_byname(to_platform_device(dev),
 						   IORESOURCE_MEM, "msa");
+		if (!res)
+			res = platform_get_resource(to_platform_device(dev),
+						    IORESOURCE_MEM, 2);
 		if (!res || resource_size(res) < msa_size)
 			return -EINVAL;
 		r = *res;
@@ -1759,7 +1764,7 @@ static int ath10k_snoc_probe(struct platform_device *pdev)
 		    fwspec->ids[0] != 0xc0 || fwspec->ids[1] != 0xc1 ||
 		    !iommu_get_domain_for_dev(dev))
 			return dev_err_probe(dev, -ENODEV,
-					     "TCL WLAN requires both IORT stream IDs and a DMA domain\n");
+					     "WCN3990 requires both IORT stream IDs and a DMA domain\n");
 	}
 
 	ret = dma_set_mask_and_coherent(dev, drv_data->dma_mask);
