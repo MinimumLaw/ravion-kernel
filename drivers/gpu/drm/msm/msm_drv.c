@@ -201,6 +201,10 @@ static void load_gpu(struct drm_device *dev)
 	static DEFINE_MUTEX(init_lock);
 	struct msm_drm_private *priv = dev->dev_private;
 
+	/* ACPI TCL exposes DPU and Adreno as separate DRM devices. */
+	if (!priv->gpu_pdev)
+		return;
+
 	mutex_lock(&init_lock);
 
 	if (!priv->gpu)
