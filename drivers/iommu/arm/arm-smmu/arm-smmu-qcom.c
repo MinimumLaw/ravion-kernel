@@ -261,6 +261,9 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 	struct io_pgtable *pgtable = io_pgtable_ops_to_pgtable(smmu_domain->pgtbl_ops);
 	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
 	struct arm_smmu_cb *cb = &smmu_domain->smmu->cbs[cfg->cbndx];
+	bool runtime_pm = pm_runtime_enabled(smmu_domain->smmu->dev);
+	u32 tcr;
+	u64 ttbr;
 	int ret;
 
 	/* The domain must have split pagetables already enabled */
@@ -274,10 +277,10 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 			return -EINVAL;
 
 		/* Set TCR to the original configuration */
-		cb->tcr[0] = arm_smmu_lpae_tcr(&pgtable->cfg);
-		cb->ttbr[0] = FIELD_PREP(ARM_SMMU_TTBRn_ASID, cb->cfg->asid);
+		tcr = arm_smmu_lpae_tcr(&pgtable->cfg);
+		ttbr = FIELD_PREP(ARM_SMMU_TTBRn_ASID, cb->cfg->asid);
 	} else {
-		u32 tcr = cb->tcr[0];
+		tcr = cb->tcr[0];
 
 		/* Don't call this again if TTBR0 is already enabled */
 		if (!(cb->tcr[0] & ARM_SMMU_TCR_EPD0))
@@ -286,20 +289,26 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 		tcr |= arm_smmu_lpae_tcr(pgtbl_cfg);
 		tcr &= ~(ARM_SMMU_TCR_EPD0 | ARM_SMMU_TCR_EPD1);
 
-		cb->tcr[0] = tcr;
-		cb->ttbr[0] = pgtbl_cfg->arm_lpae_s1_cfg.ttbr;
-		cb->ttbr[0] |= FIELD_PREP(ARM_SMMU_TTBRn_ASID, cb->cfg->asid);
+		ttbr = pgtbl_cfg->arm_lpae_s1_cfg.ttbr;
+		ttbr |= FIELD_PREP(ARM_SMMU_TTBRn_ASID, cb->cfg->asid);
 	}
 
-	ret = pm_runtime_resume_and_get(smmu_domain->smmu->dev);
-	if (ret < 0) {
-		dev_err(smmu_domain->smmu->dev, "failed to get runtime PM: %d\n", ret);
-		return -ENODEV;
+	/* Match the core SMMU driver's handling of devices without runtime PM. */
+	if (runtime_pm) {
+		ret = pm_runtime_resume_and_get(smmu_domain->smmu->dev);
+		if (ret < 0) {
+			dev_err(smmu_domain->smmu->dev, "failed to get runtime PM: %d\n", ret);
+			return ret;
+		}
 	}
 
+	/* Commit the cached configuration only once register access is possible. */
+	cb->tcr[0] = tcr;
+	cb->ttbr[0] = ttbr;
 	arm_smmu_write_context_bank(smmu_domain->smmu, cb->cfg->cbndx);
 
-	pm_runtime_put_autosuspend(smmu_domain->smmu->dev);
+	if (runtime_pm)
+		pm_runtime_put_autosuspend(smmu_domain->smmu->dev);
 
 	return 0;
 }
