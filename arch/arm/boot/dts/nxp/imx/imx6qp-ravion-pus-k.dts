@@ -14,8 +14,19 @@
 #include "imx6qdl-ravion-v2.dtsi"
 
 / {
-	model = "ravion:pus";
+	model = "ravion:pus-k";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	aliases { /* renumbering SD/MMC cards and eMMC chip */
+		mmc0 = &usdhc3;
+		mmc1 = &usdhc1;
+		mmc2 = &usdhc2;
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart3;
+		ethernet0 = &fec;
+		ethernet1 = &lan7431;
+	};
 
 	/*
 	 * Device specific regulators
@@ -77,8 +88,10 @@
 	panel {
 		power-supply = <&reg_p3v3>;
 		backlight = <&lcd_backlight>;
-		//compatible = "mitsubishi,aa050mh01-da1";
-/****** Alternative record (without panel-simple patches ******
+#if 1
+		compatible = "mitsubishi,aa050mh01-da1";
+#else
+/****** Alternative record (without panel-simple patches ******/
 		compatible = "panel-dpi";
 		width-mm = <109>;
 		height-mm = <65>;
@@ -98,7 +111,7 @@
 			de-active = <1>;
 			pixelclk-active = <1>;
 		};
-****** Alternative record (without panel-simple patches ******/
+#endif
 
 		port {
 			lcd_panel_in: endpoint {
@@ -106,13 +119,14 @@
 			};
 		};
 		
-		lcd_backlight: lcd_backlight {
-			compatible = "pwm-backlight";
-			pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
-			brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
-			default-brightness-level = <9>;
-			status = "okay";
-		};
+	};
+
+	lcd_backlight: lcd_backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm3 0 2000 0>; /* FixMe: frequency !!! */
+		brightness-levels = <0 25 51 76 102 127 153 178 204 229 255>;
+		default-brightness-level = <9>;
+		status = "okay";
 	};
 
 	sound-tlv320 {
@@ -346,10 +360,11 @@
 		reg = <0>;
 		spi-max-frequency = <200000>;
 		spi_cpha;
-		status = "okay"; /* Attention! Tail tagging only for port 5 */
-		/* Fixme! Other projects with this switch not handle IRQs */
+#if 0
 		interrupt-parent = <&gpio3>;
 		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 31 */
+#endif
+		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
 		/*ethernet-*/ports {
 			#address-cells = <1>;
@@ -373,9 +388,13 @@
 			port@4 {
 				reg = <4>;
 				label = "cpu";
+#if 0
+				phy-mode = "rgmii";
+#else				
 				phy-mode = "rgmii-id";
-				rx-internal-delay-ps = <0>;
-				tx-internal-delay-ps = <0>;
+				rx-internal-delay-ps = <2000>;
+				tx-internal-delay-ps = <2000>;
+#endif
 				ethernet = <&lan7431>;
 
 				fixed-link {
@@ -412,9 +431,13 @@
 			compatible ="pci1055,7431";
 			reg = <0x01000000 0 0 0 0>;
 			class-code = <0x020000>; /* network */
+#if 0
+			phy-connection-type = "rgmii";
 			rx-internal-delay-ps = <0>;
 			tx-internal-delay-ps = <0>;
-			phy-connection-type = "rgmii";
+#else
+			phy-connection-type = "rgmii-id";
+#endif
 			status = "okay";
 			fixed-link {
 				speed = <1000>;
