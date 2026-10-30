@@ -388,13 +388,9 @@
 			port@4 {
 				reg = <4>;
 				label = "cpu";
-#if 0
-				phy-mode = "rgmii";
-#else				
 				phy-mode = "rgmii-id";
 				rx-internal-delay-ps = <2000>;
 				tx-internal-delay-ps = <2000>;
-#endif
 				ethernet = <&lan7431>;
 
 				fixed-link {
@@ -431,13 +427,9 @@
 			compatible ="pci1055,7431";
 			reg = <0x01000000 0 0 0 0>;
 			class-code = <0x020000>; /* network */
-#if 0
 			phy-connection-type = "rgmii";
 			rx-internal-delay-ps = <0>;
 			tx-internal-delay-ps = <0>;
-#else
-			phy-connection-type = "rgmii-id";
-#endif
 			status = "okay";
 			fixed-link {
 				speed = <1000>;
