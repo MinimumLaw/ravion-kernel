@@ -56,12 +56,11 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			vin-supply = <&reg_p3v3>;
-#if 0
-			/* Fixme. No such cirquit? */
-			gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;	/* soDimm 25 */
+			gpio = <&gpio1 6 GPIO_ACTIVE_HIGH>;	/* soDimm 180 */
 			startup-delay-us = <70000>;
+			regulator-boot-on;
+			regulator-always-on;
 			enable-active-high;
-#endif
 	};
 
 	reg_tlv_p1v8: regulator-tlv { /* DA4 */
@@ -312,7 +311,7 @@
 	status = "okay";
 
 	bluetooth {
-		enable-gpios = <&gpio5 18 GPIO_ACTIVE_HIGH>; /* soDimm 172 */
+		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>; /* soDimm 178 */
 		compatible = "ti,wl1837-st";
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
@@ -388,13 +387,9 @@
 			port@4 {
 				reg = <4>;
 				label = "cpu";
-#if 0
-				phy-mode = "rgmii";
-#else				
 				phy-mode = "rgmii-id";
 				rx-internal-delay-ps = <2000>;
 				tx-internal-delay-ps = <2000>;
-#endif
 				ethernet = <&lan7431>;
 
 				fixed-link {
@@ -431,13 +426,9 @@
 			compatible ="pci1055,7431";
 			reg = <0x01000000 0 0 0 0>;
 			class-code = <0x020000>; /* network */
-#if 0
 			phy-connection-type = "rgmii";
 			rx-internal-delay-ps = <0>;
 			tx-internal-delay-ps = <0>;
-#else
-			phy-connection-type = "rgmii-id";
-#endif
 			status = "okay";
 			fixed-link {
 				speed = <1000>;
