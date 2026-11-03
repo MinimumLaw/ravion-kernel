@@ -13,6 +13,7 @@ export DTBS="${DTBS} nxp/imx/imx6qp-ravion-cimc-light.dtb	nxp/imx/imx6qp-ravion-
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-pudl.dtb		nxp/imx/imx6qp-ravion-buk.dtb"
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-bmbpp.dtb		nxp/imx/imx6qp-ravion-pus.dtb"
 export DTBS="${DTBS} nxp/imx/imx6qp-ravion-bmbpp-dsa.dtb	nxp/imx/imx6qp-ravion-pus-k.dtb"
+export DTBS="${DTBS} nxp/imx/imx6qp-ravion-pult.dtb"
 
 if [ -z ${DEFCONFIG} ]; then
     export DEFCONFIG=ravion_imx6_defconfig

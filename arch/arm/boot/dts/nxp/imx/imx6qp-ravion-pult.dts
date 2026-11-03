@@ -1,0 +1,205 @@
+/*
+ * Copyright 2026 Radioavionica Corp.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+
+/dts-v1/;
+#include "imx6qp.dtsi"
+
+#include "imx6qdl-ravion-v2.dtsi"
+
+/ {
+	model = "ravion:pult";
+	compatible = "ravion,imx6qp", "fsl,imx6qp";
+
+	/*
+	 * Device cpecifiv clock generators
+	 */
+	clk_32k_bt: bt_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-accuracy = <100>;
+	};
+
+	/*
+	 * Device specific regulators
+	 */
+	reg_p3v3: regulator-p3v3 {
+			compatible = "regulator-fixed";
+			regulator-name = "P3V3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
+			regulator-always-on;
+	};
+
+	reg_wl1837_p1v8: regulator-wl1837-p1v8 {
+			compatible = "regulator-fixed";
+			regulator-name = "wl1837-reg";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&reg_p3v3>;
+			gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;
+			startup-delay-us = <70000>;
+			enable-active-high;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		SA116 {
+			label = "SA116";
+			gpios = <&gpio5 31 GPIO_ACTIVE_LOW>;	/* soDimm 116 */
+			linux,code = <KEY_F12>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA117 {
+			label = "SA117";
+			gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;	/* soDimm 117 */
+			linux,code = <KEY_F13>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA118 {
+			label = "SA118";
+			gpios = <&gpio3 14 GPIO_ACTIVE_LOW>;	/* soDimm 118 */
+			linux,code = <KEY_F14>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA119 {
+			label = "SA119";
+			gpios = <&gpio2 4 GPIO_ACTIVE_LOW>;	/* soDimm 119 */
+			linux,code = <KEY_F15>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		SA120 {
+			label = "SA120";
+			gpios = <&gpio3 15 GPIO_ACTIVE_LOW>;	/* soDimm 120 */
+			linux,code = <KEY_F16>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		FKC1 {
+			label = "FKC1";
+			gpios = <&gpio4 9 GPIO_ACTIVE_LOW>;	/* soDimm152 */
+			linux,code = <KEY_F3>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+
+		FKC2 {
+			label = "FKC2";
+			gpios = <&gpio4 15 GPIO_ACTIVE_LOW>;	/* soDimm158 */
+			linux,code = <KEY_F9>;
+			debounce-interval = <100>;
+			wakeup-source;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		status_red {
+			label = "status";
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
+			default-state = "off";
+		};
+	};
+};
+
+/*
+ * Serial ports
+ */
+&uart1 {	status = "okay";	};	/* Console  - Allways enabled */
+&uart2 {
+	uart-has-rtscts;
+	status = "okay";
+
+	bluetooth {
+		enable-gpios = <&gpio3 20 GPIO_ACTIVE_HIGH>;	/* soDimm 027 */
+		compatible = "ti,wl1837-st";
+		clocks = <&clk_32k_bt 0>;
+		clock-names = "ext_clock";
+		max-speed = <3686400>;
+		current-speed = <115200>;
+		status = "okay";
+	};
+};
+&uart3	{	status = "disabled";	};
+
+/*
+ * Controller Area Network (CAN) Bus
+ */
+&can1	{	status = "disabled";	};
+
+/*
+ * I2C Busses
+ */
+&i2c2	{	status = "disabled";	};	/* Compatible I2C: soDimm 194, 196 */
+&i2c3	{	status = "disabled";	};	/* Extended I2C: soDimm 128, 130 */
+
+&mipi_csi {	status = "disabled";	};
+
+/*
+ * SD/MMC and eMMC controllers
+ */
+&usdhc1 {	status = "disabled";	}; /* compatible */
+&usdhc2 {				   /* externed - WiFi module */
+	keep-power-in-suspend;
+	cap-power-off-card;
+	non-removable;
+	max-frequency = <25000000>;
+	status = "okay";
+	vmmc-supply = <&reg_wl1837_p1v8>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	WL1837MOD: wlcore@2 {
+		compatible = "ti,wl1837";
+		reg = <2>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;	/* soDim023 */
+		tcxo-clock-frequency = <26000000>;
+	};
+};
+&usdhc3 {	status = "okay";	}; /* eMMC allways enabled */
+
+/*
+ * Ethernet controller not used in this project
+ */
+&fec	{	status = "disabled";	}; /* eth0 allways enabled */
+
+/*
+ * Audio (digital part) no audio in this project, disable all
+ */
+&audmux	{	status = "disabled";	}; /* => always enabled */
+&ssi1	{	status = "disabled";	}; /* => always enabled */
+&ssi2 	{	status = "disabled";	}; /* for external codec */
+
+/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
+
+&usbotg	{	status = "okay";	}; /* OTG */
+
+/*
+ * PWMs
+ */
+&pwm3	{	status = "disabled";	};
+&pwm4	{	status = "disabled";	};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>, <&pinctrl_uart1gpio>;
+};
