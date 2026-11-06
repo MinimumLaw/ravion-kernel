@@ -12,6 +12,7 @@
 
 #include "imx6qdl-ravion-v2.dtsi"
 
+
 / {
 	model = "ravion:pult";
 	compatible = "ravion,imx6qp", "fsl,imx6qp";
@@ -118,6 +119,14 @@
 			default-state = "off";
 		};
 	};
+
+	display-subsystem {
+		status = "disabled";
+	};
+
+	capture-subsystem {
+		status = "disabled";
+	};
 };
 
 /*
@@ -148,6 +157,10 @@
 /*
  * I2C Busses
  */
+&i2c1 {
+    /* we not need embeeded sound in this device */
+    /delete-node/ sgtl5000;
+};
 &i2c2	{	status = "disabled";	};	/* Compatible I2C: soDimm 194, 196 */
 &i2c3	{	status = "disabled";	};	/* Extended I2C: soDimm 128, 130 */
 
@@ -177,10 +190,16 @@
 };
 &usdhc3 {	status = "okay";	}; /* eMMC allways enabled */
 
-/*
- * Ethernet controller not used in this project
- */
-&fec	{	status = "disabled";	}; /* eth0 allways enabled */
+&pcie	{	status = "okay";	}; /* FixMe: Debug only */
+&fec	{	status = "disabled";	};
+&gpu_vg	{	status = "disabled";	};
+&gpu_2d	{	status = "disabled";	};
+&gpu_3d	{	status = "disabled";	};
+&vpu	{	status = "disabled";	};
+&ipu1	{	status = "disabled";	};
+&ipu2	{	status = "disabled";	};
+
+
 
 /*
  * Audio (digital part) no audio in this project, disable all
