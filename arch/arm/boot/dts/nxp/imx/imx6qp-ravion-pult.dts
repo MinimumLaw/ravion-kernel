@@ -208,10 +208,11 @@
 &ssi1	{	status = "disabled";	}; /* => always enabled */
 &ssi2 	{	status = "disabled";	}; /* for external codec */
 
-/* &usbh1  {	status = "okay";	}; HOST => Allways enabled */
-
+&usbh1  {	status = "okay";	}; /* HOST => Allways enabled */
 &usbotg	{	status = "okay";	}; /* OTG */
-
+&usbh3	{	status = "okay";	   /* HSIC */
+		#address-cells = <1>;
+		#size-cells = <0>; };
 /*
  * PWMs
  */
