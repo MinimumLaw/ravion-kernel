@@ -266,25 +266,25 @@
 	gpio-leds {
 		compatible = "gpio-leds";
 
-		keys_backlight 	{
+		keys_backlight	{
 			label = "backlight::green";
 			gpios = <&gpio4 8 GPIO_ACTIVE_HIGH>;		/* soDimm 150 */
 			default-state = "off";
 		};
 
-		ST_Red 	{
+		ST_Red	{
 			label = "status::red";
 			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;		/* soDimm 188 */
 			default-state = "off";
 		};
 
-		ST_Green 	{
+		ST_Green	{
 			label = "status::green";
 			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;		/* soDimm 190 */
 			default-state = "off";
 		};
 
-		ST_Blue 	{
+		ST_Blue		{
 			label = "status::blue";
 			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;		/* soDimm 192 */
 			linux,default-trigger = "heartbeat";
@@ -359,13 +359,11 @@
 		reg = <0>;
 		spi-max-frequency = <200000>;
 		spi_cpha;
-#if 0
 		interrupt-parent = <&gpio3>;
 		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 31 */
-#endif
 		status = "okay"; /* Attention! Tail tagging only for port 5 */
 
-		/*ethernet-*/ports {
+		ethernet-ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			port@0 {
@@ -406,7 +404,7 @@
 	#size-cells = <0x02>;
 	status = "okay";
 	/*
-		reg = <0xBBSSFF00 0 0 0 0>;
+		reg = <0xBBSSFF 0 0 0 0>;
 		BB - BUS number (hex)
 		SS - Device/Slot number (5 bit)
 		FF - Function (3 bit)
@@ -414,17 +412,17 @@
 		01:00.0 Ethernet controller: Microchip Technology / SMSC LAN7431...
 		Bus: 01, Device/Slot: 00, Function: 0
 	*/
-	pcie@0,0 {
+	pcie@0 {
 		#address-cells = <0x03>;
 		#size-cells = <0x02>;
 		compatible ="pci16c3,abcd";
-		reg = <0x00000000 0 0 0 0>;
+		reg = <0x000000 0 0 0 0>;
 		class-code = <0x060400>; /* bridge */
 		status = "okay";
 
-		lan7431: ethernet@1,0 {
+		lan7431: ethernet@0,0 {
 			compatible ="pci1055,7431";
-			reg = <0x01000000 0 0 0 0>;
+			reg = <0x010000 0 0 0 0>;
 			class-code = <0x020000>; /* network */
 			phy-connection-type = "rgmii";
 			rx-internal-delay-ps = <0>;
