@@ -98,6 +98,7 @@ int aic32x4_register_clocks(struct device *dev, const char *mclk_name);
 #define AIC32X4_IN1HPVOLR	AIC32X4_REG(1, 23)
 #define AIC32X4_MIXAMPVOLL	AIC32X4_REG(1, 24)
 #define AIC32X4_MIXAMPVOLR	AIC32X4_REG(1, 25)
+#define TAS2505_HPVOL		AIC32X4_REG(1, 22)
 #define TAS2505_SPK		AIC32X4_REG(1, 45)
 #define TAS2505_SPKVOL1		AIC32X4_REG(1, 46)
 #define TAS2505_SPKVOL2		AIC32X4_REG(1, 48)
