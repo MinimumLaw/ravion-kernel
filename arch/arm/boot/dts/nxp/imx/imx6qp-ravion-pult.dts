@@ -114,9 +114,22 @@
 		compatible = "gpio-leds";
 
 		status_red {
-			label = "status";
+			label = "status:red";
 			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;	/* soDimm188 */
 			default-state = "off";
+		};
+
+		status_green {
+			label = "status:green";
+			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;	/* soDimm190 */
+			default-state = "off";
+		};
+
+		status_blue {
+			label = "status:blue";
+			linux,default-trigger = "heartbeat";
+			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;	/* soDimm192 */
+			default-state = "on";
 		};
 	};
 
@@ -190,7 +203,7 @@
 };
 &usdhc3 {	status = "okay";	}; /* eMMC allways enabled */
 
-&pcie	{	status = "okay";	}; /* FixMe: Debug only */
+&pcie	{	status = "disabled";	}; /* FixMe: Debug only */
 &fec	{	status = "disabled";	};
 &gpu_vg	{	status = "disabled";	};
 &gpu_2d	{	status = "disabled";	};
