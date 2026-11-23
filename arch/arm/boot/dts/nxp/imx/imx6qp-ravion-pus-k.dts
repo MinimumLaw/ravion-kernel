@@ -399,39 +399,21 @@
 	};
 };
 
-&pcie {
-	#address-cells = <0x03>;
-	#size-cells = <0x02>;
+&pcie {	status = "okay"; };
+&pcie_port0 {
 	status = "okay";
-	/*
-		reg = <0xBBSSFF 0 0 0 0>;
-		BB - BUS number (hex)
-		SS - Device/Slot number (5 bit)
-		FF - Function (3 bit)
-		lspci :
-		01:00.0 Ethernet controller: Microchip Technology / SMSC LAN7431...
-		Bus: 01, Device/Slot: 00, Function: 0
-	*/
-	pcie@0 {
-		#address-cells = <0x03>;
-		#size-cells = <0x02>;
-		compatible ="pci16c3,abcd";
-		reg = <0x000000 0 0 0 0>;
-		class-code = <0x060400>; /* bridge */
-		status = "okay";
 
-		lan7431: ethernet@0,0 {
-			compatible ="pci1055,7431";
-			reg = <0x010000 0 0 0 0>;
-			class-code = <0x020000>; /* network */
-			phy-connection-type = "rgmii";
-			rx-internal-delay-ps = <0>;
-			tx-internal-delay-ps = <0>;
-			status = "okay";
-			fixed-link {
-				speed = <1000>;
-				full-duplex;
-			};
+	lan7431: ethernet@0,0 {
+		compatible ="pci1055,7431";
+		reg = <0x010000 0 0 0 0>;
+		class-code = <0x020000>; /* network */
+		phy-connection-type = "rgmii";
+		rx-internal-delay-ps = <0>;
+		tx-internal-delay-ps = <0>;
+		status = "okay";
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
 		};
 	};
 };
