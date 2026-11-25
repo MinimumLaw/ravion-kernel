@@ -5434,6 +5434,9 @@ attach_task_ctx_data(struct task_struct *task, struct kmem_cache *ctx_cache,
 		return -ENOMEM;
 
 	for (;;) {
+		/* Protect @old until inc_not_zero(&old->refcount) */
+		guard(rcu)();
+
 		if (try_cmpxchg(&task->perf_ctx_data, &old, cd)) {
 			if (old)
 				perf_free_ctx_data_rcu(old);
@@ -7632,6 +7635,15 @@ static void perf_sigtrap(struct perf_event *event)
 	 * ctx->task to TASK_TOMBSTONE, has already been called.
 	 */
 	if (event->ctx->task == TASK_TOMBSTONE)
+		return;
+
+	/*
+	 * The event was removed after this signal was queued, e.g. by exec()
+	 * (remove_on_exec), which may also have closed its fd (close-on-exec).
+	 * The new program has default signal handlers, so a SIGTRAP would
+	 * kill it.
+	 */
+	if (READ_ONCE(event->state) <= PERF_EVENT_STATE_EXIT)
 		return;
 
 	/*

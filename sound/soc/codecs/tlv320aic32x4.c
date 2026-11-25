@@ -273,7 +273,7 @@ static const struct snd_kcontrol_new aic32x4_snd_controls[] = {
 	SOC_ENUM("DAC Left Playback PowerTune Switch", l_ptm_enum),
 	SOC_ENUM("DAC Right Playback PowerTune Switch", r_ptm_enum),
 	SOC_DOUBLE_R_S_TLV("HP Driver Gain Volume", AIC32X4_HPLGAIN,
-			   AIC32X4_HPRGAIN, 0, -0x6, 0x1d, 5, 0, tlv_driver_gain),
+			   AIC32X4_HPRGAIN, 0, -0x6, 0x0e, 5, 0, tlv_driver_gain),
 	SOC_DOUBLE_R_S_TLV("LO Driver Gain Volume", AIC32X4_LOLGAIN,
 			   AIC32X4_LORGAIN, 0, -0x6, 0x1d, 5, 0, tlv_driver_gain),
 	SOC_DOUBLE_R("HP DAC Playback Switch", AIC32X4_HPLGAIN,
@@ -1099,7 +1099,7 @@ static const struct snd_kcontrol_new aic32x4_tas2505_snd_controls[] = {
 	SOC_ENUM("DAC Playback PowerTune Switch", l_ptm_enum),
 
 	SOC_SINGLE_TLV("HP Driver Gain Volume",
-		       AIC32X4_HPLGAIN, 0, 0x74, 1, tlv_tas_driver_gain),
+		       TAS2505_HPVOL, 0, 0x74, 1, tlv_tas_driver_gain),
 	SOC_SINGLE("HP DAC Playback Switch", AIC32X4_HPLGAIN, 6, 1, 1),
 
 	SOC_SINGLE_TLV("Speaker Driver Playback Volume",

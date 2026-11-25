@@ -1506,6 +1506,13 @@ static int ath12k_mac_monitor_start(struct ath12k *ar)
 		return ret;
 	}
 
+	/*
+	 * A previous monitor session may have stopped mid-PPDU, leaving
+	 * ppdu_continuation set. Clear it so the first status buffer of
+	 * this session is not merged with stale state from before.
+	 */
+	ar->dp.mon_data.mon_ppdu_info.ppdu_continuation = false;
+
 	ar->monitor_started = true;
 	ar->num_started_vdevs++;
 
@@ -9187,25 +9194,27 @@ static void ath12k_mac_tx_mgmt_free(struct ath12k *ar, int buf_id)
 	ath12k_mgmt_over_wmi_tx_drop(ar, msdu);
 }
 
-int ath12k_mac_tx_mgmt_pending_free(int buf_id, void *skb, void *ctx)
+void ath12k_mac_tx_mgmt_pending_free(struct ath12k *ar)
 {
-	struct ath12k *ar = ctx;
+	struct sk_buff *msdu;
+	int buf_id;
 
-	ath12k_mac_tx_mgmt_free(ar, buf_id);
-
-	return 0;
+	idr_for_each_entry(&ar->txmgmt_idr, msdu, buf_id)
+		ath12k_mac_tx_mgmt_free(ar, buf_id);
 }
 
-static int ath12k_mac_vif_txmgmt_idr_remove(int buf_id, void *skb, void *ctx)
+static void ath12k_mac_vif_txmgmt_cleanup(struct ath12k *ar,
+					  struct ieee80211_vif *vif)
 {
-	struct ieee80211_vif *vif = ctx;
-	struct ath12k_skb_cb *skb_cb = ATH12K_SKB_CB(skb);
-	struct ath12k *ar = skb_cb->ar;
+	struct ath12k_skb_cb *skb_cb;
+	struct sk_buff *skb;
+	int buf_id;
 
-	if (skb_cb->vif == vif)
-		ath12k_mac_tx_mgmt_free(ar, buf_id);
-
-	return 0;
+	idr_for_each_entry(&ar->txmgmt_idr, skb, buf_id) {
+		skb_cb = ATH12K_SKB_CB(skb);
+		if (skb_cb->vif == vif)
+			ath12k_mac_tx_mgmt_free(ar, buf_id);
+	}
 }
 
 static int ath12k_mac_mgmt_tx_wmi(struct ath12k *ar, struct ath12k_link_vif *arvif,
@@ -9732,6 +9741,7 @@ static int ath12k_mac_config_mon_status_default(struct ath12k *ar, bool enable)
 
 static int ath12k_mac_start(struct ath12k *ar)
 {
+	const struct ath12k_dp_profile_params *dp_params;
 	struct ath12k_hw *ah = ar->ah;
 	struct ath12k_base *ab = ar->ab;
 	struct ath12k_pdev *pdev = ar->pdev;
@@ -9739,6 +9749,8 @@ static int ath12k_mac_start(struct ath12k *ar)
 
 	lockdep_assert_held(&ah->hw_mutex);
 	lockdep_assert_wiphy(ath12k_ar_to_hw(ar)->wiphy);
+
+	dp_params = &ab->profile_param->dp_params;
 
 	ret = ath12k_wmi_pdev_set_param(ar, WMI_PDEV_PARAM_PMF_QOS,
 					1, pdev->pdev_id);
@@ -9788,7 +9800,7 @@ static int ath12k_mac_start(struct ath12k *ar)
 	if (ab->hw_params->supports_cong_ctrl_max_msdus) {
 		ret = ath12k_wmi_pdev_set_param(ar,
 						WMI_PDEV_PARAM_SET_CONG_CTRL_MAX_MSDUS,
-						ATH12K_NUM_POOL_TX_DESC(ab),
+						ath12k_dp_num_pool_tx_desc(dp_params),
 						pdev->pdev_id);
 		if (ret) {
 			ath12k_err(ab,
@@ -10967,8 +10979,7 @@ err_vdev_del:
 	ath12k_peer_cleanup(ar, arvif->vdev_id);
 	ath12k_ahvif_put_link_cache(ahvif, arvif->link_id);
 
-	idr_for_each(&ar->txmgmt_idr,
-		     ath12k_mac_vif_txmgmt_idr_remove, vif);
+	ath12k_mac_vif_txmgmt_cleanup(ar, vif);
 
 	ath12k_mac_vif_unref(ath12k_ab_to_dp(ab), vif);
 
@@ -14725,7 +14736,7 @@ static struct wiphy_iftype_ext_capab ath12k_iftypes_ext_capa[] = {
 
 static void ath12k_mac_cleanup_unregister(struct ath12k *ar)
 {
-	idr_for_each(&ar->txmgmt_idr, ath12k_mac_tx_mgmt_pending_free, ar);
+	ath12k_mac_tx_mgmt_pending_free(ar);
 	idr_destroy(&ar->txmgmt_idr);
 
 	kfree(ar->mac.sbands[NL80211_BAND_2GHZ].channels);

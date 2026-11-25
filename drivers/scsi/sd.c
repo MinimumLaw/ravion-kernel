@@ -2033,7 +2033,7 @@ static int sd_pr_in_command(struct block_device *bdev, u8 sa,
 	u8 cmd[10] = { PERSISTENT_RESERVE_IN, sa };
 	struct scsi_failure failure_defs[] = {
 		{
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = SCMD_FAILURE_ASC_ANY,
 			.ascq = SCMD_FAILURE_ASCQ_ANY,
 			.allowed = 5,
@@ -2145,7 +2145,7 @@ static int sd_pr_out_command(struct block_device *bdev, u8 sa, u64 key,
 	struct scsi_sense_hdr sshdr;
 	struct scsi_failure failure_defs[] = {
 		{
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = SCMD_FAILURE_ASC_ANY,
 			.ascq = SCMD_FAILURE_ASCQ_ANY,
 			.allowed = 5,
@@ -2494,13 +2494,13 @@ sd_spinup_disk(struct scsi_disk *sdkp)
 	struct scsi_failure failure_defs[] = {
 		/* Do not retry Medium Not Present */
 		{
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x3A,
 			.ascq = SCMD_FAILURE_ASCQ_ANY,
 			.result = SAM_STAT_CHECK_CONDITION,
 		},
 		{
-			.sense = NOT_READY,
+			.sense_key = NOT_READY,
 			.asc = 0x3A,
 			.ascq = SCMD_FAILURE_ASCQ_ANY,
 			.result = SAM_STAT_CHECK_CONDITION,
@@ -2817,18 +2817,18 @@ static int read_capacity_10(struct scsi_disk *sdkp, struct scsi_device *sdp,
 	struct scsi_failure failure_defs[] = {
 		/* Do not retry Medium Not Present */
 		{
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x3A,
 			.result = SAM_STAT_CHECK_CONDITION,
 		},
 		{
-			.sense = NOT_READY,
+			.sense_key = NOT_READY,
 			.asc = 0x3A,
 			.result = SAM_STAT_CHECK_CONDITION,
 		},
 		 /* Device reset might occur several times so retry a lot */
 		{
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x29,
 			.allowed = READ_CAPACITY_RETRIES_ON_RESET,
 			.result = SAM_STAT_CHECK_CONDITION,
@@ -4159,21 +4159,21 @@ static int sd_start_stop_device(struct scsi_disk *sdkp, int start)
 	struct scsi_failure failure_defs[] = {
 		{
 			/* Power on, reset, or bus device reset occurred */
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x29,
 			.ascq = 0,
 			.result = SAM_STAT_CHECK_CONDITION,
 		},
 		{
 			/* Power on occurred */
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x29,
 			.ascq = 1,
 			.result = SAM_STAT_CHECK_CONDITION,
 		},
 		{
 			/* SCSI bus reset */
-			.sense = UNIT_ATTENTION,
+			.sense_key = UNIT_ATTENTION,
 			.asc = 0x29,
 			.ascq = 2,
 			.result = SAM_STAT_CHECK_CONDITION,
@@ -4270,7 +4270,15 @@ static void sd_remove(struct scsi_device *sdp)
 	struct device *dev = &sdp->sdev_gendev;
 	struct scsi_disk *sdkp = dev_get_drvdata(dev);
 
-	scsi_autopm_get_device(sdkp->device);
+	/*
+	 * If runtime resume fails, e.g. because the device was unplugged
+	 * while runtime suspended, the request queue stays in the pm-only
+	 * state and any I/O submitted by del_gendisk(), e.g. from
+	 * sync_filesystem(), would wait forever in __bio_queue_enter().
+	 * Prevent this by marking the disk dead.
+	 */
+	if (scsi_autopm_get_device(sdkp->device) < 0)
+		blk_mark_disk_dead(sdkp->disk);
 
 	device_del(&sdkp->disk_dev);
 	del_gendisk(sdkp->disk);

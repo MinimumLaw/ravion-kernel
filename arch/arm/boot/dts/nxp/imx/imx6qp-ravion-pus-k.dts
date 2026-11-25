@@ -278,25 +278,25 @@
 	gpio-leds {
 		compatible = "gpio-leds";
 
-		keys_backlight 	{
+		keys_backlight	{
 			label = "backlight::green";
 			gpios = <&gpio4 8 GPIO_ACTIVE_HIGH>;		/* soDimm 150 */
 			default-state = "off";
 		};
 
-		ST_Red 	{
+		ST_Red	{
 			label = "status::red";
 			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;		/* soDimm 188 */
 			default-state = "off";
 		};
 
-		ST_Green 	{
+		ST_Green	{
 			label = "status::green";
 			gpios = <&gpio4 7 GPIO_ACTIVE_HIGH>;		/* soDimm 190 */
 			default-state = "off";
 		};
 
-		ST_Blue 	{
+		ST_Blue		{
 			label = "status::blue";
 			gpios = <&gpio5 20 GPIO_ACTIVE_HIGH>;		/* soDimm 192 */
 			linux,default-trigger = "heartbeat";
@@ -368,9 +368,8 @@
 	};
 };
 
-&pcie {
-	#address-cells = <0x03>;
-	#size-cells = <0x02>;
+&pcie {	status = "okay"; };
+&pcie_port0 {
 	status = "okay";
 	/*
 		reg = <0x00BBSSFF 0 0 0 0>;
@@ -381,29 +380,19 @@
 		01:00.0 Ethernet controller: Microchip Technology / SMSC LAN7431...
 		Bus: 01, Device/Slot: 00, Function: 0
 	*/
-	pcie@0 {
-		#address-cells = <0x03>;
-		#size-cells = <0x02>;
-		compatible ="pci16c3,abcd";
-		reg = <0x00000000 0 0 0 0>;
-		class-code = <0x060400>; /* bridge */
+
+	lan7431: ethernet@0,0 {
+		//compatible ="pci1055,7431";
+		compatible = "microchip,lan743x";
+		reg = <0x010000 0 0 0 0>;
+		class-code = <0x020000>; /* network */
+		phy-connection-type = "rgmii";
+		rx-internal-delay-ps = <0>;
+		tx-internal-delay-ps = <0>;
 		status = "okay";
-	
-		lan7431: ethernet@0,0 {
-			#address-cells = <0x03>;
-			#size-cells = <0x02>;
-			//compatible ="pci1055,7431";
-			compatible = "microchip,lan743x";
-			class-code = <0x020000>; /* network */
-			reg = <0x10000 0 0 0 0>;
-			phy-connection-type = "rgmii";
-			rx-internal-delay-ps = <0>;
-			tx-internal-delay-ps = <0>;
-			status = "okay";
-			fixed-link {
-				speed = <1000>;
-				full-duplex;
-			};
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
 		};
 	};
 };
@@ -454,8 +443,6 @@
 			port@4 {
 				reg = <4>;
 				label = "cpu";				
-				//phy-mode = "rgmii-id";
-				//phy-mode = "internal";
 				phy-mode = "rgmii";
 				rx-internal-delay-ps = <2000>;
 				tx-internal-delay-ps = <2000>;
@@ -495,8 +482,7 @@
 	};
 };
 &usdhc2 {
-	//status = "okay";	
-	status = "disabled";	
+	status = "disabled";	/* PUS-K has not external card slot */
 };
 /* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
 

@@ -501,13 +501,6 @@ Kernel parameters
 			disable
 			  Disable amd-pstate preferred core.
 
-	amd_dynamic_epp=
-			[X86]
-			disable
-			  Disable amd-pstate dynamic EPP.
-			enable
-			  Enable amd-pstate dynamic EPP.
-
 	amijoy.map=	[HW,JOY] Amiga joystick support
 			Map of devices attached to JOY0DAT and JOY1DAT
 			Format: <a>,<b>
@@ -4802,6 +4795,16 @@ Kernel parameters
 			Example:
 			nvme.quirks=7710:2267:bogus_nid,^identify_cns-9900:7711:broken_msi
 
+	nvme_tcp.tls_handshake_timeout=
+			[NVME] NVMe/TCP host TLS handshake timeout in seconds.
+			Valid values range from 0 to the smaller of
+			UINT_MAX / 1000 and MAX_JIFFY_OFFSET / HZ. Default: 10
+
+	nvmet_tcp.tls_handshake_timeout=
+			[NVME] NVMe/TCP target TLS handshake timeout in seconds.
+			Valid values range from 0 to the smaller of
+			UINT_MAX / 1000 and MAX_JIFFY_OFFSET / HZ. Default: 10
+
 	ohci1394_dma=early	[HW,EARLY] enable debugging via the ohci1394 driver.
 			See Documentation/core-api/debugging-via-ohci1394.rst for more
 			info.
@@ -6611,6 +6614,9 @@ Kernel parameters
 			12 megabytes of 4096 alignment for ramoops:
 
 			reserve_mem=12M:4096:oops ramoops.mem_name=oops
+
+			Both the size and the alignment must be multiples of
+			the page size.
 
 	reservetop=	[X86-32,EARLY]
 			Format: nn[KMG]

@@ -2474,6 +2474,7 @@ static int em28xx_v4l2_resume(struct em28xx *dev)
  */
 static int em28xx_v4l2_close(struct file *filp)
 {
+	struct video_device   *vdev = video_devdata(filp);
 	struct em28xx         *dev  = video_drvdata(filp);
 	struct em28xx_v4l2    *v4l2 = dev->v4l2;
 	struct usb_device *udev = interface_to_usbdev(dev->intf);
@@ -2482,7 +2483,7 @@ static int em28xx_v4l2_close(struct file *filp)
 
 	mutex_lock(&dev->lock);
 	last_user = v4l2_fh_is_singular_file(filp);
-	_vb2_fop_release(filp, NULL);
+	_vb2_fop_release(filp, vdev->queue->lock);
 
 	if (last_user) {
 		/* No sense to try to write to the device */
@@ -3001,7 +3002,7 @@ static int em28xx_v4l2_init(struct em28xx *dev)
 		v4l2->vbi_dev.queue->lock = &v4l2->vb_vbi_queue_lock;
 		v4l2->vbi_dev.device_caps = V4L2_CAP_STREAMING |
 			V4L2_CAP_READWRITE | V4L2_CAP_VBI_CAPTURE;
-		if ((v4l2->vdev.device_caps & V4L2_CAP_TUNER) == 0)
+		if (v4l2->vdev.device_caps & V4L2_CAP_TUNER)
 			v4l2->vbi_dev.device_caps |= V4L2_CAP_TUNER;
 
 		/* disable inapplicable ioctls */

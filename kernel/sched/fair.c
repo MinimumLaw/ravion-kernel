@@ -2194,7 +2194,7 @@ void init_sched_mm(struct task_struct *p) { }
 static void task_tick_cache(struct rq *rq, struct task_struct *p) { }
 
 static inline int get_pref_llc(struct task_struct *p,
-			       struct mm_struct *mm)
+			       struct sched_cache_group *grp)
 {
 	return -1;
 }
@@ -3713,7 +3713,7 @@ static void update_task_scan_period(struct task_struct *p,
 		p->mm->numa_next_scan = jiffies +
 			msecs_to_jiffies(p->numa_scan_period);
 
-		return;
+		goto out;
 	}
 
 	/*
@@ -3757,7 +3757,10 @@ static void update_task_scan_period(struct task_struct *p,
 
 	p->numa_scan_period = clamp(p->numa_scan_period + diff,
 			task_scan_min(p), task_scan_max(p));
-	memset(p->numa_faults_locality, 0, sizeof(p->numa_faults_locality));
+
+out:
+	memset(p->numa_faults_locality, 0,
+	       sizeof(p->numa_faults_locality));
 }
 
 /*
@@ -7018,8 +7021,8 @@ static void dequeue_throttled_task(struct task_struct *p, int flags)
 	WARN_ON_ONCE(p->se.on_rq);
 	list_del_init(&p->throttle_node);
 
-	/* task blocked after throttled */
-	if (flags & DEQUEUE_SLEEP) {
+	/* Task blocked after throttling or is leaving the fair class: */
+	if (flags & (DEQUEUE_SLEEP | DEQUEUE_CLASS)) {
 		p->throttled = false;
 		return;
 	}
@@ -10942,6 +10945,8 @@ static inline bool task_misfits_asym_cpu(struct lb_env *env, struct task_struct 
 	return false;
 }
 
+static inline bool sched_asym(struct sched_domain *sd, int dst_cpu, int src_cpu);
+
 /*
  * Check if task p can migrate from source LLC to
  * destination LLC in terms of cache aware load balance.
@@ -10964,6 +10969,10 @@ static enum llc_mig can_migrate_llc_task(struct lb_env *env,
 
 	cpu = READ_ONCE(grp->cpu);
 	if (cpu < 0 || cpus_share_cache(src_cpu, dst_cpu))
+		return mig_unrestricted;
+
+	/* Prioritize asym packing to idle core over cache awareness */
+	if (env->idle && sched_asym(env->sd, dst_cpu, src_cpu))
 		return mig_unrestricted;
 
 	/* skip cache aware load balance for too many threads */
@@ -12120,6 +12129,14 @@ static void record_sg_llc_stats(struct lb_env *env,
 		return;
 
 	/*
+	 * A redo repeats stats published on the first pass. Hotplug can
+	 * still leave env->cpus partial, so util would not match capacity.
+	 */
+	if ((env->flags & LBF_ALL_PINNED) ||
+	    !cpumask_subset(sched_group_span(group), env->cpus))
+		return;
+
+	/*
 	 * At this point we know this group spans a LLC domain.
 	 * Record the statistic of this group in its corresponding
 	 * shared LLC domain.
@@ -12160,6 +12177,14 @@ static inline bool llc_balance(struct lb_env *env, struct sg_lb_stats *sgs,
 	 */
 	if ((env->sd->flags & SD_ASYM_CPUCAPACITY) &&
 	    sgs->group_misfit_task_load)
+		return false;
+
+	/*
+	 * On asym packing domains, if the destination CPU
+	 * has higher priority than all CPUs in the source group,
+	 * prioritize asym packing.
+	 */
+	if (sgs->group_asym_packing)
 		return false;
 
 	/*
@@ -13577,11 +13602,11 @@ static int need_active_balance(struct lb_env *env)
 {
 	struct sched_domain *sd = env->sd;
 
-	if (alb_break_llc(env))
-		return 0;
-
 	if (asym_active_balance(env))
 		return 1;
+
+	if (alb_break_llc(env))
+		return 0;
 
 	if (imbalanced_active_balance(env))
 		return 1;
@@ -15522,13 +15547,17 @@ static void switched_to_fair(struct rq *rq, struct task_struct *p)
 	}
 }
 
-static void set_next_task_fair(struct rq *rq, struct task_struct *p, bool first)
+static void set_next_task_fair(struct rq *rq, struct task_struct *p, enum snt_e type)
 {
 	struct sched_entity *se = &p->se;
-	bool throttled = false;
 	struct cfs_rq *cfs_rq = &rq->cfs;
 	unsigned long weight = NICE_0_LOAD;
+	bool first = type == SNT_PICK;
+	bool throttled = false;
 	bool on_rq = se->on_rq;
+
+	if (type == SNT_REPICK)
+		goto repick;
 
 	clear_buddies(cfs_rq, se);
 
@@ -15573,11 +15602,18 @@ static void set_next_task_fair(struct rq *rq, struct task_struct *p, bool first)
 
 	WARN_ON_ONCE(se->sched_delayed);
 
-	if (hrtick_enabled_fair(rq))
-		hrtick_start_fair(rq, p);
-
 	update_misfit_status(p, rq);
 	sched_fair_update_stop_tick(rq, p);
+
+repick:
+	/*
+	 * A same-task repick skips put_prev_task_fair(), but
+	 * pick_task_fair() refreshed the entity hrtick_start_fair() reads
+	 * before selecting it again. rq->cfs.curr identifies that entity,
+	 * including with group scheduling.
+	 */
+	if (hrtick_enabled_fair(rq))
+		hrtick_start_fair(rq, p);
 }
 
 void init_cfs_rq(struct cfs_rq *cfs_rq)

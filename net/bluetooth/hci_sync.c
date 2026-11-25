@@ -1158,14 +1158,38 @@ int hci_update_random_address_sync(struct hci_dev *hdev, bool require_privacy,
 	return 0;
 }
 
-static int hci_disable_ext_adv_legacy_instance_sync(struct hci_dev *hdev)
+/* Check if the advertising set with handle 0x00 is in use, either by instance
+ * 0 or by an instance sharing its advertising set.
+ */
+static bool hci_ext_adv_handle_0_enabled(struct hci_dev *hdev)
+{
+	struct adv_info *adv;
+	bool enabled;
+
+	hci_dev_lock(hdev);
+
+	enabled = hci_dev_test_flag(hdev, HCI_LE_ADV_0);
+
+	list_for_each_entry(adv, &hdev->adv_instances, list) {
+		if (!adv->handle && adv->enabled) {
+			enabled = true;
+			break;
+		}
+	}
+
+	hci_dev_unlock(hdev);
+
+	return enabled;
+}
+
+int hci_disable_ext_adv_legacy_instance_sync(struct hci_dev *hdev)
 {
 	struct hci_cp_le_set_ext_adv_enable *cp;
 	struct hci_cp_ext_adv_set *set;
 	u8 data[sizeof(*cp) + sizeof(*set) * 1];
 	u8 size;
 
-	if (!hci_dev_test_flag(hdev, HCI_LE_ADV_0))
+	if (!hci_ext_adv_handle_0_enabled(hdev))
 		return 0;
 
 	memset(data, 0, sizeof(data));
@@ -1411,6 +1435,9 @@ int hci_setup_ext_adv_instance_sync(struct hci_dev *hdev, u8 instance)
 			return -EINVAL;
 		}
 	} else {
+		/* Disable the advertising set with handle 0x00, including any
+		 * instance sharing it, since it is going to be overridden.
+		 */
 		err = hci_disable_ext_adv_legacy_instance_sync(hdev);
 		if (err)
 			return err;
@@ -1672,11 +1699,18 @@ int hci_enable_ext_advertising_sync(struct hci_dev *hdev, u8 instance)
 	 * scheduling it.
 	 */
 	if (adv && adv->timeout) {
-		u16 duration = adv->timeout * MSEC_PER_SEC;
+		u16 duration = adv->mesh ? adv->timeout :
+					   adv->timeout * MSEC_PER_SEC;
 
 		/* Time = N * 10 ms */
 		set->duration = cpu_to_le16(duration / 10);
 	}
+
+	/* Track which instance owns the advertising set since the handle
+	 * alone is ambiguous when instances share handle 0x00, see
+	 * hci_cc_le_set_ext_adv_enable.
+	 */
+	hdev->cur_adv_instance = instance;
 
 	return __hci_cmd_sync_status(hdev, HCI_OP_LE_SET_EXT_ADV_ENABLE,
 				     sizeof(*cp) +
@@ -2103,7 +2137,8 @@ int hci_schedule_adv_instance_sync(struct hci_dev *hdev, u8 instance,
 		hdev->adv_instance_timeout = timeout;
 		queue_delayed_work(hdev->req_workqueue,
 				   &hdev->adv_instance_expire,
-				   secs_to_jiffies(timeout));
+				   adv->mesh ? msecs_to_jiffies(timeout) :
+					       secs_to_jiffies(timeout));
 	}
 
 	/* If we're just re-scheduling the same instance again then do not
@@ -2556,13 +2591,19 @@ static int hci_le_set_privacy_mode_sync(struct hci_dev *hdev,
 	if (!(params->flags & HCI_CONN_FLAG_DEVICE_PRIVACY))
 		return 0;
 
+	rcu_read_lock();
+
 	irk = hci_find_irk_by_addr(hdev, &params->addr, params->addr_type);
-	if (!irk)
+	if (!irk) {
+		rcu_read_unlock();
 		return 0;
+	}
 
 	memset(&cp, 0, sizeof(cp));
 	cp.bdaddr_type = irk->addr_type;
 	bacpy(&cp.bdaddr, &irk->bdaddr);
+	rcu_read_unlock();
+
 	cp.mode = HCI_DEVICE_PRIVACY;
 
 	/* Note: params->privacy_mode is not updated since it is a copy */
@@ -2577,7 +2618,7 @@ static int hci_le_set_privacy_mode_sync(struct hci_dev *hdev,
  */
 static int hci_le_add_accept_list_sync(struct hci_dev *hdev,
 				       struct conn_params *params,
-				       u8 *num_entries)
+				       u8 *num_entries, bool force_filter)
 {
 	struct hci_cp_le_add_to_accept_list cp;
 	int err;
@@ -2589,6 +2630,11 @@ static int hci_le_add_accept_list_sync(struct hci_dev *hdev,
 					    params->addr_type);
 		return 0;
 	}
+
+	/* Host-resolved peers need unfiltered scanning while awake. */
+	if (!force_filter && !hdev->suspended && !ll_privacy_capable(hdev) &&
+	    hci_find_irk_by_addr(hdev, &params->addr, params->addr_type))
+		return -EINVAL;
 
 	/* Select filter policy to accept all advertising */
 	if (*num_entries >= hdev->le_accept_list_size)
@@ -2687,7 +2733,7 @@ static int hci_pause_advertising_sync(struct hci_dev *hdev)
 static int hci_resume_advertising_sync(struct hci_dev *hdev)
 {
 	struct adv_info *adv, *tmp;
-	int err;
+	int err = 0;
 
 	/* If advertising has not been paused there is nothing  to do. */
 	if (!hdev->advertising_paused)
@@ -2720,13 +2766,19 @@ static int hci_resume_advertising_sync(struct hci_dev *hdev)
 		 */
 		if (hci_dev_test_and_clear_flag(hdev, HCI_LE_ADV_0))
 			err = hci_enable_ext_advertising_sync(hdev, 0x00);
-	} else {
+	} else if (hdev->cur_adv_instance) {
 		/* Schedule for most recent instance to be restarted and begin
 		 * the software rotation loop
 		 */
 		err = hci_schedule_adv_instance_sync(hdev,
 						     hdev->cur_adv_instance,
 						     true);
+	} else if (hci_dev_test_flag(hdev, HCI_ADVERTISING) &&
+		   !hci_dev_test_flag(hdev, HCI_LE_ADV)) {
+		/* hci_schedule_adv_instance_sync() rejects instance 0x00 while
+		 * HCI_ADVERTISING is set, so enable it directly.
+		 */
+		err = hci_start_adv_sync(hdev, 0x00);
 	}
 
 	hdev->advertising_paused = false;
@@ -2915,7 +2967,7 @@ static u8 hci_update_accept_list_sync(struct hci_dev *hdev)
 
 			num_entries = 1;
 			err = hci_le_add_accept_list_sync(hdev, &pa,
-							  &num_entries);
+							  &num_entries, true);
 			goto done;
 		} else {
 			rcu_read_unlock();
@@ -2979,7 +3031,7 @@ static u8 hci_update_accept_list_sync(struct hci_dev *hdev)
 
 	for (i = 0; i < n; ++i) {
 		err = hci_le_add_accept_list_sync(hdev, &params[i],
-						  &num_entries);
+								&num_entries, false);
 		if (err) {
 			kvfree(params);
 			goto done;
@@ -3001,7 +3053,7 @@ static u8 hci_update_accept_list_sync(struct hci_dev *hdev)
 
 	for (i = 0; i < n; ++i) {
 		err = hci_le_add_accept_list_sync(hdev, &params[i],
-						  &num_entries);
+								&num_entries, false);
 		if (err) {
 			kvfree(params);
 			goto done;
@@ -5438,7 +5490,9 @@ int hci_dev_open_sync(struct hci_dev *hdev)
 		goto done;
 	}
 
+	hci_dev_lock(hdev);
 	hci_devcd_reset(hdev);
+	hci_dev_unlock(hdev);
 
 	set_bit(HCI_RUNNING, &hdev->flags);
 	hci_sock_dev_event(hdev, HCI_DEV_OPEN);
@@ -6272,6 +6326,7 @@ static int hci_active_scan_sync(struct hci_dev *hdev, uint16_t interval)
 	u8 filter_policy = 0x00;
 	/* Default is to enable duplicates filter */
 	u8 filter_dup = LE_SCAN_FILTER_DUP_ENABLE;
+	bool paused;
 	int err;
 
 	bt_dev_dbg(hdev, "");
@@ -6295,6 +6350,12 @@ static int hci_active_scan_sync(struct hci_dev *hdev, uint16_t interval)
 	if (err)
 		goto failed;
 
+	/* LE Set Random Address is disallowed while advertising is enabled. */
+	paused = !hdev->advertising_paused;
+	err = hci_pause_advertising_sync(hdev);
+	if (err)
+		goto failed;
+
 	/* All active scans will be done with either a resolvable private
 	 * address (when privacy feature has been enabled) or non-resolvable
 	 * private address.
@@ -6303,6 +6364,9 @@ static int hci_active_scan_sync(struct hci_dev *hdev, uint16_t interval)
 					     &own_addr_type);
 	if (err < 0)
 		own_addr_type = ADDR_LE_DEV_PUBLIC;
+
+	if (paused)
+		hci_resume_advertising_sync(hdev);
 
 	if (hci_is_adv_monitoring(hdev) ||
 	    (hci_test_quirk(hdev, HCI_QUIRK_STRICT_DUPLICATE_FILTER) &&
@@ -6327,9 +6391,8 @@ static int hci_active_scan_sync(struct hci_dev *hdev, uint16_t interval)
 		return err;
 
 failed:
-	/* Resume advertising if it was paused */
-	if (ll_privacy_capable(hdev))
-		hci_resume_advertising_sync(hdev);
+	/* No-op when advertising was not paused. */
+	hci_resume_advertising_sync(hdev);
 
 	/* Resume passive scanning */
 	hci_update_passive_scan_sync(hdev);

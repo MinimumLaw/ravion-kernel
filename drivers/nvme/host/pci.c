@@ -243,7 +243,7 @@ static struct kparam_string quirks_param_string = {
 	.string = quirks_param,
 };
 
-module_param_cb(quirks, &quirks_param_ops, &quirks_param_string, 0444);
+device_param_cb(quirks, &quirks_param_ops, &quirks_param_string, 0444);
 MODULE_PARM_DESC(quirks, "Enable/disable NVMe quirks by specifying "
 						"quirks=VID:DID:quirk_names");
 
@@ -4197,6 +4197,8 @@ static const struct pci_device_id nvme_id_table[] = {
 	 { PCI_DEVICE(0x1344, 0x6001),   /* Micron Nitro NVMe */
 		 .driver_data = NVME_QUIRK_BOGUS_NID, },
 	{ PCI_DEVICE(0x1344, 0x6004),	/* Micron 4100AT */
+		.driver_data = NVME_QUIRK_DMAPOOL_ALIGN_512, },
+	{ PCI_DEVICE(0x1e0f, 0x0032),	/* KIOXIA XG10d */
 		.driver_data = NVME_QUIRK_DMAPOOL_ALIGN_512, },
 	{ PCI_DEVICE(0x1c5c, 0x1504),   /* SK Hynix PC400 */
 		.driver_data = NVME_QUIRK_DISABLE_WRITE_ZEROES, },
