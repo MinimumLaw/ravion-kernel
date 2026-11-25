@@ -51,6 +51,7 @@
 	};
 
 	reg_wl1837_p1v8: regulator-wl1837-p1v8 { /* DA5 */
+			/* for both BT and WiFi */
 			compatible = "regulator-fixed";
 			regulator-name = "wl1837-reg";
 			regulator-min-microvolt = <1800000>;
@@ -62,6 +63,17 @@
 			regulator-always-on;
 			enable-active-high;
 	};
+
+#if 1
+	reg_bt_p1v8: regulator_p1v8_bt {
+			compatible = "regulator-fixed";
+			regulator-name = "VIO_BT";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			vin-supply = <&reg_wl1837_p1v8>;
+			regulator-always-on;
+	};
+#endif
 
 	reg_tlv_p1v8: regulator-tlv { /* DA4 */
 			compatible = "regulator-fixed";
@@ -307,16 +319,21 @@
  */
 &uart1 {	status = "okay";	};
 &uart2 {
-	uart-has-rtscts;
+	//pinctrl-0 = <&pinctrl_uart2>; // default in dtsi
+	uart-has-rtscts;				// default in dtsi
 	status = "okay";
-
+	
 	bluetooth {
 		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>; /* soDimm 178 */
+		//enable-gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>; /* soDimm 166 */
+		
 		compatible = "ti,wl1837-st";
 		clocks = <&clk_32k_bt 0>;
 		clock-names = "ext_clock";
 		max-speed = <3686400>;
 		current-speed = <115200>;
+		vio-supply = <&reg_bt_p1v8>;
+		vbat-supply = <&reg_p3v3>;
 		status = "okay";
 
 		clk_32k_bt: bt_clk {
@@ -351,62 +368,12 @@
 	};
 };
 
-&ecspi1 {
-	status = "okay";
-
-	spi_switch: ksz8795clx@0 {
-		compatible = "microchip,ksz8795";
-		reg = <0>;
-		spi-max-frequency = <200000>;
-		spi_cpha;
-#if 0
-		interrupt-parent = <&gpio3>;
-		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 31 */
-#endif
-		status = "okay"; /* Attention! Tail tagging only for port 5 */
-
-		/*ethernet-*/ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			port@0 {
-				reg = <0>;
-				label = "lan1";
-			};
-			port@1 {
-				reg = <1>;
-				label = "lan2";
-			};
-			port@2 {
-				reg = <2>;
-				label = "lan3";
-			};
-			port@3 {
-				reg = <3>;
-				label = "lan4";
-			};
-			port@4 {
-				reg = <4>;
-				label = "cpu";
-				phy-mode = "rgmii-id";
-				rx-internal-delay-ps = <2000>;
-				tx-internal-delay-ps = <2000>;
-				ethernet = <&lan7431>;
-
-				fixed-link {
-					speed = <1000>;
-					full-duplex;
-				};
-			};
-		};
-	};
-};
-
 &pcie {
 	#address-cells = <0x03>;
 	#size-cells = <0x02>;
 	status = "okay";
 	/*
-		reg = <0xBBSSFF00 0 0 0 0>;
+		reg = <0x00BBSSFF 0 0 0 0>;
 		BB - BUS number (hex)
 		SS - Device/Slot number (5 bit)
 		FF - Function (3 bit)
@@ -414,18 +381,21 @@
 		01:00.0 Ethernet controller: Microchip Technology / SMSC LAN7431...
 		Bus: 01, Device/Slot: 00, Function: 0
 	*/
-	pcie@0,0 {
+	pcie@0 {
 		#address-cells = <0x03>;
 		#size-cells = <0x02>;
 		compatible ="pci16c3,abcd";
 		reg = <0x00000000 0 0 0 0>;
 		class-code = <0x060400>; /* bridge */
 		status = "okay";
-
-		lan7431: ethernet@1,0 {
-			compatible ="pci1055,7431";
-			reg = <0x01000000 0 0 0 0>;
+	
+		lan7431: ethernet@0,0 {
+			#address-cells = <0x03>;
+			#size-cells = <0x02>;
+			//compatible ="pci1055,7431";
+			compatible = "microchip,lan743x";
 			class-code = <0x020000>; /* network */
+			reg = <0x10000 0 0 0 0>;
 			phy-connection-type = "rgmii";
 			rx-internal-delay-ps = <0>;
 			tx-internal-delay-ps = <0>;
@@ -438,18 +408,81 @@
 	};
 };
 
+&ecspi1 {
+	status = "okay";
+
+	spi_switch: ksz8795clx@0 {
+		compatible = "microchip,ksz8795";
+		reg = <0>;
+		spi-max-frequency = <200000>;
+		spi_cpha;
+#if 0
+		// ToDo. Not works with reset-gpios - EBUSY(-16)
+		//reset-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;
+		reset-assert-us = <250000>;
+#endif
+#if 0
+		// ToDo. Failed in ISR. 
+		interrupt-parent = <&gpio3>;
+		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 31 */
+#endif
+		status = "okay"; /* Attention! Tail tagging only for port 5 */
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				label = "lan1";
+				local-mac-address = [02 00 00 00 00 01];
+			};
+			port@1 {
+				reg = <1>;
+				label = "lan2";
+				local-mac-address = [02 00 00 00 00 02];
+			};
+			port@2 {
+				reg = <2>;
+				label = "lan3";
+				local-mac-address = [02 00 00 00 00 03];
+			};
+			port@3 {
+				reg = <3>;
+				label = "lan4";
+				local-mac-address = [02 00 00 00 00 04];
+			};
+			port@4 {
+				reg = <4>;
+				label = "cpu";				
+				//phy-mode = "rgmii-id";
+				//phy-mode = "internal";
+				phy-mode = "rgmii";
+				rx-internal-delay-ps = <2000>;
+				tx-internal-delay-ps = <2000>;
+				ethernet = <&lan7431>;
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+		};
+	};
+};
+
 /*
  * SD/MMC and eMMC controllers
  */
 &usdhc1 {				   /* externed - WiFi module */
 	keep-power-in-suspend;
 	cap-power-off-card;
+	disable-wp;
 	non-removable;
 	max-frequency = <25000000>;
 	status = "okay";
 	vmmc-supply = <&reg_wl1837_p1v8>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	status = "okay";
 
 	WL1837MOD: wlcore@2 {
 		compatible = "ti,wl1837";
@@ -458,9 +491,13 @@
 		interrupt-parent = <&gpio5>;
 		interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;		/* soDimm 172 */
 		tcxo-clock-frequency = <26000000>;
+		status = "okay";
 	};
 };
-&usdhc2 {	status = "okay";	}; /* compatible */
+&usdhc2 {
+	//status = "okay";	
+	status = "disabled";	
+};
 /* &usdhc3 {	status = "okay";	}; => eMMC allways enabled */
 
 
